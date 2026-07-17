@@ -1,0 +1,16 @@
+[package]
+name = "wikilabs-workspace"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+wikilabs-persistence = { path = "../core/persistence" }
+wikilabs-data-types = { path = "../core/data_types" }

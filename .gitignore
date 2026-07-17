@@ -1,0 +1,51 @@
+# Rust
+/target/
+Cargo.lock
+*.rlib
+*.d
+
+# Tauri
+src-tauri/target/
+src-tauri/icons/
+
+# Node
+node_modules/
+src-tauri/frontend/dist/
+src-tauri/frontend/.vite/
+
+# IDE
+.idea/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Secrets (never commit)
+**/*.pem
+**/*.key
+**/*.p12
+**/.env
+**/.env.local
+**/.env.*.local
+src-tauri/tauri.conf.json
+src-tauri/build.rs
+
+# Local certs
+src-tauri/capabilities/
+src-tauri/keys/
+
+# Documentation build artifacts
+docs/_build/
+
+# Coverage
+target/doctor/
+.cargo/audit/
+
+# Build scripts output
+scripts/

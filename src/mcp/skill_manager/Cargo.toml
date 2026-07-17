@@ -1,0 +1,15 @@
+[package]
+name = "wikilabs-mcp-skill-manager"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+wikilabs-mcp = { path = ".." }

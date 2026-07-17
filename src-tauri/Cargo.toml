@@ -1,0 +1,37 @@
+[package]
+name = "wikilabs-desktop"
+version = "0.1.0"
+description = "Wiki Labs AI Copilot — Desktop Application"
+edition = "2021"
+authors = ["Wiki Labs Team"]
+license = "MIT"
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-log = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures = "0.3"
+rusqlite = { version = "0.32", features = ["bundled", "fts5"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+log = "0.4"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1"
+anyhow = "1"
+
+# Existing workspace crates
+wikilabs-ai = { path = "../src/ai" }
+wikilabs-persistence = { path = "../src/core/persistence" }
+wikilabs-data-types = { path = "../src/core/data_types" }
+wikilabs-security = { path = "../src/security" }
+wikilabs-workspace = { path = "../src/workspace" }
+wikilabs-knowledge = { path = "../src/knowledge" }

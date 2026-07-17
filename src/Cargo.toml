@@ -1,0 +1,10 @@
+[package]
+name = "wikilabs"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[[bin]]
+name = "wikilabs"
+path = "src/main.rs"
+required-features = []

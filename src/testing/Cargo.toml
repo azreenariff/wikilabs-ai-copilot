@@ -1,0 +1,12 @@
+[package]
+name = "wikilabs-testing"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+wikilabs-ai = { path = "../ai" }
