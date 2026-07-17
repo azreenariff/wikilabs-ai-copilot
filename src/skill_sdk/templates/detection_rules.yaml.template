@@ -1,0 +1,31 @@
+---
+# Detection Rules Template
+# Rules that identify {{SKILL_DOMAIN}} technology from system artifacts.
+# See: https://docs.wikilabs.ai/skill-schema-reference
+- id: "{{SKILL_DOMAIN}}-file-config"
+  name: "{{SKILL_DOMAIN}} config file"
+  detection_type: File
+  pattern: "/etc/{{SKILL_DOMAIN}}/"
+  confidence: 0.85
+  technology_domain: "{{SKILL_DOMAIN}}"
+  priority: 10
+  flags: ""
+  extract: null
+- id: "{{SKILL_DOMAIN}}-cmd-presence"
+  name: "{{SKILL_DOMAIN}} command presence"
+  detection_type: Command
+  pattern: "^{{SKILL_DOMAIN}} "
+  confidence: 0.80
+  technology_domain: "{{SKILL_DOMAIN}}"
+  priority: 8
+  flags: ""
+  extract: null
+- id: "{{SKILL_DOMAIN}}-pattern-version"
+  name: "{{SKILL_DOMAIN}} version pattern"
+  detection_type: Pattern
+  pattern: "{{SKILL_DOMAIN}}-v[0-9]+"
+  confidence: 0.70
+  technology_domain: "{{SKILL_DOMAIN}}"
+  priority: 5
+  flags: ""
+  extract: null

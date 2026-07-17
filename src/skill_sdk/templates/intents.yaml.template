@@ -1,0 +1,28 @@
+---
+# Intent Definitions Template
+# Each intent defines pattern-based recognition for a specific engineering goal.
+# See: https://docs.wikilabs.ai/skill-schema-reference
+- id: "{{SKILL_ID}}-troubleshooting"
+  name: "Troubleshoot"
+  description: "User is diagnosing a problem or error"
+  patterns:
+    - "(?i)(troubleshoot|debug|fix|error|issue|problem|crash|fail|bug|broken)"
+  confidence_boost: 0.85
+  required_domain: "{{SKILL_DOMAIN}}"
+  priority: 10
+- id: "{{SKILL_ID}}-configuration"
+  name: "Configure"
+  description: "User is changing or configuring system settings"
+  patterns:
+    - "(?i)(config|configure|setting|settings|setup|tune|optimiz)"
+  confidence_boost: 0.80
+  required_domain: "{{SKILL_DOMAIN}}"
+  priority: 8
+- id: "{{SKILL_ID}}-deployment"
+  name: "Deploy"
+  description: "User is deploying or releasing software"
+  patterns:
+    - "(?i)(deploy|release|rollout|promotion|helm|kubectl apply|kubectl create|upgrade)"
+  confidence_boost: 0.80
+  required_domain: "{{SKILL_DOMAIN}}"
+  priority: 7

@@ -13,11 +13,20 @@ members = [
     "src/workspace",
     "src/security",
     "src/testing",
+    "src/technology_recognition",
+    "src/engineering_timeline",
+    "src/workflow_engine",
+    "src/recommendation_readiness",
+    "src/human_feedback",
+    "src/context_fusion",
+    "src/skill_runtime",
+    "src/skill_sdk",
+    "src/intelligence_engine",
     "src-tauri",
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.4.0-alpha"
 edition = "2021"
 authors = ["Wiki Labs Team"]
 repository = "https://github.com/wikilabs/wikilabs-ai-copilot"
@@ -32,7 +41,9 @@ regex = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml = "0.9"
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 uuid = { version = "1", features = ["v4", "serde"] }
+globset = "0.4"

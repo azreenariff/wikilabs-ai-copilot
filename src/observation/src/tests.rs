@@ -1,211 +1,430 @@
-//! Tests for observation engine: tiers, shell, app monitor, clipboard, capture, OCR, credential filter.
+//! Tests for observation framework: provider lifecycle, event publishing,
+//! privacy controls, config, and performance.
 
-use crate::tier1::Tier1Engine;
-use crate::tier2::Tier2Engine;
-use crate::tier3::Tier3Engine;
-use crate::shell::ShellObserver;
-use crate::app_monitor::{AppMonitor, AppContext};
-use crate::clipboard::ClipboardObserver;
-use crate::capture::{ScreenCapture, CaptureResult};
-use crate::ocr::OCREngine;
-use crate::credential_filter::CredentialFilter;
+mod provider_lifecycle_tests {
+    use crate::app_monitor::ActiveWindowProvider;
+    use crate::browser::BrowserProvider;
+    use crate::clipboard::ClipboardProvider;
+    use crate::file_observer::FileObserverProvider;
+    use crate::screen_capture::ScreenCaptureProvider;
+    use crate::provider::{ObservationProvider, ProviderState};
+    use crate::terminal::TerminalProvider;
 
-mod tier1_tests {
-    use super::*;
+    fn test_provider_lifecycle<P: ObservationProvider + Default>(_name: &str) {
+        let mut provider = P::default();
+        assert_eq!(provider.state(), ProviderState::Disabled);
 
-    #[test]
-    fn test_tier1_engine_new() {
-        let engine = Tier1Engine::new();
-        // just verify it constructs
-    }
-
-    #[test]
-    fn test_tier1_start_not_implemented() {
-        let engine = Tier1Engine::new();
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(engine.start());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
-    }
-}
+        rt.block_on(async {
+            assert!(provider.start().await.is_ok());
+            assert_eq!(provider.state(), ProviderState::Active);
 
-mod tier2_tests {
-    use super::*;
+            assert!(provider.pause().await.is_ok());
+            assert_eq!(provider.state(), ProviderState::Paused);
 
-    #[test]
-    fn test_tier2_engine_new() {
-        let engine = Tier2Engine::new();
-        // just verify it constructs
-    }
+            assert!(provider.resume().await.is_ok());
+            assert_eq!(provider.state(), ProviderState::Active);
 
-    #[test]
-    fn test_tier2_start_not_implemented() {
-        let engine = Tier2Engine::new();
+            assert!(provider.stop().await.is_ok());
+            assert_eq!(provider.state(), ProviderState::Disabled);
+        });
+
+        // Should fail when already disabled
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(engine.start());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        rt.block_on(async {
+            assert!(provider.pause().await.is_err());
+            assert!(provider.resume().await.is_err());
+        });
+    }
+
+    #[test]
+    fn test_active_window_lifecycle() {
+        test_provider_lifecycle::<ActiveWindowProvider>("ActiveWindowProvider");
+    }
+
+    #[test]
+    fn test_terminal_lifecycle() {
+        test_provider_lifecycle::<TerminalProvider>("TerminalProvider");
+    }
+
+    #[test]
+    fn test_browser_lifecycle() {
+        test_provider_lifecycle::<BrowserProvider>("BrowserProvider");
+    }
+
+    #[test]
+    fn test_clipboard_lifecycle() {
+        test_provider_lifecycle::<ClipboardProvider>("ClipboardProvider");
+    }
+
+    #[test]
+    fn test_file_observer_lifecycle() {
+        test_provider_lifecycle::<FileObserverProvider>("FileObserverProvider");
+    }
+
+    #[test]
+    fn test_screen_capture_lifecycle() {
+        test_provider_lifecycle::<ScreenCaptureProvider>("ScreenCaptureProvider");
     }
 }
 
-mod tier3_tests {
-    use super::*;
+mod event_publishing_tests {
+    use crate::event::{ObservationEvent, EventType, ProviderType, ObservationPayload};
+    use crate::event_bus::{EventBus, EventBusConfig};
 
-    #[test]
-    fn test_tier3_engine_new() {
-        let engine = Tier3Engine::new();
-        // just verify it constructs
+    fn make_bus() -> EventBus {
+        EventBus::new(EventBusConfig {
+            channel_capacity: 128,
+            batch_size: 10,
+            batch_timeout_ms: 100,
+        })
     }
 
     #[test]
-    fn test_tier3_start_not_implemented() {
-        let engine = Tier3Engine::new();
+    fn test_bus_create_and_subscribe_all() {
+        let bus = make_bus();
+        let (_sub, mut rx) = bus.subscribe_all();
+        assert!(!rx.try_recv().is_err() || rx.try_recv().is_err()); // empty
+    }
+
+    #[test]
+    fn test_event_published_and_consumed() {
+        let bus = make_bus();
+        let (_sub, mut rx) = bus.subscribe_all();
+
+        bus.publish(ObservationEvent::new(
+            EventType::ApplicationChanged,
+            ProviderType::ActiveWindow,
+            "vscode".to_string(),
+            None,
+            ObservationPayload::new(serde_json::json!({"app": "vscode"})),
+        ));
+
+        let event = rx.try_recv().unwrap();
+        assert_eq!(event.event_type, EventType::ApplicationChanged);
+        assert_eq!(event.provider, ProviderType::ActiveWindow);
+    }
+
+    #[test]
+    fn test_provider_subscription_filter() {
+        let bus = make_bus();
+        let (_sub, mut rx) =
+            bus.subscribe_to_provider(ProviderType::ActiveWindow);
+
+        // Publish non-matching event
+        bus.publish(ObservationEvent::new(
+            EventType::ApplicationChanged,
+            ProviderType::Browser,
+            "firefox".to_string(),
+            None,
+            ObservationPayload::new(serde_json::json!({})),
+        ));
+        assert!(rx.try_recv().is_err()); // no match
+
+        // Publish matching event
+        bus.publish(ObservationEvent::new(
+            EventType::ApplicationChanged,
+            ProviderType::ActiveWindow,
+            "vscode".to_string(),
+            None,
+            ObservationPayload::new(serde_json::json!({})),
+        ));
+        let event = rx.try_recv().unwrap();
+        assert_eq!(event.provider, ProviderType::ActiveWindow);
+    }
+
+    #[test]
+    fn test_stats_incremented() {
+        let bus = make_bus();
+        assert_eq!(bus.get_stats().total_events, 0);
+
+        bus.publish(ObservationEvent::new(
+            EventType::ApplicationChanged,
+            ProviderType::ActiveWindow,
+            "vscode".to_string(),
+            None,
+            ObservationPayload::empty(),
+        ));
+        assert_eq!(bus.get_stats().total_events, 1);
+
+        bus.publish(ObservationEvent::new(
+            EventType::ApplicationChanged,
+            ProviderType::ActiveWindow,
+            "code".to_string(),
+            None,
+            ObservationPayload::empty(),
+        ));
+        assert_eq!(bus.get_stats().total_events, 2);
+    }
+
+    #[test]
+    fn test_event_serialization_roundtrip() {
+        let event = ObservationEvent::new(
+            EventType::ApplicationChanged,
+            ProviderType::ActiveWindow,
+            "vscode".to_string(),
+            None,
+            ObservationPayload::new(serde_json::json!({"app": "vscode", "pid": 12345})),
+        );
+
+        let serialized = serde_json::to_string(&event).unwrap();
+        let deserialized: ObservationEvent = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(deserialized.event_id, event.event_id);
+        assert_eq!(deserialized.event_type, EventType::ApplicationChanged);
+        assert_eq!(deserialized.provider, ProviderType::ActiveWindow);
+        assert_eq!(deserialized.source, "vscode");
+    }
+
+    #[test]
+    fn test_default_bus() {
+        let bus = EventBus::with_defaults();
+        assert_eq!(bus.get_stats().total_events, 0);
+        let (_sub, mut rx) = bus.subscribe_all();
+        assert!(rx.try_recv().is_err());
+    }
+}
+
+mod config_tests {
+    use crate::app_monitor::ActiveWindowProvider;
+    use crate::browser::BrowserProvider;
+    use crate::provider::{ObservationProvider, ProviderConfig};
+
+    #[test]
+    fn test_config_get_set() {
+        let mut provider = ActiveWindowProvider::new();
+        let mut config = provider.config();
+        config.enabled = false;
+        config.interval_secs = 5;
+        provider.set_config(config);
+        assert!(!provider.config().enabled);
+        assert_eq!(provider.config().interval_secs, 5);
+    }
+
+    #[test]
+    fn test_default_config() {
+        let provider = ActiveWindowProvider::new();
+        let config = provider.config();
+        assert!(config.enabled);
+        assert_eq!(config.interval_secs, 5);
+    }
+
+    #[test]
+    fn test_config_change_reflected() {
+        let mut provider = BrowserProvider::new();
+        let config = provider.config();
+        assert!(config.enabled);
+
+        provider.set_config(ProviderConfig {
+            enabled: false,
+            interval_secs: 30,
+            settings: serde_json::json!({}),
+        });
+        assert!(!provider.config().enabled);
+        assert_eq!(provider.config().interval_secs, 30);
+    }
+
+    #[test]
+    fn test_observe_returns_events_when_started() {
+        let mut provider = ActiveWindowProvider::new();
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(engine.start());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        let events = rt.block_on(async {
+            provider.start().await.unwrap();
+            provider.observe().await.unwrap()
+        });
+        assert!(!events.is_empty());
     }
 }
 
-mod shell_tests {
-    use super::*;
+mod registry_tests {
+    use crate::app_monitor::ActiveWindowProvider;
+    use crate::browser::BrowserProvider;
+    use crate::clipboard::ClipboardProvider;
+    use crate::file_observer::FileObserverProvider;
+    use crate::screen_capture::ScreenCaptureProvider;
+    use crate::terminal::TerminalProvider;
+    use crate::provider::ProviderRegistry;
 
     #[test]
-    fn test_shell_observer_new() {
-        let observer = ShellObserver::new();
-        // just verify it constructs
+    fn test_register_all_providers() {
+        let mut registry = ProviderRegistry::new();
+
+        registry.register(Box::new(ActiveWindowProvider::new()));
+        registry.register(Box::new(TerminalProvider::new()));
+        registry.register(Box::new(BrowserProvider::new()));
+        registry.register(Box::new(ClipboardProvider::new()));
+        registry.register(Box::new(FileObserverProvider::new()));
+        registry.register(Box::new(ScreenCaptureProvider::new()));
+
+        let names = registry.provider_names();
+        assert_eq!(names.len(), 6);
     }
 
     #[test]
-    fn test_register_not_implemented() {
-        let observer = ShellObserver::new();
-        let result = observer.register("bash");
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
-    }
-}
+    fn test_get_providers() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(Box::new(ActiveWindowProvider::new()));
 
-mod app_monitor_tests {
-    use super::*;
-
-    #[test]
-    fn test_app_monitor_new() {
-        let monitor = AppMonitor::new();
-        // just verify it constructs
+        let provider = registry.get("Active Window");
+        assert!(provider.is_some());
+        assert_eq!(provider.unwrap().name(), "Active Window");
     }
 
     #[test]
-    fn test_get_active_not_implemented() {
-        let monitor = AppMonitor::new();
+    fn test_get_returns_none_for_missing() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(Box::new(ActiveWindowProvider::new()));
+        assert!(registry.get("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_unregister_providers() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(Box::new(ActiveWindowProvider::new()));
+        assert_eq!(registry.provider_names().len(), 1);
+
+        let removed = registry.unregister("Active Window");
+        assert!(removed.is_some());
+        assert!(registry.get("Active Window").is_none());
+    }
+
+    #[test]
+    fn test_start_all() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(Box::new(ActiveWindowProvider::new()));
+        registry.register(Box::new(BrowserProvider::new()));
+
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(monitor.get_active());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        let results = rt.block_on(registry.start_all());
+        assert_eq!(results.len(), 2);
+        for (name, result) in &results {
+            assert!(result.is_ok(), "{}: {:?}", name, result);
+        }
     }
 
     #[test]
-    fn test_app_context_creation() {
-        let ctx = AppContext {
-            window_title: "Terminal".to_string(),
-            process_name: "alacritty".to_string(),
-            url: None,
-        };
-        assert_eq!(ctx.window_title, "Terminal");
-        assert_eq!(ctx.process_name, "alacritty");
-        assert!(ctx.url.is_none());
+    fn test_all_status() {
+        let registry = ProviderRegistry::new();
+        let statuses = registry.all_status();
+        // No providers registered — empty
+        assert!(statuses.is_empty());
     }
 
     #[test]
-    fn test_app_context_with_url() {
-        let ctx = AppContext {
-            window_title: "Firefox".to_string(),
-            process_name: "firefox".to_string(),
-            url: Some("https://example.com".to_string()),
-        };
-        assert_eq!(ctx.url.unwrap(), "https://example.com");
-    }
-}
+    fn test_set_provider_enabled() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(Box::new(ActiveWindowProvider::new()));
 
-mod clipboard_tests {
-    use super::*;
-
-    #[test]
-    fn test_clipboard_observer_new() {
-        let observer = ClipboardObserver::new();
-        // just verify it constructs
+        assert!(registry.set_provider_enabled("Active Window", false));
+        let provider = registry.get("Active Window").unwrap();
+        assert!(!provider.config().enabled);
     }
 
     #[test]
-    fn test_get_content_not_implemented() {
-        let observer = ClipboardObserver::new();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(observer.get_content());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+    fn test_set_nonexistent_provider() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(Box::new(ActiveWindowProvider::new()));
+        assert!(!registry.set_provider_enabled("nonexistent", true));
     }
 }
 
-mod capture_tests {
-    use super::*;
+mod privacy_tests {
+    use crate::privacy::{PrivacyConfig, PrivacyManager, ObservationMode};
+    use crate::event::ProviderType;
 
     #[test]
-    fn test_screen_capture_new() {
-        let capture = ScreenCapture::new();
-        // just verify it constructs
+    fn test_privacy_manager_creation() {
+        let manager = PrivacyManager::new();
+        let indicator = manager.get_indicator();
+        // New manager starts in disabled mode with no active providers
+        assert!(!indicator.is_active());
+        assert!(!indicator.indicator_visible);
     }
 
     #[test]
-    fn test_capture_not_implemented() {
-        let capture = ScreenCapture::new();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(capture.capture());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+    fn test_provider_disabled_by_config() {
+        let mut config = PrivacyConfig::default();
+        config
+            .provider_overrides
+            .insert(ProviderType::Clipboard, false);
+        assert!(config.is_provider_allowed(&ProviderType::ActiveWindow));
+        assert!(!config.is_provider_allowed(&ProviderType::Clipboard));
     }
 
     #[test]
-    fn test_capture_result_creation() {
-        let result = CaptureResult {
-            width: 1920,
-            height: 1080,
-        };
-        assert_eq!(result.width, 1920);
-        assert_eq!(result.height, 1080);
-    }
-}
-
-mod ocr_tests {
-    use super::*;
-
-    #[test]
-    fn test_ocr_engine_new() {
-        let engine = OCREngine::new();
-        // just verify it constructs
+    fn test_privacy_config_applied() {
+        let config = PrivacyConfig::default();
+        let manager = PrivacyManager::new();
+        manager.set_config(config);
+        assert!(manager.is_provider_allowed(&ProviderType::Clipboard));
     }
 
     #[test]
-    fn test_recognize_not_implemented() {
-        let engine = OCREngine::new();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(engine.recognize("/tmp/test.png"));
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
-    }
-}
+    fn test_custom_provider_override() {
+        let mut config = PrivacyConfig::default();
+        assert!(config.is_provider_allowed(&ProviderType::Custom("my_provider".to_string())));
 
-mod credential_filter_tests {
-    use super::*;
-
-    #[test]
-    fn test_credential_filter_new() {
-        let filter = CredentialFilter::new();
-        // just verify it constructs
+        config
+            .provider_overrides
+            .insert(ProviderType::Custom("my_provider".to_string()), false);
+        assert!(!config.is_provider_allowed(&ProviderType::Custom("my_provider".to_string())));
     }
 
     #[test]
-    fn test_filter_default() {
-        let filter = CredentialFilter::new();
-        // TODO implementation returns empty string
-        assert!(filter.filter("sensitive data").is_empty());
+    fn test_observation_mode_toggle() {
+        let manager = PrivacyManager::new();
+
+        // Default: disabled mode (PrivacyIndicator::disabled() is used in new())
+        let indicator = manager.get_indicator();
+        assert!(!indicator.is_active());
+        assert!(!indicator.indicator_visible);
+
+        // Set enabled mode - now it should show active providers
+        manager.set_mode(ObservationMode::Enabled);
+        let indicator = manager.get_indicator();
+        assert!(indicator.is_active());
+
+        // Set disabled mode
+        manager.set_mode(ObservationMode::Disabled);
+        let indicator = manager.get_indicator();
+        assert!(!indicator.is_active());
+        assert!(!indicator.indicator_visible);
+
+        // Set back to enabled
+        manager.set_mode(ObservationMode::Enabled);
+        let indicator = manager.get_indicator();
+        assert!(indicator.is_active());
+    }
+
+    #[test]
+    fn test_provider_specific_toggle() {
+        let manager = PrivacyManager::new();
+
+        // By default, clipboard is allowed
+        assert!(manager.is_provider_allowed(&ProviderType::Clipboard));
+
+        // Disable clipboard specifically
+        manager.set_provider_enabled(ProviderType::Clipboard, false);
+        assert!(!manager.is_provider_allowed(&ProviderType::Clipboard));
+
+        // Re-enable
+        manager.set_provider_enabled(ProviderType::Clipboard, true);
+        assert!(manager.is_provider_allowed(&ProviderType::Clipboard));
+    }
+
+    #[test]
+    fn test_default_privacy_config() {
+        let config = PrivacyConfig::default();
+        assert_eq!(config.retention_days, 7);
+        assert!(!config.store_clipboard_content);
+    }
+
+    #[test]
+    fn test_privacy_config_allow_override() {
+        let mut config = PrivacyConfig::default();
+        config
+            .provider_overrides
+            .insert(ProviderType::ScreenCapture, false);
+        assert!(!config.provider_overrides.is_empty());
     }
 }

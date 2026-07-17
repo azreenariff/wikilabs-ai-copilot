@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Command Definitions Schema",
+  "description": "Schema for commands.yaml in a skill directory",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "name", "command", "description", "safety_level"],
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[a-z0-9][a-z0-9_-]*$"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "command": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1
+      },
+      "requires_elevation": {
+        "type": "boolean",
+        "default": false
+      },
+      "safety_level": {
+        "type": "string",
+        "enum": ["ReadOnly", "Safe", "Destructive"],
+        "default": "ReadOnly"
+      },
+      "technology_domain": {
+        "type": "string"
+      },
+      "read_only": {
+        "type": "boolean",
+        "default": false
+      },
+      "allowed_args": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "additionalProperties": false
+  }
+}

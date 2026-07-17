@@ -1,0 +1,9 @@
+---
+# Technology Definition Template
+# See: https://docs.wikilabs.ai/skill-schema-reference
+domain: "{{SKILL_DOMAIN}}"
+version: "{{VERSION}}"
+description: "Technology definition for {{SKILL_DOMAIN}} domain"
+features: []
+related_domains: []
+documentation_url: ""

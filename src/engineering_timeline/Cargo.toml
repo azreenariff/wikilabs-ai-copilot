@@ -1,0 +1,16 @@
+[package]
+name = "wikilabs-engineering-timeline"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+wikilabs-data-types = { path = "../core/data_types" }
+wikilabs-observation = { path = "../observation" }

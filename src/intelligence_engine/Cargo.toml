@@ -1,0 +1,17 @@
+[package]
+name = "wikilabs-intelligence-engine"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+wikilabs-data-types = { path = "../core/data_types" }
+wikilabs-context-fusion = { path = "../context_fusion" }

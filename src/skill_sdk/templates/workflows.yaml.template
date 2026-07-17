@@ -1,0 +1,44 @@
+---
+# Workflow Definitions Template
+# Each workflow defines a sequence of states for engineering tasks.
+# See: https://docs.wikilabs.ai/skill-schema-reference
+- id: "{{SKILL_ID}}-troubleshooting"
+  name: "Troubleshooting Workflow"
+  description: "Standard troubleshooting workflow for {{SKILL_DOMAIN}}"
+  states:
+    - id: discovery
+      name: "Discovery"
+      description: "Identify symptoms and gather context"
+      initial: true
+      terminal: false
+      commands: []
+    - id: analysis
+      name: "Analysis"
+      description: "Analyze root cause hypotheses"
+      initial: false
+      terminal: false
+      commands: []
+    - id: resolution
+      name: "Resolution"
+      description: "Propose and apply fix"
+      initial: false
+      terminal: true
+      commands: []
+  transitions:
+    - from: discovery
+      to: analysis
+      condition: "sufficient_data"
+      description: "Move to analysis when enough data is collected"
+    - from: analysis
+      to: resolution
+      condition: "clear_recommendation"
+      description: "Move to resolution when recommendation is ready"
+    - from: analysis
+      to: discovery
+      condition: "insufficient_data"
+      description: "Return to discovery when more information is needed"
+  evidence_requirements:
+    - "Detected symptoms and logs"
+    - "Technology version and configuration"
+    - "Recent changes or deployments"
+  required: true

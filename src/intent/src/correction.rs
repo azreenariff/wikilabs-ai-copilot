@@ -90,6 +90,37 @@ impl CorrectionEngine {
         };
         &self.corrections[start..]
     }
+
+    /// Adjust confidence based on correction history.
+    pub fn apply_intent_correction(
+        &self,
+        confidence: f32,
+        context: &str,
+        intent_label: &str,
+    ) -> f32 {
+        // If there are corrections for this intent, slightly boost confidence
+        if let Some(adjusted) = self.confidence_for_intent_label(intent_label) {
+            return (adjusted * confidence).clamp(0.0, 1.0);
+        }
+        confidence
+    }
+
+    fn confidence_for_intent_label(&self, label: &str) -> Option<f32> {
+        let mut total_boost: f32 = 0.0;
+        let mut count: usize = 0;
+        for c in &self.corrections {
+            let c_label = c.expected.to_string();
+            if c_label == label {
+                total_boost += 0.05;
+                count += 1;
+            }
+        }
+        if count > 0 {
+            Some(total_boost / count as f32 + 0.9)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]

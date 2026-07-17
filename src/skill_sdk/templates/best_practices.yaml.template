@@ -1,0 +1,12 @@
+---
+# Best Practices Template
+# Guidelines for using this skill effectively.
+# See: https://docs.wikilabs.ai/skill-schema-reference
+- Verify all detections before acting
+- Ask for confirmation before destructive actions
+- Document any manual steps taken
+- Cross-reference multiple evidence sources
+- Keep confidence scores above 0.7 for critical decisions
+- Log all actions for auditability
+- Review known issues before proceeding
+- Always validate changes in non-production first

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Intent Definitions Schema",
+  "description": "Schema for intents.yaml in a skill directory",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["id", "name", "description", "patterns"],
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[a-z0-9][a-z0-9_-]*$",
+        "description": "Unique intent identifier"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Intent name"
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Description of when this intent triggers"
+      },
+      "patterns": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Regex pattern that matches this intent"
+        },
+        "description": "Regex patterns that match this intent"
+      },
+      "confidence_boost": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "default": 0.75,
+        "description": "Confidence boost when matched"
+      },
+      "required_domain": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Required technology domain"
+      },
+      "priority": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0,
+        "description": "Higher = matched first"
+      }
+    },
+    "additionalProperties": false
+  }
+}

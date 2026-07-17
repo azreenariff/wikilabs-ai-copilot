@@ -1,0 +1,15 @@
+---
+# Command Definitions Template
+# CLI commands that this skill can provide for execution.
+# See: https://docs.wikilabs.ai/skill-schema-reference
+commands: []
+# Example:
+# - id: "{{SKILL_ID}}-status"
+#   name: "status"
+#   command: "{{SKILL_DOMAIN}} status"
+#   description: "Show current status of {{SKILL_DOMAIN}}"
+#   requires_elevation: false
+#   safety_level: ReadOnly
+#   technology_domain: "{{SKILL_DOMAIN}}"
+#   read_only: true
+#   allowed_args: ["--json", "--verbose"]

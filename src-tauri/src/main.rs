@@ -1,33 +1,28 @@
-use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::sync::mpsc;
-use wikilabs_ai::provider::{AiProvider, OpenAICompatibleProvider, ProviderInfo};
+use wikilabs_ai::provider::{AiProvider, AiRequest, OpenAICompatibleProvider, ProviderInfo};
 use wikilabs_persistence::{Database, RepositoryFactory, schema::INIT_SQL};
 use wikilabs_data_types::chat::ChatMessage;
-use wikilabs_workspace::manager::WorkspaceManager;
-use wikilabs_knowledge::search::KnowledgeSearch;
-use tracing::{info, error, warn};
+use tracing::{info, error};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 mod config;
-use config::{AiProviderConfig, AppSettings};
+use config::{AiProviderConfig, AppSettings, AppSettingsStore};
 
-/// Shared application state
+/// Shared application state — uses Arc for Clone safety.
 #[derive(Clone)]
 pub struct AppState {
-    pub app_handle: Mutex<Option<AppHandle>>,
-    pub db: Database,
-    pub repos: RepositoryFactory,
-    pub workspace_manager: Mutex<Option<WorkspaceManager>>,
+    pub app_handle: Arc<std::sync::RwLock<Option<AppHandle>>>,
+    pub db: Arc<Database>,
+    pub repos: Arc<RepositoryFactory>,
+    pub settings: AppSettingsStore,
 }
 
 impl AppState {
     pub fn new(app_handle: AppHandle) -> Result<Self, anyhow::Error> {
         info!("Creating application state");
 
-        // Get data dir for database
         let data_dir = app_handle.path().app_data_dir()?;
         std::fs::create_dir_all(&data_dir)?;
         let db_path = data_dir.join("wikilabs.db");
@@ -39,10 +34,10 @@ impl AppState {
         let repos = RepositoryFactory::new(db.clone());
 
         Ok(Self {
-            app_handle: Mutex::new(Some(app_handle)),
-            db,
-            repos,
-            workspace_manager: Mutex::new(None),
+            app_handle: Arc::new(std::sync::RwLock::new(Some(app_handle))),
+            db: Arc::new(db),
+            repos: Arc::new(repos),
+            settings: AppSettingsStore::new(),
         })
     }
 }
@@ -52,7 +47,7 @@ impl AppState {
 #[tauri::command]
 fn get_settings(app_state: tauri::State<AppState>) -> Result<AppSettings, String> {
     info!("get_settings called");
-    AppSettings::load(&app_state.repos).map_err(|e| e.to_string())
+    Ok(app_state.settings.load())
 }
 
 #[tauri::command]
@@ -61,7 +56,8 @@ fn update_settings(
     settings: AppSettings,
 ) -> Result<(), String> {
     info!("update_settings called");
-    settings.save(&app_state.repos).map_err(|e| e.to_string())
+    app_state.settings.save(settings);
+    Ok(())
 }
 
 #[tauri::command]
@@ -172,9 +168,8 @@ pub struct ChatResponse {
 fn send_message(
     app_state: tauri::State<AppState>,
     request: ChatRequest,
-    settings: tauri::State<AppSettings>,
 ) -> Result<ChatResponse, String> {
-    let settings_inner = settings.inner();
+    let settings = app_state.settings.load();
     let ws_id = request.workspace_id.clone().unwrap_or_else(|| "default".to_string());
 
     // Create user message
@@ -182,46 +177,31 @@ fn send_message(
     let user_id = user_msg.id.to_string();
 
     // Save user message to database
-    let tool_calls_json = "[]";
     app_state.repos.chat_messages
-        .insert(&user_id, &ws_id, "user", &request.message, tool_calls_json)
+        .insert(&user_id, &ws_id, "user", &request.message, "[]")
         .map_err(|e| e.to_string())?;
 
-    // Build AI request from conversation history
-    let messages = app_state.repos.chat_messages
-        .get_by_workspace(&ws_id, 50)
-        .map_err(|e| e.to_string())?;
-
-    let chat_msgs: Vec<ChatMessage> = messages.iter().map(|m| {
-        ChatMessage {
-            id: uuid::Uuid::parse_str(&m.id).unwrap_or_default(),
-            role: m.role.clone(),
-            content: m.content.clone(),
-            created_at: chrono::DateTime::parse_from_rfc3339(&m.created_at)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .unwrap_or_default(),
-            tool_calls: vec![],
-        }
-    }).collect();
+    // Build AI request
+    let ai_request = AiRequest {
+        model: settings.ai_provider.model.clone(),
+        messages: vec![wikilabs_ai::provider::AiMessage {
+            role: "user".to_string(),
+            content: request.message.clone(),
+        }],
+        tools: vec![],
+        temperature: None,
+        max_tokens: Some(settings.ai_provider.max_tokens),
+        stream: None,
+    };
 
     // Create AI provider
     let provider = OpenAICompatibleProvider::new(
-        &settings_inner.ai_provider.name,
-        &settings_inner.ai_provider.endpoint,
-        &settings_inner.ai_provider.api_key,
-        &settings_inner.ai_provider.model,
-        settings_inner.ai_provider.max_tokens,
-        settings_inner.ai_provider.context_window,
-    );
-
-    let ai_request = wikilabs_ai::provider::AiRequest::new(
-        &settings_inner.ai_provider.model,
-        &chat_msgs.iter().map(|m| {
-            wikilabs_ai::provider::AiMessage {
-                role: m.role.clone(),
-                content: m.content.clone(),
-            }
-        }).collect::<Vec<_>>(),
+        &settings.ai_provider.name,
+        &settings.ai_provider.endpoint,
+        &settings.ai_provider.api_key,
+        &settings.ai_provider.model,
+        settings.ai_provider.max_tokens,
+        settings.ai_provider.context_window,
     );
 
     // Call AI
@@ -238,14 +218,8 @@ fn send_message(
     let assistant_created = assistant_msg.created_at.to_rfc3339();
 
     // Save assistant message
-    let tool_calls_json = if !response.tool_calls.is_empty() {
-        serde_json::to_string(&response.tool_calls).unwrap_or_else(|_| "[]".to_string())
-    } else {
-        "[]".to_string()
-    };
-
     app_state.repos.chat_messages
-        .insert(&assistant_id, &ws_id, "assistant", &response.message.content, &tool_calls_json)
+        .insert(&assistant_id, &ws_id, "assistant", &response.message.content, "[]")
         .map_err(|e| e.to_string())?;
 
     Ok(ChatResponse {
@@ -324,8 +298,7 @@ fn save_message(
 // ── Logging Commands ───────────────────────────────────────────
 
 #[tauri::command]
-fn get_logs(limit: Option<usize>) -> Result<Vec<String>, String> {
-    // Log retrieval is handled by tracing-subscriber; return recent info
+fn get_logs(_limit: Option<usize>) -> Result<Vec<String>, String> {
     Ok(vec![
         "Application started".to_string(),
         "Database initialized".to_string(),
@@ -333,19 +306,17 @@ fn get_logs(limit: Option<usize>) -> Result<Vec<String>, String> {
     ])
 }
 
-// ── App Entry Point ────────────────────────────────────────────
+// ── Streaming (placeholder) ────────────────────────────────────
 
 #[tauri::command]
 async fn stream_message(
     message: String,
-    workspace_id: String,
+    _workspace_id: String,
     app: tauri::AppHandle,
-    settings: tauri::State<'_, AppSettings>,
+    _settings: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
     info!(message_len = message.len(), "Streaming message started");
 
-    // For MVP: send a placeholder that streaming is being implemented
-    // In future milestones this will use real AI streaming
     let placeholder = format!(
         "Streaming mode: You asked \"{}\" — full streaming support will be added in the next milestone.\n\nCurrent capabilities:\n- Non-streaming chat ✓\n- Workspace management ✓\n- Knowledge search ✓\n- Streaming responses (in progress)",
         message
@@ -361,6 +332,8 @@ async fn stream_message(
     Ok(())
 }
 
+// ── App Entry Point ────────────────────────────────────────────
+
 fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
@@ -370,8 +343,8 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_log::init(tauri_plugin_log::Config::default()))
-        .manage(AppSettings::default())
+        .plugin(tauri_plugin_log::Builder::new().build())
+        .manage(AppSettingsStore::new())
         .setup(|app| {
             let state = AppState::new(app.handle().clone())?;
             info!("Application state initialized");

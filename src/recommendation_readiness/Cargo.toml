@@ -1,0 +1,17 @@
+[package]
+name = "wikilabs-recommendation-readiness"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+wikilabs-data-types = { path = "../core/data_types" }
+wikilabs-workflow-engine = { path = "../workflow_engine" }
+uuid = { workspace = true }

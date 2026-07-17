@@ -12,3 +12,4 @@ tracing = { workspace = true }
 anyhow = { workspace = true }
 regex = { workspace = true }
 chrono = { workspace = true }
+wikilabs-data-types = { path = "../core/data_types" }

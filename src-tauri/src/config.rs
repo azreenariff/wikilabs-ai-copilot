@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiProviderConfig {
@@ -39,5 +40,40 @@ impl Default for AppSettings {
             log_level: "info".to_string(),
             privacy_mode: false,
         }
+    }
+}
+
+/// Thread-safe settings store using interior mutability.
+pub struct AppSettingsStore {
+    inner: RwLock<AppSettings>,
+}
+
+impl Clone for AppSettingsStore {
+    fn clone(&self) -> Self {
+        Self {
+            inner: RwLock::new(self.inner.read().unwrap().clone()),
+        }
+    }
+}
+
+impl AppSettingsStore {
+    pub fn new() -> Self {
+        Self {
+            inner: RwLock::new(AppSettings::default()),
+        }
+    }
+
+    pub fn load(&self) -> AppSettings {
+        self.inner.read().unwrap().clone()
+    }
+
+    pub fn save(&self, settings: AppSettings) {
+        *self.inner.write().unwrap() = settings;
+    }
+}
+
+impl Default for AppSettingsStore {
+    fn default() -> Self {
+        Self::new()
     }
 }

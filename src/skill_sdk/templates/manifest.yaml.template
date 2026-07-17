@@ -1,0 +1,15 @@
+---
+# Skill Manifest Template
+# See: https://docs.wikilabs.ai/skill-schema-reference
+id: "{{SKILL_ID}}"
+name: "{{SKILL_NAME}}"
+version: "{{VERSION}}"
+description: "A skill for {{SKILL_DOMAIN}} technology"
+author: "Wiki Labs Team"
+technology_domain: "{{SKILL_DOMAIN}}"
+dependencies: []
+enabled: true
+schema_version: "1.0"
+keywords: []
+icon: ""
+tags: []

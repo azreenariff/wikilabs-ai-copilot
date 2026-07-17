@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Detection Rules Schema",
+  "description": "Schema for detection_rules.yaml in a skill directory",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["id", "name", "detection_type", "pattern", "confidence", "technology_domain"],
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[a-z0-9][a-z0-9_-]*$"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "detection_type": {
+        "type": "string",
+        "enum": ["File", "Command", "Pattern", "Argument", "Environment"],
+        "description": "Type of artifact this detects"
+      },
+      "pattern": {
+        "type": "string",
+        "minLength": 1,
+        "description": "The pattern to match (regex)"
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "default": 0.8
+      },
+      "technology_domain": {
+        "type": "string",
+        "minLength": 1
+      },
+      "priority": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0
+      },
+      "flags": {
+        "type": "string",
+        "description": "Optional regex flags"
+      },
+      "extract": {
+        "type": ["string", "null"],
+        "description": "Optional capture group to extract"
+      }
+    },
+    "additionalProperties": false
+  }
+}

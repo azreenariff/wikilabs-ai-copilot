@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Skill Manifest Schema",
+  "description": "Schema for manifest.yaml in a skill directory",
+  "type": "object",
+  "required": ["id", "name", "version", "description", "author", "technology_domain", "schema_version", "enabled"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "description": "Unique identifier for this skill"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version string"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short human-readable description"
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Skill author or team"
+    },
+    "technology_domain": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Technology domain this skill covers"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Dependency skill IDs that must be loaded first"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether the skill is enabled by default"
+    },
+    "schema_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Schema version for forward compatibility"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Optional keywords for search"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Optional icon name or URL"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Optional tags for categorization"
+    }
+  },
+  "additionalProperties": false
+}

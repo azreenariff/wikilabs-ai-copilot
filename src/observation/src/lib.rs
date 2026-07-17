@@ -1,26 +1,40 @@
-//! Observation engine — tiered pipeline.
+//! Observation Framework for Wiki Labs AI Copilot
 //!
-//! Tier 1: Instant (sub-ms) — shell integration, clipboard
-//! Tier 2: Fast (1-2s) — app monitor, window detection
-//! Tier 3: Slow (5-10s) — screen capture, OCR
+//! Phase 6 — Observation infrastructure only.
+//! This crate does NOT interpret intent, perform AI reasoning, or provide recommendations.
+//! It only observes activity and produces structured events for downstream consumers.
 //!
-//! - Shell integration (bash, zsh, PowerShell)
-//! - Active window detection
-//! - Clipboard observer
-//! - Screen capture (X11/Wayland/Wayland/CG/DXGI)
-//! - OCR fallback (Tesseract)
-//! - Adaptive interval: 1s active, 10s idle
-//! - Credential pattern filtering
+//! ## Architecture
+//!
+//! - **Event Model** (`event`): Common schema for all observation events
+//! - **Event Bus** (`event_bus`): Central pub/sub system
+//! - **Provider Plugin Architecture** (`provider`): Trait-based pluggable providers
+//! - **Privacy Controls** (`privacy`): Master enable/disable, per-provider toggle, pause/resume
+//! - **Active Window Provider** (`app_monitor`): Foreground app/window detection
+//! - **Terminal Provider** (`terminal`): Shell command observation
+//! - **Browser Provider** (`browser`): Browser context detection
+//! - **Clipboard Provider** (`clipboard`): Clipboard content observation
+//! - **File Provider** (`file_observer`): File open/edit observation
+//! - **Screen Capture Provider** (`screen_capture`): Periodic screenshot capture
+//! - **Observation Engine** (`engine`): Orchestrates all providers
 
-pub mod tier1;
-pub mod tier2;
-pub mod tier3;
-pub mod shell;
+pub mod event;
+pub mod event_bus;
+pub mod provider;
+pub mod privacy;
 pub mod app_monitor;
+pub mod terminal;
+pub mod browser;
 pub mod clipboard;
-pub mod capture;
-pub mod ocr;
-pub mod credential_filter;
+pub mod file_observer;
+pub mod screen_capture;
+pub mod engine;
 
 #[cfg(test)]
 mod tests;
+
+// Re-export key types at crate level for convenience
+pub use event::{ObservationEvent, EventType, ProviderType, ObservationPayload, ObservationStats};
+pub use event_bus::EventBus;
+pub use provider::{ObservationProvider, ProviderConfig, ProviderState, ProviderRegistry, ProviderStatus};
+pub use privacy::{PrivacyConfig, PrivacyManager, ObservationMode};

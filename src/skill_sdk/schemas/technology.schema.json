@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Technology Definition Schema",
+  "description": "Schema for technology.yaml in a skill directory",
+  "type": "object",
+  "required": ["domain", "version", "description", "features"],
+  "properties": {
+    "domain": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Primary domain identifier"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Technology version this skill targets"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Full description of the technology"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "List of key features or capabilities"
+    },
+    "related_domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Related technology domains"
+    },
+    "documentation_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional documentation URL"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,8 @@
+---
+# Known Issues Template
+# Documented issues and limitations for this skill.
+# See: https://docs.wikilabs.ai/skill-schema-reference
+- No known issues for new skill
+- Detection confidence may be low for custom configurations
+- Pattern matching may miss non-standard naming conventions
+- Always verify critical detections with manual inspection
