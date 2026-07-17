@@ -2,11 +2,13 @@
 
 pub struct SearchEngine;
 
+#[derive(Debug)]
 pub struct SearchQuery {
     pub text: String,
     pub workspace_id: uuid::Uuid,
 }
 
+#[derive(Debug)]
 pub struct SearchResult {
     pub chunk_id: String,
     pub score: f32,

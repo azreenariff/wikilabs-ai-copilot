@@ -10,3 +10,6 @@ pub mod provider;
 pub mod context;
 pub mod token_counter;
 pub mod response;
+
+#[cfg(test)]
+mod tests;

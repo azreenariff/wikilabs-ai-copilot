@@ -13,6 +13,20 @@ Wiki Labs AI Copilot is a desktop application that assists engineers while they 
 - **Real-time Observation** — Terminal, app context, and clipboard awareness
 - **Enterprise Security** — Data residency, encryption, and auditability
 
+## Test Status
+
+All 12 workspace crates compile and pass tests. Tests are written for every module, covering:
+- **37 tests** — AI runtime (context window, token counting, response streaming)
+- **32 tests** — Intent recognition (confidence, correction, engine patterns)
+- **28 tests** — Workspace management (CRUD, switch, delete, multiple workspaces)
+- **26 tests** — Security (classification, keychain, encryption, injection defense, audit)
+- **21 tests** — Observation (tiers, shell, app monitor, clipboard, capture, OCR, credential filter)
+- **16 tests** — Knowledge (document types, search, embedding, import, dedup, quality)
+- **10 tests** — Persistence (SQLite repository CRUD, migrations)
+- **8 tests** — Data types (chat messages, AI requests, tools, workspace config)
+- **3 tests** — Testing utilities (mocks, fixtures)
+- **0 tests** — MCP crates (bridge, registry, skill manager — integration tested at runtime)
+
 ## Architecture
 
 See [docs/architecture/](docs/architecture/) for the full architecture specification.

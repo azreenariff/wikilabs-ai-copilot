@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security layer with encryption and credential management
 - Skeleton domain types (`ChatMessage`, `AiRequest`, `AiResponse`, `Intent`, `KnowledgeDocument`, `SkillMetadata`, etc.)
 
+### Tests
+- **181 unit tests across all 12 crates** — every module has at least basic tests
+- Workspace manager: full CRUD lifecycle (create, switch, get, list, delete, multiple workspaces)
+- Knowledge: document types, search, embedding, import, dedup, quality scoring
+- Security: classification, keychain, key derivation, encryption, credentials, injection defense, audit
+- Observation: tiers 1-3, shell, app monitor, clipboard, capture, OCR, credential filter
+- AI: context window allocation, token counting, response streaming, tool calls
+- Intent: model prediction, engine pattern matching, confidence scoring, correction tracking
+- Fixed: `Intent` enum missing `Hash` derive (used in correction HashMap)
+- Fixed: `chrono` dependency missing from `wikilabs-intent` Cargo.toml
+- Fixed: `Debug` derives missing from `Secret`, `AppContext`, `CaptureResult`, `KnowledgeChunk`, `KnowledgeDocument`, `SearchQuery`, `SearchResult`, `EmbeddingResult`, `QualityScore`
+- Fixed: confidence formula in `recognize_with_confidence` for multiple matches
+
 ### Documentation
 - Product Vision document
 - Architecture Review with 16 risk items

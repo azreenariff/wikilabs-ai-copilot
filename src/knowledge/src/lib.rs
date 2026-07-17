@@ -13,3 +13,6 @@ pub mod embedding;
 pub mod dedup;
 pub mod quality;
 pub mod doc;
+
+#[cfg(test)]
+mod tests;

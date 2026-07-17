@@ -1,5 +1,6 @@
 //! Knowledge quality scoring.
 
+#[derive(Debug)]
 pub struct QualityScore {
     pub source_authority: f32,   // 0.0 - 1.0
     pub freshness: f32,           // 0.0 - 1.0

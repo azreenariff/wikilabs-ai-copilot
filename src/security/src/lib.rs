@@ -16,3 +16,6 @@ pub mod credentials;
 pub mod classification;
 pub mod audit;
 pub mod injection_defense;
+
+#[cfg(test)]
+mod tests;

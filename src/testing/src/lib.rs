@@ -7,3 +7,6 @@
 
 pub mod mocks;
 pub mod fixtures;
+
+#[cfg(test)]
+mod tests;

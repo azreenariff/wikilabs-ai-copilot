@@ -2,6 +2,7 @@
 
 pub struct Keychain;
 
+#[derive(Debug)]
 pub struct Secret {
     pub service: String,
     pub username: String,

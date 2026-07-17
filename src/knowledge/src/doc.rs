@@ -1,5 +1,6 @@
 //! Knowledge document types.
 
+#[derive(Debug)]
 pub struct KnowledgeDocument {
     pub id: uuid::Uuid,
     pub title: String,
@@ -10,6 +11,7 @@ pub struct KnowledgeDocument {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(Debug)]
 pub struct KnowledgeChunk {
     pub id: uuid::Uuid,
     pub document_id: uuid::Uuid,

@@ -21,3 +21,6 @@ pub mod clipboard;
 pub mod capture;
 pub mod ocr;
 pub mod credential_filter;
+
+#[cfg(test)]
+mod tests;

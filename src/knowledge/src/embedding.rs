@@ -2,6 +2,7 @@
 
 pub struct EmbeddingModel;
 
+#[derive(Debug)]
 pub struct EmbeddingResult {
     pub vector: Vec<f32>,
     pub dimensions: usize,

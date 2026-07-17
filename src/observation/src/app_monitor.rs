@@ -2,6 +2,7 @@
 
 pub struct AppMonitor;
 
+#[derive(Debug)]
 pub struct AppContext {
     pub window_title: String,
     pub process_name: String,

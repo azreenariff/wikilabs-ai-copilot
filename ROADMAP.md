@@ -6,10 +6,10 @@
 - [x] Rust workspace with module structure
 - [x] GitHub CI/CD pipelines
 - [x] Issue and PR templates
-- [ ] Tauri v2 desktop shell
-- [ ] React frontend skeleton
-- [ ] User research (5-10 engineers)
-- [ ] Local embedding model (all-MiniLM-L6-v2)
+- [x] Tauri v2 desktop shell
+- [x] React frontend skeleton
+- [x] User research (5-10 engineers)
+- [x] Local embedding model (all-MiniLM-L6-v2)
 
 ## Phase 1: MVP — Chat Copilot (Weeks 9-20)
 

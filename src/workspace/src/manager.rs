@@ -4,6 +4,130 @@
 
 use wikilabs_persistence::RepositoryFactory;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wikilabs_persistence::Database;
+
+    fn setup_db() -> RepositoryFactory {
+        let db = Database::new(":memory:").unwrap();
+        db.execute_batch(wikilabs_persistence::schema::INIT_SQL).unwrap();
+        RepositoryFactory::new(db)
+    }
+
+    #[test]
+    fn test_workspace_manager_new() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        let active = wm.get_active().unwrap();
+        assert!(active.is_none());
+    }
+
+    #[test]
+    fn test_workspace_manager_create() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        let id = wm.create(WorkspaceConfig {
+            name: "test-ws".to_string(),
+            customer_name: "test-customer".to_string(),
+            technology_stack: vec!["rust".to_string()],
+        }).unwrap();
+        let list = wm.list().unwrap();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].1, "test-ws");
+    }
+
+    #[test]
+    fn test_workspace_manager_switch() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        let id = wm.create(WorkspaceConfig {
+            name: "ws1".to_string(),
+            customer_name: "c1".to_string(),
+            technology_stack: vec![],
+        }).unwrap();
+        wm.switch(id).unwrap();
+        let active = wm.get_active().unwrap();
+        assert_eq!(active.unwrap(), id);
+    }
+
+    #[test]
+    fn test_workspace_manager_switch_nonexistent() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        let id = uuid::Uuid::new_v4();
+        let result = wm.switch(id);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Workspace not found"));
+    }
+
+    #[test]
+    fn test_workspace_manager_delete() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        let id = wm.create(WorkspaceConfig {
+            name: "ws1".to_string(),
+            customer_name: "c1".to_string(),
+            technology_stack: vec![],
+        }).unwrap();
+        wm.switch(id).unwrap();
+        wm.delete(id).unwrap();
+        let active = wm.get_active().unwrap();
+        assert!(active.is_none());
+        let list = wm.list().unwrap();
+        assert!(list.is_empty());
+    }
+
+    #[test]
+    fn test_workspace_manager_get_by_id() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        let id = wm.create(WorkspaceConfig {
+            name: "ws1".to_string(),
+            customer_name: "c1".to_string(),
+            technology_stack: vec!["kubernetes".to_string(), "docker".to_string()],
+        }).unwrap();
+        let config = wm.get_by_id(id).unwrap().unwrap();
+        assert_eq!(config.name, "ws1");
+        assert_eq!(config.customer_name, "c1");
+        assert_eq!(config.technology_stack, vec!["kubernetes", "docker"]);
+    }
+
+    #[test]
+    fn test_workspace_manager_get_by_id_nonexistent() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        let result = wm.get_by_id(uuid::Uuid::new_v4()).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_workspace_manager_list_empty() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        let list = wm.list().unwrap();
+        assert!(list.is_empty());
+    }
+
+    #[test]
+    fn test_workspace_manager_multiple_workspaces() {
+        let repos = setup_db();
+        let wm = WorkspaceManager::new(repos);
+        wm.create(WorkspaceConfig {
+            name: "ws1".to_string(),
+            customer_name: "c1".to_string(),
+            technology_stack: vec![],
+        }).unwrap();
+        wm.create(WorkspaceConfig {
+            name: "ws2".to_string(),
+            customer_name: "c2".to_string(),
+            technology_stack: vec!["go".to_string()],
+        }).unwrap();
+        let list = wm.list().unwrap();
+        assert_eq!(list.len(), 2);
+    }
+}
+
 pub struct WorkspaceManager {
     repos: RepositoryFactory,
     active_id: std::sync::Arc<std::sync::Mutex<Option<String>>>,

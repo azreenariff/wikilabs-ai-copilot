@@ -2,6 +2,7 @@
 
 pub struct ScreenCapture;
 
+#[derive(Debug)]
 pub struct CaptureResult {
     pub width: usize,
     pub height: usize,
