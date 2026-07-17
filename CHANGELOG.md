@@ -70,6 +70,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Tests (148 total across AI Runtime)
 
+#### Engineering Intelligence Engine & Skill SDK Foundation (Phase 7) — v0.4.0-alpha
+
+- **Technology Recognition Engine** — Evidence-based technology detection from browser URL/title, terminal commands, active application, file patterns, workspace context, conversation keywords. Supports 14 technology domains across infrastructure, monitoring, database, and development.
+- **Intent Recognition Engine** — Technology-aware intent classification with continuous updating from observation events, conversation, and workspace context. Human override always takes precedence.
+- **Engineering Workflow Engine** — State machine workflow tracking with states, transitions, required evidence, confidence requirements, completion criteria, and validation rules — all defined declaratively by Skills.
+- **Context Fusion Engine** — Unified engineering context combining observations, conversation, workspace, technology, intent, workflow state, timeline, and human corrections.
+- **Confidence Engine** — Confidence scoring on every inference with automatic confirmation requests for low-confidence detections.
+- **Engineering Timeline** — Chronological activity tracking with references to source observation events.
+- **Recommendation Readiness Engine** — Determines whether sufficient information exists for recommendations before generating advice.
+- **Human Feedback Loop** — Correction tracking and intent override from direct human input.
+- **Declarative Skill System** — Dynamic skill loading with manifest validation, version management, enable/disable lifecycle, and dependency checking.
+- **Skill Runtime** — Skill discovery, loading, validation, version management, and dependency resolution from configurable directories.
+- **Skill SDK** — Complete Skill Development Kit with template generator (8 templates), schema validator (7 JSON schemas), CLI scaffolding, and developer documentation.
+- **Engineering Context** — New `EngineeringContext` type combining technologies, confidence scores, primary/secondary intents, and source tracking.
+- **Technology Definition** — New `TechnologyDefinition` and `DetectionRule` types in `data_types` crate.
+- **Timeline** — New `TimelineEntry` type with chronology support.
+
+#### Tests (Phase 7)
+
+- Technology detection tests (engine, pipeline, aggregator)
+- Intent detection tests (engine, model, confidence, correction)
+- Workflow transition tests (state machine, evidence validation)
+- Skill loading tests (discovery, validation, dependency resolution)
+- SDK generation tests (template rendering, schema validation)
+- Context update tests (fusion, priority, source tracking)
+- Human correction tests (override tracking, intent reclassification)
+- Confidence scoring tests (formula verification, threshold behavior)
+- Timeline tests (chronological ordering, event references)
+- Recommendation readiness tests (evidence gap detection, confidence thresholds)
+
+#### Documentation (Phase 7)
+
+- `docs/engineering-intelligence/ENGINEERING_INTELLIGENCE.md` — Architecture overview
+- `docs/engineering-intelligence/TECHNOLOGY_RECOGNITION.md` — Detection engine reference
+- `docs/engineering-intelligence/INTENT_ENGINE.md` — Intent recognition reference
+- `docs/engineering-intelligence/WORKFLOW_ENGINE.md` — Workflow engine reference
+- `docs/engineering-intelligence/SKILL_ARCHITECTURE.md` — Skill system design
+- `docs/engineering-intelligence/SKILL_SDK_GUIDE.md` — SDK usage guide
+- `docs/engineering-intelligence/SKILL_SCHEMA_REFERENCE.md` — Schema field reference
+
+#### New Crates
+
+- `src/intent/` — Intent recognition engine with confidence and correction tracking
+- `src/technology_recognition/` — Technology detection from observation events
+- `src/engineering_timeline/` — Chronological engineering activity tracking
+- `src/recommendation_readiness/` — Advice readiness assessment
+- `src/human_feedback/` — Human correction and override handling
+- `src/skill_runtime/` — Skill discovery, loading, validation, lifecycle
+- `src/intelligence_engine/` — Cross-cutting intelligence analysis
+- `src/context_fusion/` — Unified context aggregation
+- `src/skill_sdk/` — Skill Development Kit (templates, schemas, validators)
+- `src/workflow_engine/` — Declarative workflow state machine
+- `src/core/data_types/src/engineering_context.rs` — EngineeringContext type
+- `src/core/data_types/src/technology.rs` — TechnologyDefinition type
+- `src/core/data_types/src/timeline.rs` — TimelineEntry type
+- `src/observation/src/browser.rs` — Browser observation provider
+- `src/observation/src/terminal.rs` — Terminal observation provider
+- `src/observation/src/file_observer.rs` — File observer provider
+- `src/observation/src/event.rs` — ObservationEvent and EventType
+- `src/observation/src/event_bus.rs` — Event bus for event distribution
+- `src/observation/src/provider.rs` — Provider trait and base implementations
+- `src/observation/src/privacy.rs` — Privacy controls and PII filtering
+- `src/observation/src/screen_capture.rs` — Screen capture provider
+- `src/observation/src/app_monitor.rs` — Application monitoring
+- `src/observation/src/clipboard.rs` — Clipboard observation
+- `src/observation/src/engine.rs` — Observation engine coordination
+
+#### Constraints Enforced
+
+- No knowledge retrieval or RAG
+- No MCP execution
+- No command execution
+- No automation
+- No screen AI analysis or OCR reasoning
+- No customer environment access
+- No autonomous actions
+- No technology-specific logic in core application
+- All technology knowledge loaded from Skills dynamically
+
+#### Tests (148 total across AI Runtime)
+
 - **AI Runtime module**: 181 unit tests across all 12 crates — every module has comprehensive tests
 - Workspace manager: full CRUD lifecycle (create, switch, get, list, delete, multiple workspaces)
 - Knowledge: document types, search, embedding, import, dedup, quality scoring
