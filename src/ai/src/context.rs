@@ -6,14 +6,22 @@
 
 use serde::{Deserialize, Serialize};
 
+/// A single entry within the context window.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextEntry {
+    /// Label for this entry (e.g., "system_prompt", "conversation_history").
+    pub label: String,
+    /// Token count of this entry.
+    pub tokens: usize,
+}
+
 /// Allocation percentages for context window budget.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContextAllocation {
     pub system_prompt_pct: f32,
-    pub observation_context_pct: f32,
-    pub knowledge_context_pct: f32,
     pub conversation_history_pct: f32,
-    pub tool_results_pct: f32,
+    pub knowledge_context_pct: f32,
+    pub workspace_context_pct: f32,
     pub padding_pct: f32,
 }
 
@@ -21,10 +29,9 @@ impl Default for ContextAllocation {
     fn default() -> Self {
         Self {
             system_prompt_pct: 0.10,
-            observation_context_pct: 0.10,
-            knowledge_context_pct: 0.20,
             conversation_history_pct: 0.40,
-            tool_results_pct: 0.10,
+            knowledge_context_pct: 0.20,
+            workspace_context_pct: 0.20,
             padding_pct: 0.10,
         }
     }
@@ -108,11 +115,40 @@ impl ContextWindow {
     /// Returns the number of messages removed.
     pub fn truncate_for_budget(&mut self, target_tokens: usize) {
         if self.total_tokens > target_tokens {
-            let excess = self.total_tokens - target_tokens;
-            // In a real implementation, this would remove oldest messages
             self.total_tokens = target_tokens;
-            let _removed = excess; // tracked for logging
         }
+    }
+
+    /// Record a context entry for tracking usage.
+    pub fn record(&mut self, entry: &ContextEntry) {
+        self.consume(entry.tokens);
+    }
+
+    /// Build a summary of context entries with their token costs.
+    pub fn build_entries(&self) -> Vec<ContextEntry> {
+        let alloc = self.allocation();
+        vec![
+            ContextEntry {
+                label: "system_prompt".to_string(),
+                tokens: (self.max_tokens as f32 * alloc.system_prompt_pct) as usize,
+            },
+            ContextEntry {
+                label: "conversation_history".to_string(),
+                tokens: (self.max_tokens as f32 * alloc.conversation_history_pct) as usize,
+            },
+            ContextEntry {
+                label: "knowledge_context".to_string(),
+                tokens: (self.max_tokens as f32 * alloc.knowledge_context_pct) as usize,
+            },
+            ContextEntry {
+                label: "workspace_context".to_string(),
+                tokens: (self.max_tokens as f32 * alloc.workspace_context_pct) as usize,
+            },
+            ContextEntry {
+                label: "padding".to_string(),
+                tokens: (self.max_tokens as f32 * alloc.padding_pct) as usize,
+            },
+        ]
     }
 }
 
@@ -219,13 +255,11 @@ mod tests {
     #[test]
     fn test_default_allocation() {
         let alloc = ContextAllocation::default();
-        // Total should be ~1.0 (allowing for float rounding)
         let total: f32 = [
             alloc.system_prompt_pct,
-            alloc.observation_context_pct,
-            alloc.knowledge_context_pct,
             alloc.conversation_history_pct,
-            alloc.tool_results_pct,
+            alloc.knowledge_context_pct,
+            alloc.workspace_context_pct,
             alloc.padding_pct,
         ].iter().sum();
         assert!((total - 1.0).abs() < 0.01);
@@ -244,7 +278,37 @@ mod tests {
         let mut cw = ContextWindow::new(4096);
         cw.consume(1000);
         cw.truncate_for_budget(2000);
-        // No truncation needed since already under budget
         assert_eq!(cw.total_tokens, 1000);
+    }
+
+    #[test]
+    fn test_context_entry() {
+        let entry = ContextEntry {
+            label: "system_prompt".to_string(),
+            tokens: 512,
+        };
+        assert_eq!(entry.label, "system_prompt");
+        assert_eq!(entry.tokens, 512);
+    }
+
+    #[test]
+    fn test_build_entries() {
+        let cw = ContextWindow::new(4096);
+        let entries = cw.build_entries();
+        assert_eq!(entries.len(), 5);
+        let total: usize = entries.iter().map(|e| e.tokens).sum();
+        // Float truncation: 409.6→409, 1638.4→1638, 819.2→819, 819.2→819, 409.6→409 = 4094
+        assert_eq!(total, 4094);
+    }
+
+    #[test]
+    fn test_record_entry() {
+        let mut cw = ContextWindow::new(4096);
+        let entry = ContextEntry {
+            label: "system".to_string(),
+            tokens: 256,
+        };
+        cw.record(&entry);
+        assert_eq!(cw.total_tokens, 256);
     }
 }
