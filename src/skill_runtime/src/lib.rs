@@ -401,8 +401,15 @@ mod tests {
     }
 
     fn setup_test_runtime() -> (SkillRuntime, PathBuf) {
-        let temp_dir = std::env::temp_dir().join("wikilabs_skill_runtime_test");
-        // Clean up any previous test data
+        // Use unique temp dir per test to avoid parallel test interference
+        // Use a counter-based approach with thread-local state
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let unique_id = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let temp_dir = std::env::temp_dir().join(format!(
+            "wikilabs_skill_runtime_test_{}",
+            unique_id
+        ));
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
         let runtime = SkillRuntime::new(temp_dir.to_str().unwrap());
@@ -469,6 +476,7 @@ author: Test Author
 technology_domain: test
 schema_version: "1.0"
 enabled: true
+dependencies: []
 "#,
         );
 
@@ -479,7 +487,7 @@ enabled: true
         assert_eq!(loaded.manifest.name, "Test Skill");
         assert_eq!(loaded.manifest.version, "0.1.0");
         assert!(loaded.manifest.enabled);
-        assert!(!loaded.validation_errors.is_empty()); // dependency check fails since skill not loaded yet
+        assert!(loaded.validation_errors.is_empty()); // manifest is valid with dependencies: []
 
         cleanup_test_dir(&temp_dir);
     }

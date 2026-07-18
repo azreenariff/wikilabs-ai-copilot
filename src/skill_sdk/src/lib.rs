@@ -584,7 +584,7 @@ mod tests {
         let rules = sdk.generate_detection_rules("openshift");
 
         assert!(rules.is_array());
-        assert_eq!(rules.len(), 2);
+        assert_eq!(rules.as_array().unwrap().len(), 2);
         assert_eq!(rules[0]["detection_type"], "File");
         assert_eq!(rules[0]["technology_domain"], "openshift");
         assert_eq!(rules[1]["detection_type"], "Command");

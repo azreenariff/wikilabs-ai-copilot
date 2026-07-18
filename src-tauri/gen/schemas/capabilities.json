@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capabilities for Wiki Labs AI Copilot","remote":{"urls":["http://localhost:1420"]},"local":true,"windows":["main"],"permissions":["core:default","shell:allow-open","log:default"]}}

@@ -41,7 +41,7 @@ mod tests {
         let entry = TimelineEntry::new("Detected Rust project", "observation", "Cargo.toml found");
         assert_eq!(entry.source, "observation");
         assert_eq!(entry.label, "Detected Rust project");
-        assert!(!entry.id.as_str().is_empty());
+        assert!(entry.id.is_nil() == false);
     }
 
     #[test]

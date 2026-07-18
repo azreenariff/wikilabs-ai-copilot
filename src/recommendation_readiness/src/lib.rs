@@ -143,7 +143,9 @@ impl RecommendationReadinessEngine {
             "Added evidence '{}' of type '{}' with confidence {:.2}",
             item.id, item.type_, item.confidence
         );
-        self.evidence_collected.push(item);
+        self.evidence_collected.push(item.clone());
+        // Remove matched type from missing_evidence
+        self.missing_evidence.retain(|m| m != &item.type_);
         self.recalculate_readiness();
     }
 
@@ -171,7 +173,7 @@ impl RecommendationReadinessEngine {
         let total_required = missing_count + collected_count;
 
         let pct = if total_required == 0 {
-            if self.intent.is_some() && !self.evidence_collected.is_empty() {
+            if self.intent.is_some() || !self.evidence_collected.is_empty() {
                 100.0
             } else {
                 0.0
@@ -290,7 +292,7 @@ impl RecommendationReadinessEngine {
         let total_required = missing_count + collected_count;
 
         let base_pct = if total_required == 0 {
-            if self.intent.is_some() && collected_count > 0 {
+            if self.intent.is_some() || collected_count > 0 {
                 100.0
             } else {
                 0.0
@@ -717,7 +719,8 @@ mod tests {
         ));
         assert_eq!(engine.get_evidence_count(), 2);
 
-        engine.remove_evidence(&engine.get_all_evidence()[0].id);
+        let first_id = engine.get_all_evidence()[0].id.clone();
+        engine.remove_evidence(&first_id);
         assert_eq!(engine.get_evidence_count(), 1);
     }
 }

@@ -449,7 +449,7 @@ mod tests {
         let report = IntelligenceReport::new(items, "Test summary".to_string());
         assert_eq!(report.item_count, 2);
         assert!(!report.summary.is_empty());
-        assert_eq!(report.average_confidence, 0.7);
+        assert!((report.average_confidence - 0.7).abs() < 0.001);
     }
 
     #[test]

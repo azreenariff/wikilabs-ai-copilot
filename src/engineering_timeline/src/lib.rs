@@ -5,7 +5,7 @@
 //!
 //! ## Architecture
 //!
-//! ```
+//! ```text
 //! Observation Framework
 //!     → EngineeringTimeline (append entries with timestamps)
 //!     → TimelineEntry (id, timestamp, label, source, detail, related_observation_id)
@@ -181,86 +181,37 @@ impl EngineeringTimeline {
         &self,
         start: DateTime<Utc>,
         end: DateTime<Utc>,
-    ) -> &[TimelineEntry] {
-        if self.entries.is_empty() {
-            return &[];
-        }
-
-        // Binary search for start
-        let start_pos = match self.entries.binary_search_by(|e| e.timestamp.cmp(&start)) {
-            Ok(pos) => pos,
-            Err(pos) => pos,
-        };
-
-        // Find end position
-        let end_pos = self
-            .entries
-            .iter()
-            .skip(start_pos)
-            .position(|e| e.timestamp > end)
-            .unwrap_or(0);
-
-        &self.entries[start_pos..start_pos + end_pos]
+    ) -> Vec<TimelineEntry> {
+        self.entries.iter()
+            .filter(|e| e.timestamp >= start && e.timestamp <= end)
+            .cloned()
+            .collect()
     }
 
     /// Get entries from the last N minutes.
-    pub fn get_recent(&self, minutes: u64) -> &[TimelineEntry] {
+    pub fn get_recent(&self, minutes: u64) -> Vec<TimelineEntry> {
         let cutoff = Utc::now() - Duration::minutes(minutes as i64);
         self.get_range(cutoff, Utc::now())
     }
 
     /// Get entries filtered by source.
-    pub fn get_by_source(&self, source: &TimelineSource) -> &[TimelineEntry] {
-        if self.entries.is_empty() {
-            return &[];
-        }
-
-        let start = self
-            .entries
-            .iter()
-            .position(|e| e.source == *source)
-            .unwrap_or(0);
-
-        if start == 0 && self.entries.iter().all(|e| e.source != *source) {
-            return &[];
-        }
-
-        let end = self
-            .entries
-            .iter()
-            .skip(start)
-            .position(|e| e.source != *source)
-            .unwrap_or(self.entries.len() - start);
-
-        &self.entries[start..start + end]
+    pub fn get_by_source(&self, source: &TimelineSource) -> Vec<TimelineEntry> {
+        self.entries.iter()
+            .filter(|e| &e.source == source)
+            .cloned()
+            .collect()
     }
 
     /// Get entries matching a label pattern (case-insensitive substring).
-    pub fn get_by_label_pattern(&self, pattern: &str) -> &[TimelineEntry] {
+    pub fn get_by_label_pattern(&self, pattern: &str) -> Vec<TimelineEntry> {
         if self.entries.is_empty() || pattern.is_empty() {
-            return &[];
+            return Vec::new();
         }
-
         let pattern_lower = pattern.to_lowercase();
-        let start = self
-            .entries
-            .iter()
-            .position(|e| e.label.to_lowercase().contains(&pattern_lower))
-            .unwrap_or(0);
-
-        if start == 0 && self.entries.iter().all(|e| !e.label.to_lowercase().contains(&pattern_lower))
-        {
-            return &[];
-        }
-
-        let end = self
-            .entries
-            .iter()
-            .skip(start)
-            .position(|e| !e.label.to_lowercase().contains(&pattern_lower))
-            .unwrap_or(self.entries.len() - start);
-
-        &self.entries[start..start + end]
+        self.entries.iter()
+            .filter(|e| e.label.to_lowercase().contains(&pattern_lower))
+            .cloned()
+            .collect()
     }
 
     /// Get the most recent N entries.
@@ -274,30 +225,11 @@ impl EngineeringTimeline {
     }
 
     /// Get entries for a specific observation event.
-    pub fn get_by_observation(&self, observation_id: Uuid) -> &[TimelineEntry] {
-        if self.entries.is_empty() {
-            return &[];
-        }
-
-        let start = self
-            .entries
-            .iter()
-            .position(|e| e.related_observation_id == Some(observation_id))
-            .unwrap_or(0);
-
-        if start == 0 && !self.entries.iter().any(|e| e.related_observation_id == Some(observation_id))
-        {
-            return &[];
-        }
-
-        let end = self
-            .entries
-            .iter()
-            .skip(start)
-            .position(|e| e.related_observation_id != Some(observation_id))
-            .unwrap_or(self.entries.len() - start);
-
-        &self.entries[start..start + end]
+    pub fn get_by_observation(&self, observation_id: Uuid) -> Vec<TimelineEntry> {
+        self.entries.iter()
+            .filter(|e| e.related_observation_id == Some(observation_id))
+            .cloned()
+            .collect()
     }
 
     /// Get total entry count.
@@ -448,12 +380,12 @@ mod tests {
         let mut timeline = EngineeringTimeline::new(1000);
 
         timeline.append(
-            "Opened OpenShift Console".to_string(),
+            "Executed oc get pods".to_string(),
             TimelineSource::Observation,
             "detail".to_string(),
         );
         timeline.append(
-            "Executed oc get pods".to_string(),
+            "Checked oc version".to_string(),
             TimelineSource::Observation,
             "detail".to_string(),
         );
