@@ -1,0 +1,105 @@
+domain: OpenShift / Kubernetes
+version: 1.0.0
+description: >
+  Red Hat OpenShift Container Platform — enterprise Kubernetes distribution.
+  Covers cluster architecture, operators, networking, storage, security,
+  lifecycle management, and troubleshooting.
+features:
+  - name: Cluster Architecture
+    description: Control plane, workers, masters, etcd, machine config
+    related_commands:
+      - oc get nodes
+      - oc get pods -n openshift-control-plane
+      - oc get clusterversion
+  - name: Workload Management
+    description: Pods, deployments, replica sets, stateful sets, daemon sets, jobs
+    related_commands:
+      - oc get pods
+      - oc get deployments
+      - oc describe pod
+      - oc logs
+  - name: Project and Namespace Management
+    description: Projects, namespaces, quotas, limits, resource management
+    related_commands:
+      - oc project
+      - oc get namespaces
+      - oc describe quota
+      - oc adm quota
+  - name: Networking and Routing
+    description: Services, routes, ingress, network policies, DNS, CNI
+    related_commands:
+      - oc get routes
+      - oc get services
+      - oc get networkpolicies
+      - oc get dns
+  - name: Storage Management
+    description: Persistent volumes, claims, storage classes, CSI drivers
+    related_commands:
+      - oc get pv
+      - oc get pvc
+      - oc get storageclass
+      - oc describe pvc
+  - name: Security and RBAC
+    description: Service accounts, roles, role bindings, security contexts, SCCs
+    related_commands:
+      - oc get roles
+      - oc get rolebindings
+      - oc auth can-i
+      - oc describe scc
+  - name: Image Management
+    description: Image registry, image streams, image policies, registry routing
+    related_commands:
+      - oc get imagestreams
+      - oc describe is
+      - oc registry info
+      - oc login --server
+  - name: Monitoring and Logging
+    description: Cluster monitoring, Prometheus, Grafana, cluster logging, Elasticsearch
+    related_commands:
+      - oc get pods -n openshift-monitoring
+      - oc get prometheuses -n openshift-monitoring
+      - oc get clusternetworking
+  - name: Operator Lifecycle Management
+    description: Cluster operators, operators,OLM, subscriptions, install plans
+    related_commands:
+      - oc get operators
+      - oc get clusterserviceversion
+      - oc get packagemanifests
+      - oc get subscriptions
+  - name: Node Management and Scheduling
+    description: Taints, tolerations, affinity, node selector, scheduling, machine sets
+    related_commands:
+      - oc adm taint
+      - oc get nodes -o wide
+      - oc describe node
+      - oc get machinedeployment
+  - name: Application Lifecycle
+    description: Deployments, rollouts, rollbacks, health probes, resource limits
+    related_commands:
+      - oc rollout status
+      - oc rollout undo
+      - oc describe deployment
+      - oc get events
+  - name: Cluster Upgrades
+    description: Update channels, version management, upgrade planning, fallback
+    related_commands:
+      - oc get clusterversion
+      - oc adm upgrade
+      - oc get clusterversion version
+      - oc adm upgrade --to
+  - name: Troubleshooting
+    description: Common issues, diagnostic commands, evidence collection strategies
+    related_commands:
+      - oc adm inspect
+      - oc adm troubleshoot
+      - oc cluster-info
+      - oc adm diagnostics
+related_domains:
+  - Kubernetes
+  - DevOps
+  - Infrastructure
+  - Cloud-Native
+  - Security
+  - Networking
+  - Storage
+documentation_url: https://docs.wikilabs.ai/technology/openshift

@@ -1,0 +1,307 @@
+- id: openshift-detect-oc
+  name: OpenShift CLI Detection
+  description: Detect OpenShift CLI usage in terminal
+  detection_type: Command
+  pattern: '^oc \w+'
+  confidence: 0.95
+  technology_domain: OpenShift
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: openshift-detect-kubectl
+  name: Kubernetes CLI Detection
+  description: Detect kubectl usage in terminal
+  detection_type: Command
+  pattern: '^kubectl \w+'
+  confidence: 0.85
+  technology_domain: Kubernetes
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-console
+  name: OpenShift Console Detection
+  description: Detect OpenShift web console in browser
+  detection_type: Browser
+  pattern: 'console\.openshift|openshift-web-console|openshift-master'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-project
+  name: OpenShift Project Detection
+  description: Detect OpenShift project/namespace context
+  detection_type: Command
+  pattern: '^oc project|^oc namespace|oc\s+project\s+'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 10
+  flags: ''
+  extract: 'oc project (.+)'
+
+- id: openshift-detect-pod
+  name: OpenShift Pod Detection
+  description: Detect pod-related operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe|logs|delete|exec|debug)\s+pod|kubectl\s+(get|describe|logs|delete|exec|debug)\s+pod'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 8
+  flags: ''
+  extract: 'pod/(\S+)'
+
+- id: openshift-detect-deployment
+  name: OpenShift Deployment Detection
+  description: Detect deployment-related operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe|rollout)\s+deployment|kubectl\s+(get|describe|rollout)\s+deployment'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 8
+  flags: ''
+  extract: 'deployment/(\S+)'
+
+- id: openshift-detect-route
+  name: OpenShift Route Detection
+  description: Detect route-related operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe|create|delete)\s+route'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 8
+  flags: ''
+  extract: 'route/(\S+)'
+
+- id: openshift-detect-operator
+  name: OpenShift Operator Detection
+  description: Detect operator-related operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe|patch)\s+(cluster-)?operator|oc\s+(get|describe)\s+(csv|subscription|packagemanifest)'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-node
+  name: OpenShift Node Detection
+  description: Detect node-related operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe)\s+node|oc\s+adm\s+taint|oc\s+adm\s+drain'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 8
+  flags: ''
+  extract: 'node/(\S+)'
+
+- id: openshift-detect-pvc
+  name: OpenShift PVC Detection
+  description: Detect persistent volume claim operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe)\s+pvc|oc\s+(get|describe)\s+pv|oc\s+(get|describe)\s+storageclass'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 8
+  flags: ''
+  extract: 'pvc/(\S+)'
+
+- id: openshift-detect-imagestream
+  name: OpenShift Image Stream Detection
+  description: Detect image stream operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe|tag)\s+imagestream'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: openshift-detect-secret
+  name: OpenShift Secret Detection
+  description: Detect secret operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe)\s+secret|oc\s+create\s+secret'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-crash
+  name: CrashLoopBackOff Detection
+  description: Detect CrashLoopBackOff events in terminal or output
+  detection_type: TextPattern
+  pattern: 'CrashLoopBackOff'
+  confidence: 0.95
+  technology_domain: OpenShift
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-pending
+  name: Pending State Detection
+  description: Detect pods in Pending state
+  detection_type: TextPattern
+  pattern: '(?i)pending|Pending'
+  confidence: 0.8
+  technology_domain: OpenShift
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-imagepullbackoff
+  name: ImagePullBackOff Detection
+  description: Detect ImagePullBackOff events
+  detection_type: TextPattern
+  pattern: 'ImagePullBackOff|ErrImagePull'
+  confidence: 0.95
+  technology_domain: OpenShift
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-oomkilled
+  name: OOMKilled Detection
+  description: Detect OOMKilled events
+  detection_type: TextPattern
+  pattern: 'OOMKilled|out of memory'
+  confidence: 0.95
+  technology_domain: OpenShift
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-evicted
+  name: Evicted Detection
+  description: Detect evicted pods
+  detection_type: TextPattern
+  pattern: 'Evicted'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-nodepressure
+  name: Node Pressure Detection
+  description: Detect node pressure conditions
+  detection_type: TextPattern
+  pattern: 'DiskPressure|MemoryPressure|PIDPressure|KernelDebt'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-notready
+  name: Node NotReady Detection
+  description: Detect nodes reporting NotReady
+  detection_type: TextPattern
+  pattern: 'NotReady'
+  confidence: 0.95
+  technology_domain: OpenShift
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-degraded
+  name: Operator Degraded Detection
+  description: Detect degraded cluster operators
+  detection_type: TextPattern
+  pattern: '(?i)degraded|Degraded'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-failedscheduling
+  name: Failed Scheduling Detection
+  description: Detect failed scheduling events
+  detection_type: TextPattern
+  pattern: 'FailedScheduling'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-event-probefail
+  name: Probe Failure Detection
+  description: Detect liveness/readiness probe failures
+  detection_type: TextPattern
+  pattern: 'LivenessProbe|ReadinessProbe|StartupProbe'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: openshift-detect-namespace
+  name: Kubernetes Namespace Detection
+  description: Detect namespace operations in terminal
+  detection_type: Command
+  pattern: 'oc\s+get\s+namespaces|^oc\s+project\s+'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: openshift-detect-configmap
+  name: ConfigMap Detection
+  description: Detect config map operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe|create|delete)\s+configmap'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: openshift-detect-service
+  name: Service Detection
+  description: Detect service-related operations
+  detection_type: Command
+  pattern: 'oc\s+(get|describe|create|delete)\s+svc|oc\s+(get|describe)\s+service'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: openshift-detect-rbac
+  name: RBAC Detection
+  description: Detect RBAC-related operations
+  detection_type: Command
+  pattern: 'oc\s+auth\s+can-i|oc\s+(create|delete|get)\s+(role|rolebinding|clusterrole|clusterrolebinding)'
+  confidence: 0.85
+  technology_domain: OpenShift
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: openshift-detect-adm
+  name: OpenShift Adm Commands Detection
+  description: Detect oc adm troubleshooting commands
+  detection_type: Command
+  pattern: 'oc\s+adm\s+(inspect|troubleshoot|diagnostics|verify-image-registry|upgrade|quota)'
+  confidence: 0.9
+  technology_domain: OpenShift
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: openshift-detect-docker
+  name: Docker Image Reference Detection
+  description: Detect Docker image references in terminal output
+  detection_type: TextPattern
+  pattern: '[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+:[0-9]{1,5}/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+@[a-f0-9]{64}|[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+:[0-9]{1,5}/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+:[^\s]+'
+  confidence: 0.7
+  technology_domain: OpenShift
+  priority: 6
+  flags: ''
+  extract: null

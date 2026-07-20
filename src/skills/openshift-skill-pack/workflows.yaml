@@ -1,0 +1,812 @@
+- id: pod-crash-loopbackoff
+  name: Pod CrashLoopBackOff Troubleshooting
+  description: >
+    Diagnose and resolve pods stuck in CrashLoopBackOff state.
+    Covers application errors, misconfiguration, resource issues, and image problems.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather initial evidence to understand the CrashLoopBackOff root cause.
+        Check pod events, logs, resource usage, and deployment configuration.
+      initial: true
+      terminal: false
+      commands:
+        - oc get pods -n <namespace> | grep CrashLoopBackOff
+        - oc describe pod <pod-name> -n <namespace>
+        - oc logs <pod-name> -n <namespace> --previous
+        - oc get events -n <namespace> --sort-by='.lastTimestamp'
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Analyze evidence to determine the most likely cause of the CrashLoopBackOff.
+        Check for application errors, missing config, image issues, resource limits, or probe failures.
+      initial: false
+      terminal: false
+      commands:
+        - oc logs <pod-name> -n <namespace> --previous -c <container>
+        - oc get events -n <namespace> --field-selector reason=BackOff
+        - oc describe deployment <deployment> -n <namespace>
+        - kubectl describe pod <pod-name> -n <namespace>
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply the appropriate fix based on diagnosed root cause.
+        Common fixes: adjust resource limits, fix configuration, update image, fix probes.
+      initial: false
+      terminal: false
+      commands:
+        - oc set env deployment/<deployment> -n <namespace> KEY=VALUE
+        - oc set resources deployment/<deployment> -n <namespace> --limits=memory=<value> --requests=memory=<value>
+        - oc rollout restart deployment/<deployment> -n <namespace>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the pod is running correctly after remediation.
+        Monitor logs and status to confirm stability.
+      initial: false
+      terminal: true
+      commands:
+        - oc get pods -n <namespace> -w
+        - oc logs <pod-name> -n <namespace>
+        - oc rollout status deployment/<deployment> -n <namespace>
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence is gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause is determined"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after applying fix"
+    - from: verification
+      to: evidence_collection
+      condition: "still_crashlooping"
+      description: "Return to evidence collection if pod still crashing"
+  evidence_requirements:
+    - "Pod status and phase"
+    - "Pod events"
+    - "Pod logs (current and previous)"
+    - "Deployment configuration"
+    - "Resource limits and requests"
+    - "Health probe configuration"
+  required: true
+
+- id: pod-pending
+  name: Pod Pending Troubleshooting
+  description: >
+    Diagnose and resolve pods stuck in Pending state.
+    Covers scheduling issues, insufficient resources, PVC binding, and node constraints.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather evidence to understand why the pod is stuck in Pending.
+        Check scheduling events, node capacity, PVC status, and resource requests.
+      initial: true
+      terminal: false
+      commands:
+        - oc get pods -n <namespace> | grep Pending
+        - oc describe pod <pod-name> -n <namespace>
+        - oc get events -n <namespace> --sort-by='.lastTimestamp'
+        - oc get nodes
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Analyze to determine if the Pending is due to:
+        insufficient resources, taints/tolerations, PVC issues, affinity rules, or cluster capacity.
+      initial: false
+      terminal: false
+      commands:
+        - oc describe pod <pod-name> -n <namespace> | grep -i "scheduled\|unschedulable"
+        - oc get events -n <namespace> --field-selector reason=FailedScheduling
+        - oc get pvc -n <namespace>
+        - oc describe pvc <pvc-name> -n <namespace>
+        - oc describe node <node-name>
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply appropriate fix: scale cluster, adjust resource requests, fix PVC, remove taints, or adjust affinity.
+      initial: false
+      terminal: false
+      commands:
+        - oc patch pvc <pvc-name> -n <namespace> --type merge -p '{"spec":{"accessModes":["ReadWriteOnce"]}}'
+        - oc adm taint nodes <node-name> <taint>
+        - oc patch node <node-name> -p '{"metadata":{"labels":{"node-role.kubernetes.io/worker":""}}}'
+        - oc scale deployment/<deployment> --replicas=<count>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the pod is now running and scheduled correctly.
+      initial: false
+      terminal: true
+      commands:
+        - oc get pods -n <namespace> -w
+        - oc describe pod <pod-name> -n <namespace>
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Pod events (especially FailedScheduling)"
+    - "Node capacity and capacity requests"
+    - "Taint and toleration configuration"
+    - "PVC binding status"
+    - "Node labels and labels"
+  required: true
+
+- id: pod-imagepullbackoff
+  name: Pod ImagePullBackOff Troubleshooting
+  description: >
+    Diagnose and resolve pods stuck in ImagePullBackOff state.
+    Covers image access issues, wrong images, registry auth, and network problems.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather evidence to understand why the image cannot be pulled.
+        Check image name, registry access, pull secrets, and network connectivity.
+      initial: true
+      terminal: false
+      commands:
+        - oc describe pod <pod-name> -n <namespace>
+        - oc get imagestream <imagestream> -n <namespace>
+        - oc get secret -n <namespace>
+        - oc get events -n <namespace>
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine if ImagePullBackOff is due to: wrong image name/tag, missing pull secret,
+        registry access denied, network issues, or image not found.
+      initial: false
+      terminal: false
+      commands:
+        - oc describe pod <pod-name> -n <namespace> | grep -i "image\|secret\|pull"
+        - oc logs -f <pod-name> -n <namespace>
+        - oc registry info
+        - oc get secret <secret-name> -n <namespace> -o yaml
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Fix image issues: correct image name/tag, add pull secret, fix registry access,
+        update image stream.
+      initial: false
+      terminal: false
+      commands:
+        - oc set image deployment/<deployment> <container>=<image-ref> -n <namespace>
+        - oc secrets link default <secret-name> -n <namespace>
+        - oc tag <imagestream>:<tag> <registry>/<imagestream>:<tag>
+        - oc set image-pull-secrets deployment/<deployment> <secret-name> -n <namespace>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the pod can now pull the image and run successfully.
+      initial: false
+      terminal: true
+      commands:
+        - oc get pods -n <namespace> -w
+        - oc describe pod <pod-name> -n <namespace> | grep -i "image"
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Pod describe output (image and pull secret fields)"
+    - "Events showing pull error details"
+    - "Image stream configuration"
+    - "Pull secret existence and validity"
+    - "Registry network connectivity"
+  required: true
+
+- id: pod-oomkilled
+  name: Pod OOMKilled Troubleshooting
+  description: >
+    Diagnose and resolve pods killed due to Out Of Memory (OOMKilled).
+    Covers memory limit configuration, memory leaks, and resource management.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather evidence to confirm OOMKill and identify memory usage patterns.
+        Check container memory usage, limits, and historical events.
+      initial: true
+      terminal: false
+      commands:
+        - oc get pods -n <namespace> -o wide
+        - oc describe pod <pod-name> -n <namespace> | grep -i "oom\|killed\|reason"
+        - oc get events -n <namespace> --sort-by='.lastTimestamp'
+        - oc logs <pod-name> -n <namespace>
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine if OOMKill is due to: insufficient memory limits, memory leak in application,
+        burstable resource class, or shared memory usage from other containers in same pod.
+      initial: false
+      terminal: false
+      commands:
+        - oc get events -n <namespace> --field-selector reason=OOMKilled
+        - oc get pods -n <namespace> -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.containerStatuses[?(@.lastState.terminated.reason=="OOMKilled")].name}{"\n"}{end}'
+        - oc top pods -n <namespace>
+        - oc top nodes
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply memory fixes: increase memory limits, configure requests, identify memory leaks,
+        or optimize application memory usage.
+      initial: false
+      terminal: false
+      commands:
+        - oc set resources deployment/<deployment> -n <namespace> --limits=memory=<value> --requests=memory=<value>
+        - oc set resources deployment/<deployment> -n <namespace> --limits=cpu=<value> --requests=cpu=<value>
+        - oc rollout restart deployment/<deployment> -n <namespace>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the pod is running with stable memory usage.
+        Monitor memory consumption over time.
+      initial: false
+      terminal: true
+      commands:
+        - oc top pod <pod-name> -n <namespace> --containers
+        - oc get pods -n <namespace> -w
+        - oc describe pod <pod-name> -n <namespace> | grep -i "oom"
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Container status showing OOMKilled reason"
+    - "Last termination state from pod describe"
+    - "Memory usage metrics (oc top)"
+    - "Pod resource configuration (limits/requests)"
+    - "Node resource availability"
+  required: true
+
+- id: pod-evicted
+  name: Pod Evicted Troubleshooting
+  description: >
+    Diagnose and resolve pods that have been evicted from nodes.
+    Covers node pressure, disk pressure, memory pressure, and resource quota violations.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather evidence to determine why the pod was evicted.
+        Check node status, pressure signals, quota, and eviction events.
+      initial: true
+      terminal: false
+      commands:
+        - oc get pods -n <namespace> | grep Evicted
+        - oc describe pod <pod-name> -n <namespace>
+        - oc get events -n <namespace> --sort-by='.lastTimestamp'
+        - oc get nodes
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine eviction cause: node disk pressure, memory pressure, PID pressure,
+        or resource quota exceeded.
+      initial: false
+      terminal: false
+      commands:
+        - oc get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.conditions[?(@.type=="DiskPressure")].status}{"\t"}{.status.conditions[?(@.type=="MemoryPressure")].status}{"\n"}{end}'
+        - oc get events -n <namespace> --field-selector reason=Evicted
+        - oc describe node <node-name> | grep -i "pressure\|evict"
+        - oc get quota -n <namespace>
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Fix eviction causes: clean node disk, increase node resources, adjust quotas,
+        or rebalance pods across nodes.
+      initial: false
+      terminal: false
+      commands:
+        - oc patch node <node-name> -p '{"spec":{"evictionHard":{"memory.available":"150Mi","nodefs.available":"10%"}}}'
+        - oc adm remove-from-scheduler <node-name>
+        - oc scale deployment/<deployment> --replicas=<count>
+        - oc adm evict <pod-name> -n <namespace>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the pod is rescheduled and running correctly.
+        Monitor node pressure signals.
+      initial: false
+      terminal: true
+      commands:
+        - oc get pods -n <namespace>
+        - oc get nodes -o wide
+        - oc get events -n <namespace> --sort-by='.lastTimestamp'
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Evicted pod events"
+    - "Node pressure conditions"
+    - "Resource quota usage"
+    - "Pod status and node assignment"
+    - "Node allocatable resources"
+  required: true
+
+- id: deployment-failure
+  name: Deployment Failure Troubleshooting
+  description: >
+    Diagnose and resolve deployment failures including rollout failures,
+    rollout stuck, and update errors.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather deployment rollout status, events, and configuration.
+        Identify the specific failure mode.
+      initial: true
+      terminal: false
+      commands:
+        - oc get deployments -n <namespace>
+        - oc rollout status deployment/<deployment> -n <namespace>
+        - oc describe deployment/<deployment> -n <namespace>
+        - oc get events -n <namespace> --sort-by='.lastTimestamp'
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine if deployment failure is due to: image issues, resource constraints,
+        readiness probe failures, incompatible updates, or quota limits.
+      initial: false
+      terminal: false
+      commands:
+        - oc rollout history deployment/<deployment> -n <namespace>
+        - oc rollout undo deployment/<deployment> -n <namespace>
+        - oc describe replicaset/<replicaset> -n <namespace>
+        - oc logs -f <new-pod-name> -n <namespace>
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Fix deployment: rollback to stable version, fix configuration,
+        update image, adjust resource limits, or fix probe configuration.
+      initial: false
+      terminal: false
+      commands:
+        - oc rollout undo deployment/<deployment> -n <namespace>
+        - oc set image deployment/<deployment> <container>=<image> -n <namespace>
+        - oc set resources deployment/<deployment> -n <namespace> --limits=memory=<value> --requests=memory=<value>
+        - oc patch deployment/<deployment> -n <namespace> -p '{"spec":{"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxUnavailable":1,"maxSurge":1}}}}'
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the deployment rollout completes successfully.
+        Confirm all replicas are available and healthy.
+      initial: false
+      terminal: true
+      commands:
+        - oc rollout status deployment/<deployment> -n <namespace>
+        - oc get deployments -n <namespace>
+        - oc get pods -n <namespace> -l app=<app-label>
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Deployment status (available/updated replicas)"
+    - "Rollout status output"
+    - "ReplicaSet events"
+    - "Pod events and logs from new replicas"
+    - "Deployment configuration (strategy, probes)"
+  required: true
+
+- id: operator-degraded
+  name: Operator Degraded Troubleshooting
+  description: >
+    Diagnose and resolve degraded or progressing cluster operators.
+    Covers operator pods, controller manager issues, and cluster-wide configuration.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather cluster operator status, related pod states, and error messages.
+        Identify which operators are degraded or progressing.
+      initial: true
+      terminal: false
+      commands:
+        - oc get co
+        - oc get co -o wide
+        - oc describe clusteropeartor/<operator>
+        - oc get pods -n openshift-<component>-operator
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine if operator degradation is due to: node resource pressure,
+        configuration errors, RBAC issues, network problems, or dependent operator failures.
+      initial: false
+      terminal: false
+      commands:
+        - oc describe clusteropeartor/<operator> | grep -i "conditions\|message\|reason"
+        - oc get events -n openshift-<component>-operator
+        - oc get pods -n openshift-<component>-operator
+        - oc adm verify-image-registry
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Fix operator degradation: restart operator, fix configuration,
+        resolve dependent failures, update image, or adjust resource limits.
+      initial: false
+      terminal: false
+      commands:
+        - oc patch clusteropeartor/<operator> -p '{"spec":{"managementState":"Managed"}}'
+        - oc delete pods -n openshift-<component>-operator -l app=<operator>
+        - oc adm upgrade --to-latest=true
+        - oc adm repair
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify all cluster operators are available and not degraded.
+        Monitor operator reconciliation status.
+      initial: false
+      terminal: true
+      commands:
+        - oc get co
+        - oc describe clusteropeartor/<operator> | grep "Available\|Degraded"
+        - oc get pods -n openshift-<component>-operator
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Cluster operator status (Available/Degraded/Progressing)"
+    - "Operator pod status"
+    - "Operator error messages"
+    - "Dependent operator status"
+    - "Node resource availability"
+  required: true
+
+- id: route-unavailable
+  name: Route Unavailable Troubleshooting
+  description: >
+    Diagnose and resolve issues with OpenShift routes not being accessible.
+    Covers route configuration, certificate issues, network policy, and endpoint problems.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather route configuration, endpoint status, and network connectivity evidence.
+        Verify route exists, has correct target, and has valid TLS configuration.
+      initial: true
+      terminal: false
+      commands:
+        - oc get routes -n <namespace>
+        - oc describe route/<route> -n <namespace>
+        - oc get endpoints/<service> -n <namespace>
+        - oc get svc/<service> -n <namespace>
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine if route unavailability is due to: missing service endpoint,
+        misconfigured route, TLS/certificate issues, network policy blocking,
+        or route admission controller problems.
+      initial: false
+      terminal: false
+      commands:
+        - oc describe route/<route> -n <namespace> | grep -i "tls\|destination\|redirect"
+        - oc get networkpolicies -n <namespace>
+        - oc get endpoints/<service> -n <namespace> -o yaml
+        - oc debug route/<route> -n <namespace>
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Fix route issues: update route target, fix service endpoints,
+        add/fix TLS certificates, adjust network policies, or restart route admission controller.
+      initial: false
+      terminal: false
+      commands:
+        - oc patch route/<route> -n <namespace> -p '{"spec":{"to":{"name":"<service>","port":{"number":<port>}}}}'
+        - oc annotate route/<route> -n <namespace> route.openshift.io/escape-analysis=true
+        - oc delete networkpolicy/<policy> -n <namespace>
+        - oc adm policy add-scc-to-user privileged -z default -n <namespace>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the route is accessible and correctly routing traffic.
+        Test endpoint connectivity.
+      initial: false
+      terminal: true
+      commands:
+        - oc get routes -n <namespace>
+        - oc describe route/<route> -n <namespace>
+        - curl -k https://<route-hostname>
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Route configuration and host"
+    - "Service endpoint pods"
+    - "Network policies in namespace"
+    - "TLS certificate configuration"
+    - "Route admission controller logs"
+  required: true
+
+- id: pvc-pending
+  name: PVC Pending Troubleshooting
+  description: >
+    Diagnose and resolve PVCs stuck in Pending state.
+    Covers storage class issues, insufficient capacity, and volume binding problems.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather PVC status, storage class configuration, and available capacity.
+        Identify binding errors and capacity constraints.
+      initial: true
+      terminal: false
+      commands:
+        - oc get pvc -n <namespace>
+        - oc describe pvc/<pvc> -n <namespace>
+        - oc get storageclass
+        - oc get pv
+        - oc get events -n <namespace>
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine if PVC Pending is due to: no matching storage class,
+        insufficient capacity, access mode mismatch, or provisioning errors.
+      initial: false
+      terminal: false
+      commands:
+        - oc describe pvc/<pvc> -n <namespace> | grep -i "message\|reason\|provisioning"
+        - oc describe storageclass/<class>
+        - oc get pv | grep -i "<storage-class>"
+        - oc get events -n <namespace> --field-selector reason=ProvisioningFailed
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Fix PVC issues: create/update storage class, adjust access modes,
+        provision PVs manually, or fix provisioner configuration.
+      initial: false
+      terminal: false
+      commands:
+        - oc patch pvc/<pvc> -n <namespace> -p '{"spec":{"storageClassName":"<correct-class>"}}'
+        - oc patch pvc/<pvc> -n <namespace> -p '{"spec":{"accessModes":["ReadWriteMany"]}}'
+        - oc patch storageclass/<class> -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the PVC is now Bound and the pod can mount it.
+      initial: false
+      terminal: true
+      commands:
+        - oc get pvc -n <namespace>
+        - oc describe pvc/<pvc> -n <namespace> | grep "Status"
+        - oc get pods -n <namespace> -w
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "PVC status and binding mode"
+    - "Storage class configuration"
+    - "Provisioning events"
+    - "Available PV capacity"
+    - "Access mode requirements"
+  required: true
+
+- id: authentication-issue
+  name: Authentication Issue Troubleshooting
+  description: >
+    Diagnose and resolve authentication issues in OpenShift.
+    Covers token problems, RBAC errors, service account issues, and OAuth failures.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather authentication error details, token status, and RBAC configuration.
+        Identify the scope and type of authentication failure.
+      initial: true
+      terminal: false
+      commands:
+        - oc auth can-i --list
+        - oc whoami
+        - oc auth can-i create pods -n <namespace>
+        - oc describe sa/<sa-name> -n <namespace>
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine if auth issue is due to: expired token, missing RBAC role,
+        service account misconfiguration, OAuth provider issue, or user permission revocation.
+      initial: false
+      terminal: false
+      commands:
+        - oc auth can-i create pods -n <namespace> --as=<user>
+        - oc describe rolebinding/<binding> -n <namespace>
+        - oc get roles -n <namespace>
+        - oc get serviceaccounts -n <namespace>
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Fix auth issues: refresh tokens, update RBAC roles/rolebindings,
+        fix service accounts, or update OAuth configuration.
+      initial: false
+      terminal: false
+      commands:
+        - oc login --token=<token> --server=<server>
+        - oc create rolebinding <name> --role=<role> --user=<user> -n <namespace>
+        - oc create rolebinding <name> --role=<role> --serviceaccount=<namespace>:<sa> -n <namespace>
+        - oc policy add-role-to-user <role> <user> -n <namespace>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify authentication and authorization work correctly.
+        Test permissions in the target namespace.
+      initial: false
+      terminal: true
+      commands:
+        - oc auth can-i create pods -n <namespace>
+        - oc auth can-i delete pods -n <namespace>
+        - oc whoami
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Authentication error messages"
+    - "Token validity status"
+    - "RBAC roles and rolebindings"
+    - "Service account configuration"
+    - "OAuth provider status"
+  required: true
+
+- id: node-notready
+  name: Node NotReady Troubleshooting
+  description: >
+    Diagnose and resolve nodes reporting NotReady status.
+    Covers kubelet issues, network problems, resource exhaustion, and system issues.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather node status, kubelet health, and system resource information.
+        Determine the specific failure mode of the NotReady node.
+      initial: true
+      terminal: false
+      commands:
+        - oc get nodes
+        - oc get nodes -o wide
+        - oc describe node/<node>
+        - oc get events -n <namespace> --sort-by='.lastTimestamp'
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine if node is NotReady due to: kubelet stopped, disk pressure,
+        memory pressure, network partition, or system-level issues.
+      initial: false
+      terminal: false
+      commands:
+        - oc get nodes/<node> -o jsonpath='{range .status.conditions[*]}{.type}{"\t"}{.status}{"\n"}{end}'
+        - oc debug node/<node>
+        - crictl ps -a
+        - journalctl -u kubelet -n 50
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Fix node issues: restart kubelet, clean disk, fix network,
+        or replace machine if hardware failure is detected.
+      initial: false
+      terminal: false
+      commands:
+        - ssh <node-ip> sudo systemctl restart kubelet
+        - ssh <node-ip> sudo systemctl restart kubelet
+        - ssh <node-ip> sudo journalctl -u kubelet --no-pager
+        - oc adm drain <node> --delete-emptydir-data
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the node reports Ready and pods are rescheduled.
+        Monitor node conditions for recurrence.
+      initial: false
+      terminal: true
+      commands:
+        - oc get nodes -o wide
+        - oc describe node/<node> | grep -i "ready\|condition"
+        - oc get pods -o wide --field-selector spec.nodeName=<node>
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+      description: "Move to diagnosis when evidence gathered"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+      description: "Move to remediation when root cause found"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+      description: "Move to verification after fix"
+  evidence_requirements:
+    - "Node conditions (Ready, DiskPressure, MemoryPressure, PIDPressure)"
+    - "Kubelet logs"
+    - "Node resource usage"
+    - "Node network connectivity"
+    - "Machine set status"
+  required: true

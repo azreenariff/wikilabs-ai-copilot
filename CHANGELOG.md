@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-07-20
+
+### Added
+
+#### Engineering Skills Pack (Phase 3) — Production-Ready MCP Skill Packs
+
+- **Skill Pack Framework** — Structured skill pack format with manifest, technology definitions, detection rules, workflows, commands, guidance, best practices, and known issues
+- **Engineering Reasoning** — Evidence-based reasoning framework: observation → hypothesis → validation → remediation. Confidence scoring, risk assessment, safety constraints
+- **Knowledge Bases** — Technology-specific knowledge in structured markdown: cluster architecture, container runtime, networking, security, RBAC, SCC, operators
+
+##### OpenShift Engineering Skill Pack
+
+- **Complete skill pack** for Red Hat OpenShift 4.x
+- 40 files across 17 subdirectories
+- **manifest.yaml** — Skill metadata, version, dependencies, technology scope
+- **technology.yaml** — OpenShift features, platforms, components, capabilities coverage
+- **workflows.yaml** — 10 state machine workflows (CrashLoopBackOff, Pending, OOMKilled, ImagePullBackOff, Node NotReady, Deployment Failure, Operator Degraded, Route Unavailable, PVC Pending, Auth Failure) with multi-step evidence collection, diagnosis, remediation, and verification stages
+- **detection_rules.yaml** — 16+ detection rules for CLI commands, browser URLs, and text patterns with confidence scoring
+- **commands.yaml** — 160+ technical commands with purpose, risk assessment, parameters, usage notes, verification steps, and documentation references
+- **guidance/rules.md** — Engineering guidance: evidence-based reasoning, safety rules, command explanation standards
+- **best-practices.md** — 15 best practices across cluster management, deployments, security, networking, storage, and monitoring
+- **known_issues.md** — 10 known issues with symptoms, detection, workarounds, and upgrade tracking
+- **Knowledge base** (4 files): cluster-architecture.md, container-runtime.md, networking-services-routes.md, security-rbac-scc.md
+- **Documentation** (7 markdown docs): skill pack overview, troubleshooting workflows, engineering reasoning guide, detection rules reference, command reference, guidance documentation, best practices reference
+- **Supporting directories**: architecture/, best-practices/, commands/, common-failures/, concepts/, context/, detection/, diagnostics/, documentation/, examples/, guidance/, knowledge/, overview/, reasoning/, references/, tests/, workflows/
+
+##### Linux Engineering Skill Pack
+
+- **Complete skill pack** for Linux administration
+- 40 files across 17 subdirectories
+- **workflows.yaml** — 1400+ lines of workflow definitions covering SSH hardening, systemd troubleshooting, LVM management, performance tuning, and more
+- **detection_rules.yaml** — 10+ detection rules for Linux CLI commands and system patterns
+- **commands.yaml** — 120+ technical commands with full documentation
+
+##### VMware vSphere Engineering Skill Pack
+
+- **Complete skill pack** for VMware vSphere management
+- 40 files across 17 subdirectories
+- **workflows.yaml** — 800+ lines of workflow definitions
+- **detection_rules.yaml** — 8+ detection rules for vSphere CLI commands and patterns
+- **commands.yaml** — 60+ technical commands with full documentation
+
+##### Skill Pack Template
+
+- Reusable template for creating new skill packs in the Wiki Labs format
+- All 7 core sections: manifest, technology, detection, workflows, commands, guidance, knowledge
+- Structured subdirectory layout with 17 directories
+- Detection rules with confidence scoring
+- State machine workflows with evidence collection, diagnosis, remediation, and verification stages
+
+### Changed
+
+- Updated ROADMAP.md with sequential implementation numbering (Phase 1-6)
+- Version bumped from 0.8.0-alpha to 0.9.0-alpha
+
+### New Files
+
+- `src/skills/openshift-skill-pack/` — OpenShift engineering skill pack (40 files)
+- `src/skills/linux-engineering/` — Linux engineering skill pack (40 files)
+- `src/skills/vmware-vsphere-skill-pack/` — VMware vSphere skill pack (40 files)
+
 ## [0.8.0] — 2026-07-20
 
 ### Added

@@ -1,0 +1,41 @@
+id: openshift-skill-pack
+name: OpenShift Engineering
+version: 1.0.0
+description: >
+  Comprehensive OpenShift engineering skill covering cluster operations,
+  troubleshooting, networking, storage, security, and lifecycle management.
+  Provides expert-level guidance for OpenShift administrators and DevOps engineers.
+author: Wiki Labs Team
+technology_domain: OpenShift
+vendor: Wiki Labs
+category: Engineering
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - openshift
+  - kubernetes
+  - containers
+  - oc
+  - cluster
+  - routing
+  - operators
+  - stateful
+  - devops
+  - cloud-native
+keywords:
+  - oc
+  - openshift
+  - pod
+  - deployment
+  - route
+  - operator
+  - namespace
+  - project
+  - image-registry
+  - persistent-volume
+icon: 🔷
+supported_environments:
+  - openshift-4.x
+  - kubernetes
+documentation_url: https://docs.wikilabs.ai/skills/openshift-skill-pack

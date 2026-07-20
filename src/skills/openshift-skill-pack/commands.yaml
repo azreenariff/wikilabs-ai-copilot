@@ -1,0 +1,461 @@
+- id: oc-get-pods
+  name: oc get pods
+  description: List pods in a project or namespace
+  syntax: oc get pods [-n <namespace>] [-o wide|json|yaml]
+  category: pod-management
+  sudo: false
+  example: oc get pods -n myproject
+  note: Use -w for watch mode to see live updates
+  risk: Low
+  when_to_use: Checking pod status, phases, and restart counts
+
+- id: oc-describe-pod
+  name: oc describe pod
+  description: Get detailed information about a specific pod
+  syntax: oc describe pod <pod-name> [-n <namespace>]
+  category: pod-management
+  sudo: false
+  example: oc describe pod myapp-5d4b7c8f9-x2k4p -n myproject
+  note: Shows events, containers, volumes, and resource usage in one view
+  risk: Low
+  when_to_use: Diagnosing pod issues, checking events, verifying configuration
+
+- id: oc-logs
+  name: oc logs
+  description: Retrieve logs from a pod's container
+  syntax: oc logs <pod-name> [-n <namespace>] [-c <container>] [--previous] [-f]
+  category: pod-management
+  sudo: false
+  example: oc logs myapp-5d4b7c8f9-x2k4p -n myproject --previous -c mycontainer
+  note: Use --previous to see logs from the last terminated container (crash recovery)
+  risk: Low
+  when_to_use: Debugging application errors, checking runtime output, post-crash investigation
+
+- id: oc-get-events
+  name: oc get events
+  description: List events in a project or namespace
+  syntax: oc get events [-n <namespace>] [--sort-by='.lastTimestamp']
+  category: event-management
+  sudo: false
+  example: oc get events -n myproject --sort-by='.lastTimestamp'
+  note: Events often reveal scheduling, image, or resource issues before logs do
+  risk: Low
+  when_to_use: Initial diagnosis of any cluster issue, chronological event analysis
+
+- id: oc-get-projects
+  name: oc get projects / oc project
+  description: List available projects or set the current project
+  syntax: oc get projects | oc project [<project-name>]
+  category: project-management
+  sudo: false
+  example: oc project myproject
+  note: Equivalent to kubectl project
+  risk: Low
+  when_to_use: Switching between projects, listing available resources
+
+- id: oc-get-nodes
+  name: oc get nodes
+  description: List cluster nodes and their status
+  syntax: oc get nodes [-o wide|json|yaml]
+  category: node-management
+  sudo: false
+  example: oc get nodes -o wide
+  note: Shows node roles, status, and IP addresses
+  risk: Low
+  when_to_use: Checking node health, availability, and scheduling targets
+
+- id: oc-describe-node
+  name: oc describe node
+  description: Get detailed node information including conditions and capacity
+  syntax: oc describe node <node-name>
+  category: node-management
+  sudo: false
+  example: oc describe node node01.example.com
+  note: Shows allocatable resources, conditions, taints, and scheduled pods
+  risk: Low
+  when_to_use: Investigating node NotReady, resource pressure, or scheduling issues
+
+- id: oc-adm-taint
+  name: oc adm taint
+  description: Manage node taints to control pod scheduling
+  syntax: oc adm taint nodes <node-name> <taint-key>=<taint-value>:<effect> | oc adm taint nodes <node-name> <taint-key>:-
+  category: node-management
+  sudo: true
+  example: oc adm taint nodes node01 node-role.kubernetes.io/worker=:NoSchedule
+  note: Taints prevent pods from being scheduled unless they have matching tolerations
+  risk: Medium - can prevent pods from being scheduled on the affected node
+  when_to_use: Reserving nodes for specific workloads, isolating problematic nodes
+
+- id: oc-adm-drain
+  name: oc adm drain
+  description: Safely drain a node, removing all pods for maintenance
+  syntax: oc adm drain <node-name> [--delete-emptydir-data] [--ignore-daemonsets] [--force]
+  category: node-management
+  sudo: true
+  example: oc adm drain node01 --delete-emptydir-data --ignore-daemonsets
+  note: This evicts all pods - ensure workloads are replicated before draining
+  risk: High - evicts running pods; ensure high availability first
+  when_to_use: Node maintenance, upgrade, or replacement
+
+- id: oc-adm-inspect
+  name: oc adm inspect
+  description: Collect diagnostic information from a pod or node
+  syntax: oc adm inspect <kind>/<name> [-n <namespace>] --dest-dir=<directory>
+  category: diagnostics
+  sudo: true
+  example: oc adm inspect pod/myapp -n myproject --dest-dir=/tmp/inspector
+  note: Collects pod specs, logs, events, and container info for debugging
+  risk: Low - read-only diagnostic collection
+  when_to_use: Deep troubleshooting, collecting evidence for support cases
+
+- id: oc-adm-troubleshoot
+  name: oc adm troubleshoot
+  description: Run advanced diagnostic checks on the cluster
+  syntax: oc adm troubleshoot [args]
+  category: diagnostics
+  sudo: true
+  example: oc adm troubleshoot --collector=node_logs --dest-dir=/tmp/troubleshoot
+  note: Collection includes node logs, kubelet configs, and cluster resources
+  risk: Low - read-only diagnostic collection
+  when_to_use: Complex cluster issues, multi-component failures, support case preparation
+
+- id: oc-adm-diagnose
+  name: oc adm diagnose
+  description: Run diagnostic tests on cluster components
+  syntax: oc adm diagnose <component>
+  category: diagnostics
+  sudo: true
+  example: oc adm diagnose network
+  note: Tests connectivity, DNS, and component health
+  risk: Low
+  when_to_use: Verifying cluster component health, network diagnostics
+
+- id: oc-get-deployments
+  name: oc get deployments
+  description: List deployments in a project or namespace
+  syntax: oc get deployments [-n <namespace>] [-o wide|json|yaml]
+  category: deployment-management
+  sudo: false
+  example: oc get deployments -n myproject
+  note: Shows replica counts (CURRENT/DESIRED), availability, and age
+  risk: Low
+  when_to_use: Checking deployment status, replica availability, rollout progress
+
+- id: oc-describe-deployment
+  name: oc describe deployment
+  description: Get detailed deployment information including strategy and conditions
+  syntax: oc describe deployment <deployment-name> [-n <namespace>]
+  category: deployment-management
+  sudo: false
+  example: oc describe deployment web-app -n myproject
+  note: Shows rollout history, strategy, conditions, and associated replica sets
+  risk: Low
+  when_to_use: Diagnosing rollout failures, checking deployment configuration
+
+- id: oc-rollout-status
+  name: oc rollout status
+  description: Check the status of a deployment rollout
+  syntax: oc rollout status deployment/<deployment-name> [-n <namespace>] [--timeout=<seconds>]
+  category: deployment-management
+  sudo: false
+  example: oc rollout status deployment/web-app -n myproject --timeout=120s
+  note: Returns immediately if rollout already completed successfully
+  risk: Low
+  when_to_use: Waiting for deployment to complete, verifying rollout success/failure
+
+- id: oc-rollout-undo
+  name: oc rollout undo
+  description: Roll back a deployment to a previous revision
+  syntax: oc rollout undo deployment/<deployment-name> [-n <namespace>] [--to-revision=<number>]
+  category: deployment-management
+  sudo: false
+  example: oc rollout undo deployment/web-app -n myproject
+  note: Each deployment revision is automatically tracked
+  risk: Medium - reverting may introduce old behavior; verify before production rollback
+  when_to_use: Deployment failed, application regression, emergency rollback
+
+- id: oc-set-env
+  name: oc set env
+  description: Set environment variables on a deployment or pod
+  syntax: oc set env deployment/<deployment> KEY=VALUE [-n <namespace>]
+  category: deployment-management
+  sudo: false
+  example: oc set env deployment/web-app -n myproject APP_DEBUG=true
+  note: Triggers an automatic rollout after environment variable change
+  risk: Medium - changing environment variables may affect application behavior
+  when_to_use: Changing configuration without rebuilding images, debugging with debug flags
+
+- id: oc-set-resources
+  name: oc set resources
+  description: Set resource requests and limits on a deployment
+  syntax: oc set resources deployment/<deployment> --limits=memory=<value>,cpu=<value> --requests=memory=<value>,cpu=<value> [-n <namespace>]
+  category: deployment-management
+  sudo: false
+  example: oc set resources deployment/web-app -n myproject --limits=memory=512Mi --requests=memory=256Mi
+  note: Insufficient requests may cause scheduling issues; insufficient limits may cause OOMKilled
+  risk: Medium - may affect pod scheduling and memory management
+  when_to_use: Resolving OOMKilled, fixing Pending (insufficient resources), optimizing resource usage
+
+- id: oc-set-image
+  name: oc set image
+  description: Update the image used by a deployment
+  syntax: oc set image deployment/<deployment> <container-name>=<image-ref> [-n <namespace>]
+  category: deployment-management
+  sudo: false
+  example: oc set image deployment/web-app -n myproject web-app=registry.example.com/myapp:v1.2.3
+  note: Automatically triggers a rolling update
+  risk: Medium - new image may have issues; verify image availability first
+  when_to_use: Deploying new application versions, fixing broken images
+
+- id: oc-adm-upgrade
+  name: oc adm upgrade
+  description: Manage cluster version and perform upgrades
+  syntax: oc adm upgrade --to=<version> | --to-latest=true
+  category: cluster-management
+  sudo: true
+  example: oc get clusterversion version; oc adm upgrade --to=4.14.0
+  note: Always check available updates before upgrading; backup etcd data first
+  risk: Critical - cluster-wide impact; plan maintenance window; have rollback strategy
+  when_to_use: Applying OpenShift version updates, upgrading to latest release
+
+- id: oc-adm-verify-image-registry
+  name: oc adm verify-image-registry
+  description: Verify the internal image registry is accessible
+  syntax: oc adm verify-image-registry [--loglevel=<level>]
+  category: cluster-management
+  sudo: true
+  example: oc adm verify-image-registry
+  note: Checks registry route, certificate, and network connectivity
+  risk: Low - read-only verification
+  when_to_use: Resolving ImagePullBackOff, registry connectivity issues
+
+- id: oc-get-routes
+  name: oc get routes
+  description: List all routes in a project or namespace
+  syntax: oc get routes [-n <namespace>] [-o wide|json|yaml]
+  category: networking
+  sudo: false
+  example: oc get routes -n myproject -o wide
+  note: Shows host, port, and TLS configuration for each route
+  risk: Low
+  when_to_use: Checking route availability, host names, and TLS configuration
+
+- id: oc-describe-route
+  name: oc describe route
+  description: Get detailed route information including TLS and destination
+  syntax: oc describe route <route-name> [-n <namespace>]
+  category: networking
+  sudo: false
+  example: oc describe route web-app -n myproject
+  note: Shows TLS termination type, destination service, and certificate details
+  risk: Low
+  when_to_use: Debugging route issues, verifying TLS configuration, checking endpoints
+
+- id: oc-get-services
+  name: oc get services
+  description: List services in a project or namespace
+  syntax: oc get services [-n <namespace>] [-o wide|json|yaml]
+  category: networking
+  sudo: false
+  example: oc get services -n myproject
+  note: Shows cluster IP, port, and external IP (LoadBalancer)
+  risk: Low
+  when_to_use: Verifying service discovery, checking endpoint health
+
+- id: oc-get-pvc
+  name: oc get pvc
+  description: List persistent volume claims in a project or namespace
+  syntax: oc get pvc [-n <namespace>] [-o wide|json|yaml]
+  category: storage
+  sudo: false
+  example: oc get pvc -n myproject
+  note: Shows storage class, access mode, and current status (Bound/Pending)
+  risk: Low
+  when_to_use: Checking storage availability, debugging PVC Pending, verifying bindings
+
+- id: oc-describe-pvc
+  name: oc describe pvc
+  description: Get detailed PVC information including events and provisioning
+  syntax: oc describe pvc <pvc-name> [-n <namespace>]
+  category: storage
+  sudo: false
+  example: oc describe pvc data-vol -n myproject
+  note: Shows provisioning events, storage class, and associated PV
+  risk: Low
+  when_to_use: Debugging PVC Pending, verifying capacity and access modes
+
+- id: oc-get-storageclass
+  name: oc get storageclass
+  description: List available storage classes
+  syntax: oc get storageclass [-o wide|json|yaml]
+  category: storage
+  sudo: false
+  example: oc get storageclass
+  note: Shows default storage class (marked with asterisk)
+  risk: Low
+  when_to_use: Checking available storage options, verifying default class
+
+- id: oc-get-pv
+  name: oc get pv
+  description: List available persistent volumes in the cluster
+  syntax: oc get pv [-o wide|json|yaml]
+  category: storage
+  sudo: false
+  example: oc get pv
+  note: Shows capacity, access mode, reclaim policy, and phase
+  risk: Low
+  when_to_use: Checking available storage capacity, verifying PV bindings
+
+- id: oc-get-co
+  name: oc get operators
+  description: List status of all cluster operators
+  syntax: oc get co | oc get clusteropeartors -o wide
+  category: cluster-management
+  sudo: false
+  example: oc get co
+  note: Shows Available, Progressing, and Degraded status for each operator
+  risk: Low
+  when_to_use: Checking overall cluster health, identifying degraded components
+
+- id: oc-describe-co
+  name: oc describe operator
+  description: Get detailed cluster operator information and conditions
+  syntax: oc describe clusteropeartor <operator-name>
+  category: cluster-management
+  sudo: false
+  example: oc describe clusteropeartor authentication
+  note: Shows version, conditions, and related objects
+  risk: Low
+  when_to_use: Investigating degraded operators, checking operator version and configuration
+
+- id: oc-auth-can-i
+  name: oc auth can-i
+  description: Check authorization permissions for a user
+  syntax: oc auth can-i <verb> <resource> [--as=<user>] [-n <namespace>]
+  category: security
+  sudo: false
+  example: oc auth can-i create pods -n myproject --as=developer
+  note: Use --as=system:serviceaccount:<ns>:<sa> to check service account permissions
+  risk: Low - read-only permission check
+  when_to_use: Debugging RBAC issues, verifying user or service account permissions
+
+- id: oc-whoami
+  name: oc whoami
+  description: Display the current authenticated user identity
+  syntax: oc whoami [--show-token]
+  category: security
+  sudo: false
+  example: oc whoami
+  note: Use --show-token to display the bearer token
+  risk: Low
+  when_to_use: Verifying current identity, exporting token for scripts
+
+- id: oc-login
+  name: oc login
+  description: Authenticate to an OpenShift cluster
+  syntax: oc login --server=<url> [--token=<token>] [--certificate-authority=<path>]
+  category: security
+  sudo: false
+  example: oc login https://api.mycluster.example.com:6443 --token=sha256~abcdef...
+  note: Token authentication is preferred in CI/CD pipelines
+  risk: Medium - token exposure risk; use secure token storage
+  when_to_use: Initial cluster access, CI/CD pipeline authentication, token refresh
+
+- id: oc-execute
+  name: oc exec
+  description: Execute a command inside a running container
+  syntax: oc exec <pod-name> -n <namespace> -- <command> [-c <container>] [-it]
+  category: pod-management
+  sudo: false
+  example: oc exec myapp-5d4b7c8f9-x2k4p -n myproject -- cat /etc/config/app.yaml -c app-container
+  note: Use -it for interactive shell access (oc exec -it pod -c container -- /bin/bash)
+  risk: Medium - running commands inside production containers affects running applications
+  when_to_use: Debugging inside containers, checking configuration files, verifying environment
+
+- id: oc-get-imagestreams
+  name: oc get imagestreams
+  description: List image streams in a project or namespace
+  syntax: oc get imagestreams [-n <namespace>] [-o wide|json|yaml]
+  category: image-management
+  sudo: false
+  example: oc get imagestreams -n myproject
+  note: Image streams track image references and tags within the cluster
+  risk: Low
+  when_to_use: Checking available images, debugging image references, tracking image tags
+
+- id: oc-adm-repair
+  name: oc adm repair
+  description: Attempt to repair resources left in an invalid state
+  syntax: oc adm repair
+  category: cluster-management
+  sudo: true
+  example: oc adm repair
+  note: Cleans up orphaned ReplicaSets and DeploymentConfigs
+  risk: Low - removes orphaned resources; verify no important resources are affected
+  when_to_use: Fixing deployment/replicaset orphan issues, cleaning up stale resources
+
+- id: oc-create-sa
+  name: oc create serviceaccount
+  description: Create a service account for workloads
+  syntax: oc create serviceaccount <name> [-n <namespace>]
+  category: security
+  sudo: false
+  example: oc create serviceaccount app-service-account -n myproject
+  note: Service accounts are used by pods to authenticate with the API server
+  risk: Low
+  when_to_use: Creating identity for stateless workloads, automation, CI/CD
+
+- id: oc-adm-quota
+  name: oc adm quota
+  description: Manage resource quotas in a project or namespace
+  syntax: oc adm quota --add <quota-name> --hard=<resource>=<value> -n <namespace>
+  category: project-management
+  sudo: true
+  example: oc adm quota --add resource-quota --hard=requests.cpu=4,requests.memory=8Gi,limits.cpu=8,limits.memory=16Gi -n myproject
+  note: Quotas enforce resource limits to prevent namespace resource exhaustion
+  risk: Medium - may prevent resource creation if quota exceeded
+  when_to_use: Enforcing resource limits, preventing resource exhaustion in multi-tenant projects
+
+- id: oc-adm-policy
+  name: oc adm policy add-role-to-user
+  description: Grant a role to a user, group, or service account
+  syntax: oc adm policy add-role-to-user <role> <user> [-n <namespace>]
+  category: security
+  sudo: true
+  example: oc adm policy add-role-to-user developer developer-user -n myproject
+  note: Built-in roles include admin, edit, view, self-accessor, and custom roles
+  risk: Medium - grants permissions that may allow unintended actions
+  when_to_use: Fixing RBAC issues, granting temporary access, assigning role bindings
+
+- id: oc-debug-pod
+  name: oc debug pod
+  description: Create a debug session for troubleshooting a pod
+  syntax: oc debug pod/<pod-name> [-n <namespace>]
+  category: diagnostics
+  sudo: false
+  example: oc debug pod/myapp-5d4b7c8f9-x2k4p -n myproject
+  note: Starts an ephemeral debug pod with the same filesystem as the target pod
+  risk: Low - creates debug session; does not modify the target pod
+  when_to_use: Debugging pod issues, inspecting configuration, testing fixes
+
+- id: oc-debug-node
+  name: oc debug node
+  description: Create a debug session for troubleshooting a node
+  syntax: oc debug node/<node-name>
+  category: diagnostics
+  sudo: false
+  example: oc debug node/node01.example.com
+  note: Provides access to the node's host filesystem for investigation
+  risk: Low - read-only diagnostic access to node
+  when_to_use: Investigating node NotReady, kubelet issues, host-level problems
+
+- id: oc-adm-constraint
+  name: oc adm diagnostics
+  description: Run cluster diagnostics to check health
+  syntax: oc adm diagnostics <component|component:check>
+  category: diagnostics
+  sudo: true
+  example: oc adm diagnostics node node01.example.com
+  note: Tests kubelet, network, and node configuration
+  risk: Low - read-only diagnostic checks
+  when_to_use: Verifying node health, diagnosing node issues, pre-upgrade checks
