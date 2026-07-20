@@ -1,1 +1,23 @@
-{"status":"clean","build":"ok","tests":"103/103 passed","last_fix":"2026-07-21T00:00Z","fixes_applied":["engine.rs: Added ApprovalRequest import","proactive.rs: Added Duration import, fixed signed_duration_since usage","recommendation.rs: Fixed evidence borrow-by-reordering gen_reason before Recommendation::new, fixed test FromString type, added total_generations counter, fixed classify_observation crash→Critical, adjusted test thresholds","decision.rs: Added Rule 6b low-confidence rejection, adjusted test thresholds"],"workspace_status":"all clean"}
+{
+  "package": "wikilabs-guidance",
+  "phase": 10,
+  "status": "initial_setup_complete",
+  "actions": [
+    "Created Cargo.toml for src/guidance",
+    "Created src/guidance/src/lib.rs with module declarations",
+    "Added src/guidance to workspace members in root Cargo.toml",
+    "Fixed context_providers.rs: removed unused uuid import, fixed mock_retrieve &mut to &self",
+    "Fixed decision_engine.rs: removed non-existent imports (safety_framework, modes), added GuidanceMode enum, removed duplicate DetailLevel, derived Copy for enums, removed unused CommandRiskLevel import",
+    "Fixed evidence_framework.rs: changed .collected.is_empty() to .collected().is_empty() (3 occurrences), .pending to .pending(), .missing to .missing()",
+    "Fixed recommendation_framework.rs: added Display impl for RiskLevel, fixed test borrow issues by cloning returned references",
+    "Fixed timeline.rs: added & borrow to pattern matches for move types",
+    "Ran cargo fix on crate (auto-formatting fixes applied)",
+    "Fixed test_context_snapshot_summary: changed val.key to val.label in summary format string",
+    "Fixed test_expert_mode_minimal / test_low_confidence_minimal_detail: changed min_detail_level default from Standard to Minimal",
+    "Fixed test_silent_mode_no_guidance: added should_interrupt = false in Silent mode case",
+    "Fixed test_evidence_not_sufficient: added missing_count > 0 check in is_sufficient()",
+    "All 58 tests passing"
+  ],
+  "tests_passed": 58,
+  "tests_failed": 0
+}
