@@ -11,10 +11,10 @@
 //! - Observation indicator (UI-visible state)
 //! - Configurable retention policies
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use crate::event::ProviderType;
 
@@ -220,7 +220,14 @@ impl PrivacyManager {
                     .collect();
                 if active.is_empty() {
                     // All providers enabled by default in enabled mode
-                    (ObservationMode::Enabled, vec!["active_window".to_string(), "terminal".to_string(), "browser".to_string()])
+                    (
+                        ObservationMode::Enabled,
+                        vec![
+                            "active_window".to_string(),
+                            "terminal".to_string(),
+                            "browser".to_string(),
+                        ],
+                    )
                 } else {
                     (ObservationMode::Enabled, active)
                 }
@@ -230,7 +237,8 @@ impl PrivacyManager {
         let mut indicator = self.indicator.lock().unwrap();
         indicator.mode = mode;
         indicator.active_providers = active.clone();
-        indicator.indicator_visible = matches!(cfg.mode, ObservationMode::Enabled) && !active.is_empty();
+        indicator.indicator_visible =
+            matches!(cfg.mode, ObservationMode::Enabled) && !active.is_empty();
     }
 
     /// Get the current privacy indicator.
@@ -348,7 +356,9 @@ mod tests {
     #[test]
     fn test_provider_disabled_by_config() {
         let mut config = PrivacyConfig::default();
-        config.provider_overrides.insert(ProviderType::Clipboard, false);
+        config
+            .provider_overrides
+            .insert(ProviderType::Clipboard, false);
         assert!(config.is_provider_allowed(&ProviderType::ActiveWindow));
         assert!(!config.is_provider_allowed(&ProviderType::Clipboard));
     }
@@ -512,10 +522,9 @@ mod tests {
         let mut config = PrivacyConfig::default();
         assert!(config.is_provider_allowed(&ProviderType::Custom("my_provider".to_string())));
 
-        config.provider_overrides.insert(
-            ProviderType::Custom("my_provider".to_string()),
-            false,
-        );
+        config
+            .provider_overrides
+            .insert(ProviderType::Custom("my_provider".to_string()), false);
         assert!(!config.is_provider_allowed(&ProviderType::Custom("my_provider".to_string())));
     }
 }

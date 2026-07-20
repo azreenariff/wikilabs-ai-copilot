@@ -38,7 +38,9 @@ impl CleanStep {
 
     fn clean_element(&self, element: DocumentElement) -> DocumentElement {
         match element {
-            DocumentElement::Heading(level, text) => DocumentElement::Heading(level, self.clean_text(&text)),
+            DocumentElement::Heading(level, text) => {
+                DocumentElement::Heading(level, self.clean_text(&text))
+            }
             DocumentElement::Paragraph(text) => DocumentElement::Paragraph(self.clean_text(&text)),
             DocumentElement::Table(rows) => DocumentElement::Table(
                 rows.into_iter()
@@ -46,16 +48,24 @@ impl CleanStep {
                     .collect(),
             ),
             DocumentElement::List(items) => DocumentElement::List(
-                items.into_iter().map(|item| self.clean_text(&item)).collect(),
+                items
+                    .into_iter()
+                    .map(|item| self.clean_text(&item))
+                    .collect(),
             ),
-            DocumentElement::CodeBlock(lang, code) => DocumentElement::CodeBlock(lang, self.clean_code(&code)),
+            DocumentElement::CodeBlock(lang, code) => {
+                DocumentElement::CodeBlock(lang, self.clean_code(&code))
+            }
             DocumentElement::Command(text) => DocumentElement::Command(self.clean_text(&text)),
             DocumentElement::Example(text) => DocumentElement::Example(self.clean_text(&text)),
             DocumentElement::Warning(text) => DocumentElement::Warning(self.clean_text(&text)),
-            DocumentElement::Reference(text, url) => DocumentElement::Reference(
-                self.clean_text(&text),
-                url,
-            ),
+            DocumentElement::Reference(text, url) => {
+                DocumentElement::Reference(self.clean_text(&text), url)
+            }
+            DocumentElement::InlineCode(text) => {
+                DocumentElement::InlineCode(self.clean_text(&text))
+            }
+            DocumentElement::Bold(text) => DocumentElement::Bold(self.clean_text(&text)),
         }
     }
 

@@ -11,7 +11,8 @@ mod tests {
 
     fn setup_db() -> RepositoryFactory {
         let db = Database::new(":memory:").unwrap();
-        db.execute_batch(wikilabs_persistence::schema::INIT_SQL).unwrap();
+        db.execute_batch(wikilabs_persistence::schema::INIT_SQL)
+            .unwrap();
         RepositoryFactory::new(db)
     }
 
@@ -27,11 +28,13 @@ mod tests {
     fn test_workspace_manager_create() {
         let repos = setup_db();
         let wm = WorkspaceManager::new(repos);
-        let id = wm.create(WorkspaceConfig {
-            name: "test-ws".to_string(),
-            customer_name: "test-customer".to_string(),
-            technology_stack: vec!["rust".to_string()],
-        }).unwrap();
+        let id = wm
+            .create(WorkspaceConfig {
+                name: "test-ws".to_string(),
+                customer_name: "test-customer".to_string(),
+                technology_stack: vec!["rust".to_string()],
+            })
+            .unwrap();
         let list = wm.list().unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].1, "test-ws");
@@ -41,11 +44,13 @@ mod tests {
     fn test_workspace_manager_switch() {
         let repos = setup_db();
         let wm = WorkspaceManager::new(repos);
-        let id = wm.create(WorkspaceConfig {
-            name: "ws1".to_string(),
-            customer_name: "c1".to_string(),
-            technology_stack: vec![],
-        }).unwrap();
+        let id = wm
+            .create(WorkspaceConfig {
+                name: "ws1".to_string(),
+                customer_name: "c1".to_string(),
+                technology_stack: vec![],
+            })
+            .unwrap();
         wm.switch(id).unwrap();
         let active = wm.get_active().unwrap();
         assert_eq!(active.unwrap(), id);
@@ -58,18 +63,23 @@ mod tests {
         let id = uuid::Uuid::new_v4();
         let result = wm.switch(id);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Workspace not found"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Workspace not found"));
     }
 
     #[test]
     fn test_workspace_manager_delete() {
         let repos = setup_db();
         let wm = WorkspaceManager::new(repos);
-        let id = wm.create(WorkspaceConfig {
-            name: "ws1".to_string(),
-            customer_name: "c1".to_string(),
-            technology_stack: vec![],
-        }).unwrap();
+        let id = wm
+            .create(WorkspaceConfig {
+                name: "ws1".to_string(),
+                customer_name: "c1".to_string(),
+                technology_stack: vec![],
+            })
+            .unwrap();
         wm.switch(id).unwrap();
         wm.delete(id).unwrap();
         let active = wm.get_active().unwrap();
@@ -82,11 +92,13 @@ mod tests {
     fn test_workspace_manager_get_by_id() {
         let repos = setup_db();
         let wm = WorkspaceManager::new(repos);
-        let id = wm.create(WorkspaceConfig {
-            name: "ws1".to_string(),
-            customer_name: "c1".to_string(),
-            technology_stack: vec!["kubernetes".to_string(), "docker".to_string()],
-        }).unwrap();
+        let id = wm
+            .create(WorkspaceConfig {
+                name: "ws1".to_string(),
+                customer_name: "c1".to_string(),
+                technology_stack: vec!["kubernetes".to_string(), "docker".to_string()],
+            })
+            .unwrap();
         let config = wm.get_by_id(id).unwrap().unwrap();
         assert_eq!(config.name, "ws1");
         assert_eq!(config.customer_name, "c1");
@@ -117,12 +129,14 @@ mod tests {
             name: "ws1".to_string(),
             customer_name: "c1".to_string(),
             technology_stack: vec![],
-        }).unwrap();
+        })
+        .unwrap();
         wm.create(WorkspaceConfig {
             name: "ws2".to_string(),
             customer_name: "c2".to_string(),
             technology_stack: vec!["go".to_string()],
-        }).unwrap();
+        })
+        .unwrap();
         let list = wm.list().unwrap();
         assert_eq!(list.len(), 2);
     }
@@ -151,9 +165,12 @@ impl WorkspaceManager {
         let id = uuid::Uuid::new_v4();
         let tech_stack = serde_json::to_string(&config.technology_stack)
             .map_err(|e| anyhow::anyhow!("Failed to serialize tech stack: {e}"))?;
-        self.repos
-            .workspace
-            .insert(&id.to_string(), &config.name, &config.customer_name, &tech_stack)?;
+        self.repos.workspace.insert(
+            &id.to_string(),
+            &config.name,
+            &config.customer_name,
+            &tech_stack,
+        )?;
         // Set as active workspace
         {
             let mut active = self.active_id.lock().unwrap();
@@ -167,7 +184,12 @@ impl WorkspaceManager {
         let workspaces = self.repos.workspace.list_all()?;
         let result: Vec<(uuid::Uuid, String)> = workspaces
             .iter()
-            .map(|w| (uuid::Uuid::parse_str(&w.id).unwrap_or_default(), w.name.clone()))
+            .map(|w| {
+                (
+                    uuid::Uuid::parse_str(&w.id).unwrap_or_default(),
+                    w.name.clone(),
+                )
+            })
             .collect();
         Ok(result)
     }
@@ -188,7 +210,9 @@ impl WorkspaceManager {
 
     pub fn get_active(&self) -> anyhow::Result<Option<uuid::Uuid>> {
         let active = self.active_id.lock().unwrap();
-        Ok(active.as_ref().map(|s| uuid::Uuid::parse_str(s).unwrap_or_default()))
+        Ok(active
+            .as_ref()
+            .map(|s| uuid::Uuid::parse_str(s).unwrap_or_default()))
     }
 
     pub fn delete(&self, id: uuid::Uuid) -> anyhow::Result<()> {
@@ -206,8 +230,8 @@ impl WorkspaceManager {
         match ws {
             None => Ok(None),
             Some(ws_row) => {
-                let tech_stack: Vec<String> = serde_json::from_str(&ws_row.technology_stack)
-                    .unwrap_or_default();
+                let tech_stack: Vec<String> =
+                    serde_json::from_str(&ws_row.technology_stack).unwrap_or_default();
                 Ok(Some(WorkspaceConfig {
                     name: ws_row.name,
                     customer_name: ws_row.customer_name,

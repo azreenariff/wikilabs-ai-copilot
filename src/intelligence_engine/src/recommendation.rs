@@ -49,10 +49,7 @@ impl RecommendationBuilder {
                 .map(|t| t.name.clone())
                 .collect();
             recommendations.push(Recommendation {
-                title: format!(
-                    "Gather evidence for {} technologies",
-                    tech_names.join(", ")
-                ),
+                title: format!("Gather evidence for {} technologies", tech_names.join(", ")),
                 description: format!(
                     "We have detected {} technology(s) but are missing {} pieces of \
                     evidence. Consider gathering: {}",

@@ -3,10 +3,10 @@
 //! Parses headings, paragraphs, lists, code blocks, tables,
 //! commands, examples, warnings, and references.
 
-use super::{DocumentElement, ParserProvider};
 use super::Document;
-use regex::Regex;
+use super::{DocumentElement, ParserProvider};
 use once_cell::sync::Lazy;
+use regex::Regex;
 
 /// Markdown parser that preserves document structure.
 pub struct MarkdownParser;
@@ -18,10 +18,12 @@ static ORDERED_LIST_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*\d+\.\s+(.*)
 static BOLD_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\*\*(.*?)\*\*").unwrap());
 static INLINE_CODE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"`([^`]+)`").unwrap());
 static REFERENCE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").unwrap());
-static WARNING_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(>|\*)\s*(?:⚠|WARNING|WARN|⛔)\s*(.*)$").unwrap());
+static WARNING_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(>|\*)\s*(?:⚠|WARNING|WARN|⛔)\s*(.*)$").unwrap());
 static COMMAND_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^```\s*\n([^\n].*)$").unwrap());
 static EXAMPLE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^>\s+(.*)$").unwrap());
-static HORIZONTAL_RULE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(-{3,}|_{3,}|\*{3,})$").unwrap());
+static HORIZONTAL_RULE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(-{3,}|_{3,}|\*{3,})$").unwrap());
 static TABLE_HEADER_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\|(.+)\|").unwrap());
 
 impl MarkdownParser {
@@ -87,7 +89,9 @@ impl ParserProvider for MarkdownParser {
             // List item
             if LIST_ITEM_RE.is_match(line) || ORDERED_LIST_RE.is_match(line) {
                 let mut list_items = Vec::new();
-                while i < lines.len() && (LIST_ITEM_RE.is_match(lines[i]) || ORDERED_LIST_RE.is_match(lines[i])) {
+                while i < lines.len()
+                    && (LIST_ITEM_RE.is_match(lines[i]) || ORDERED_LIST_RE.is_match(lines[i]))
+                {
                     if let Some(cap) = LIST_ITEM_RE.captures(lines[i]) {
                         list_items.push(cap[1].trim().to_string());
                     } else if let Some(cap) = ORDERED_LIST_RE.captures(lines[i]) {
@@ -111,7 +115,12 @@ impl ParserProvider for MarkdownParser {
                 // Collect command until blank line or another command
                 let mut cmd_lines = vec![cmd_line.trim()];
                 i += 1;
-                while i < lines.len() && !lines[i].is_empty() && !HEADING_RE.is_match(lines[i]) && !lines[i].starts_with("$ ") && !lines[i].starts_with("# ") {
+                while i < lines.len()
+                    && !lines[i].is_empty()
+                    && !HEADING_RE.is_match(lines[i])
+                    && !lines[i].starts_with("$ ")
+                    && !lines[i].starts_with("# ")
+                {
                     if lines[i].starts_with('$') || lines[i].starts_with('#') {
                         cmd_lines.push(lines[i].trim());
                         i += 1;
@@ -134,9 +143,14 @@ impl ParserProvider for MarkdownParser {
             let mut para_lines = Vec::new();
             while i < lines.len() {
                 let l = lines[i];
-                if l.trim().is_empty() || HEADING_RE.is_match(l) || l.starts_with("```")
-                    || l.starts_with('|') || LIST_ITEM_RE.is_match(l)
-                    || WARNING_RE.is_match(l) || EXAMPLE_RE.is_match(l) {
+                if l.trim().is_empty()
+                    || HEADING_RE.is_match(l)
+                    || l.starts_with("```")
+                    || l.starts_with('|')
+                    || LIST_ITEM_RE.is_match(l)
+                    || WARNING_RE.is_match(l)
+                    || EXAMPLE_RE.is_match(l)
+                {
                     break;
                 }
                 para_lines.push(l);
@@ -203,7 +217,9 @@ impl MarkdownParser {
         let mut table = Vec::new();
 
         // Collect rows while we see table lines
-        while *i < lines.len() && (lines[*i].starts_with('|') || TABLE_HEADER_RE.is_match(lines[*i])) {
+        while *i < lines.len()
+            && (lines[*i].starts_with('|') || TABLE_HEADER_RE.is_match(lines[*i]))
+        {
             let line = lines[*i];
 
             // Skip separator lines (---|---|---)
@@ -213,7 +229,12 @@ impl MarkdownParser {
             }
 
             // Skip lines that are only a separator pattern
-            if line.chars().filter(|c| *c == '|' || *c == '-' || *c == ':').count() > line.len() / 2 {
+            if line
+                .chars()
+                .filter(|c| *c == '|' || *c == '-' || *c == ':')
+                .count()
+                > line.len() / 2
+            {
                 *i += 1;
                 continue;
             }

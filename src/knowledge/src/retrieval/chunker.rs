@@ -93,11 +93,11 @@ impl Chunker {
         // Assign IDs and timestamps
         chunks
             .into_iter()
-            .map(|chunk| {
+            .map(|chunk_text| {
                 let id = Uuid::new_v4().to_string();
-                KnowledgeChunk::new(id, chunk.content, metadata.clone())
+                Ok(KnowledgeChunk::new(id, &chunk_text, metadata.clone()))
             })
-            .collect()
+            .collect::<Result<Vec<_>>>()
     }
 
     /// Chunk by document structure (headings, sections).
@@ -216,7 +216,7 @@ impl Chunker {
                 current_chunk.push_str("\n\n");
                 current_chunk.push_str(paragraph);
             } else {
-                chunks.push(current_chunk);
+                chunks.push(current_chunk.clone());
                 current_chunk = if current_chunk.len() > overlap {
                     let chars: Vec<char> = current_chunk.chars().collect();
                     chars[chars.len() - overlap..].iter().collect()

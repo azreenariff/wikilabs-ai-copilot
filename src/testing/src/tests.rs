@@ -1,8 +1,8 @@
 //! Tests for testing utilities: mocks, fixtures.
 
-use crate::mocks::openai_mock::OpenAIMock;
-use crate::fixtures::workspace_fixtures::create_test_workspace_id;
 use crate::fixtures::knowledge_fixtures::sample_document_content;
+use crate::fixtures::workspace_fixtures::create_test_workspace_id;
+use crate::mocks::openai_mock::OpenAIMock;
 
 mod mock_tests {
     use super::*;

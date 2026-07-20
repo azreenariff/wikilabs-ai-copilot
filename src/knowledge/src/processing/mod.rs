@@ -6,23 +6,23 @@
 //! code blocks, tables, lists, warnings, references) to preserve engineering
 //! documentation structure rather than flattening to plain text.
 
-mod markdown;
-mod html;
-mod txt;
-mod yaml;
-mod json;
-mod xml;
-mod pdf;
 mod docx;
+mod html;
+mod json;
+mod markdown;
+mod pdf;
+mod txt;
+mod xml;
+mod yaml;
 
-pub use markdown::MarkdownParser;
-pub use html::HtmlParser;
-pub use txt::TxtParser;
-pub use yaml::YamlParser;
-pub use json::JsonParser;
-pub use xml::XmlParser;
-pub use pdf::PdfParser;
 pub use docx::DocxParser;
+pub use html::HtmlParser;
+pub use json::JsonParser;
+pub use markdown::MarkdownParser;
+pub use pdf::PdfParser;
+pub use txt::TxtParser;
+pub use xml::XmlParser;
+pub use yaml::YamlParser;
 
 /// Parsed document — structured representation of any supported format.
 #[derive(Debug, Clone)]
@@ -65,7 +65,11 @@ impl std::fmt::Display for Language {
 }
 
 impl Document {
-    pub fn new(full_text: impl Into<String>, author: impl Into<String>, source: impl Into<String>) -> Self {
+    pub fn new(
+        full_text: impl Into<String>,
+        author: impl Into<String>,
+        source: impl Into<String>,
+    ) -> Self {
         let full_text = full_text.into();
         let author = author.into();
         let source = source.into();

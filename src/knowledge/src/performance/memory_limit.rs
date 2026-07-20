@@ -86,13 +86,13 @@ impl MemoryLimit {
     /// Returns whether the soft limit has been exceeded.
     pub async fn exceeded_soft_limit(&self) -> bool {
         let usage = self.current_usage.lock().await;
-        usage > self.config.soft_limit_bytes
+        *usage > self.config.soft_limit_bytes
     }
 
     /// Returns whether the hard limit has been exceeded.
     pub async fn exceeded_hard_limit(&self) -> bool {
         let usage = self.current_usage.lock().await;
-        usage > self.config.hard_limit_bytes
+        *usage > self.config.hard_limit_bytes
     }
 
     /// Returns the configured soft limit.

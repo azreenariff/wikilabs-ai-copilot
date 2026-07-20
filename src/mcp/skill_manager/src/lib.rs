@@ -5,6 +5,6 @@
 //! - Context bus for cross-skill communication
 //! - MCP server bridge (external protocol layer)
 
+pub mod context_bus;
 pub mod manager;
 pub mod module;
-pub mod context_bus;

@@ -1,10 +1,11 @@
 //! Incremental embedding — update only changed/missing embeddings.
 
 use super::provider::EmbeddingProvider;
-use super::{EmbeddingPipelineConfig, EmbeddingResult, EmbeddingPipelineResult, EmbeddingStatus};
+use super::{EmbeddingPipelineConfig, EmbeddingPipelineResult, EmbeddingResult, EmbeddingStatus};
 use crate::doc::KnowledgeChunk;
-use tracing::{debug, info};
 use chrono::Utc;
+use std::collections::HashMap;
+use tracing::{debug, info};
 
 /// Incremental embedder — only processes changed documents.
 pub struct IncrementalEmbedder {
@@ -30,9 +31,9 @@ impl IncrementalEmbedder {
         let mut skipped = 0;
 
         // Build lookup of existing embeddings
-        let existing: std::collections::HashMap<String, (&Vec<f32>, &str)> = last_embeddings
+        let existing: HashMap<String, (&Vec<f32>, &str)> = last_embeddings
             .iter()
-            .map(|(id, vec, ver)| (id.to_string(), (vec, ver)))
+            .map(|(id, vec, ver)| (id.to_string(), (*vec, *ver)))
             .collect();
 
         // Find chunks that need updating
@@ -40,8 +41,10 @@ impl IncrementalEmbedder {
         let mut pending_texts = Vec::new();
 
         for chunk in all_chunks {
-            let has_embedding = chunk.content.is_some();
-            let version_changed = existing.get(&chunk.id.to_string())
+            // A chunk needs embedding if it has no vector_id yet
+            let has_embedding = !chunk.vector_id.is_empty();
+            let version_changed = existing
+                .get(&chunk.id.to_string())
                 .map(|(_, ver)| ver != &self.config.model)
                 .unwrap_or(false);
 
@@ -120,10 +123,7 @@ impl IncrementalEmbedder {
 
         info!(
             pending = total_pending,
-            successful,
-            failed,
-            duration_ms,
-            "Incremental embedding complete"
+            successful, failed, duration_ms, "Incremental embedding complete"
         );
 
         Ok(EmbeddingPipelineResult {

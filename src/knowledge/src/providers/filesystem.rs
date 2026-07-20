@@ -43,10 +43,9 @@ impl KnowledgeProvider for FilesystemProvider {
 
     fn supported_formats(&self) -> &[&str] {
         &[
-            "txt", "md", "markdown", "html", "htm", "yaml", "yml", "json",
-            "xml", "csv", "log", "conf", "cfg", "ini", "toml", "sh", "bash",
-            "py", "rs", "go", "java", "js", "ts", "c", "cpp", "h", "hpp",
-            "rb", "php", "pl", "sql", "r", "scala", "kt", "swift", "m",
+            "txt", "md", "markdown", "html", "htm", "yaml", "yml", "json", "xml", "csv", "log",
+            "conf", "cfg", "ini", "toml", "sh", "bash", "py", "rs", "go", "java", "js", "ts", "c",
+            "cpp", "h", "hpp", "rb", "php", "pl", "sql", "r", "scala", "kt", "swift", "m",
         ]
     }
 
@@ -89,17 +88,20 @@ impl KnowledgeProvider for FilesystemProvider {
 
     async fn parse(&self, path: &str) -> Result<ProviderDocument> {
         let p = Path::new(path);
-        let content = fs::read_to_string(p)
-            .with_context(|| format!("Failed to read file: {}", path))?;
+        let content =
+            fs::read_to_string(p).with_context(|| format!("Failed to read file: {}", path))?;
 
-        let metadata = fs::metadata(p)
-            .with_context(|| format!("Failed to read metadata: {}", path))?;
+        let metadata =
+            fs::metadata(p).with_context(|| format!("Failed to read metadata: {}", path))?;
 
         let modified_at = metadata
             .modified()
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| Utc::timestamp_opt(d.as_secs() as i64, 0))
+            .map(|d| {
+                chrono::DateTime::<chrono::Utc>::from_timestamp(d.as_secs() as i64, 0)
+                    .unwrap_or_default()
+            })
             .unwrap_or_else(Utc::now);
 
         let title = p
@@ -112,6 +114,8 @@ impl KnowledgeProvider for FilesystemProvider {
             .map(|e| e.to_string_lossy().to_string())
             .unwrap_or_default();
 
+        let mime_type = Self::guess_mime_type(&extension);
+
         Ok(ProviderDocument {
             id: uuid::Uuid::new_v4(),
             title,
@@ -119,7 +123,7 @@ impl KnowledgeProvider for FilesystemProvider {
             extension,
             content,
             size_bytes: metadata.len() as usize,
-            mime_type: Self::guess_mime_type(&extension),
+            mime_type,
             author: String::new(),
             modified_at,
         })
@@ -141,4 +145,3 @@ impl FilesystemProvider {
         }
     }
 }
-

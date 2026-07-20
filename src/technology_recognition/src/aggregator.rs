@@ -6,9 +6,7 @@
 use wikilabs_data_types::TechnologyInference;
 
 /// Combine multiple inferences for the same technology by averaging confidence.
-pub fn aggregate_by_technology(
-    inferences: Vec<TechnologyInference>,
-) -> Vec<TechnologyInference> {
+pub fn aggregate_by_technology(inferences: Vec<TechnologyInference>) -> Vec<TechnologyInference> {
     let mut by_tech: std::collections::HashMap<String, Vec<TechnologyInference>> =
         std::collections::HashMap::new();
     for inference in inferences {

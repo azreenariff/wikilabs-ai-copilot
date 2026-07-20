@@ -1,8 +1,8 @@
 //! Chunk generation step — split into chunks with overlap.
 
+use crate::doc::KnowledgeChunk;
 use crate::processing::Document;
 use crate::processing::DocumentElement;
-use crate::doc::KnowledgeChunk;
 use chrono::Utc;
 use tracing::debug;
 
@@ -21,7 +21,11 @@ impl ChunkStep {
     }
 
     /// Run the chunk generation step on a normalized document.
-    pub fn run(&self, doc: &Document, workspace_id: uuid::Uuid) -> anyhow::Result<Vec<KnowledgeChunk>> {
+    pub fn run(
+        &self,
+        doc: &Document,
+        workspace_id: uuid::Uuid,
+    ) -> anyhow::Result<Vec<KnowledgeChunk>> {
         if doc.full_text.is_empty() {
             debug!("Empty document, no chunks generated");
             return Ok(Vec::new());
@@ -34,25 +38,13 @@ impl ChunkStep {
         if struct_chunks.len() >= 2 {
             // Use structural chunks if meaningful
             for (idx, content) in struct_chunks {
-                chunks.push(self.create_chunk(
-                    idx,
-                    &content,
-                    &doc.source,
-                    workspace_id,
-                    true,
-                ));
+                chunks.push(self.create_chunk(idx, &content, &doc.source, workspace_id, true));
             }
         } else {
             // Fall back to text-based chunking with overlap
             let text_chunks = self.chunk_by_text(&doc.full_text);
             for (idx, content) in text_chunks {
-                chunks.push(self.create_chunk(
-                    idx,
-                    &content,
-                    &doc.source,
-                    workspace_id,
-                    false,
-                ));
+                chunks.push(self.create_chunk(idx, &content, &doc.source, workspace_id, false));
             }
         }
 
@@ -71,7 +63,7 @@ impl ChunkStep {
     fn chunk_by_structure(&self, doc: &Document) -> Vec<(usize, String)> {
         let mut chunks: Vec<(usize, String)> = Vec::new();
         let mut current_content = String::new();
-        let mut current_level: Option<u32> = None;
+        let mut _current_level: Option<u32> = None;
         let mut idx = 0;
 
         for element in &doc.elements {
@@ -84,7 +76,7 @@ impl ChunkStep {
                     }
                     // Start new chunk with heading
                     current_content = format!("# {}\n", text);
-                    current_level = Some(*level);
+                    _current_level = Some(*level);
                 }
                 _ => {
                     let text = self.element_to_text(element);
@@ -150,7 +142,8 @@ impl ChunkStep {
 
     fn find_break_point(&self, text: &str, current_end: usize, total: usize) -> usize {
         // Look for sentence/paragraph boundaries after current_size
-        let after: Vec<char> = text[current_end.min(text.len())..].iter().collect();
+        let after_text = &text[current_end.min(text.len())..];
+        let after: Vec<char> = after_text.chars().collect();
         for (i, c) in after.iter().enumerate() {
             if *c == '.' || *c == '!' || *c == '?' || *c == '\n' {
                 return current_end + i + 1;
@@ -168,12 +161,16 @@ impl ChunkStep {
                 format!("{} {}", "#".repeat(*level as usize), text)
             }
             DocumentElement::Paragraph(text) => text.clone(),
-            DocumentElement::Table(rows) => {
-                rows.iter().map(|row| row.join(" | ")).collect::<Vec<_>>().join("\n")
-            }
-            DocumentElement::List(items) => {
-                items.iter().map(|item| format!("- {}", item)).collect::<Vec<_>>().join("\n")
-            }
+            DocumentElement::Table(rows) => rows
+                .iter()
+                .map(|row| row.join(" | "))
+                .collect::<Vec<_>>()
+                .join("\n"),
+            DocumentElement::List(items) => items
+                .iter()
+                .map(|item| format!("- {}", item))
+                .collect::<Vec<_>>()
+                .join("\n"),
             DocumentElement::CodeBlock(lang, code) => {
                 if lang.is_empty() {
                     code.clone()
@@ -193,12 +190,30 @@ impl ChunkStep {
             DocumentElement::Reference(text, url) => {
                 format!("[{}]({})", text, url)
             }
+            DocumentElement::InlineCode(text) => {
+                format!("`{}`", text)
+            }
+            DocumentElement::Bold(text) => {
+                format!("**{}**", text)
+            }
         }
     }
 
-    fn create_chunk(&self, idx: usize, content: &str, source: &str, workspace_id: uuid::Uuid, structured: bool) -> KnowledgeChunk {
+    fn create_chunk(
+        &self,
+        idx: usize,
+        content: &str,
+        source: &str,
+        workspace_id: uuid::Uuid,
+        structured: bool,
+    ) -> KnowledgeChunk {
         let id = uuid::Uuid::new_v4();
-        let vector_id = format!("{}_{}_{}", source.replace(|c: char| !c.is_alphanumeric(), "_"), idx, if structured { "s" } else { "t" });
+        let vector_id = format!(
+            "{}_{}_{}",
+            source.replace(|c: char| !c.is_alphanumeric(), "_"),
+            idx,
+            if structured { "s" } else { "t" }
+        );
         let now = Utc::now();
 
         KnowledgeChunk {

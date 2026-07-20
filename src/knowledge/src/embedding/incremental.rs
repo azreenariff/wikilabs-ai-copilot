@@ -1,9 +1,8 @@
 //! Incremental embedding — only new/changed docs.
 //!
-/// Tracks which documents have been embedded and skips unchanged ones.
-
-use super::provider::{EmbeddingProvider, EmbeddingResult};
 use super::local::LocalEmbeddingProvider;
+/// Tracks which documents have been embedded and skips unchanged ones.
+use super::provider::{EmbeddingProvider, EmbeddingResult};
 use super::BatchEmbedder;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -83,7 +82,7 @@ impl IncrementalEmbedder {
         let mut skipped = 0;
 
         for (doc_id, content) in &updates {
-            let hash = self.content_hasher(content);
+            let hash = (self.content_hasher)(content);
             if let Some(cached_hash) = state.embedded_hashes.get(doc_id) {
                 if cached_hash == &hash {
                     debug!(doc_id, "Content unchanged, skipping");
@@ -108,7 +107,10 @@ impl IncrementalEmbedder {
         }
 
         // Batch embed new/changed documents
-        let texts: Vec<&str> = to_embed.iter().map(|(_, content, _)| content.as_str()).collect();
+        let texts: Vec<&str> = to_embed
+            .iter()
+            .map(|(_, content, _)| content.as_str())
+            .collect();
         let results = self.batch_embedder.embed(texts).await?;
 
         // Update state
@@ -122,10 +124,7 @@ impl IncrementalEmbedder {
 
         state.last_embedding_time = Some(chrono::Utc::now());
 
-        debug!(
-            embedded = output.len(),
-            "Incremental embedding complete"
-        );
+        debug!(embedded = output.len(), "Incremental embedding complete");
 
         Ok(output)
     }
@@ -133,7 +132,9 @@ impl IncrementalEmbedder {
     /// Mark a document as embedded (for external tracking).
     pub async fn mark_embedded(&self, doc_id: &str, content_hash: &str) {
         let mut state = self.state.lock().await;
-        state.embedded_hashes.insert(doc_id.to_string(), content_hash.to_string());
+        state
+            .embedded_hashes
+            .insert(doc_id.to_string(), content_hash.to_string());
     }
 
     /// Clear the incremental state (e.g., on full reindex).

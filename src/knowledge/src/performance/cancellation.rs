@@ -1,6 +1,6 @@
 //! Cancellation support — cooperative cancellation for long-running operations.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 use tracing::debug;
 
@@ -17,7 +17,11 @@ pub struct CancellationToken {
 
 struct CancelInner {
     sender: watch::Sender<bool>,
-    cancelled_rx: watch::Receiver<bool>,
+    /// Keep a receiver alive so that sender.send() doesn't fail.
+    _receiver: watch::Receiver<bool>,
+    /// Parent sender for child tokens (optional).
+    /// Wrapped in Mutex for mutation in child_token().
+    parent: Mutex<Option<watch::Sender<bool>>>,
 }
 
 impl CancellationToken {
@@ -27,7 +31,8 @@ impl CancellationToken {
         Self {
             inner: Arc::new(CancelInner {
                 sender,
-                cancelled_rx: receiver,
+                _receiver: receiver,
+                parent: Mutex::new(None),
             }),
         }
     }
@@ -39,7 +44,18 @@ impl CancellationToken {
     }
 
     /// Returns true if cancellation has been requested.
+    /// For child tokens, also checks if the parent is cancelled.
     pub fn is_cancelled(&self) -> bool {
+        // Check parent first (guard must be dropped before we access sender)
+        {
+            let parent_guard = self.inner.parent.lock().unwrap();
+            if let Some(ref parent) = *parent_guard {
+                if *parent.borrow() {
+                    return true;
+                }
+            }
+        }
+        // Then check own state
         *self.inner.sender.borrow()
     }
 
@@ -79,9 +95,13 @@ impl CancellationToken {
     /// If this token is cancelled, the child will also be cancelled.
     /// The child can be cancelled independently without affecting the parent.
     pub fn child_token(&self) -> CancellationToken {
-        let mut child = self.clone();
         let parent_cancelled = self.is_cancelled();
 
+        // Create child with parent reference
+        let child = CancellationToken::new();
+        *child.inner.parent.lock().unwrap() = Some(self.inner.sender.clone());
+
+        // If parent was already cancelled, mark child as cancelled too
         if parent_cancelled {
             child.cancel();
         }

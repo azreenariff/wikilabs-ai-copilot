@@ -17,22 +17,13 @@ pub enum ProgressEvent {
         total: Option<u64>,
     },
     /// A specific document/item is being processed.
-    Document {
-        document_id: String,
-        action: String,
-    },
+    Document { document_id: String, action: String },
     /// The operation has completed successfully.
-    Complete {
-        message: String,
-    },
+    Complete { message: String },
     /// The operation encountered an error.
-    Error {
-        message: String,
-    },
+    Error { message: String },
     /// A warning was issued during the operation.
-    Warning {
-        message: String,
-    },
+    Warning { message: String },
 }
 
 impl ProgressEvent {
@@ -222,7 +213,8 @@ mod tests {
 
     #[test]
     fn test_callback_reporter() {
-        let reported = Arc::new(Mutex::new(Vec::new()));
+        use std::sync::Mutex as StdMutex;
+        let reported = Arc::new(StdMutex::new(Vec::new()));
         let reported_clone = reported.clone();
 
         let reporter = CallbackProgressReporter::new(move |event: ProgressEvent| {

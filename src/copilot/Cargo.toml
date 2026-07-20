@@ -1,0 +1,24 @@
+[package]
+name = "wikilabs-copilot"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+wikilabs-data-types = { path = "../core/data_types" }
+wikilabs-engineering-timeline = { path = "../engineering_timeline" }
+wikilabs-intent = { path = "../intent" }
+wikilabs-knowledge = { path = "../knowledge" }
+wikilabs-observation = { path = "../observation" }
+wikilabs-workflow-engine = { path = "../workflow_engine" }
+wikilabs-workspace = { path = "../workspace" }
+wikilabs-intelligence-engine = { path = "../intelligence_engine" }
+wikilabs-recommendation-readiness = { path = "../recommendation_readiness" }

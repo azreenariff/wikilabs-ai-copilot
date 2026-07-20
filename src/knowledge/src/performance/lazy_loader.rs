@@ -41,8 +41,8 @@ impl LazyPackLoader {
     /// Registers a pack directory for lazy loading.
     pub async fn register_pack(&self, name: &str, path: PathBuf) {
         let mut packs = self.packs.lock().await;
-        packs.insert(name.to_string(), path);
         debug!(pack = %name, path = %path.display(), "Registered pack for lazy loading");
+        packs.insert(name.to_string(), path);
     }
 
     /// Unregisters a pack.
@@ -125,7 +125,10 @@ impl LazyPackLoader {
             path: pack_path,
         };
 
-        self.loaded.lock().await.insert(pack_name.to_string(), data.clone());
+        self.loaded
+            .lock()
+            .await
+            .insert(pack_name.to_string(), data.clone());
 
         info!(
             pack = %pack_name,
@@ -164,10 +167,7 @@ impl LazyPackLoader {
     pub async fn unloaded_count(&self) -> usize {
         let packs = self.packs.lock().await;
         let loaded = self.loaded.lock().await;
-        packs
-            .keys()
-            .filter(|k| !loaded.contains_key(*k))
-            .count()
+        packs.keys().filter(|k| !loaded.contains_key(*k)).count()
     }
 }
 
@@ -186,7 +186,9 @@ mod tests {
         let loader = make_loader();
         let tmp = TempDir::new().unwrap();
 
-        loader.register_pack("test-pack", tmp.path().to_path_buf()).await;
+        loader
+            .register_pack("test-pack", tmp.path().to_path_buf())
+            .await;
 
         let packs = loader.registered_packs().await;
         assert_eq!(packs.len(), 1);
@@ -198,7 +200,9 @@ mod tests {
         let loader = make_loader();
         let tmp = TempDir::new().unwrap();
 
-        loader.register_pack("test-pack", tmp.path().to_path_buf()).await;
+        loader
+            .register_pack("test-pack", tmp.path().to_path_buf())
+            .await;
         loader.unregister_pack("test-pack").await;
 
         let packs = loader.registered_packs().await;
@@ -216,7 +220,9 @@ mod tests {
         )
         .unwrap();
 
-        loader.register_pack("test-pack", tmp.path().to_path_buf()).await;
+        loader
+            .register_pack("test-pack", tmp.path().to_path_buf())
+            .await;
 
         let data = loader
             .load_pack("test-pack", CancellationToken::new())
@@ -233,7 +239,9 @@ mod tests {
         let loader = make_loader();
         let tmp = TempDir::new().unwrap();
 
-        loader.register_pack("test-pack", tmp.path().to_path_buf()).await;
+        loader
+            .register_pack("test-pack", tmp.path().to_path_buf())
+            .await;
 
         // First load
         let data1 = loader
@@ -252,7 +260,9 @@ mod tests {
         let loader = make_loader();
         let tmp = TempDir::new().unwrap();
 
-        loader.register_pack("test-pack", tmp.path().to_path_buf()).await;
+        loader
+            .register_pack("test-pack", tmp.path().to_path_buf())
+            .await;
 
         let token = CancellationToken::new();
         token.cancel();

@@ -1,9 +1,12 @@
 //! Parse step — delegate to appropriate provider.
 
 use super::discover::DiscoveredDoc;
-use crate::processing::{DocumentElement, ParserProvider, MarkdownParser, HtmlParser, TxtParser, YamlParser, JsonParser, XmlParser, PdfParser, DocxParser};
 use crate::pipeline::PipelineConfig;
 use crate::processing::Document;
+use crate::processing::{
+    DocumentElement, DocxParser, HtmlParser, JsonParser, MarkdownParser, ParserProvider, PdfParser,
+    TxtParser, XmlParser, YamlParser,
+};
 use tracing::{debug, warn};
 
 /// The parse pipeline step.

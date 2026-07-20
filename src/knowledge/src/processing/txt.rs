@@ -2,8 +2,8 @@
 //!
 //! Simple text parser that splits content into paragraphs.
 
-use super::{DocumentElement, ParserProvider};
 use super::Document;
+use super::{DocumentElement, ParserProvider};
 
 /// Text file parser.
 pub struct TxtParser;
@@ -34,7 +34,11 @@ impl TxtParser {
 
             if is_heading_candidate {
                 elements.push(DocumentElement::Heading(
-                    if line.starts_with("## ") || line.starts_with("### ") { 2 } else { 1 },
+                    if line.starts_with("## ") || line.starts_with("### ") {
+                        2
+                    } else {
+                        1
+                    },
                     trimmed.to_string(),
                 ));
                 i += 1;
@@ -42,10 +46,18 @@ impl TxtParser {
             }
 
             // Detect code block lines
-            if line.starts_with("    ") || line.starts_with("\t") || line.starts_with("$ ") || line.starts_with("# ") {
+            if line.starts_with("    ")
+                || line.starts_with("\t")
+                || line.starts_with("$ ")
+                || line.starts_with("# ")
+            {
                 let mut code_lines = Vec::new();
                 while i < lines.len() {
-                    if lines[i].trim().is_empty() || (lines[i].len() > 4 && !lines[i].starts_with("    ") && !lines[i].starts_with("\t")) {
+                    if lines[i].trim().is_empty()
+                        || (lines[i].len() > 4
+                            && !lines[i].starts_with("    ")
+                            && !lines[i].starts_with("\t"))
+                    {
                         break;
                     }
                     code_lines.push(lines[i]);
@@ -59,7 +71,8 @@ impl TxtParser {
             // Detect warning lines
             if trimmed.to_lowercase().starts_with("warning")
                 || trimmed.to_lowercase().starts_with("note:")
-                || trimmed.to_lowercase().starts_with("caution:") {
+                || trimmed.to_lowercase().starts_with("caution:")
+            {
                 elements.push(DocumentElement::Warning(trimmed.to_string()));
                 i += 1;
                 continue;

@@ -34,7 +34,13 @@ impl WorkspaceRepository {
         Self { db }
     }
 
-    pub fn insert(&self, id: &str, name: &str, customer_name: &str, tech_stack: &str) -> Result<()> {
+    pub fn insert(
+        &self,
+        id: &str,
+        name: &str,
+        customer_name: &str,
+        tech_stack: &str,
+    ) -> Result<()> {
         self.db.execute(
             "INSERT INTO workspaces (id, name, customer_name, technology_stack, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, datetime('now'), datetime('now'))",
@@ -44,7 +50,13 @@ impl WorkspaceRepository {
         Ok(())
     }
 
-    pub fn update(&self, id: &str, name: &str, customer_name: &str, tech_stack: &str) -> Result<usize> {
+    pub fn update(
+        &self,
+        id: &str,
+        name: &str,
+        customer_name: &str,
+        tech_stack: &str,
+    ) -> Result<usize> {
         let rows = self.db.execute(
             "UPDATE workspaces SET name=?2, customer_name=?3, technology_stack=?4, updated_at=datetime('now')
              WHERE id=?1",
@@ -55,7 +67,9 @@ impl WorkspaceRepository {
     }
 
     pub fn delete(&self, id: &str) -> Result<usize> {
-        let rows = self.db.execute("DELETE FROM workspaces WHERE id=?1", &[&id])?;
+        let rows = self
+            .db
+            .execute("DELETE FROM workspaces WHERE id=?1", &[&id])?;
         debug!(id, rows, "Workspace deleted");
         Ok(rows)
     }
@@ -116,7 +130,14 @@ impl ChatMessageRepository {
         Self { db }
     }
 
-    pub fn insert(&self, id: &str, workspace_id: &str, role: &str, content: &str, tool_calls: &str) -> Result<()> {
+    pub fn insert(
+        &self,
+        id: &str,
+        workspace_id: &str,
+        role: &str,
+        content: &str,
+        tool_calls: &str,
+    ) -> Result<()> {
         self.db.execute(
             "INSERT INTO chat_messages (id, workspace_id, role, content, created_at, tool_calls)
              VALUES (?1, ?2, ?3, ?4, datetime('now'), ?5)",
@@ -126,26 +147,35 @@ impl ChatMessageRepository {
         Ok(())
     }
 
-    pub fn get_by_workspace(&self, workspace_id: &str, limit: usize) -> Result<Vec<ChatMessageRow>> {
-        self.db.query_all(
-            "SELECT id, workspace_id, role, content, created_at, tool_calls
+    pub fn get_by_workspace(
+        &self,
+        workspace_id: &str,
+        limit: usize,
+    ) -> Result<Vec<ChatMessageRow>> {
+        self.db
+            .query_all(
+                "SELECT id, workspace_id, role, content, created_at, tool_calls
              FROM chat_messages WHERE workspace_id=?1 ORDER BY created_at ASC LIMIT ?2",
-            &[&workspace_id, &(limit as i64)],
-            |row| Ok(ChatMessageRow {
-                id: row.get(0)?,
-                workspace_id: row.get(1)?,
-                role: row.get(2)?,
-                content: row.get(3)?,
-                created_at: row.get(4)?,
-                tool_calls: row.get(5)?,
-            }),
-        )
-        .context("Failed to query chat messages by workspace")
+                &[&workspace_id, &(limit as i64)],
+                |row| {
+                    Ok(ChatMessageRow {
+                        id: row.get(0)?,
+                        workspace_id: row.get(1)?,
+                        role: row.get(2)?,
+                        content: row.get(3)?,
+                        created_at: row.get(4)?,
+                        tool_calls: row.get(5)?,
+                    })
+                },
+            )
+            .context("Failed to query chat messages by workspace")
     }
 
     pub fn delete_by_workspace(&self, workspace_id: &str) -> Result<usize> {
-        let rows = self.db
-            .execute("DELETE FROM chat_messages WHERE workspace_id=?1", &[&workspace_id])?;
+        let rows = self.db.execute(
+            "DELETE FROM chat_messages WHERE workspace_id=?1",
+            &[&workspace_id],
+        )?;
         debug!(workspace_id, rows, "Chat messages deleted for workspace");
         Ok(rows)
     }
@@ -173,7 +203,14 @@ impl KnowledgeDocumentRepository {
         Self { db }
     }
 
-    pub fn insert(&self, id: &str, title: &str, source: &str, workspace_id: &str, author: &str) -> Result<()> {
+    pub fn insert(
+        &self,
+        id: &str,
+        title: &str,
+        source: &str,
+        workspace_id: &str,
+        author: &str,
+    ) -> Result<()> {
         self.db.execute(
             "INSERT INTO knowledge_documents (id, title, source, workspace_id, author, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, datetime('now'), datetime('now'))",
@@ -192,7 +229,9 @@ impl KnowledgeDocumentRepository {
     }
 
     pub fn delete(&self, id: &str) -> Result<usize> {
-        let rows = self.db.execute("DELETE FROM knowledge_documents WHERE id=?1", &[&id])?;
+        let rows = self
+            .db
+            .execute("DELETE FROM knowledge_documents WHERE id=?1", &[&id])?;
         debug!(id, rows, "Knowledge document deleted");
         Ok(rows)
     }
@@ -276,7 +315,8 @@ impl KnowledgeChunkRepository {
     }
 
     pub fn delete_by_document(&self, doc_id: &str) -> Result<()> {
-        self.db.execute("DELETE FROM knowledge_chunks WHERE doc_id=?1", &[&doc_id])?;
+        self.db
+            .execute("DELETE FROM knowledge_chunks WHERE doc_id=?1", &[&doc_id])?;
         Ok(())
     }
 }
@@ -315,7 +355,9 @@ impl SettingsRepository {
     }
 
     pub fn delete(&self, key: &str) -> Result<usize> {
-        let rows = self.db.execute("DELETE FROM settings WHERE key=?1", &[&key])?;
+        let rows = self
+            .db
+            .execute("DELETE FROM settings WHERE key=?1", &[&key])?;
         Ok(rows)
     }
 }
@@ -341,7 +383,14 @@ impl AuditLogRepository {
         Self { db }
     }
 
-    pub fn append(&self, id: &str, action: &str, actor: &str, hash: &str, signature: Option<&str>) -> Result<()> {
+    pub fn append(
+        &self,
+        id: &str,
+        action: &str,
+        actor: &str,
+        hash: &str,
+        signature: Option<&str>,
+    ) -> Result<()> {
         self.db.execute(
             "INSERT INTO audit_log (id, timestamp, action, actor, hash, signature)
              VALUES (?1, datetime('now'), ?2, ?3, ?4, ?5)",
@@ -413,7 +462,9 @@ mod tests {
         assert_eq!(ws.name, "Test");
         assert_eq!(ws.customer_name, "Customer");
 
-        ws_repo.update(&ws_id, "Updated", "Cust", "['OpenShift']").unwrap();
+        ws_repo
+            .update(&ws_id, "Updated", "Cust", "['OpenShift']")
+            .unwrap();
         let ws = ws_repo.get_by_id(&ws_id).unwrap().unwrap();
         assert_eq!(ws.name, "Updated");
         assert_eq!(ws.technology_stack, "['OpenShift']");
@@ -431,7 +482,9 @@ mod tests {
         let msg_id = Uuid::new_v4().to_string();
 
         ws_repo.insert(&ws_id, "TestWs", "Customer", "[]").unwrap();
-        msg_repo.insert(&msg_id, &ws_id, "user", "Hello", "[]").unwrap();
+        msg_repo
+            .insert(&msg_id, &ws_id, "user", "Hello", "[]")
+            .unwrap();
         let msgs = msg_repo.get_by_workspace(&ws_id, 10).unwrap();
         assert_eq!(msgs.len(), 1);
         assert_eq!(msgs[0].role, "user");
@@ -447,7 +500,9 @@ mod tests {
         let ws_id = Uuid::new_v4().to_string();
 
         ws_repo.insert(&ws_id, "TestWs", "Customer", "[]").unwrap();
-        doc_repo.insert(&doc_id, "Test Doc", "file.md", &ws_id, "Author").unwrap();
+        doc_repo
+            .insert(&doc_id, "Test Doc", "file.md", &ws_id, "Author")
+            .unwrap();
         let docs = doc_repo.list_by_workspace(&ws_id).unwrap();
         assert_eq!(docs.len(), 1);
         assert_eq!(docs[0].title, "Test Doc");
@@ -460,7 +515,9 @@ mod tests {
     fn test_knowledge_chunk_fts() {
         let chunk_repo = KnowledgeChunkRepository::new(test_db());
         let doc_id = Uuid::new_v4().to_string();
-        chunk_repo.insert(&doc_id, "OpenShift deployment guide").unwrap();
+        chunk_repo
+            .insert(&doc_id, "OpenShift deployment guide")
+            .unwrap();
 
         // FTS5 search
         let results = chunk_repo.search("", "OpenShift");
@@ -475,7 +532,9 @@ mod tests {
         let val = settings_repo.get("api_key").unwrap().unwrap();
         assert_eq!(val, b"secret");
 
-        settings_repo.set("api_key", b"new_secret", "Updated").unwrap();
+        settings_repo
+            .set("api_key", b"new_secret", "Updated")
+            .unwrap();
         let val = settings_repo.get("api_key").unwrap().unwrap();
         assert_eq!(val, b"new_secret");
     }
@@ -484,7 +543,9 @@ mod tests {
     fn test_audit_log() {
         let audit_repo = AuditLogRepository::new(test_db());
         let entry_id = Uuid::new_v4().to_string();
-        audit_repo.append(&entry_id, "test_action", "test_actor", "abc123", None).unwrap();
+        audit_repo
+            .append(&entry_id, "test_action", "test_actor", "abc123", None)
+            .unwrap();
 
         let entries = audit_repo.list_recent(10).unwrap();
         assert_eq!(entries.len(), 1);

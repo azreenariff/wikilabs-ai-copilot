@@ -1,7 +1,6 @@
 //! Embedding versioning — track which model generated which embeddings.
 //!
 /// Supports embedding version tracking for rollback and migration.
-
 use super::provider::EmbeddingResult;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -86,7 +85,7 @@ impl EmbeddingVersionManager {
     /// Create a new embedding version.
     pub fn create_version(
         &mut self,
-        model_name: &str,
+        model_name: String,
         dimensions: usize,
         description: String,
     ) -> EmbeddingVersion {
@@ -101,7 +100,7 @@ impl EmbeddingVersionManager {
             }
         }
 
-        let version = EmbeddingVersion::new(model_name, dimensions, &description);
+        let version = EmbeddingVersion::new(&model_name, dimensions, &description);
         self.versions.push(version.clone());
         self.active_version = Some(version.id);
         debug!(version_id = %version.id, model = model_name, "New embedding version created");
@@ -146,7 +145,11 @@ impl EmbeddingVersionManager {
     }
 
     /// Migrate embeddings to a new version (placeholder for future implementation).
-    pub fn migrate_to(&mut self, target_version_id: uuid::Uuid, source_docs: &[uuid::Uuid]) -> anyhow::Result<()> {
+    pub fn migrate_to(
+        &mut self,
+        target_version_id: uuid::Uuid,
+        source_docs: &[uuid::Uuid],
+    ) -> anyhow::Result<()> {
         if !self.versions.iter().any(|v| v.id == target_version_id) {
             anyhow::bail!("Target version {} does not exist", target_version_id);
         }
@@ -162,7 +165,8 @@ impl EmbeddingVersionManager {
 
     /// Rollback to a previous version (placeholder for future implementation).
     pub fn rollback_to(&mut self, version_id: uuid::Uuid) -> anyhow::Result<()> {
-        let version = self.get_by_id(version_id)
+        let version = self
+            .get_by_id(version_id)
             .ok_or_else(|| anyhow::anyhow!("Version {} not found", version_id))?;
 
         if version.status != EmbeddingVersionStatus::Active {

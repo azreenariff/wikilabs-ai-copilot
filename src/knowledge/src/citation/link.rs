@@ -1,6 +1,6 @@
 //! Citation link tracking.
 
-use super::{LinkTracking, LinkStatus};
+use super::{LinkStatus, LinkTracking};
 use chrono::Utc;
 
 /// Represents a tracked link within a citation.

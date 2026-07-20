@@ -261,7 +261,9 @@ mod tests {
             alloc.knowledge_context_pct,
             alloc.workspace_context_pct,
             alloc.padding_pct,
-        ].iter().sum();
+        ]
+        .iter()
+        .sum();
         assert!((total - 1.0).abs() < 0.01);
     }
 

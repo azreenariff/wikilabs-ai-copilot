@@ -3,27 +3,27 @@
 //! Steps: discover → validate → dedup → incremental → parse → clean → normalize →
 //! chunk → metadata_extract → version_detect → index_prepare
 
-pub mod steps;
 pub mod result;
+pub mod steps;
 
 use anyhow::Context;
-use steps::discover::DiscoverStep;
-use steps::dedup::DedupStep;
-use steps::incremental::IncrementalStep;
-use steps::parse::ParseStep;
-use steps::clean::CleanStep;
-use steps::normalize::NormalizeStep;
-use steps::validate::ValidateStep;
 use steps::chunk::ChunkStep;
-use steps::metadata_extract::MetadataExtractStep;
-use steps::version_detect::VersionDetectStep;
+use steps::clean::CleanStep;
+use steps::dedup::DedupStep;
+use steps::discover::DiscoverStep;
+use steps::incremental::IncrementalStep;
 use steps::index_prepare::IndexPrepareStep;
+use steps::metadata_extract::MetadataExtractStep;
+use steps::normalize::NormalizeStep;
+use steps::parse::ParseStep;
+use steps::validate::ValidateStep;
+use steps::version_detect::VersionDetectStep;
 use steps::Language;
 
 use crate::doc::{KnowledgeChunk, KnowledgeDocument};
-pub use result::ChunkInfo;
 use crate::pipeline::result::{DiscoveredDoc, PipelineResult};
 use crate::processing::Document;
+pub use result::ChunkInfo;
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -146,11 +146,16 @@ impl IngestionPipeline {
 
         // Step 1: Discover
         let discover = DiscoverStep::new(&self.config);
-        let discovered = discover.run(&paths)
+        let discovered = discover
+            .run(&paths)
             .await
             .context("Document discovery failed")?;
 
-        debug!(count = discovered.len(), "Discovered {} documents", discovered.len());
+        debug!(
+            count = discovered.len(),
+            "Discovered {} documents",
+            discovered.len()
+        );
         result.discovery_count = discovered.len();
         result.discovered_docs.clone_from(&discovered);
 
@@ -168,14 +173,20 @@ impl IngestionPipeline {
                     Ok(_) => valid_docs.push(doc.clone()),
                     Err(e) => {
                         warn!(path = ?doc.path, error = %e, "Document validation failed, skipping");
-                        result.failed_docs.push((doc.path.to_string_lossy().to_string(), e.to_string()));
+                        result
+                            .failed_docs
+                            .push((doc.path.to_string_lossy().to_string(), e.to_string()));
                     }
                 }
             }
             valid_docs
         };
         result.validated_count = validated.len();
-        debug!(count = validated.len(), "Validated {} documents", validated.len());
+        debug!(
+            count = validated.len(),
+            "Validated {} documents",
+            validated.len()
+        );
 
         // Step 3: Deduplication
         let dedup = DedupStep::new();
@@ -188,7 +199,9 @@ impl IngestionPipeline {
                     }
                     Err(e) => {
                         warn!(path = ?doc.path, error = %e, "Dedup check failed, skipping");
-                        result.failed_docs.push((doc.path.to_string_lossy().to_string(), e.to_string()));
+                        result
+                            .failed_docs
+                            .push((doc.path.to_string_lossy().to_string(), e.to_string()));
                     }
                 }
             }
@@ -212,7 +225,11 @@ impl IngestionPipeline {
             unique
         };
         result.unique_count = deduped.len();
-        debug!(count = deduped.len(), "After dedup: {} documents", deduped.len());
+        debug!(
+            count = deduped.len(),
+            "After dedup: {} documents",
+            deduped.len()
+        );
 
         // Step 4: Incremental check
         let incremental = IncrementalStep::new();
@@ -241,7 +258,11 @@ impl IngestionPipeline {
             keep
         };
         result.skipped_count += deduped.len() - incremental_docs.len();
-        debug!(count = incremental_docs.len(), "After incremental check: {} documents", incremental_docs.len());
+        debug!(
+            count = incremental_docs.len(),
+            "After incremental check: {} documents",
+            incremental_docs.len()
+        );
 
         // Steps 5-12: Process each document
         for doc in incremental_docs {
@@ -253,7 +274,9 @@ impl IngestionPipeline {
             match parse_step.run(&doc, &self.config.author) {
                 Ok(parsed) => {
                     state.parsed = Some(parsed.clone());
-                    state.step_results.insert("parse".to_string(), StepStatus::Completed);
+                    state
+                        .step_results
+                        .insert("parse".to_string(), StepStatus::Completed);
                     result.parsed_count += 1;
 
                     // Step 6: Clean
@@ -262,13 +285,20 @@ impl IngestionPipeline {
                         Ok(c) => c,
                         Err(e) => {
                             error!(error = %e, "Cleaning failed");
-                            state.step_results.insert("clean".to_string(), StepStatus::Failed(e.to_string()));
-                            result.failed_docs.push((doc.path.to_string_lossy().to_string(), "cleaning failed".to_string()));
+                            state
+                                .step_results
+                                .insert("clean".to_string(), StepStatus::Failed(e.to_string()));
+                            result.failed_docs.push((
+                                doc.path.to_string_lossy().to_string(),
+                                "cleaning failed".to_string(),
+                            ));
                             continue;
                         }
                     };
                     state.parsed = Some(cleaned.clone());
-                    state.step_results.insert("clean".to_string(), StepStatus::Completed);
+                    state
+                        .step_results
+                        .insert("clean".to_string(), StepStatus::Completed);
 
                     // Step 7: Normalize
                     let normalize_step = NormalizeStep::new();
@@ -276,13 +306,20 @@ impl IngestionPipeline {
                         Ok(n) => n,
                         Err(e) => {
                             error!(error = %e, "Normalization failed");
-                            state.step_results.insert("normalize".to_string(), StepStatus::Failed(e.to_string()));
-                            result.failed_docs.push((doc.path.to_string_lossy().to_string(), "normalization failed".to_string()));
+                            state
+                                .step_results
+                                .insert("normalize".to_string(), StepStatus::Failed(e.to_string()));
+                            result.failed_docs.push((
+                                doc.path.to_string_lossy().to_string(),
+                                "normalization failed".to_string(),
+                            ));
                             continue;
                         }
                     };
                     state.parsed = Some(normalized.clone());
-                    state.step_results.insert("normalize".to_string(), StepStatus::Completed);
+                    state
+                        .step_results
+                        .insert("normalize".to_string(), StepStatus::Completed);
 
                     // Step 8: Language detection
                     let lang = Language::detect(&normalized.full_text);
@@ -294,20 +331,30 @@ impl IngestionPipeline {
                             Language::Unknown => crate::processing::Language::None,
                         };
                     }
-                    state.step_results.insert("language_detect".to_string(), StepStatus::Completed);
+                    state
+                        .step_results
+                        .insert("language_detect".to_string(), StepStatus::Completed);
 
                     // Step 9: Chunk
-                    let chunk_step = ChunkStep::new(self.config.chunk_size, self.config.chunk_overlap);
+                    let chunk_step =
+                        ChunkStep::new(self.config.chunk_size, self.config.chunk_overlap);
                     match chunk_step.run(&normalized, doc.workspace_id) {
                         Ok(chunks) => {
                             state.chunks = chunks;
-                            state.step_results.insert("chunk".to_string(), StepStatus::Completed);
+                            state
+                                .step_results
+                                .insert("chunk".to_string(), StepStatus::Completed);
                             result.chunked_count += 1;
                         }
                         Err(e) => {
                             error!(error = %e, "Chunk generation failed");
-                            state.step_results.insert("chunk".to_string(), StepStatus::Failed(e.to_string()));
-                            result.failed_docs.push((doc.path.to_string_lossy().to_string(), "chunking failed".to_string()));
+                            state
+                                .step_results
+                                .insert("chunk".to_string(), StepStatus::Failed(e.to_string()));
+                            result.failed_docs.push((
+                                doc.path.to_string_lossy().to_string(),
+                                "chunking failed".to_string(),
+                            ));
                             continue;
                         }
                     }
@@ -315,41 +362,64 @@ impl IngestionPipeline {
                     // Step 10: Metadata extraction
                     let meta_step = MetadataExtractStep::new();
                     if let Some(ref mut parsed) = state.parsed {
-                        meta_step.run(&mut parsed);
+                        meta_step.run(parsed);
                     }
-                    state.step_results.insert("metadata_extract".to_string(), StepStatus::Completed);
+                    state
+                        .step_results
+                        .insert("metadata_extract".to_string(), StepStatus::Completed);
 
                     // Step 11: Version detection
                     let version_step = VersionDetectStep::new();
                     if let Some(ref mut parsed) = state.parsed {
-                        version_step.run(&mut parsed);
+                        version_step.run(parsed);
                     }
-                    state.step_results.insert("version_detect".to_string(), StepStatus::Completed);
+                    state
+                        .step_results
+                        .insert("version_detect".to_string(), StepStatus::Completed);
 
                     // Step 12: Index preparation
                     let idx_step = IndexPrepareStep::new();
-                    let index_doc = match idx_step.run(&state, &doc) {
+                    let index_doc = match idx_step.run(&mut state, &doc) {
                         Some(d) => d,
                         None => {
-                            state.step_results.insert("index_prepare".to_string(), StepStatus::Failed("returned None".to_string()));
-                            result.failed_docs.push(("unknown".to_string(), "index preparation failed".to_string()));
+                            state.step_results.insert(
+                                "index_prepare".to_string(),
+                                StepStatus::Failed("returned None".to_string()),
+                            );
+                            result.failed_docs.push((
+                                "unknown".to_string(),
+                                "index preparation failed".to_string(),
+                            ));
                             continue;
                         }
                     };
                     state.document = Some(index_doc.clone());
-                    state.step_results.insert("index_prepare".to_string(), StepStatus::Completed);
+                    state
+                        .step_results
+                        .insert("index_prepare".to_string(), StepStatus::Completed);
 
                     // Record in index
                     if let Some(ref doc_el) = state.document {
                         let mut mtimes = self.indexed_mtimes.lock().await;
-                        mtimes.insert(state.discovered.as_ref().unwrap().path.to_string_lossy().to_string(), doc_el.updated_at.into());
+                        mtimes.insert(
+                            state
+                                .discovered
+                                .as_ref()
+                                .unwrap()
+                                .path
+                                .to_string_lossy()
+                                .to_string(),
+                            doc_el.updated_at.into(),
+                        );
                     }
 
                     result.processed_docs.push(state);
                 }
                 Err(e) => {
                     error!(path = ?doc.path, error = %e, "Parsing failed");
-                    result.failed_docs.push((doc.path.to_string_lossy().to_string(), e.to_string()));
+                    result
+                        .failed_docs
+                        .push((doc.path.to_string_lossy().to_string(), e.to_string()));
                     result.failed_count += 1;
                 }
             }

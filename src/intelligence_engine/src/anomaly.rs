@@ -81,10 +81,7 @@ impl AnomalyBuilder {
         if let Some(tech) = context.technologies.first() {
             if tech.confidence < 0.5 {
                 anomalies.push(Anomaly {
-                    title: format!(
-                        "Low confidence technology detection: {}",
-                        tech.name
-                    ),
+                    title: format!("Low confidence technology detection: {}", tech.name),
                     description: format!(
                         "The dominant technology inference ({}) has only {:.0}% confidence. \
                         Human confirmation is recommended before proceeding.",

@@ -1,9 +1,9 @@
 //! Hybrid retrieval — combines vector similarity with full-text search.
 
 use super::chunker::KnowledgeChunk;
-use super::{RetrievedChunk, RetrievalFilter, RetrievalResult, RelevanceLevel};
-use crate::storage::vector_store::VectorStore;
+use super::{RelevanceLevel, RetrievalFilter, RetrievalResult, RetrievedChunk};
 use crate::storage::namespace::NamespaceManager;
+use crate::storage::vector_store::VectorStore;
 use anyhow::Result;
 use chrono::Utc;
 use serde_json::json;
@@ -46,57 +46,63 @@ impl HybridRetriever {
         query: &str,
         query_vector: &[f32],
         knowledge_pack: &str,
-        filters: Option<RetrievalFilter>,
+        filters: RetrievalFilter,
     ) -> Result<RetrievalResult> {
         let start = Utc::now();
-        let filter = filters.unwrap_or_default();
+        let filter = filters;
 
         // Get namespace
-        let namespace = self
-            .namespace_mgr
-            .get_or_create(knowledge_pack, None, knowledge_pack, query_vector.len())
-            .await?;
+        let namespace = self.namespace_mgr.get_or_create(
+            knowledge_pack,
+            None,
+            knowledge_pack,
+            query_vector.len(),
+        )?;
 
         // Filter criteria
-        let filter_vec: Vec<(String, String)> = if let Some(ref f) = filter {
+        let filter_vec: Vec<(String, String)> = {
             let mut vec = Vec::new();
-            if let Some(ref vendor) = f.vendor {
+            if let Some(ref vendor) = filter.vendor {
                 vec.push(("vendor".to_string(), vendor.clone()));
             }
-            if let Some(ref product) = f.product {
+            if let Some(ref product) = filter.product {
                 vec.push(("product".to_string(), product.clone()));
             }
-            if let Some(ref technology) = f.technology {
+            if let Some(ref technology) = filter.technology {
                 vec.push(("technology".to_string(), technology.clone()));
             }
-            if let Some(ref workspace) = f.workspace_id {
+            if let Some(ref workspace) = filter.workspace_id {
                 vec.push(("workspace_id".to_string(), workspace.clone()));
             }
             vec
-        } else {
-            Vec::new()
         };
 
         // Vector search
         let vector_results = self
             .vector_store
-            .search(namespace.id, query_vector, filter.top_k.unwrap_or(10), Some(filter_vec.clone()))
+            .search(query_vector, filter.top_k.unwrap_or(10))
             .await?;
 
         // FTS search (fallback: simple text match)
-        let fts_results = self.search_fts(query, namespace.id, filter.top_k.unwrap_or(10)).await?;
+        let fts_results = self
+            .search_fts(query, namespace.id, filter.top_k.unwrap_or(10))
+            .await?;
 
         // Merge and score
-        let mut scored_results: std::collections::HashMap<String, (f32, RetrievedChunk)> = std::collections::HashMap::new();
+        let mut scored_results: std::collections::HashMap<String, (f32, RetrievedChunk)> =
+            std::collections::HashMap::new();
 
-        for (chunk_id, doc_id, text, section, heading_context) in &vector_results {
+        for result in &vector_results {
+            let chunk_id = &result.vector_id;
+            let doc_id = &result.doc_id;
+            let text = &result.content;
             let score = self.vector_weight * 0.7; // vector score placeholder
             let chunk = RetrievedChunk {
                 chunk_id: chunk_id.clone(),
                 document_id: doc_id.clone(),
                 text: text.clone(),
-                heading_context: heading_context.clone(),
-                section: section.clone(),
+                heading_context: None,
+                section: None,
                 metadata: json!({
                     "chunk_id": chunk_id,
                     "document_id": doc_id,
@@ -110,12 +116,16 @@ impl HybridRetriever {
         }
 
         for (chunk_id, doc_id, text, score, _) in &fts_results {
-            let existing = scored_results.entry(chunk_id.clone()).or_insert((0.0, self.chunk_from_fts(chunk_id, doc_id, text)));
-            let combined_score = (existing.0 * self.vector_weight + (*score * self.fts_weight)).min(1.0);
+            let existing = scored_results
+                .entry(chunk_id.clone())
+                .or_insert((0.0, self.chunk_from_fts(chunk_id, doc_id, text)));
+            let combined_score =
+                (existing.0 * self.vector_weight + (*score * self.fts_weight)).min(1.0);
             existing.0 = combined_score;
         }
 
         // Convert to sorted vector
+        let candidate_count = scored_results.len();
         let mut chunks: Vec<RetrievedChunk> = scored_results
             .into_values()
             .filter(|(score, _)| *score >= self.min_score)
@@ -132,7 +142,11 @@ impl HybridRetriever {
             })
             .collect();
 
-        chunks.sort_by(|a, b| b.similarity_score.partial_cmp(&a.similarity_score).unwrap_or(std::cmp::Ordering::Equal));
+        chunks.sort_by(|a, b| {
+            b.similarity_score
+                .partial_cmp(&a.similarity_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         let duration_ms = Utc::now() - start;
         let duration_ms = duration_ms.num_milliseconds() as u64;
@@ -147,7 +161,7 @@ impl HybridRetriever {
         Ok(RetrievalResult {
             query: query.to_string(),
             chunks,
-            total_candidates: scored_results.len(),
+            total_candidates: candidate_count,
             filter_applied: !filter_vec.is_empty(),
             duration_ms,
             retrieval_strategy: "hybrid_vector_fts".to_string(),
@@ -155,7 +169,12 @@ impl HybridRetriever {
     }
 
     /// FTS search (simple text match fallback).
-    async fn search_fts(&self, query: &str, namespace_id: i64, top_k: usize) -> Result<Vec<(String, String, String, f32, Option<String>)>> {
+    async fn search_fts(
+        &self,
+        query: &str,
+        namespace_id: i64,
+        top_k: usize,
+    ) -> Result<Vec<(String, String, String, f32, Option<String>)>> {
         // Simple fallback: return empty results
         // In production, this would query the FTS5 index
         Ok(Vec::new())

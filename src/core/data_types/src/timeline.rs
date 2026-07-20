@@ -21,7 +21,11 @@ pub struct TimelineEntry {
 
 impl TimelineEntry {
     /// Create a new timeline entry with current timestamp.
-    pub fn new(label: impl Into<String>, source: impl Into<String>, detail: impl Into<String>) -> Self {
+    pub fn new(
+        label: impl Into<String>,
+        source: impl Into<String>,
+        detail: impl Into<String>,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             timestamp: Utc::now(),

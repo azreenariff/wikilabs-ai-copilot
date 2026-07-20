@@ -1,6 +1,6 @@
 //! Citation manager — track, verify, and generate source citations.
 
-use super::{Citation, CitationType, LinkTracking, LinkStatus};
+use super::{Citation, CitationType};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use rusqlite::Connection;
@@ -18,8 +18,9 @@ impl CitationManager {
 
     /// Initialize citation tables.
     pub fn initialize(&self) -> Result<()> {
-        self.conn.execute_batch(
-            r#"
+        self.conn
+            .execute_batch(
+                r#"
             CREATE TABLE IF NOT EXISTS citations (
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
@@ -45,8 +46,8 @@ impl CitationManager {
                 UNIQUE(citation_id, url)
             );
             "#,
-        )
-        .context("Failed to create citation tables")?;
+            )
+            .context("Failed to create citation tables")?;
 
         info!("Citation tables initialized");
         Ok(())
@@ -54,10 +55,10 @@ impl CitationManager {
 
     /// Add a citation.
     pub fn add(&self, citation: &Citation) -> Result<()> {
-        let related_ids_json = serde_json::to_string(&citation.related_ids)
-            .unwrap_or_else(|_| "[]".to_string());
-        let metadata_json = serde_json::to_string(&citation.metadata)
-            .unwrap_or_else(|_| "{}".to_string());
+        let related_ids_json =
+            serde_json::to_string(&citation.related_ids).unwrap_or_else(|_| "[]".to_string());
+        let metadata_json =
+            serde_json::to_string(&citation.metadata).unwrap_or_else(|_| "{}".to_string());
 
         self.conn.execute(
             r#"
@@ -80,7 +81,11 @@ impl CitationManager {
         )
         .context("Failed to add citation")?;
 
-        debug!(citation_id = &citation.id, title = &citation.title, "Added citation");
+        debug!(
+            citation_id = &citation.id,
+            title = &citation.title,
+            "Added citation"
+        );
         Ok(())
     }
 
@@ -95,13 +100,14 @@ impl CitationManager {
         )?;
 
         let row = stmt.query_row(rusqlite::params![id], |row| {
-            let related_ids: String = row.get(8)?;
-            let metadata: String = row.get(9)?;
+            let related_ids: String = row.get::<_, String>(8)?;
+            let metadata: String = row.get::<_, String>(9)?;
+            let ctype: String = row.get::<_, String>(3)?;
             Ok(Citation {
-                id: row.get(0)?,
-                title: row.get(1)?,
+                id: row.get::<_, String>(0)?,
+                title: row.get::<_, String>(1)?,
                 url: row.get(2)?,
-                citation_type: match row.get::<String>(3).as_str() {
+                citation_type: match ctype.as_str() {
                     "Documentation" => CitationType::Documentation,
                     "Paper" => CitationType::Paper,
                     "Specification" => CitationType::Specification,
@@ -110,16 +116,22 @@ impl CitationManager {
                     "ApiReference" => CitationType::ApiReference,
                     "Community" => CitationType::Community,
                     "Internal" => CitationType::Internal,
-                    other => CitationType::Other(other),
+                    other => CitationType::Other(other.to_string()),
                 },
                 author: row.get(4)?,
-                publication_date: row.get(5)?
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
-                    .map(|d| d.into()),
-                last_verified: row.get(6)?
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
-                    .map(|d| d.into()),
-                verified: row.get::<i32>(7)? != 0,
+                publication_date: match row.get::<_, Option<String>>(5)? {
+                    Some(s) => chrono::DateTime::parse_from_rfc3339(&s)
+                        .ok()
+                        .map(|d| d.into()),
+                    None => None,
+                },
+                last_verified: match row.get::<_, Option<String>>(6)? {
+                    Some(s) => chrono::DateTime::parse_from_rfc3339(&s)
+                        .ok()
+                        .map(|d| d.into()),
+                    None => None,
+                },
+                verified: row.get::<_, i32>(7)? != 0,
                 related_ids: serde_json::from_str(&related_ids).unwrap_or_default(),
                 metadata: serde_json::from_str(&metadata).unwrap_or_default(),
             })
@@ -145,11 +157,12 @@ impl CitationManager {
         let rows = stmt.query_map(rusqlite::params![], |row| {
             let related_ids: String = row.get(8)?;
             let metadata: String = row.get(9)?;
+            let ctype: String = row.get::<_, String>(3)?;
             Ok(Citation {
                 id: row.get(0)?,
                 title: row.get(1)?,
                 url: row.get(2)?,
-                citation_type: match row.get::<String>(3).as_str() {
+                citation_type: match ctype.as_str() {
                     "Documentation" => CitationType::Documentation,
                     "Paper" => CitationType::Paper,
                     "Specification" => CitationType::Specification,
@@ -158,16 +171,22 @@ impl CitationManager {
                     "ApiReference" => CitationType::ApiReference,
                     "Community" => CitationType::Community,
                     "Internal" => CitationType::Internal,
-                    other => CitationType::Other(other),
+                    other => CitationType::Other(other.to_string()),
                 },
                 author: row.get(4)?,
-                publication_date: row.get(5)?
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
-                    .map(|d| d.into()),
-                last_verified: row.get(6)?
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
-                    .map(|d| d.into()),
-                verified: row.get::<i32>(7)? != 0,
+                publication_date: match row.get::<_, Option<String>>(5)? {
+                    Some(s) => chrono::DateTime::parse_from_rfc3339(&s)
+                        .ok()
+                        .map(|d| d.into()),
+                    None => None,
+                },
+                last_verified: match row.get::<_, Option<String>>(6)? {
+                    Some(s) => chrono::DateTime::parse_from_rfc3339(&s)
+                        .ok()
+                        .map(|d| d.into()),
+                    None => None,
+                },
+                verified: row.get::<_, i32>(7)? != 0,
                 related_ids: serde_json::from_str(&related_ids).unwrap_or_default(),
                 metadata: serde_json::from_str(&metadata).unwrap_or_default(),
             })
@@ -179,7 +198,9 @@ impl CitationManager {
 
     /// Verify all citations with URLs.
     pub fn verify_all(&self) -> Result<usize> {
-        let mut stmt = self.conn.prepare("SELECT id, url FROM citations WHERE url IS NOT NULL")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, url FROM citations WHERE url IS NOT NULL")?;
         let rows: Vec<(String, String)> = stmt
             .query_map(rusqlite::params![], |row| Ok((row.get(0)?, row.get(1)?)))?
             .collect::<Result<_, _>>()?;

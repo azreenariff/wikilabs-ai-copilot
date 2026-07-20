@@ -1,9 +1,9 @@
 //! Pipeline result — tracks all intermediate data through the pipeline.
 
-use crate::pipeline::StepStatus;
-use crate::pipeline::DocPipelineState;
-pub use crate::pipeline::steps::discover::DiscoveredDoc;
 use crate::doc::KnowledgeDocument;
+pub use crate::pipeline::steps::discover::DiscoveredDoc;
+use crate::pipeline::DocPipelineState;
+use crate::pipeline::StepStatus;
 use crate::processing::DocumentElement;
 use chrono::{DateTime, Utc};
 
@@ -73,20 +73,23 @@ impl PipelineResult {
         self.processed_docs
             .iter()
             .flat_map(|s| {
-                s.chunks.iter().map(|c| {
-                    let elements: Vec<&DocumentElement> = if let Some(ref p) = s.parsed {
-                        p.elements.iter().collect()
-                    } else {
-                        Vec::new()
-                    };
-                    super::result::ChunkInfo {
-                        chunk_id: c.id,
-                        document_id: c.document_id,
-                        content: c.content.clone(),
-                        vector_id: c.vector_id.clone(),
-                        element_types: elements.iter().map(|e| format!("{:?}", e)).collect(),
-                    }
-                }).collect::<Vec<_>>()
+                s.chunks
+                    .iter()
+                    .map(|c| {
+                        let elements: Vec<&DocumentElement> = if let Some(ref p) = s.parsed {
+                            p.elements.iter().collect()
+                        } else {
+                            Vec::new()
+                        };
+                        super::result::ChunkInfo {
+                            chunk_id: c.id,
+                            document_id: c.document_id,
+                            content: c.content.clone(),
+                            vector_id: c.vector_id.clone(),
+                            element_types: elements.iter().map(|e| format!("{:?}", e)).collect(),
+                        }
+                    })
+                    .collect::<Vec<_>>()
             })
             .collect()
     }

@@ -27,8 +27,8 @@ pub fn create_pack(
     output_dir: &str,
     custom_name: Option<String>,
 ) -> Result<String> {
-    let template =
-        Template::from_name(template_name).context(format!("Unknown template: {}", template_name))?;
+    let template = Template::from_name(template_name)
+        .context(format!("Unknown template: {}", template_name))?;
 
     let pack_name = custom_name.unwrap_or_else(|| {
         let base = template_name.to_string();
@@ -50,21 +50,19 @@ pub fn create_pack(
     write_file(
         &base_path,
         "manifest.yaml",
-        &serde_yaml::to_string(&template.manifest)
-            .context("Failed to serialize manifest")?,
+        &serde_yaml::to_string(&template.manifest).context("Failed to serialize manifest")?,
     )?;
 
     // Write metadata.yaml
     write_file(
         &base_path,
         "metadata.yaml",
-        &serde_yaml::to_string(&template.metadata)
-            .context("Failed to serialize metadata")?,
+        &serde_yaml::to_string(&template.metadata).context("Failed to serialize metadata")?,
     )?;
 
     // Write directory structure
     for (path, is_file) in &template.directory_structure {
-        if is_file {
+        if *is_file {
             let file_path = base_path.join(path);
             let dir = file_path
                 .parent()
@@ -88,12 +86,8 @@ pub fn create_pack(
 /// Writes content to a file, creating parent directories as needed.
 fn write_file(base_path: &Path, relative_path: &str, content: &str) -> Result<()> {
     let file_path = base_path.join(relative_path);
-    fs::write(&file_path, content).with_context(|| {
-        format!(
-            "Failed to write file: {}",
-            file_path.to_string_lossy()
-        )
-    })
+    fs::write(&file_path, content)
+        .with_context(|| format!("Failed to write file: {}", file_path.to_string_lossy()))
 }
 
 /// Generates default content for template files.
@@ -147,8 +141,12 @@ mod tests {
     #[test]
     fn test_create_pack_custom_name() {
         let tmp = TempDir::new().unwrap();
-        let output = create_pack("openshift", tmp.path().to_str().unwrap(), Some("my-ocp-pack"))
-            .unwrap();
+        let output = create_pack(
+            "openshift",
+            tmp.path().to_str().unwrap(),
+            Some("my-ocp-pack".to_string()),
+        )
+        .unwrap();
 
         let pack_path = Path::new(&output);
         assert!(pack_path.exists());
@@ -162,7 +160,9 @@ mod tests {
 
         let pack_path = Path::new(&output);
         assert!(pack_path.join("manifest.yaml").exists());
-        assert!(pack_path.join("documents/architecture-patterns.md").exists());
+        assert!(pack_path
+            .join("documents/architecture-patterns.md")
+            .exists());
     }
 
     #[test]
@@ -187,8 +187,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let output = create_openshift(tmp.path().to_str().unwrap()).unwrap();
 
-        let manifest_content =
-            fs::read_to_string(format!("{}/manifest.yaml", output)).unwrap();
+        let manifest_content = fs::read_to_string(format!("{}/manifest.yaml", output)).unwrap();
         let manifest: crate::sdk::schema::Manifest =
             serde_yaml::from_str(&manifest_content).unwrap();
         assert_eq!(manifest.schema_version, "1.0");
@@ -200,8 +199,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let output = create_openshift(tmp.path().to_str().unwrap()).unwrap();
 
-        let metadata_content =
-            fs::read_to_string(format!("{}/metadata.yaml", output)).unwrap();
+        let metadata_content = fs::read_to_string(format!("{}/metadata.yaml", output)).unwrap();
         let metadata: crate::sdk::schema::Metadata =
             serde_yaml::from_str(&metadata_content).unwrap();
         assert_eq!(metadata.embedding_model, "all-MiniLM-L6-v2");

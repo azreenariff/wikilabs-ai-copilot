@@ -1,7 +1,6 @@
 //! SDK-level validation tool for knowledge packs.
 //!
 /// Validates that a knowledge pack directory has the correct structure.
-
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
@@ -32,29 +31,30 @@ pub fn validate_pack(pack_path: &str) -> Result<ValidationResult> {
     };
 
     // Parse and validate manifest
-    let manifest: crate::sdk::schema::Manifest = match serde_yaml::from_str(&manifest_content) {
-        Ok(m) => {
-            if let Err(e) = m.validate() {
-                errors.push(format!("manifest validation failed: {}", e));
+    let parsed_manifest: crate::sdk::schema::Manifest =
+        match serde_yaml::from_str::<crate::sdk::schema::Manifest>(&manifest_content) {
+            Ok(m) => {
+                if let Err(e) = m.validate() {
+                    errors.push(format!("manifest validation failed: {}", e));
+                }
+                debug!("manifest.yaml parsed and validated");
+                m
             }
-            debug!("manifest.yaml parsed and validated");
-            m
-        }
-        Err(e) => {
-            errors.push(format!("manifest.yaml is not valid YAML: {}", e));
-            crate::sdk::schema::Manifest {
-                schema_version: "1.0".to_string(),
-                name: "unknown".to_string(),
-                version: "0.0.0".to_string(),
-                description: String::new(),
-                author: String::new(),
-                license: String::new(),
-                format_version: "1.0".to_string(),
-                documents: Vec::new(),
-                dependencies: Vec::new(),
+            Err(e) => {
+                errors.push(format!("manifest.yaml is not valid YAML: {}", e));
+                crate::sdk::schema::Manifest {
+                    schema_version: "1.0".to_string(),
+                    name: "unknown".to_string(),
+                    version: "0.0.0".to_string(),
+                    description: String::new(),
+                    author: String::new(),
+                    license: String::new(),
+                    format_version: "1.0".to_string(),
+                    documents: Vec::new(),
+                    dependencies: Vec::new(),
+                }
             }
-        }
-    };
+        };
 
     // Check metadata.yaml
     let metadata_path = path.join("metadata.yaml");
@@ -66,24 +66,20 @@ pub fn validate_pack(pack_path: &str) -> Result<ValidationResult> {
         }
     };
 
-    let metadata: crate::sdk::schema::Metadata = match serde_yaml::from_str(&metadata_content) {
-        Ok(m) => {
-            if let Err(e) = m.validate() {
-                errors.push(format!("metadata validation failed: {}", e));
+    let metadata: crate::sdk::schema::Metadata =
+        match serde_yaml::from_str::<crate::sdk::schema::Metadata>(&metadata_content) {
+            Ok(m) => {
+                if let Err(e) = m.validate() {
+                    errors.push(format!("metadata validation failed: {}", e));
+                }
+                debug!("metadata.yaml parsed and validated");
+                m
             }
-            debug!("metadata.yaml parsed and validated");
-            m
-        }
-        Err(e) => {
-            errors.push(format!("metadata.yaml is not valid YAML: {}", e));
-            crate::sdk::schema::Metadata::new(
-                "unknown",
-                "0.0.0",
-                "Unknown",
-                "all-MiniLM-L6-v2",
-            )
-        }
-    };
+            Err(e) => {
+                errors.push(format!("metadata.yaml is not valid YAML: {}", e));
+                crate::sdk::schema::Metadata::new("unknown", "0.0.0", "Unknown", "all-MiniLM-L6-v2")
+            }
+        };
 
     // Check documents directory
     let documents_dir = path.join("documents");
@@ -93,13 +89,10 @@ pub fn validate_pack(pack_path: &str) -> Result<ValidationResult> {
         debug!(documents_dir = %documents_dir.display(), "Documents directory exists");
 
         // Check that all referenced documents exist
-        for doc in &manifest.documents {
+        for doc in &parsed_manifest.documents {
             let doc_full_path = documents_dir.join(&doc.path);
             if !doc_full_path.exists() {
-                errors.push(format!(
-                    "referenced document not found: {}",
-                    doc.path
-                ));
+                errors.push(format!("referenced document not found: {}", doc.path));
             } else {
                 debug!(doc_path = %doc.path, "Referenced document exists");
             }
@@ -134,7 +127,7 @@ pub fn validate_pack(pack_path: &str) -> Result<ValidationResult> {
 
     Ok(ValidationResult {
         is_valid,
-        manifest,
+        manifest: parsed_manifest,
         metadata,
         errors,
         warnings,
@@ -204,7 +197,11 @@ mod tests {
             "pack_name: valid-pack\npack_version: '1.0.0'\ndescription: A valid pack\nembedding_model: all-MiniLM-L6-v2\nembedding_dimensions: 384\ntags: []\ncategories: []\nreferences: []\ncreated_at: '2024-01-01T00:00:00Z'\nupdated_at: '2024-01-01T00:00:00Z'\n",
         )
         .unwrap();
-        fs::write(pack_dir.join("documents/doc1.md"), "# Test Doc\n\nContent.\n").unwrap();
+        fs::write(
+            pack_dir.join("documents/doc1.md"),
+            "# Test Doc\n\nContent.\n",
+        )
+        .unwrap();
         tmp.path().join("valid-pack").to_string_lossy().to_string()
     }
 
@@ -272,10 +269,7 @@ mod tests {
 
         let result = validate_pack(pack_dir.to_str().unwrap()).unwrap();
         assert!(!result.is_valid);
-        assert!(result
-            .errors
-            .iter()
-            .any(|e| e.contains("missing.md")));
+        assert!(result.errors.iter().any(|e| e.contains("missing.md")));
     }
 
     #[test]

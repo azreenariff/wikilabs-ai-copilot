@@ -1,7 +1,6 @@
 //! Incremental indexing — only index new/changed vectors.
 //!
 /// Tracks which documents have been indexed and skips unchanged ones.
-
 use super::vector_store::VectorStore;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -90,12 +89,16 @@ impl IncrementalIndexer {
 
         for (doc_id, content, vector) in to_index {
             let vector_id = format!("{}_{}", doc_id, indexed);
-            store.insert_vector(&vector_id, &vector, &content, &doc_id).await?;
+            store
+                .insert_vector(&vector_id, &vector, &content, &doc_id)
+                .await?;
             indexed += 1;
 
             // Update state
             let mut state = self.state.lock().await;
-            state.indexed_hashes.insert(doc_id, self.compute_content_hash(&content));
+            state
+                .indexed_hashes
+                .insert(doc_id, self.compute_content_hash(&content));
         }
 
         let mut state = self.state.lock().await;
@@ -108,7 +111,9 @@ impl IncrementalIndexer {
     /// Mark a document as indexed (for external tracking).
     pub async fn mark_indexed(&self, doc_id: &str, content_hash: &str) {
         let mut state = self.state.lock().await;
-        state.indexed_hashes.insert(doc_id.to_string(), content_hash.to_string());
+        state
+            .indexed_hashes
+            .insert(doc_id.to_string(), content_hash.to_string());
     }
 
     /// Clear the incremental state (e.g., on full reindex).

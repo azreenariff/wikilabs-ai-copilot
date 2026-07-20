@@ -68,29 +68,35 @@ pub fn validate_version_compat(pack_path: &str) -> Result<VersionCompatResult> {
     if manifest_ver.is_empty() {
         result.invalid_semver = true;
         result.valid = false;
-        result.warnings.push("manifest version is empty".to_string());
+        result
+            .warnings
+            .push("manifest version is empty".to_string());
     }
 
     if metadata_ver.is_empty() {
         result.invalid_semver = true;
         result.valid = false;
-        result.warnings.push("metadata version is empty".to_string());
+        result
+            .warnings
+            .push("metadata version is empty".to_string());
     }
 
     if !is_semver(manifest_ver) {
         result.invalid_semver = true;
         result.valid = false;
-        result
-            .warnings
-            .push(format!("manifest version '{}' is not valid semver", manifest_ver));
+        result.warnings.push(format!(
+            "manifest version '{}' is not valid semver",
+            manifest_ver
+        ));
     }
 
     if !is_semver(metadata_ver) {
         result.invalid_semver = true;
         result.valid = false;
-        result
-            .warnings
-            .push(format!("metadata version '{}' is not valid semver", metadata_ver));
+        result.warnings.push(format!(
+            "metadata version '{}' is not valid semver",
+            metadata_ver
+        ));
     }
 
     debug!(

@@ -3,8 +3,8 @@
 //! Manages prompt templates, versioning, and assembly of system prompts,
 //! workspace prompts, context prompts, user prompts, and future skill prompts.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Version of a prompt template.
@@ -207,7 +207,11 @@ impl PromptAssembler {
         self
     }
 
-    pub fn with_template_context(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+    pub fn with_template_context(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Self {
         self.template_context = self.template_context.with(key, value);
         self
     }
@@ -365,7 +369,9 @@ impl PromptManager {
 
         let assembler = if let Some(sys_template) = self.active_system_template() {
             let (content, replaced) = system_vars.apply_to(&sys_template.content);
-            assembler.with_system_prompt(content).with_template_context("__system_replaced", replaced.to_string())
+            assembler
+                .with_system_prompt(content)
+                .with_template_context("__system_replaced", replaced.to_string())
         } else {
             assembler
         };
@@ -385,7 +391,9 @@ impl PromptManager {
         };
 
         let user = if let Some(ref user_template) = self.user_template {
-            let (content, _replaced) = TemplateContext::new().with("message", user_message).apply_to(&user_template.content);
+            let (content, _replaced) = TemplateContext::new()
+                .with("message", user_message)
+                .apply_to(&user_template.content);
             content
         } else {
             user_message.to_string()
@@ -456,8 +464,7 @@ mod tests {
 
     #[test]
     fn test_template_with_description() {
-        let template = PromptTemplate::new("t", "content")
-            .with_description("A test template");
+        let template = PromptTemplate::new("t", "content").with_description("A test template");
         assert_eq!(template.description, Some("A test template".to_string()));
     }
 
@@ -539,7 +546,11 @@ mod tests {
             .assemble();
 
         // PromptAssembler uses basic interpolation for inline {{key}} placeholders
-        assert!(assembly.prompt.contains("Process") || assembly.prompt.contains("server") || assembly.prompt.contains("{{target}}"));
+        assert!(
+            assembly.prompt.contains("Process")
+                || assembly.prompt.contains("server")
+                || assembly.prompt.contains("{{target}}")
+        );
     }
 
     #[test]
@@ -625,7 +636,10 @@ mod tests {
     fn test_prompt_version_display() {
         assert_eq!(PromptVersion::Default.to_string(), "default");
         assert_eq!(PromptVersion::Numbered(3).to_string(), "v3");
-        assert_eq!(PromptVersion::Named("stable".to_string()).to_string(), "stable");
+        assert_eq!(
+            PromptVersion::Named("stable".to_string()).to_string(),
+            "stable"
+        );
     }
 
     #[test]

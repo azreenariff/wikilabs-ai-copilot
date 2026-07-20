@@ -7,8 +7,8 @@ use tokio::task::JoinHandle;
 use tokio::time::{interval, MissedTickBehavior};
 use tracing::{debug, info};
 
-use super::progress::{ProgressEvent, ProgressReporterHandle};
 use super::cancellation::CancellationToken;
+use super::progress::{ProgressEvent, ProgressReporterHandle};
 
 /// Configuration for background indexing.
 pub struct BackgroundIndexerConfig {

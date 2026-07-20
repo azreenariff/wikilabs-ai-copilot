@@ -1,6 +1,6 @@
 //! Knowledge graph — nodes, edges, traversal, and analysis.
 
-use super::{EdgeType, KnowledgeEdge, Weight, GraphAnalysis};
+use super::{EdgeType, GraphAnalysis, KnowledgeEdge, Weight};
 use chrono::Utc;
 use std::collections::{HashMap, HashSet};
 use tracing::debug;
@@ -48,7 +48,7 @@ impl KnowledgeGraph {
     pub fn add_node(&mut self, node: GraphNode) {
         let id = node.id.clone();
         self.nodes.insert(id.clone(), node);
-        self.adjacency.entry(id).or_insert_with(Vec::new);
+        self.adjacency.entry(id.clone()).or_insert_with(Vec::new);
         debug!(node_id = &id, "Added node to knowledge graph");
     }
 
@@ -58,13 +58,18 @@ impl KnowledgeGraph {
         self.edges.push(edge.clone());
         let out_edges = self.adjacency.entry(source).or_insert_with(Vec::new);
         out_edges.push((edge.target.clone(), edge.edge_type.clone(), edge.weight));
-        debug!(source = &edge.source, target = &edge.target, "Added edge to knowledge graph");
+        debug!(
+            source = &edge.source,
+            target = &edge.target,
+            "Added edge to knowledge graph"
+        );
     }
 
     /// Remove a node and all its edges.
     pub fn remove_node(&mut self, node_id: &str) {
         self.nodes.remove(node_id);
-        self.edges.retain(|e| e.source != node_id && e.target != node_id);
+        self.edges
+            .retain(|e| e.source != node_id && e.target != node_id);
         self.adjacency.remove(node_id);
         // Remove from other nodes' adjacency lists
         for neighbors in self.adjacency.values_mut() {
@@ -74,13 +79,14 @@ impl KnowledgeGraph {
     }
 
     /// Get neighbors of a node.
-    pub fn get_neighbors(&self, node_id: &str) -> &Vec<(String, EdgeType, f32)> {
-        self.adjacency.get(node_id).unwrap_or(&Vec::new())
+    pub fn get_neighbors(&self, node_id: &str) -> Vec<(String, EdgeType, f32)> {
+        self.adjacency.get(node_id).cloned().unwrap_or_default()
     }
 
     /// Get all edges connected to a node.
     pub fn get_edges(&self, node_id: &str) -> Vec<&GraphEdge> {
-        self.edges.iter()
+        self.edges
+            .iter()
             .filter(|e| e.source == node_id || e.target == node_id)
             .collect()
     }
@@ -161,12 +167,7 @@ impl KnowledgeGraph {
     }
 
     /// Find paths between two nodes (simple BFS, max depth 10).
-    pub fn find_path(
-        &self,
-        source: &str,
-        target: &str,
-        max_depth: usize,
-    ) -> Option<Vec<String>> {
+    pub fn find_path(&self, source: &str, target: &str, max_depth: usize) -> Option<Vec<String>> {
         if source == target {
             return Some(vec![source.to_string()]);
         }

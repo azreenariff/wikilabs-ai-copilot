@@ -1,6 +1,6 @@
 //! Topic association — extract and map topics from knowledge documents.
 
-use super::{DiscoveryMethod, EdgeType, Weight, Relationship};
+use super::{DiscoveryMethod, EdgeType, Relationship, Weight};
 use std::collections::HashMap;
 use tracing::debug;
 
@@ -58,16 +58,19 @@ impl TopicModel {
 
     /// Add a topic.
     pub fn add_topic(&mut self, topic: Topic) {
-        self.topics.insert(topic.name.clone(), topic);
-        debug!(topic = &topic.name, "Added topic");
+        let name = topic.name.clone();
+        self.topics.insert(name.clone(), topic);
+        debug!(topic = %name, "Added topic");
     }
 
     /// Add an association between topics.
     pub fn add_association(&mut self, association: TopicAssociation) {
+        let source = association.source_topic.clone();
+        let target = association.target_topic.clone();
         self.associations.push(association);
         debug!(
-            source = &association.source_topic,
-            target = &association.target_topic,
+            source = %source,
+            target = %target,
             "Added topic association"
         );
     }

@@ -2,7 +2,6 @@
 //!
 /// Tracks schema versions and applies migrations when the database
 /// is opened.
-
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
@@ -62,7 +61,11 @@ impl SchemaMigration {
     }
 
     /// Apply all pending migrations to a connection.
-    pub fn apply_migrations(&self, conn: &Connection, current_version: u32) -> anyhow::Result<Vec<MigrationResult>> {
+    pub fn apply_migrations(
+        &self,
+        conn: &Connection,
+        current_version: u32,
+    ) -> anyhow::Result<Vec<MigrationResult>> {
         let mut results = Vec::new();
 
         for migration in &self.migrations {
@@ -75,11 +78,12 @@ impl SchemaMigration {
                 );
 
                 let result = self.apply_single_migration(conn, migration);
-                results.push(result);
-
                 if result.success {
+                    results.push(result);
                     // Update schema version
                     self.update_schema_version(conn, migration.version)?;
+                } else {
+                    results.push(result);
                 }
             }
         }
@@ -132,8 +136,11 @@ impl SchemaMigration {
     }
 
     /// Get migrations pending from a given version.
-    pub fn pending_migrations(&self, from_version: u32) -> &[Migration] {
-        &self.migrations.iter().filter(|m| m.version > from_version).collect::<Vec<_>>()
+    pub fn pending_migrations(&self, from_version: u32) -> Vec<&Migration> {
+        self.migrations
+            .iter()
+            .filter(|m| m.version > from_version)
+            .collect()
     }
 }
 

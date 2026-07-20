@@ -1,11 +1,11 @@
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
-use wikilabs_ai::provider::{AiProvider, AiRequest, OpenAICompatibleProvider, ProviderInfo};
-use wikilabs_persistence::{Database, RepositoryFactory, schema::INIT_SQL};
-use wikilabs_data_types::chat::ChatMessage;
-use tracing::{info, error};
-use serde::{Deserialize, Serialize};
+use tracing::{error, info};
 use uuid::Uuid;
+use wikilabs_ai::provider::{AiProvider, AiRequest, OpenAICompatibleProvider, ProviderInfo};
+use wikilabs_data_types::chat::ChatMessage;
+use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 
 mod config;
 use config::{AiProviderConfig, AppSettings, AppSettingsStore};
@@ -51,10 +51,7 @@ fn get_settings(app_state: tauri::State<AppState>) -> Result<AppSettings, String
 }
 
 #[tauri::command]
-fn update_settings(
-    app_state: tauri::State<AppState>,
-    settings: AppSettings,
-) -> Result<(), String> {
+fn update_settings(app_state: tauri::State<AppState>, settings: AppSettings) -> Result<(), String> {
     info!("update_settings called");
     app_state.settings.save(settings);
     Ok(())
@@ -114,7 +111,11 @@ fn test_connection(config: AiProviderConfig) -> Result<bool, String> {
 
 #[tauri::command]
 fn get_workspace_list(app_state: tauri::State<AppState>) -> Result<Vec<String>, String> {
-    let workspaces = app_state.repos.workspace.list_all().map_err(|e| e.to_string())?;
+    let workspaces = app_state
+        .repos
+        .workspace
+        .list_all()
+        .map_err(|e| e.to_string())?;
     Ok(workspaces.iter().map(|w| w.name.clone()).collect())
 }
 
@@ -125,7 +126,9 @@ fn create_workspace(
     customer_name: String,
 ) -> Result<String, String> {
     let ws_id = Uuid::new_v4().to_string();
-    app_state.repos.workspace
+    app_state
+        .repos
+        .workspace
         .insert(&ws_id, &name, &customer_name, "[]")
         .map_err(|e| e.to_string())?;
     info!(id = %ws_id, name = %name, "Workspace created");
@@ -170,14 +173,19 @@ fn send_message(
     request: ChatRequest,
 ) -> Result<ChatResponse, String> {
     let settings = app_state.settings.load();
-    let ws_id = request.workspace_id.clone().unwrap_or_else(|| "default".to_string());
+    let ws_id = request
+        .workspace_id
+        .clone()
+        .unwrap_or_else(|| "default".to_string());
 
     // Create user message
     let user_msg = ChatMessage::user(&request.message);
     let user_id = user_msg.id.to_string();
 
     // Save user message to database
-    app_state.repos.chat_messages
+    app_state
+        .repos
+        .chat_messages
         .insert(&user_id, &ws_id, "user", &request.message, "[]")
         .map_err(|e| e.to_string())?;
 
@@ -206,11 +214,10 @@ fn send_message(
 
     // Call AI
     let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
-    let response = rt.block_on(provider.chat(ai_request))
-        .map_err(|e| {
-            error!(error = %e, "AI request failed");
-            e.to_string()
-        })?;
+    let response = rt.block_on(provider.chat(ai_request)).map_err(|e| {
+        error!(error = %e, "AI request failed");
+        e.to_string()
+    })?;
 
     // Format assistant response
     let assistant_msg = ChatMessage::assistant(&response.message.content);
@@ -218,8 +225,16 @@ fn send_message(
     let assistant_created = assistant_msg.created_at.to_rfc3339();
 
     // Save assistant message
-    app_state.repos.chat_messages
-        .insert(&assistant_id, &ws_id, "assistant", &response.message.content, "[]")
+    app_state
+        .repos
+        .chat_messages
+        .insert(
+            &assistant_id,
+            &ws_id,
+            "assistant",
+            &response.message.content,
+            "[]",
+        )
         .map_err(|e| e.to_string())?;
 
     Ok(ChatResponse {
@@ -236,28 +251,30 @@ fn get_history(
     workspace_id: String,
     limit: Option<usize>,
 ) -> Result<Vec<ChatResponse>, String> {
-    let messages = app_state.repos.chat_messages
+    let messages = app_state
+        .repos
+        .chat_messages
         .get_by_workspace(&workspace_id, limit.unwrap_or(50))
         .map_err(|e| e.to_string())?;
 
-    let responses: Vec<ChatResponse> = messages.iter().map(|m| {
-        ChatResponse {
+    let responses: Vec<ChatResponse> = messages
+        .iter()
+        .map(|m| ChatResponse {
             id: m.id.clone(),
             role: m.role.clone(),
             content: m.content.clone(),
             created_at: m.created_at.clone(),
-        }
-    }).collect();
+        })
+        .collect();
 
     Ok(responses)
 }
 
 #[tauri::command]
-fn clear_history(
-    app_state: tauri::State<AppState>,
-    workspace_id: String,
-) -> Result<(), String> {
-    app_state.repos.chat_messages
+fn clear_history(app_state: tauri::State<AppState>, workspace_id: String) -> Result<(), String> {
+    app_state
+        .repos
+        .chat_messages
         .delete_by_workspace(&workspace_id)
         .map_err(|e| e.to_string())?;
     info!(workspace_id, "Chat history cleared");
@@ -268,7 +285,11 @@ fn clear_history(
 
 #[tauri::command]
 fn get_conversations(app_state: tauri::State<AppState>) -> Result<Vec<String>, String> {
-    let workspaces = app_state.repos.workspace.list_all().map_err(|e| e.to_string())?;
+    let workspaces = app_state
+        .repos
+        .workspace
+        .list_all()
+        .map_err(|e| e.to_string())?;
     Ok(workspaces.iter().map(|w| w.name.clone()).collect())
 }
 
@@ -289,7 +310,9 @@ fn save_message(
     role: String,
     content: String,
 ) -> Result<(), String> {
-    app_state.repos.chat_messages
+    app_state
+        .repos
+        .chat_messages
         .insert(&id, &workspace_id, &role, &content, "[]")
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -322,12 +345,16 @@ async fn stream_message(
         message
     );
 
-    app.emit("assistant_message", &ChatResponse {
-        id: Uuid::new_v4().to_string(),
-        role: "assistant".to_string(),
-        content: placeholder,
-        created_at: chrono::Utc::now().to_rfc3339(),
-    }).map_err(|e| e.to_string())?;
+    app.emit(
+        "assistant_message",
+        &ChatResponse {
+            id: Uuid::new_v4().to_string(),
+            role: "assistant".to_string(),
+            content: placeholder,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        },
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }

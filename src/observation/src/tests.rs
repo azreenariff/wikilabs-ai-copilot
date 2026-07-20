@@ -6,8 +6,8 @@ mod provider_lifecycle_tests {
     use crate::browser::BrowserProvider;
     use crate::clipboard::ClipboardProvider;
     use crate::file_observer::FileObserverProvider;
-    use crate::screen_capture::ScreenCaptureProvider;
     use crate::provider::{ObservationProvider, ProviderState};
+    use crate::screen_capture::ScreenCaptureProvider;
     use crate::terminal::TerminalProvider;
 
     fn test_provider_lifecycle<P: ObservationProvider + Default>(_name: &str) {
@@ -69,7 +69,7 @@ mod provider_lifecycle_tests {
 }
 
 mod event_publishing_tests {
-    use crate::event::{ObservationEvent, EventType, ProviderType, ObservationPayload};
+    use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
     use crate::event_bus::{EventBus, EventBusConfig};
 
     fn make_bus() -> EventBus {
@@ -108,8 +108,7 @@ mod event_publishing_tests {
     #[test]
     fn test_provider_subscription_filter() {
         let bus = make_bus();
-        let (_sub, mut rx) =
-            bus.subscribe_to_provider(ProviderType::ActiveWindow);
+        let (_sub, mut rx) = bus.subscribe_to_provider(ProviderType::ActiveWindow);
 
         // Publish non-matching event
         bus.publish(ObservationEvent::new(
@@ -241,9 +240,9 @@ mod registry_tests {
     use crate::browser::BrowserProvider;
     use crate::clipboard::ClipboardProvider;
     use crate::file_observer::FileObserverProvider;
+    use crate::provider::ProviderRegistry;
     use crate::screen_capture::ScreenCaptureProvider;
     use crate::terminal::TerminalProvider;
-    use crate::provider::ProviderRegistry;
 
     #[test]
     fn test_register_all_providers() {
@@ -329,8 +328,8 @@ mod registry_tests {
 }
 
 mod privacy_tests {
-    use crate::privacy::{PrivacyConfig, PrivacyManager, ObservationMode};
     use crate::event::ProviderType;
+    use crate::privacy::{ObservationMode, PrivacyConfig, PrivacyManager};
 
     #[test]
     fn test_privacy_manager_creation() {

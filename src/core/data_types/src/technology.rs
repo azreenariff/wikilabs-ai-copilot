@@ -56,7 +56,8 @@ mod tests {
 
     #[test]
     fn test_technology_inference_serialization() {
-        let inf = TechnologyInference::new("Kubernetes", 0.85, "analysis", "Found kubectl references");
+        let inf =
+            TechnologyInference::new("Kubernetes", 0.85, "analysis", "Found kubectl references");
         let json = serde_json::to_string(&inf).unwrap();
         let deserialized: TechnologyInference = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.name, "Kubernetes");

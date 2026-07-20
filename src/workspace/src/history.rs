@@ -24,11 +24,7 @@ impl HistoryManager {
         Ok(())
     }
 
-    pub fn get_entries(
-        &self,
-        workspace_id: &str,
-        limit: usize,
-    ) -> anyhow::Result<Vec<String>> {
+    pub fn get_entries(&self, workspace_id: &str, limit: usize) -> anyhow::Result<Vec<String>> {
         let histories = self.histories.lock().unwrap();
         let entries = histories.get(workspace_id).cloned().unwrap_or_default();
         let start = if entries.len() > limit {

@@ -20,8 +20,9 @@ impl WorkspaceKnowledgeStore {
 
     /// Initializes the associations table.
     pub fn init(&self) -> Result<()> {
-        self.db.execute_batch(
-            "CREATE TABLE IF NOT EXISTS workspace_pack_associations (
+        self.db
+            .execute_batch(
+                "CREATE TABLE IF NOT EXISTS workspace_pack_associations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 workspace_id TEXT NOT NULL,
                 pack_name TEXT NOT NULL,
@@ -30,8 +31,8 @@ impl WorkspaceKnowledgeStore {
                 updated_at TEXT NOT NULL,
                 UNIQUE(workspace_id, pack_name)
             );",
-        )
-        .context("Failed to create workspace_pack_associations table")?;
+            )
+            .context("Failed to create workspace_pack_associations table")?;
 
         debug!("Workspace-pack associations table initialized");
         Ok(())
@@ -41,13 +42,14 @@ impl WorkspaceKnowledgeStore {
     pub fn enable_pack(&mut self, workspace_id: &str, pack_name: &str) -> Result<()> {
         let now = Utc::now().to_rfc3339();
 
-        self.db.execute(
-            "INSERT OR REPLACE INTO workspace_pack_associations
+        self.db
+            .execute(
+                "INSERT OR REPLACE INTO workspace_pack_associations
              (workspace_id, pack_name, enabled, created_at, updated_at)
              VALUES (?1, ?2, 1, ?3, ?3)",
-            params![workspace_id, pack_name, now],
-        )
-        .context("Failed to enable pack")?;
+                params![workspace_id, pack_name, now],
+            )
+            .context("Failed to enable pack")?;
 
         debug!(workspace = %workspace_id, pack = %pack_name, "Pack enabled");
         Ok(())
@@ -57,23 +59,26 @@ impl WorkspaceKnowledgeStore {
     pub fn disable_pack(&mut self, workspace_id: &str, pack_name: &str) -> Result<()> {
         let now = Utc::now().to_rfc3339();
 
-        let changes = self.db.execute(
-            "UPDATE workspace_pack_associations
+        let changes = self
+            .db
+            .execute(
+                "UPDATE workspace_pack_associations
              SET enabled = 0, updated_at = ?2
              WHERE workspace_id = ?1 AND pack_name = ?3",
-            params![workspace_id, now, pack_name],
-        )
-        .context("Failed to disable pack")?;
+                params![workspace_id, now, pack_name],
+            )
+            .context("Failed to disable pack")?;
 
         if changes == 0 {
             // If no existing row, insert one as disabled
-            self.db.execute(
-                "INSERT INTO workspace_pack_associations
+            self.db
+                .execute(
+                    "INSERT INTO workspace_pack_associations
                  (workspace_id, pack_name, enabled, created_at, updated_at)
                  VALUES (?1, ?2, 0, ?3, ?3)",
-                params![workspace_id, pack_name, now],
-            )
-            .context("Failed to insert disabled association")?;
+                    params![workspace_id, pack_name, now],
+                )
+                .context("Failed to insert disabled association")?;
         }
 
         debug!(workspace = %workspace_id, pack = %pack_name, "Pack disabled");

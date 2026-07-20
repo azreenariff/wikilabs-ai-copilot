@@ -12,3 +12,21 @@ tracing = { workspace = true }
 anyhow = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+futures = { workspace = true }
+rusqlite = { workspace = true }
+globset = { workspace = true }
+sha2 = { workspace = true }
+regex = { workspace = true }
+serde_yaml = { workspace = true }
+once_cell = { workspace = true }
+wikilabs-data-types = { path = "../core/data_types" }
+tempfile = "3"
+walkdir = "2"
+clap = { version = "4", features = ["derive"] }
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
+
+[[bin]]
+name = "knowledge-cli"
+path = "src/bin/knowledge-cli.rs"

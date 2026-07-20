@@ -42,7 +42,11 @@ pub struct ContextSource {
 }
 
 impl ContextSource {
-    pub fn new(name: impl Into<String>, content: impl Into<String>, priority: ContextPriority) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        content: impl Into<String>,
+        priority: ContextPriority,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             name: name.into(),
@@ -53,7 +57,11 @@ impl ContextSource {
         }
     }
 
-    pub fn manual(name: impl Into<String>, content: impl Into<String>, priority: ContextPriority) -> Self {
+    pub fn manual(
+        name: impl Into<String>,
+        content: impl Into<String>,
+        priority: ContextPriority,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             name: name.into(),
@@ -151,7 +159,8 @@ impl AggregatedContext {
 
     /// Serialize to JSON.
     pub fn to_json(&self) -> anyhow::Result<String> {
-        serde_json::to_string_pretty(self).map_err(|e| anyhow::anyhow!("Failed to serialize context: {}", e))
+        serde_json::to_string_pretty(self)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize context: {}", e))
     }
 }
 
@@ -208,7 +217,11 @@ impl ContextBuilder {
     }
 
     /// Build the aggregated context.
-    pub fn build(self, conversation_messages: Vec<serde_json::Value>, estimated_tokens: usize) -> AggregatedContext {
+    pub fn build(
+        self,
+        conversation_messages: Vec<serde_json::Value>,
+        estimated_tokens: usize,
+    ) -> AggregatedContext {
         AggregatedContext::new(
             conversation_messages,
             self.system_prompt.unwrap_or_default(),
@@ -493,8 +506,10 @@ mod tests {
     #[test]
     fn test_sources_by_tag() {
         let mut cm = ContextManager::new("sys", "model");
-        cm.add_source(ContextSource::new("tagged", "a", ContextPriority::High)
-            .with_tags(vec!["error".to_string()]));
+        cm.add_source(
+            ContextSource::new("tagged", "a", ContextPriority::High)
+                .with_tags(vec!["error".to_string()]),
+        );
         cm.add_source(ContextSource::new("untagged", "b", ContextPriority::Low));
 
         assert_eq!(cm.sources_by_tag("error").len(), 1);
@@ -504,8 +519,16 @@ mod tests {
     #[test]
     fn test_aggregate_source_texts() {
         let mut cm = ContextManager::new("sys", "model");
-        cm.add_source(ContextSource::new("log", "Error occurred", ContextPriority::High));
-        cm.add_source(ContextSource::new("config", "Setting=X", ContextPriority::Normal));
+        cm.add_source(ContextSource::new(
+            "log",
+            "Error occurred",
+            ContextPriority::High,
+        ));
+        cm.add_source(ContextSource::new(
+            "config",
+            "Setting=X",
+            ContextPriority::Normal,
+        ));
 
         let aggregated = cm.aggregate_source_texts();
         assert!(aggregated.contains("Error occurred"));

@@ -1,24 +1,8 @@
 //! Version detection step — check for document version history.
 
-use crate::processing::Document;
+use crate::processing::{Document, VersionEntry, VersionInfo};
 use regex::Regex;
 use tracing::debug;
-
-/// Version information extracted from a document.
-#[derive(Debug, Clone)]
-pub struct VersionInfo {
-    pub has_version_header: bool,
-    pub version: String,
-    pub detected_history: Vec<VersionEntry>,
-}
-
-/// A detected version entry in the document.
-#[derive(Debug, Clone)]
-pub struct VersionEntry {
-    pub version: String,
-    pub date: String,
-    pub summary: String,
-}
 
 /// The version detection pipeline step.
 pub struct VersionDetectStep;
@@ -42,7 +26,8 @@ impl VersionDetectStep {
         }
 
         // Check for changelog/version history patterns
-        let changelog_re = Regex::new(r"(?im)^v?\s*([0-9]+\.?[0-9]*\.?[0-9]*)\s*[-–]\s*(.*?)$").unwrap();
+        let changelog_re =
+            Regex::new(r"(?im)^v?\s*([0-9]+\.?[0-9]*\.?[0-9]*)\s*[-–]\s*(.*?)$").unwrap();
         for cap in changelog_re.captures_iter(&doc.full_text) {
             let ver = cap[1].trim().to_string();
             let summary = cap[2].trim().to_string();
@@ -67,19 +52,20 @@ impl VersionDetectStep {
             }
         }
 
-        // Store version info in document metadata
-        doc.version_info = Some(VersionInfo {
-            has_version_header,
-            version,
-            detected_history,
-        });
-
         debug!(
             has_version = has_version_header,
             version = %version,
             history_count = detected_history.len(),
             "Version detection complete"
         );
+
+        // Store version info in document metadata
+        let version_info = VersionInfo {
+            has_version_header,
+            version,
+            detected_history,
+        };
+        doc.version_info = version_info.clone();
     }
 }
 

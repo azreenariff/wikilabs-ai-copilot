@@ -13,8 +13,8 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::event::{ObservationEvent, EventType, ProviderType, ObservationPayload};
-use crate::provider::{ObservationProvider, ProviderConfig, ProviderState, ProviderLifecycle};
+use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
+use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 /// Information about the active window.
 #[derive(Debug, Clone)]
@@ -60,31 +60,76 @@ impl WindowInfo {
 
     fn is_browser_process(name: &str) -> bool {
         let lower = name.to_lowercase();
-        matches!(lower.as_str(),
-            "firefox" | "chrome" | "chromium" | "microsoft-edge" | "brave-browser"
-            | "vivaldi" | "opera" | "arc" | "safari" | "epiphany" | "gnome-chrome"
-            | "firefox-esr" | "google-chrome" | "chromium-browser"
+        matches!(
+            lower.as_str(),
+            "firefox"
+                | "chrome"
+                | "chromium"
+                | "microsoft-edge"
+                | "brave-browser"
+                | "vivaldi"
+                | "opera"
+                | "arc"
+                | "safari"
+                | "epiphany"
+                | "gnome-chrome"
+                | "firefox-esr"
+                | "google-chrome"
+                | "chromium-browser"
         ) || lower.ends_with(".exe") && lower.contains("browser")
     }
 
     fn is_terminal_process(name: &str) -> bool {
         let lower = name.to_lowercase();
-        matches!(lower.as_str(),
-            "alacritty" | "kitty" | "iterm" | "gnome-terminal" | "terminal"
-            | "konsole" | "tilix" | "xfce4-terminal" | "xterm" | "x-terminal-emulator"
-            | "wezterm" | "mintty" | "wt" | "windows terminal" | "pwsh" | "powershell"
-            | "bash" | "zsh" | "fish" | "cmd" | "command prompt" | "openssh"
-        ) || lower.contains("terminal") || lower.contains("ssh")
+        matches!(
+            lower.as_str(),
+            "alacritty"
+                | "kitty"
+                | "iterm"
+                | "gnome-terminal"
+                | "terminal"
+                | "konsole"
+                | "tilix"
+                | "xfce4-terminal"
+                | "xterm"
+                | "x-terminal-emulator"
+                | "wezterm"
+                | "mintty"
+                | "wt"
+                | "windows terminal"
+                | "pwsh"
+                | "powershell"
+                | "bash"
+                | "zsh"
+                | "fish"
+                | "cmd"
+                | "command prompt"
+                | "openssh"
+        ) || lower.contains("terminal")
+            || lower.contains("ssh")
     }
 
     fn is_engineering_process(name: &str) -> bool {
         let lower = name.to_lowercase();
-        matches!(lower.as_str(),
-            "code" | "vscode" | "visual-studio-code" | "code-insiders"
-            | "intellij-idea" | "pycharm" | "webstorm" | "goland" | "rubymine"
-            | "eclipse" | "sublime-text" | "atom" | "notepad++"
-        ) || lower.contains("openshift") || lower.contains("vcenter")
-            || lower.contains("grafana") || lower.contains("nagios")
+        matches!(
+            lower.as_str(),
+            "code"
+                | "vscode"
+                | "visual-studio-code"
+                | "code-insiders"
+                | "intellij-idea"
+                | "pycharm"
+                | "webstorm"
+                | "goland"
+                | "rubymine"
+                | "eclipse"
+                | "sublime-text"
+                | "atom"
+                | "notepad++"
+        ) || lower.contains("openshift")
+            || lower.contains("vcenter")
+            || lower.contains("grafana")
+            || lower.contains("nagios")
     }
 }
 
@@ -117,7 +162,9 @@ pub struct ActiveWindowProvider {
 impl ActiveWindowProvider {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(Mutex::new(ActiveWindowState::new(ProviderConfig::default()))),
+            state: Arc::new(Mutex::new(
+                ActiveWindowState::new(ProviderConfig::default()),
+            )),
         }
     }
 
@@ -278,25 +325,34 @@ impl ObservationProvider for ActiveWindowProvider {
             window_info.process_name.clone(),
             None,
             payload,
-        ).with_confidence(if window_info.url.is_some() { 0.8 } else { 1.0 })
-            .with_metadata("is_browser", serde_json::json!(window_info.is_browser))
-            .with_metadata("is_terminal", serde_json::json!(window_info.is_terminal))
-            .with_metadata("is_engineering_portal", serde_json::json!(window_info.is_engineering_portal))
-        ])
+        )
+        .with_confidence(if window_info.url.is_some() { 0.8 } else { 1.0 })
+        .with_metadata("is_browser", serde_json::json!(window_info.is_browser))
+        .with_metadata("is_terminal", serde_json::json!(window_info.is_terminal))
+        .with_metadata(
+            "is_engineering_portal",
+            serde_json::json!(window_info.is_engineering_portal),
+        )])
     }
 
     fn lifecycle(&self) -> ProviderLifecycle {
-            self.state.lock().unwrap().lifecycle.clone()
-        }
+        self.state.lock().unwrap().lifecycle.clone()
+    }
 
     fn status_details(&self) -> HashMap<String, serde_json::Value> {
         let state = self.state.lock().unwrap();
         let mut details = HashMap::new();
         if let Some(ref info) = state.last_window_info {
-            details.insert("last_process".to_string(), serde_json::json!(info.process_name));
+            details.insert(
+                "last_process".to_string(),
+                serde_json::json!(info.process_name),
+            );
             details.insert("last_title".to_string(), serde_json::json!(info.title));
         }
-        details.insert("platform".to_string(), serde_json::json!(std::env::consts::OS));
+        details.insert(
+            "platform".to_string(),
+            serde_json::json!(std::env::consts::OS),
+        );
         details
     }
 }

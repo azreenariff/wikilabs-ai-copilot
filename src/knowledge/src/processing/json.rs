@@ -3,8 +3,8 @@
 //! Parses JSON into structured Document elements representing
 //! objects, arrays, key-value pairs, and code blocks.
 
-use super::{DocumentElement, ParserProvider};
 use super::Document;
+use super::{DocumentElement, ParserProvider};
 use serde_json::Value;
 use tracing::debug;
 
@@ -30,30 +30,36 @@ impl JsonParser {
 
                     match val {
                         Value::String(s) => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: {}", new_path, s)));
+                            elements
+                                .push(DocumentElement::Paragraph(format!("{}: {}", new_path, s)));
                         }
                         Value::Number(n) => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: {}", new_path, n)));
+                            elements
+                                .push(DocumentElement::Paragraph(format!("{}: {}", new_path, n)));
                         }
                         Value::Bool(b) => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: {}", new_path, b)));
+                            elements
+                                .push(DocumentElement::Paragraph(format!("{}: {}", new_path, b)));
                         }
                         Value::Null => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: (null)", new_path)));
+                            elements
+                                .push(DocumentElement::Paragraph(format!("{}: (null)", new_path)));
                         }
                         Value::Array(arr) => {
                             if arr.len() <= 10 {
                                 // Small array, listify
-                                let items: Vec<String> = arr.iter()
+                                let items: Vec<String> = arr
+                                    .iter()
                                     .enumerate()
-                                    .map(|(i, v)| {
-                                        format!("- [{}] {}", i, v)
-                                    })
+                                    .map(|(i, v)| format!("- [{}] {}", i, v))
                                     .collect();
                                 elements.push(DocumentElement::List(items));
                             } else {
                                 // Large array, heading + items
-                                elements.push(DocumentElement::Heading(level + 1, format!("{} (array, {} items)", new_path, arr.len())));
+                                elements.push(DocumentElement::Heading(
+                                    level + 1,
+                                    format!("{} (array, {} items)", new_path, arr.len()),
+                                ));
                                 let sub = self.convert_value(val, &new_path, level + 2);
                                 elements.extend(sub);
                             }
@@ -70,7 +76,8 @@ impl JsonParser {
                 if arr.is_empty() {
                     elements.push(DocumentElement::Paragraph(format!("{}: []", path)));
                 } else {
-                    let items: Vec<String> = arr.iter()
+                    let items: Vec<String> = arr
+                        .iter()
                         .enumerate()
                         .map(|(i, v)| {
                             if let Value::String(s) = v {

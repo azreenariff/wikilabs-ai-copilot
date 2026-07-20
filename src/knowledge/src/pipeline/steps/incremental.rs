@@ -28,9 +28,7 @@ impl IncrementalStep {
         }
 
         let current_mtime = doc.modified_time;
-        let indexed_mtime = indexed_mtimes
-            .get(&path_str)
-            .expect("checked above");
+        let indexed_mtime = indexed_mtimes.get(&path_str).expect("checked above");
 
         // Compare modification times
         let needs_update = current_mtime > *indexed_mtime;

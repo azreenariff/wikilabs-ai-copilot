@@ -4,11 +4,11 @@
 //! Providers publish events to the bus; downstream consumers
 //! (intent engine, activity feed, logging) subscribe to receive them.
 
+use crossbeam_channel::{bounded, Receiver, Sender, TrySendError};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use crossbeam_channel::{bounded, Sender, Receiver, TrySendError};
 
-use crate::event::{ObservationEvent, EventType, ProviderType, ObservationStats};
+use crate::event::{EventType, ObservationEvent, ObservationStats, ProviderType};
 
 /// Callback type for event consumers.
 pub type EventCallback = Box<dyn Fn(&ObservationEvent) + Send + Sync>;
@@ -158,7 +158,12 @@ impl EventBus {
         senders.entry(label).or_default().push(tx);
         let mut receivers = self.receivers.lock().unwrap();
         receivers.push(rx.clone());
-        (Subscription { id: format!("sub_{}", provider) }, rx)
+        (
+            Subscription {
+                id: format!("sub_{}", provider),
+            },
+            rx,
+        )
     }
 
     pub fn subscribe_to_event_type(
@@ -171,7 +176,12 @@ impl EventBus {
         senders.entry(source_id).or_default().push(tx);
         let mut receivers = self.receivers.lock().unwrap();
         receivers.push(rx.clone());
-        (Subscription { id: format!("sub_{}", event_type) }, rx)
+        (
+            Subscription {
+                id: format!("sub_{}", event_type),
+            },
+            rx,
+        )
     }
 
     pub fn subscribe_all(&self) -> (Subscription, Receiver<ObservationEvent>) {
@@ -180,7 +190,12 @@ impl EventBus {
         senders.entry("all".to_string()).or_default().push(tx);
         let mut receivers = self.receivers.lock().unwrap();
         receivers.push(rx.clone());
-        (Subscription { id: "sub_all".to_string() }, rx)
+        (
+            Subscription {
+                id: "sub_all".to_string(),
+            },
+            rx,
+        )
     }
 
     pub fn get_stats(&self) -> ObservationStats {

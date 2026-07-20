@@ -1,9 +1,9 @@
 //! Index preparation step — format for vector indexing.
 
+use crate::doc::{KnowledgeChunk, KnowledgeDocument};
 use crate::pipeline::DocPipelineState;
-use crate::processing::DocumentElement;
-use crate::doc::{KnowledgeDocument, KnowledgeChunk};
 use crate::pipeline::PipelineConfig;
+use crate::processing::DocumentElement;
 use chrono::{DateTime, Utc};
 use tracing::debug;
 
@@ -16,7 +16,11 @@ impl IndexPrepareStep {
     }
 
     /// Run the index preparation step to create a KnowledgeDocument from pipeline state.
-    pub fn run(&self, state: &DocPipelineState, doc: &super::discover::DiscoveredDoc) -> Option<KnowledgeDocument> {
+    pub fn run(
+        &self,
+        state: &mut DocPipelineState,
+        doc: &super::discover::DiscoveredDoc,
+    ) -> Option<KnowledgeDocument> {
         let discovered = state.discovered.as_ref()?;
         let parsed = state.parsed.as_ref()?;
 

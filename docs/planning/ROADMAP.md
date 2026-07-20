@@ -1,8 +1,8 @@
 # Wiki Labs AI Copilot — Product Roadmap
 
-> **Last Updated:** 2025-07-17  
-> **Version:** 1.0  
-> **Status:** Phase 7 Complete  
+> **Last Updated:** 2026-07-20  
+> **Version:** 1.1  
+> **Status:** Phase 9 Complete (v0.6.0-alpha)  
 > **Owner:** Technical Lead
 
 ---
@@ -205,6 +205,110 @@ Observation Layer (always running, user-controlled):
 
 ---
 
+### Phase 7 — Engineering Intelligence (Q3 2026)
+
+**Goal:** Add domain-aware engineering intelligence on top of the MVP — technology recognition, intent classification, workflow management, and a declarative skill system.
+
+**Focus areas:**
+
+| Area | Deliverables |
+|------|-------------|
+| **Technology Recognition** | Evidence-based detection from browser URL/title, terminal commands, active app, file patterns, workspace context, conversation keywords. 14 technology domains. |
+| **Intent Recognition** | Technology-aware intent classification with continuous updating from observations, conversation, workspace. Human override always wins. |
+| **Engineering Workflow Engine** | State machine tracking states, transitions, required evidence, confidence requirements, completion criteria, validation rules — all declarative via Skills. |
+| **Context Fusion Engine** | Unified engineering context: observations + conversation + workspace + technology + intent + workflow state + timeline + human corrections. |
+| **Confidence Engine** | Confidence scoring on every inference with automatic confirmation for low-confidence detections. |
+| **Engineering Timeline** | Chronological activity tracking with references to source observation events. |
+| **Recommendation Readiness** | Determines whether sufficient information exists before generating advice. |
+| **Human Feedback Loop** | Correction tracking and intent override from direct human input. |
+| **Declarative Skill System** | Dynamic skill loading with manifest validation, version management, enable/disable lifecycle, dependency checking. |
+| **Skill Runtime** | Skill discovery, loading, validation, version management, dependency resolution from configurable directories. |
+| **Skill SDK** | Complete development kit: template generator (8 templates), schema validator (7 JSON schemas), CLI scaffolding, developer docs. |
+
+**Acceptance criteria:**
+- Copilot detects technology stack with ≥80% accuracy across 14 domains
+- Intent classification achieves ≥85% accuracy on engineering workflows
+- Skills load dynamically from directory without application restart
+- Confidence scoring provides actionable thresholds for human confirmation
+- Declarative skill manifests validate correctly with all 7 schemas
+
+**Timeline:** 8 weeks (2 months)  
+**Team size estimate:** 3-4 engineers  
+**Dependencies:** Phase 2 (core observation + skills infrastructure must be operational)
+
+---
+
+### Phase 8 — Knowledge Management (Q4 2026) — v0.5.0-alpha
+
+**Goal:** Full knowledge pack management, embedding provider abstraction, and CLI tooling for knowledge-based assistance.
+
+**Focus areas:**
+
+| Area | Deliverables |
+|------|-------------|
+| **Knowledge Management UI** | Full sidebar knowledge pack management: create, edit, delete, import, validate, package. Context-aware suggestions tied to active workspace and tech stack. |
+| **Embedding Provider Abstraction** | Pluggable `EmbeddingProvider` trait with `LocalEmbeddingProvider` and mock implementations. Swappable backends (OpenAI, local models, custom APIs). |
+| **Knowledge Pack CLI** | `knowledge-cli` binary: `create-pack`, `validate`, `package`, `list-templates`. 3 predefined templates (openshift, engineering, documentation). |
+| **Context-Aware Suggestions** | Sidebar displays relevant suggestions based on active context (screen, terminal, workspace). |
+| **Knowledge Pack Import** | Import documents into workspace knowledge base from `.wkl` archives with automatic metadata extraction and indexing. |
+
+**Acceptance criteria:**
+- Knowledge pack UI supports full CRUD lifecycle with zero errors
+- Embedding provider can be swapped without code changes
+- CLI validates knowledge pack structure against all schemas
+- Import pipeline correctly extracts metadata and indexes documents
+- Context-aware suggestions appear with <200ms latency
+
+**Timeline:** 6 weeks (1.5 months)  
+**Team size estimate:** 2-3 engineers  
+**Dependencies:** Phase 7 (technology recognition and intent must be operational for context-aware suggestions)
+
+---
+
+### Phase 9 — Copilot Engine (Q1 2027) — v0.6.0-alpha
+
+**Goal:** Complete the observation→recommendation→approval loop with a fully autonomous decision engine, human-in-the-loop enforcement, and proactive assistance.
+
+**Focus areas:**
+
+| Area | Deliverables |
+|------|-------------|
+| **Copilot Engine** | Central orchestration for observation→recommendation→approval loop. AI never executes autonomously. |
+| **Decision Engine** | 9-rule filter pipeline: confidence, evidence, user state, session limits, frequency limits, repetition avoidance, workflow relevance. |
+| **Recommendation Engine** | 6-class observation classification, template-based generation, context-aware recommendations, auto-evidence, deduplication. |
+| **Policy Engine** | 5-level spectrum (Minimal→Expert→Silent). Policy-specific confidence, priority, and cooldown thresholds. |
+| **Lifecycle Manager** | 7-state recommendation state machine with invalid transition prevention and terminal state enforcement. |
+| **Session Memory** | Personalization via acceptance/dismissal/correction tracking with topic-based confidence adjustment. |
+| **Proactive Assistance** | 5 signal types, flooding prevention, urgency classification. |
+| **Follow-Up Suggestions** | Keyword-based contextual next steps across 5 domains. |
+| **Human Approval** | Human-in-the-loop enforcement with approval request lifecycle. |
+| **Explainability** | Traceable reasoning with reason trees and evidence mapping. |
+| **Recommendation Cards** | Display cards with actions (Explain/Documentation/Dismiss/Complete). |
+
+**Safety constraints:**
+- No autonomous execution — AI never runs commands or makes changes
+- Human approval required for all recommendations
+- Every recommendation includes evidence
+- All decisions are traceable and explainable
+- No repetition — same recommendation not shown twice
+- Frequency limits: max 2 recommendations per minute
+- Session limits: max 5 recommendations per session
+
+**Acceptance criteria:**
+- All 132 tests pass across 14 modules
+- Decision engine correctly evaluates all 9 filters in priority order
+- Policy engine enforces all 5 levels correctly
+- Lifecycle state machine prevents all invalid transitions
+- Proactive assistance prevents flooding (>10 signals/minute)
+- Human approval gate blocks all autonomous actions
+- Session memory correctly adjusts confidence on corrections
+
+**Timeline:** 6 weeks (1.5 months)  
+**Team size estimate:** 2-3 engineers  
+**Dependencies:** Phase 7 (engineering intelligence must be operational), Phase 8 (knowledge management for context-aware recommendations)
+
+---
+
 ### Phase 3+ — Growth (Q3 2027 Onward)
 
 **Goal:** Scale, platform expansion, and ecosystem growth.
@@ -225,9 +329,16 @@ Phase 0 ──────────────────┐
                          ▼
 Phase 1 (MVP) ────────────┤
                          ▼
-Phase 2 (Expansion) ──────┤
+|Phase 2 (Expansion) ──────┤
+                         │
                          ▼
-Phase 3 (Maturity) ───────┤
+Phase 7 (Intelligence) ───┤
+                         │
+                         ▼
+Phase 8 (Knowledge) ──────┤
+                         │
+                         ▼
+Phase 9 (Copilot Engine)──┤
                          ▼
 Phase 3+ (Growth)
 ```

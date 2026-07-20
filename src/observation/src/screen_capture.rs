@@ -16,8 +16,8 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::event::{ObservationEvent, EventType, ProviderType, ObservationPayload};
-use crate::provider::{ObservationProvider, ProviderConfig, ProviderState, ProviderLifecycle};
+use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
+use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 /// Screenshot metadata (does NOT include the image data).
 #[derive(Debug, Clone)]
@@ -67,7 +67,9 @@ pub struct ScreenCaptureProvider {
 impl ScreenCaptureProvider {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(Mutex::new(ScreenCaptureState::new(ProviderConfig::default()))),
+            state: Arc::new(Mutex::new(ScreenCaptureState::new(
+                ProviderConfig::default(),
+            ))),
         }
     }
 

@@ -43,7 +43,10 @@ impl ProviderConfig {
     pub fn as_map(&self) -> HashMap<String, serde_json::Value> {
         let mut map = HashMap::new();
         map.insert("enabled".to_string(), serde_json::json!(self.enabled));
-        map.insert("interval_secs".to_string(), serde_json::json!(self.interval_secs));
+        map.insert(
+            "interval_secs".to_string(),
+            serde_json::json!(self.interval_secs),
+        );
         map.insert("settings".to_string(), self.settings.clone());
         map
     }
@@ -297,8 +300,7 @@ mod tests {
     #[test]
     fn test_provider_config_with_settings() {
         let settings = serde_json::json!({"monitor_type": "all", "excluded_apps": ["chrome"]});
-        let config = ProviderConfig::new(true, 5)
-            .with_settings(settings.clone());
+        let config = ProviderConfig::new(true, 5).with_settings(settings.clone());
         assert_eq!(config.settings, settings);
     }
 

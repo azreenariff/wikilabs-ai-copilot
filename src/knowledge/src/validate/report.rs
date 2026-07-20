@@ -1,13 +1,13 @@
 //! Generate validation reports for knowledge packs.
 
+use crate::validate::broken_refs::check_broken_refs;
+use crate::validate::dependencies::validate_dependencies;
+use crate::validate::documents::validate_documents;
+use crate::validate::duplicate_id::check_duplicate_ids;
+use crate::validate::embedding_compat::validate_embedding_compat;
 use crate::validate::manifest::validate_manifest;
 use crate::validate::metadata::validate_metadata;
-use crate::validate::documents::validate_documents;
-use crate::validate::embedding_compat::validate_embedding_compat;
 use crate::validate::schema_version::validate_schema_version;
-use crate::validate::duplicate_id::check_duplicate_ids;
-use crate::validate::dependencies::validate_dependencies;
-use crate::validate::broken_refs::check_broken_refs;
 use crate::validate::version_compat::validate_version_compat;
 use anyhow::{Context, Result};
 use tracing::debug;
@@ -18,7 +18,10 @@ pub enum ValidationResult {
     /// All validations passed.
     Valid,
     /// Some validations failed with errors.
-    Invalid { error_count: usize, warning_count: usize },
+    Invalid {
+        error_count: usize,
+        warning_count: usize,
+    },
     /// Validation itself encountered an error.
     Error { message: String },
 }
@@ -146,7 +149,9 @@ pub fn validate_pack_comprehensive(pack_path: &str) -> Result<ValidationReport> 
             report.documents_ok = doc_result.is_valid();
             if !doc_result.is_valid() {
                 report.error_count += doc_result.issue_count();
-                report.errors.push(format!("documents: {}", doc_result.report()));
+                report
+                    .errors
+                    .push(format!("documents: {}", doc_result.report()));
             }
         }
         Err(e) => {
@@ -199,7 +204,9 @@ pub fn validate_pack_comprehensive(pack_path: &str) -> Result<ValidationReport> 
             report.duplicate_ids_ok = dup_result.is_valid;
             if !dup_result.is_valid {
                 report.error_count += 1;
-                report.errors.push(format!("duplicate_ids: {}", dup_result.report()));
+                report
+                    .errors
+                    .push(format!("duplicate_ids: {}", dup_result.report()));
             }
         }
         Err(e) => {
@@ -214,7 +221,9 @@ pub fn validate_pack_comprehensive(pack_path: &str) -> Result<ValidationReport> 
             report.dependencies_ok = dep_result.valid;
             if !dep_result.valid {
                 report.error_count += 1;
-                report.errors.push(format!("dependencies: {}", dep_result.report()));
+                report
+                    .errors
+                    .push(format!("dependencies: {}", dep_result.report()));
             }
         }
         Err(e) => {
@@ -229,7 +238,9 @@ pub fn validate_pack_comprehensive(pack_path: &str) -> Result<ValidationReport> 
             report.broken_refs_ok = ref_result.valid;
             if !ref_result.valid {
                 report.error_count += 1;
-                report.errors.push(format!("broken_refs: {}", ref_result.report()));
+                report
+                    .errors
+                    .push(format!("broken_refs: {}", ref_result.report()));
             }
         }
         Err(e) => {
@@ -245,7 +256,9 @@ pub fn validate_pack_comprehensive(pack_path: &str) -> Result<ValidationReport> 
             report.warning_count += vc_result.warnings.len();
             if !vc_result.valid {
                 report.error_count += 1;
-                report.errors.push(format!("version_compat: {}", vc_result.report()));
+                report
+                    .errors
+                    .push(format!("version_compat: {}", vc_result.report()));
             }
             for w in vc_result.warnings {
                 report.warnings.push(format!("version_compat: {}", w));
@@ -308,7 +321,7 @@ mod tests {
     #[test]
     fn test_invalid_pack() {
         let tmp = TempDir::new().unwrap();
-        fs::write(tmp.path().join("manifest.yaml"), "schema_version: '1.0'\nname: test-pack\nversion: '1.0.0'\ndescription: test\nauthor: test\nlicense: MIT\nformat_version: '1.0'\ndocuments: []\ndependencies: []\n").unwrap();
+        fs::write(tmp.path().join("manifest.yaml"), "schema_version: '1.0'\nname: test-pack\nversion: '1.0.0'\ndescription: test\nauthor: test\nlicense: MIT\nformat_version: '1.0'\ndocuments:\n  - id: missing-doc\n    path: missing.md\n    format: markdown\n    embed: true\ndependencies: []\n").unwrap();
         fs::write(tmp.path().join("metadata.yaml"), "pack_name: test-pack\npack_version: '1.0.0'\ndescription: test\nembedding_model: all-MiniLM-L6-v2\nembedding_dimensions: 384\ntags: []\ncategories: []\nreferences: []\ncreated_at: '2024-01-01T00:00:00Z'\nupdated_at: '2024-01-01T00:00:00Z'\n").unwrap();
 
         let report = validate_pack_comprehensive(tmp.path().to_str().unwrap()).unwrap();

@@ -3,8 +3,8 @@
 //! Parses XML into structured Document elements representing
 //! elements, attributes, text content, and code blocks.
 
-use super::{DocumentElement, ParserProvider};
 use super::Document;
+use super::{DocumentElement, ParserProvider};
 use tracing::debug;
 
 /// XML parser.
@@ -31,9 +31,17 @@ impl XmlParser {
             }
 
             // Determine heading level based on tag name patterns
-            let is_structural = matches!(tag_name.as_str(),
-                "title" | "header" | "heading" | "h1" | "h2" | "h3" |
-                "section" | "chapter" | "part"
+            let is_structural = matches!(
+                tag_name.as_str(),
+                "title"
+                    | "header"
+                    | "heading"
+                    | "h1"
+                    | "h2"
+                    | "h3"
+                    | "section"
+                    | "chapter"
+                    | "part"
             );
 
             if is_structural {
@@ -47,8 +55,12 @@ impl XmlParser {
                 elements.push(DocumentElement::CodeBlock(String::new(), text.to_string()));
             } else if tag_name == "item" || tag_name == "entry" || tag_name == "li" {
                 elements.push(DocumentElement::Paragraph(text.to_string()));
-            } else if tag_name == "note" || tag_name == "warning" || tag_name == "caution"
-                     || tag_name == "important" || tag_name == "alert" {
+            } else if tag_name == "note"
+                || tag_name == "warning"
+                || tag_name == "caution"
+                || tag_name == "important"
+                || tag_name == "alert"
+            {
                 elements.push(DocumentElement::Warning(text.to_string()));
             } else if tag_name == "example" || tag_name == "sample" || tag_name == "demo" {
                 elements.push(DocumentElement::Example(text.to_string()));
@@ -62,9 +74,15 @@ impl XmlParser {
                 };
                 elements.push(DocumentElement::Reference(text.to_string(), url));
             } else if tag_name == "table" {
-                elements.push(DocumentElement::Paragraph(format!("<table> {} </table>", text)));
+                elements.push(DocumentElement::Paragraph(format!(
+                    "<table> {} </table>",
+                    text
+                )));
             } else {
-                elements.push(DocumentElement::Paragraph(format!("<{}> {} </{}>", tag_name, text, tag_name)));
+                elements.push(DocumentElement::Paragraph(format!(
+                    "<{}> {} </{}>",
+                    tag_name, text, tag_name
+                )));
             }
         }
 
@@ -103,7 +121,10 @@ impl ParserProvider for XmlParser {
         let code_re = regex::Regex::new(r"<code[^>]*>(.*?)</code>").unwrap();
         for cap in code_re.captures_iter(content) {
             if let Some(text) = cap.get(1) {
-                elements.push(DocumentElement::CodeBlock(String::new(), text.as_str().to_string()));
+                elements.push(DocumentElement::CodeBlock(
+                    String::new(),
+                    text.as_str().to_string(),
+                ));
             }
         }
 

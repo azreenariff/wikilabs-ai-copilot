@@ -8,7 +8,7 @@ pub struct AuditEntry {
     pub action: String,
     pub actor: String,
     pub hash: String,      // SHA-256 of previous entry
-    pub signature: String,  // Ed25519 signature (if applicable)
+    pub signature: String, // Ed25519 signature (if applicable)
 }
 
 impl AuditLog {

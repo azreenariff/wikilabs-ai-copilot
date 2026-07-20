@@ -67,8 +67,7 @@ impl SkillRuntime {
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_default();
                 skill_ids.push(skill_id.clone());
-                self.enabled_skills
-                    .insert(skill_id, true); // discovered skills are enabled by default
+                self.enabled_skills.insert(skill_id, true); // discovered skills are enabled by default
                 debug!("Discovered skill: {}", path.display());
             }
         }
@@ -104,11 +103,13 @@ impl SkillRuntime {
         if manifest_path.exists() {
             let content = fs::read_to_string(&manifest_path)
                 .with_context(|| format!("Failed to read manifest at {:?}", manifest_path))?;
-            let manifest: SkillManifest = serde_yaml::from_str(&content)
-                .with_context(|| "Failed to parse manifest.yaml")?;
+            let manifest: SkillManifest =
+                serde_yaml::from_str(&content).with_context(|| "Failed to parse manifest.yaml")?;
             loaded.manifest = manifest;
         } else {
-            loaded.validation_errors.push("No manifest.yaml found".to_string());
+            loaded
+                .validation_errors
+                .push("No manifest.yaml found".to_string());
         }
 
         // Load technology.yaml
@@ -126,8 +127,8 @@ impl SkillRuntime {
         if intents_path.exists() {
             let content = fs::read_to_string(&intents_path)
                 .with_context(|| format!("Failed to read intents at {:?}", intents_path))?;
-            let intents_list: Vec<IntentDefinition> = serde_yaml::from_str(&content)
-                .with_context(|| "Failed to parse intents.yaml")?;
+            let intents_list: Vec<IntentDefinition> =
+                serde_yaml::from_str(&content).with_context(|| "Failed to parse intents.yaml")?;
             loaded.intents = intents_list;
         }
 
@@ -136,8 +137,8 @@ impl SkillRuntime {
         if workflows_path.exists() {
             let content = fs::read_to_string(&workflows_path)
                 .with_context(|| format!("Failed to read workflows at {:?}", workflows_path))?;
-            let workflows_list: Vec<WorkflowDefinition> = serde_yaml::from_str(&content)
-                .with_context(|| "Failed to parse workflows.yaml")?;
+            let workflows_list: Vec<WorkflowDefinition> =
+                serde_yaml::from_str(&content).with_context(|| "Failed to parse workflows.yaml")?;
             loaded.workflows = workflows_list;
         }
 
@@ -156,8 +157,8 @@ impl SkillRuntime {
         if commands_path.exists() {
             let content = fs::read_to_string(&commands_path)
                 .with_context(|| format!("Failed to read commands at {:?}", commands_path))?;
-            let commands_list: Vec<CommandDefinition> = serde_yaml::from_str(&content)
-                .with_context(|| "Failed to parse commands.yaml")?;
+            let commands_list: Vec<CommandDefinition> =
+                serde_yaml::from_str(&content).with_context(|| "Failed to parse commands.yaml")?;
             loaded.commands = commands_list;
         }
 
@@ -235,10 +236,7 @@ impl SkillRuntime {
             for intent in &skill.intents {
                 for pattern in &intent.patterns {
                     if let Err(e) = regex::Regex::new(pattern) {
-                        errors.push(format!(
-                            "Invalid regex in intent '{}': {}",
-                            intent.id, e
-                        ));
+                        errors.push(format!("Invalid regex in intent '{}': {}", intent.id, e));
                     }
                 }
             }
@@ -301,7 +299,12 @@ impl SkillRuntime {
     pub fn get_enabled_skills(&self) -> Vec<&LoadedSkill> {
         self.skills
             .values()
-            .filter(|s| self.enabled_skills.get(&s.manifest.id).copied().unwrap_or(false))
+            .filter(|s| {
+                self.enabled_skills
+                    .get(&s.manifest.id)
+                    .copied()
+                    .unwrap_or(false)
+            })
             .collect()
     }
 
@@ -384,7 +387,11 @@ impl SkillRuntime {
                 loaded += 1;
             }
         }
-        info!("Loaded {} of {} discovered skills", loaded, discovered.len());
+        info!(
+            "Loaded {} of {} discovered skills",
+            loaded,
+            discovered.len()
+        );
         Ok(loaded)
     }
 }
@@ -406,10 +413,8 @@ mod tests {
         use std::sync::atomic::{AtomicUsize, Ordering};
         static COUNTER: AtomicUsize = AtomicUsize::new(0);
         let unique_id = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let temp_dir = std::env::temp_dir().join(format!(
-            "wikilabs_skill_runtime_test_{}",
-            unique_id
-        ));
+        let temp_dir =
+            std::env::temp_dir().join(format!("wikilabs_skill_runtime_test_{}", unique_id));
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
         let runtime = SkillRuntime::new(temp_dir.to_str().unwrap());

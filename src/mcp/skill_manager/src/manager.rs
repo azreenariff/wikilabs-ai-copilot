@@ -17,7 +17,11 @@ impl SkillManager {
         anyhow::bail!("Not yet implemented")
     }
 
-    pub async fn call_tool(&self, _name: &str, _args: serde_json::Value) -> anyhow::Result<wikilabs_mcp::server::ToolResult> {
+    pub async fn call_tool(
+        &self,
+        _name: &str,
+        _args: serde_json::Value,
+    ) -> anyhow::Result<wikilabs_mcp::server::ToolResult> {
         // TODO: Route to appropriate module
         anyhow::bail!("Not yet implemented")
     }

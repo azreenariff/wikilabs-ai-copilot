@@ -51,16 +51,15 @@ pub fn check_broken_refs(pack_path: &str) -> Result<BrokenRefsResult> {
             let doc_path = documents_dir.join(&doc.path);
             if let Ok(content) = fs::read_to_string(&doc_path) {
                 // Look for internal reference patterns like [[doc_id]] or [[doc_id|label]]
-                let link_pattern = regex::Regex::new(r"\[\[(\w[\w-]*)\|?[^]]*\]\]").ok();
+                let link_pattern = regex::Regex::new(r"\[\[(\w[\w-]*)(?:\|[^]]*)?\]\]").ok();
                 if let Some(pattern) = link_pattern {
                     for capture in pattern.captures_iter(&content) {
                         if let Some(id_match) = capture.get(1) {
                             let ref_id = id_match.as_str();
                             if !valid_ids.contains(ref_id) {
-                                result.broken_links.push(format!(
-                                    "{} -> [[{}]]",
-                                    doc.id, ref_id
-                                ));
+                                result
+                                    .broken_links
+                                    .push(format!("{} -> [[{}]]", doc.id, ref_id));
                                 result.valid = false;
                                 debug!(
                                     source = %doc.id,
@@ -184,6 +183,7 @@ mod tests {
             "# Doc1\n\nSee [[doc2]].\n",
         )
         .unwrap();
+        fs::write(tmp.path().join("documents/doc2.md"), "# Doc2\n\nContent.\n").unwrap();
 
         let result = check_broken_refs(tmp.path().to_str().unwrap()).unwrap();
         assert!(result.valid);

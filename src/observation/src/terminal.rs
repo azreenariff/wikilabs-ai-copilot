@@ -13,8 +13,8 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::event::{ObservationEvent, EventType, ProviderType, ObservationPayload};
-use crate::provider::{ObservationProvider, ProviderConfig, ProviderState, ProviderLifecycle};
+use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
+use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 /// A terminal session that is being observed.
 #[derive(Debug, Clone)]
@@ -111,8 +111,18 @@ impl TerminalProvider {
     /// Check if a terminal session is considered "engineering-relevant".
     fn is_engineering_session(session: &TerminalSession) -> bool {
         let engineering_keywords = [
-            "kubernetes", "k8s", "openshift", "docker", "podman", "ansible",
-            "terraform", "aws", "gcp", "azure", "ssh", "vagrant",
+            "kubernetes",
+            "k8s",
+            "openshift",
+            "docker",
+            "podman",
+            "ansible",
+            "terraform",
+            "aws",
+            "gcp",
+            "azure",
+            "ssh",
+            "vagrant",
         ];
         session.shell_name.to_lowercase().starts_with("ssh")
             || session.terminal_name.to_lowercase().contains("ssh")
@@ -209,10 +219,8 @@ impl ObservationProvider for TerminalProvider {
             }
 
             // Detect new sessions and emit TerminalCommand events
-            let _new_session_ids: std::collections::HashSet<&str> = sessions
-                .iter()
-                .map(|s| s.session_id.as_str())
-                .collect();
+            let _new_session_ids: std::collections::HashSet<&str> =
+                sessions.iter().map(|s| s.session_id.as_str()).collect();
 
             // Check for commands in each session
             for session in &sessions {
@@ -268,8 +276,14 @@ impl ObservationProvider for TerminalProvider {
             "active_sessions".to_string(),
             serde_json::json!(state.active_sessions.len()),
         );
-        details.insert("recent_commands".to_string(), serde_json::json!(state.recent_commands.len()));
-        details.insert("platform".to_string(), serde_json::json!(std::env::consts::OS));
+        details.insert(
+            "recent_commands".to_string(),
+            serde_json::json!(state.recent_commands.len()),
+        );
+        details.insert(
+            "platform".to_string(),
+            serde_json::json!(std::env::consts::OS),
+        );
         details
     }
 }

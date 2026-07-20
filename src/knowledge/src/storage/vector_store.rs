@@ -3,7 +3,8 @@
 //! Implements the core vector storage layer using SQLite.
 //! Supports flat search and HNSW index via SQLite VSS extension.
 
-use rusqlite::{params, Connection, OptionalExtension};
+use anyhow::Context;
+use rusqlite::{params, Connection, OptionalExtension, Statement};
 use std::sync::{Arc, Mutex};
 use tracing::{debug, info, warn};
 
@@ -36,12 +37,19 @@ impl Default for VectorStoreConfig {
 /// The vector store backed by SQLite.
 pub struct VectorStore {
     connection: Arc<Mutex<Connection>>,
-    config: VectorStoreConfig,
+    pub config: VectorStoreConfig,
+}
+
+impl VectorStore {
+    /// Access the underlying connection for advanced queries.
+    pub(crate) fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
+        self.connection.lock().expect("Vector store lock poisoned")
+    }
 }
 
 impl Clone for VectorStore {
     fn clone(&self) -> Self {
-        let new_conn = Connection::open(&self.config.namespace.clone() + "_clone")
+        let new_conn = Connection::open(&format!("{}_clone", self.config.namespace))
             .expect("Failed to open clone connection");
         Self {
             connection: Arc::new(Mutex::new(new_conn)),
@@ -130,8 +138,10 @@ ON CONFLICT DO NOTHING;
 "#,
             table_name,
             metadata_table,
-            namespace, table_name,
-            namespace, table_name,
+            namespace,
+            table_name,
+            namespace,
+            table_name,
             metadata_table,
             namespace,
             "00000000-0000-0000-0000-000000000000",
@@ -144,7 +154,7 @@ ON CONFLICT DO NOTHING;
 -- Try to load SQLite VSS extension for HNSW support
 -- This is optional and will be silently ignored if the extension is not available
 SELECT load_extension('mod_spatialite') WHERE 1=0;
-"#
+"#,
         );
 
         schema
@@ -219,22 +229,14 @@ SELECT load_extension('mod_spatialite') WHERE 1=0;
         // Use vector distance for flat search
         // Note: SQLite VSS extension provides vector_distance() function
         // For flat search without VSS extension, we return results ordered by doc_id
-        let results: Vec<(String, f32, String, String)> = conn
-            .query_map(
-                &format!(
-                    "SELECT id, content, doc_id, chunk_index FROM {} ORDER BY id LIMIT ?",
-                    self.config.namespace
-                ),
-                params![limit as i64],
-                |row| {
-                    Ok((
-                        row.get(0)?,
-                        row.get(1)?,
-                        row.get(2)?,
-                        row.get(3)?,
-                    ))
-                },
-            )?
+        let mut stmt = conn.prepare(&format!(
+            "SELECT id, content, doc_id, chunk_index FROM {} ORDER BY id LIMIT ?",
+            self.config.namespace
+        ))?;
+        let results: Vec<(String, String, String, usize)> = stmt
+            .query_map(params![limit as i64], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+            })?
             .filter_map(|r| r.ok())
             .collect();
 
@@ -256,15 +258,12 @@ SELECT load_extension('mod_spatialite') WHERE 1=0;
     pub async fn get_vectors_for_doc(&self, doc_id: &str) -> anyhow::Result<Vec<(String, String)>> {
         let conn = self.connection.lock().expect("Vector store lock poisoned");
 
-        let results: Vec<(String, String)> = conn
-            .query_map(
-                &format!(
-                    "SELECT id, content FROM {} WHERE doc_id = ?",
-                    self.config.namespace
-                ),
-                params![doc_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?
+        let mut stmt = conn.prepare(&format!(
+            "SELECT id, content FROM {} WHERE doc_id = ?",
+            self.config.namespace
+        ))?;
+        let results: Vec<(String, String)> = stmt
+            .query_map(params![doc_id], |row| Ok((row.get(0)?, row.get(1)?)))?
             .filter_map(|r| r.ok())
             .collect();
 
@@ -275,12 +274,11 @@ SELECT load_extension('mod_spatialite') WHERE 1=0;
     pub async fn vector_count(&self) -> anyhow::Result<usize> {
         let conn = self.connection.lock().expect("Vector store lock poisoned");
 
-        let count: usize = conn
-            .query_row(
-                &format!("SELECT COUNT(*) FROM {}", self.config.namespace),
-                [],
-                |row| row.get(0),
-            )?;
+        let count: usize = conn.query_row(
+            &format!("SELECT COUNT(*) FROM {}", self.config.namespace),
+            [],
+            |row| row.get(0),
+        )?;
 
         Ok(count)
     }

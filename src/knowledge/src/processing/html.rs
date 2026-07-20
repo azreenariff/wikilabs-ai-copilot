@@ -1,10 +1,10 @@
 //! HTML parser preserving structure.
 
-use super::DocumentElement;
 use super::Document;
+use super::DocumentElement;
 use super::ParserProvider;
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
 
 pub struct HtmlParser;
 
@@ -18,9 +18,12 @@ static OL_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<ol[^>]*>(.*?)</ol>").unwr
 static LI_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<li[^>]*>(.*?)</li>").unwrap());
 static CODE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<code[^>]*>(.*?)</code>").unwrap());
 static PRE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<pre[^>]*>(.*?)</pre>").unwrap());
-static BLOCKQUOTE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<blockquote[^>]*>(.*?)</blockquote>").unwrap());
-static A_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<a[^>]*href=([^>\s]+)[^>]*>(.*?)</a>").unwrap());
-static WARN_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)(warning|alert|danger|note)").unwrap());
+static BLOCKQUOTE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"<blockquote[^>]*>(.*?)</blockquote>").unwrap());
+static A_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"<a[^>]*href=([^>\s]+)[^>]*>(.*?)</a>").unwrap());
+static WARN_TAGS: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)(warning|alert|danger|note)").unwrap());
 
 fn strip_html_tags(html: &str) -> String {
     let re = Regex::new(r"<[^>]+>").unwrap();
@@ -148,8 +151,13 @@ impl ParserProvider for HtmlParser {
         }
 
         if WARN_TAGS.is_match(content) {
-            let warning_texts: Vec<String> = content.lines()
-                .filter(|l| l.to_lowercase().contains("warning") || l.to_lowercase().contains("alert") || l.to_lowercase().contains("danger"))
+            let warning_texts: Vec<String> = content
+                .lines()
+                .filter(|l| {
+                    l.to_lowercase().contains("warning")
+                        || l.to_lowercase().contains("alert")
+                        || l.to_lowercase().contains("danger")
+                })
                 .map(|l| self.clean_html_text(l))
                 .filter(|t| !t.is_empty())
                 .collect();

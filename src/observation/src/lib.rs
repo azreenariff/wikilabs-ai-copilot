@@ -18,23 +18,25 @@
 //! - **Screen Capture Provider** (`screen_capture`): Periodic screenshot capture
 //! - **Observation Engine** (`engine`): Orchestrates all providers
 
-pub mod event;
-pub mod event_bus;
-pub mod provider;
-pub mod privacy;
 pub mod app_monitor;
-pub mod terminal;
 pub mod browser;
 pub mod clipboard;
-pub mod file_observer;
-pub mod screen_capture;
 pub mod engine;
+pub mod event;
+pub mod event_bus;
+pub mod file_observer;
+pub mod privacy;
+pub mod provider;
+pub mod screen_capture;
+pub mod terminal;
 
 #[cfg(test)]
 mod tests;
 
 // Re-export key types at crate level for convenience
-pub use event::{ObservationEvent, EventType, ProviderType, ObservationPayload, ObservationStats};
+pub use event::{EventType, ObservationEvent, ObservationPayload, ObservationStats, ProviderType};
 pub use event_bus::EventBus;
-pub use provider::{ObservationProvider, ProviderConfig, ProviderState, ProviderRegistry, ProviderStatus};
-pub use privacy::{PrivacyConfig, PrivacyManager, ObservationMode};
+pub use privacy::{ObservationMode, PrivacyConfig, PrivacyManager};
+pub use provider::{
+    ObservationProvider, ProviderConfig, ProviderRegistry, ProviderState, ProviderStatus,
+};

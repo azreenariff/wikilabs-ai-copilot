@@ -5,13 +5,13 @@
 //!
 //! Embedding generation is independent from the AI reasoning model.
 
-pub mod provider;
 pub mod batch;
 pub mod incremental;
+pub mod provider;
 
-pub use provider::{EmbeddingProvider, EmbeddingProviderRegistry, LocalEmbeddingProvider};
 pub use batch::BatchEmbedder;
 pub use incremental::IncrementalEmbedder;
+pub use provider::{EmbeddingProvider, EmbeddingProviderRegistry, LocalEmbeddingProvider};
 
 /// Embedding configuration for a pack or document batch.
 #[derive(Debug, Clone)]

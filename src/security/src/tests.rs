@@ -2,7 +2,7 @@
 
 use crate::audit::{AuditEntry, AuditLog};
 use crate::classification::DataClassification;
-use crate::credentials::{CredentialStore, Credential};
+use crate::credentials::{Credential, CredentialStore};
 use crate::encryption::EncryptionEngine;
 use crate::injection_defense::InjectionDefense;
 use crate::key_derivation::KeyDerivation;
@@ -43,7 +43,8 @@ mod classification_tests {
             DataClassification::Confidential,
             DataClassification::Restricted,
         ];
-        let encrypting: Vec<_> = classes.into_iter()
+        let encrypting: Vec<_> = classes
+            .into_iter()
             .filter(|c| c.requires_encryption())
             .collect();
         assert_eq!(encrypting.len(), 2);
@@ -82,7 +83,10 @@ mod keychain_tests {
         };
         let result = rt.block_on(kc.store(secret));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Not yet implemented"));
     }
 
     #[test]
@@ -91,7 +95,10 @@ mod keychain_tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(kc.retrieve("s", "u"));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Not yet implemented"));
     }
 }
 
@@ -134,7 +141,10 @@ mod encryption_tests {
         let engine = EncryptionEngine::new();
         let result = engine.encrypt(&[0u8; 32], b"plaintext");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Not yet implemented"));
     }
 
     #[test]
@@ -142,7 +152,10 @@ mod encryption_tests {
         let engine = EncryptionEngine::new();
         let result = engine.decrypt(&[0u8; 32], b"ciphertext");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Not yet implemented"));
     }
 }
 
@@ -179,7 +192,10 @@ mod credentials_tests {
         };
         let result = rt.block_on(store.store(cred));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Not yet implemented"));
     }
 }
 
@@ -258,6 +274,9 @@ mod audit_tests {
         };
         let result = rt.block_on(log.append(entry));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Not yet implemented"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Not yet implemented"));
     }
 }

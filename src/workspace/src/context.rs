@@ -63,11 +63,7 @@ impl ContextManager {
             .clone()
     }
 
-    pub fn update_context(
-        &mut self,
-        workspace_id: uuid::Uuid,
-        builder: ContextBuilder,
-    ) -> Value {
+    pub fn update_context(&mut self, workspace_id: uuid::Uuid, builder: ContextBuilder) -> Value {
         let ctx = builder.build();
         self.contexts.insert(workspace_id, ctx.clone());
         ctx
@@ -119,8 +115,7 @@ mod tests {
     fn test_context_manager_or_build() {
         let mut cm = ContextManager::new();
         let id = uuid::Uuid::new_v4();
-        let builder = ContextBuilder::new()
-            .with_technologies(&["rust"]);
+        let builder = ContextBuilder::new().with_technologies(&["rust"]);
 
         let ctx = cm.get_or_build_context(id, builder);
         assert_eq!(ctx["technology_stack"].as_array().unwrap().len(), 1);
@@ -138,10 +133,7 @@ mod tests {
         let ctx1 = cm.get_or_build_context(id, ContextBuilder::new());
         assert_eq!(ctx1["technology_stack"].as_array().unwrap().len(), 0);
 
-        let ctx2 = cm.update_context(
-            id,
-            ContextBuilder::new().with_technologies(&["go", "java"]),
-        );
+        let ctx2 = cm.update_context(id, ContextBuilder::new().with_technologies(&["go", "java"]));
         assert_eq!(ctx2["technology_stack"].as_array().unwrap().len(), 2);
     }
 

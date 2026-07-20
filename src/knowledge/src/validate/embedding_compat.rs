@@ -56,6 +56,11 @@ pub fn validate_embedding_compat(pack_path: &str) -> Result<EmbeddingCompatResul
                 "model '{}' expects {} dimensions, but metadata says {}",
                 model, expected_dims, metadata.embedding_dimensions
             ));
+            result.errors.push(format!(
+                "expected {} dimensions for model '{}', got {}",
+                expected_dims, model, metadata.embedding_dimensions
+            ));
+            result.is_compatible = false;
             debug!(
                 model = model,
                 expected = expected_dims,

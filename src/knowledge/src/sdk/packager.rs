@@ -76,15 +76,11 @@ pub fn package_pack(pack_path: &str, output_path: &str) -> Result<()> {
 
     // Write archive to output
     let archive_bytes = archive.build()?;
-    fs::write(output, archive_bytes).with_context(|| {
-        format!("Failed to write archive to {}", output.display())
-    })?;
+    fs::write(output, archive_bytes)
+        .with_context(|| format!("Failed to write archive to {}", output.display()))?;
 
     // Verify the output has the right extension
-    let ext = output
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
+    let ext = output.extension().and_then(|e| e.to_str()).unwrap_or("");
     if ext != WKL_EXTENSION {
         debug!(
             "Output extension is '{}', expected '{}'",
@@ -130,9 +126,8 @@ pub fn extract_pack(archive_path: &str, output_dir: &str) -> Result<()> {
             .parent()
             .ok_or_else(|| anyhow::anyhow!("No parent directory for entry: {}", entry.path))?;
         fs::create_dir_all(dir)?;
-        fs::write(&target_path, &entry.data).with_context(|| {
-            format!("Failed to write extracted file: {}", entry.path)
-        })?;
+        fs::write(&target_path, &entry.data)
+            .with_context(|| format!("Failed to write extracted file: {}", entry.path))?;
     }
 
     info!("Knowledge pack extracted successfully to {}", output_dir);
@@ -212,9 +207,12 @@ impl Archive {
             if offset + 4 > data.len() {
                 anyhow::bail!("Unexpected end of archive reading path length");
             }
-            let path_len =
-                u32::from_le_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]])
-                    as usize;
+            let path_len = u32::from_le_bytes([
+                data[offset],
+                data[offset + 1],
+                data[offset + 2],
+                data[offset + 3],
+            ]) as usize;
             offset += 4;
 
             // Read path bytes
@@ -229,9 +227,12 @@ impl Archive {
             if offset + 4 > data.len() {
                 anyhow::bail!("Unexpected end of archive reading data length");
             }
-            let data_len =
-                u32::from_le_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]])
-                    as usize;
+            let data_len = u32::from_le_bytes([
+                data[offset],
+                data[offset + 1],
+                data[offset + 2],
+                data[offset + 3],
+            ]) as usize;
             offset += 4;
 
             // Read data bytes
@@ -241,7 +242,10 @@ impl Archive {
             let entry_data = data[offset..offset + data_len].to_vec();
             offset += data_len;
 
-            entries.push(ArchiveEntry { path, data: entry_data });
+            entries.push(ArchiveEntry {
+                path,
+                data: entry_data,
+            });
         }
 
         Ok(Self { entries })
@@ -249,36 +253,23 @@ impl Archive {
 }
 
 /// Recursively adds files from a directory to the archive.
-fn add_directory_recursive(
-    builder: &mut ArchiveBuilder,
-    dir: &Path,
-    prefix: &str,
-) -> Result<()> {
-    let entries = fs::read_dir(dir).with_context(|| {
-        format!("Failed to read directory: {}", dir.display())
-    })?;
+fn add_directory_recursive(builder: &mut ArchiveBuilder, dir: &Path, prefix: &str) -> Result<()> {
+    let entries = fs::read_dir(dir)
+        .with_context(|| format!("Failed to read directory: {}", dir.display()))?;
 
     for entry in entries {
         let entry = entry.with_context(|| "Failed to read directory entry")?;
         let path = entry.path();
-        let file_name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
+        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         let relative_path = format!("{}{}", prefix, file_name);
 
         if path.is_file() {
-            let data = fs::read(&path).with_context(|| {
-                format!("Failed to read file: {}", path.display())
-            })?;
+            let data = fs::read(&path)
+                .with_context(|| format!("Failed to read file: {}", path.display()))?;
             builder.add_file(&relative_path, &data)?;
         } else if path.is_dir() {
-            add_directory_recursive(
-                builder,
-                &path,
-                &format!("{}{}/", prefix, file_name),
-            )?;
+            add_directory_recursive(builder, &path, &format!("{}{}/", prefix, file_name))?;
         }
     }
 

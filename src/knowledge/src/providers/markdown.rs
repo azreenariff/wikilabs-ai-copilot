@@ -44,8 +44,9 @@ impl KnowledgeProvider for MarkdownProvider {
 
         let mut docs = Vec::new();
         if p.is_file() {
-            if p.extension().and_then(|e| e.to_str()) == Some("md") || 
-               p.extension().and_then(|e| e.to_str()) == Some("markdown") {
+            if p.extension().and_then(|e| e.to_str()) == Some("md")
+                || p.extension().and_then(|e| e.to_str()) == Some("markdown")
+            {
                 docs.push(self.parse(&p.to_string_lossy()).await?);
             }
         } else if p.is_dir() {
@@ -73,14 +74,17 @@ impl KnowledgeProvider for MarkdownProvider {
         let content = fs::read_to_string(p)
             .with_context(|| format!("Failed to read Markdown file: {}", path))?;
 
-        let metadata = fs::metadata(p)
-            .with_context(|| format!("Failed to read metadata: {}", path))?;
+        let metadata =
+            fs::metadata(p).with_context(|| format!("Failed to read metadata: {}", path))?;
 
         let modified_at = metadata
             .modified()
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| Utc::timestamp_opt(d.as_secs() as i64, 0))
+            .map(|d| {
+                chrono::DateTime::<chrono::Utc>::from_timestamp(d.as_secs() as i64, 0)
+                    .unwrap_or_default()
+            })
             .unwrap_or_else(Utc::now);
 
         let title = p
@@ -122,4 +126,3 @@ impl KnowledgeProvider for MarkdownProvider {
         })
     }
 }
-

@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::event::{ObservationEvent, EventType, ProviderType};
+use crate::event::{EventType, ObservationEvent, ProviderType};
 
 /// A structured context entry for the AI engine.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -164,28 +164,75 @@ impl AiContextManager {
                     ctx.browser_context = Some(BrowserContextSummary {
                         browser: event.source.clone(),
                         url: Some(url.to_string()),
-                        title: event.payload.data.get("title").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                        is_engineering_portal: event.payload.data.get("is_engineering_portal").and_then(|v| v.as_bool()).unwrap_or(false),
+                        title: event
+                            .payload
+                            .data
+                            .get("title")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string()),
+                        is_engineering_portal: event
+                            .payload
+                            .data
+                            .get("is_engineering_portal")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false),
                     });
                 }
             }
             ProviderType::Terminal => {
-                if let Some(session) = event.payload.data.get("session_id").and_then(|v| v.as_str()) {
+                if let Some(session) = event
+                    .payload
+                    .data
+                    .get("session_id")
+                    .and_then(|v| v.as_str())
+                {
                     ctx.terminal_context = Some(TerminalContextSummary {
                         terminal: event.source.clone(),
-                        shell: event.payload.data.get("shell").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                        shell: event
+                            .payload
+                            .data
+                            .get("shell")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
                         session_id: session.to_string(),
-                        is_ssh: event.payload.data.get("is_ssh").and_then(|v| v.as_bool()).unwrap_or(false),
-                        is_engineering: event.payload.data.get("is_engineering").and_then(|v| v.as_bool()).unwrap_or(false),
+                        is_ssh: event
+                            .payload
+                            .data
+                            .get("is_ssh")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false),
+                        is_engineering: event
+                            .payload
+                            .data
+                            .get("is_engineering")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false),
                     });
                 }
             }
             ProviderType::Clipboard => {
                 if let (Some(error), Some(trace), Some(log), Some(len)) = (
-                    event.payload.data.get("looks_like_error").and_then(|v| v.as_bool()),
-                    event.payload.data.get("looks_like_stack_trace").and_then(|v| v.as_bool()),
-                    event.payload.data.get("looks_like_log").and_then(|v| v.as_bool()),
-                    event.payload.data.get("text_length").and_then(|v| v.as_u64()),
+                    event
+                        .payload
+                        .data
+                        .get("looks_like_error")
+                        .and_then(|v| v.as_bool()),
+                    event
+                        .payload
+                        .data
+                        .get("looks_like_stack_trace")
+                        .and_then(|v| v.as_bool()),
+                    event
+                        .payload
+                        .data
+                        .get("looks_like_log")
+                        .and_then(|v| v.as_bool()),
+                    event
+                        .payload
+                        .data
+                        .get("text_length")
+                        .and_then(|v| v.as_u64()),
                 ) {
                     ctx.clipboard_indicators.push(ClipboardIndicator {
                         looks_like_error: error,
@@ -201,11 +248,29 @@ impl AiContextManager {
             }
             ProviderType::FileObserver => {
                 if let (Some(path), Some(ext), Some(size)) = (
-                    event.payload.data.get("path").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                    event.payload.data.get("extension").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                    event.payload.data.get("size_bytes").and_then(|v| v.as_u64()),
+                    event
+                        .payload
+                        .data
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    event
+                        .payload
+                        .data
+                        .get("extension")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    event
+                        .payload
+                        .data
+                        .get("size_bytes")
+                        .and_then(|v| v.as_u64()),
                 ) {
-                    ctx.config_files.push(ConfigFileSummary { path, extension: ext, size_bytes: Some(size) });
+                    ctx.config_files.push(ConfigFileSummary {
+                        path,
+                        extension: ext,
+                        size_bytes: Some(size),
+                    });
                     if ctx.config_files.len() > 10 {
                         ctx.config_files.remove(0);
                     }
@@ -213,12 +278,37 @@ impl AiContextManager {
             }
             ProviderType::ScreenCapture => {
                 if let (Some(w), Some(h), Some(s), Some(t)) = (
-                    event.payload.data.get("width").and_then(|v| v.as_u64()).map(|v| v as u32),
-                    event.payload.data.get("height").and_then(|v| v.as_u64()).map(|v| v as u32),
-                    event.payload.data.get("screen_index").and_then(|v| v.as_u64()).map(|v| v as u32),
-                    event.payload.data.get("total_screens").and_then(|v| v.as_u64()).map(|v| v as u32),
+                    event
+                        .payload
+                        .data
+                        .get("width")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32),
+                    event
+                        .payload
+                        .data
+                        .get("height")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32),
+                    event
+                        .payload
+                        .data
+                        .get("screen_index")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32),
+                    event
+                        .payload
+                        .data
+                        .get("total_screens")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32),
                 ) {
-                    ctx.screen_capture = Some(ScreenCaptureMetadata { width: w, height: h, screen_index: s, total_screens: t });
+                    ctx.screen_capture = Some(ScreenCaptureMetadata {
+                        width: w,
+                        height: h,
+                        screen_index: s,
+                        total_screens: t,
+                    });
                 }
             }
             _ => {}
@@ -269,7 +359,10 @@ pub fn format_context_for_prompt(ctx: &AiContext) -> String {
     let mut parts: Vec<String> = Vec::new();
 
     if !ctx.applications.is_empty() {
-        parts.push(format!("Current applications: {}", ctx.applications.join(", ")));
+        parts.push(format!(
+            "Current applications: {}",
+            ctx.applications.join(", ")
+        ));
     }
 
     if let Some(ref browser) = ctx.browser_context {
@@ -321,7 +414,10 @@ pub fn format_context_for_prompt(ctx: &AiContext) -> String {
             .filter(|c| c.looks_like_stack_trace)
             .count() as u32;
         if errors > 0 || traces > 0 {
-            parts.push(format!("Clipboard: {} errors, {} stack traces detected", errors, traces));
+            parts.push(format!(
+                "Clipboard: {} errors, {} stack traces detected",
+                errors, traces
+            ));
         }
     }
 

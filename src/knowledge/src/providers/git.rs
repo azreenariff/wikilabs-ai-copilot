@@ -43,9 +43,28 @@ impl KnowledgeProvider for GitProvider {
 
     fn supported_formats(&self) -> &[&str] {
         &[
-            "md", "txt", "html", "yaml", "yml", "json", "xml", "sh", "bash",
-            "py", "rs", "go", "java", "js", "ts", "toml", "conf", "cfg",
-            "ini", "dockerfile", "gitignore", "gitattributes",
+            "md",
+            "txt",
+            "html",
+            "yaml",
+            "yml",
+            "json",
+            "xml",
+            "sh",
+            "bash",
+            "py",
+            "rs",
+            "go",
+            "java",
+            "js",
+            "ts",
+            "toml",
+            "conf",
+            "cfg",
+            "ini",
+            "dockerfile",
+            "gitignore",
+            "gitattributes",
         ]
     }
 
@@ -62,7 +81,8 @@ impl KnowledgeProvider for GitProvider {
         let git_dir = repo_path.join(".git");
         if !git_dir.exists() {
             return Err(anyhow::anyhow!(
-                "Not a git repository (no .git directory found): {}", path
+                "Not a git repository (no .git directory found): {}",
+                path
             ));
         }
 
@@ -82,12 +102,12 @@ impl KnowledgeProvider for GitProvider {
                     }
                     let full_path = repo_path.join(file);
                     if full_path.is_file() {
-                        if self.extensions.is_empty() 
+                        if self.extensions.is_empty()
                             || self.extensions.iter().any(|e| {
-                                full_path.extension()
-                                    .and_then(|ext| ext.to_str())
+                                full_path.extension().and_then(|ext| ext.to_str())
                                     == Some(e.as_str())
-                            }) {
+                            })
+                        {
                             match self.parse(&full_path.to_string_lossy()).await {
                                 Ok(doc) => docs.push(doc),
                                 Err(e) => warn!(file, error = %e, "Failed to parse git file"),
@@ -107,17 +127,20 @@ impl KnowledgeProvider for GitProvider {
 
     async fn parse(&self, path: &str) -> Result<ProviderDocument> {
         let p = Path::new(path);
-        let content = fs::read_to_string(p)
-            .with_context(|| format!("Failed to read file: {}", path))?;
+        let content =
+            fs::read_to_string(p).with_context(|| format!("Failed to read file: {}", path))?;
 
-        let metadata = fs::metadata(p)
-            .with_context(|| format!("Failed to read metadata: {}", path))?;
+        let metadata =
+            fs::metadata(p).with_context(|| format!("Failed to read metadata: {}", path))?;
 
         let modified_at = metadata
             .modified()
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| Utc::timestamp_opt(d.as_secs() as i64, 0))
+            .map(|d| {
+                chrono::DateTime::<chrono::Utc>::from_timestamp(d.as_secs() as i64, 0)
+                    .unwrap_or_default()
+            })
             .unwrap_or_else(Utc::now);
 
         let title = p
@@ -143,4 +166,3 @@ impl KnowledgeProvider for GitProvider {
         })
     }
 }
-

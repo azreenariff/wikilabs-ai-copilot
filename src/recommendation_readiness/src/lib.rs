@@ -20,9 +20,9 @@ use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use tracing::{debug, info};
 use uuid::Uuid;
 use wikilabs_workflow_engine::WorkflowState;
-use tracing::{debug, info};
 
 // ---------------------------------------------------------------------------
 // Data types
@@ -94,7 +94,8 @@ impl ReadinessReport {
             current_state: None,
             missing_evidence: missing,
             evidence_collected: Vec::new(),
-            recommendation: "Continue gathering engineering context before making recommendations.".to_string(),
+            recommendation: "Continue gathering engineering context before making recommendations."
+                .to_string(),
         }
     }
 }
@@ -155,7 +156,10 @@ impl RecommendationReadinessEngine {
         self.evidence_collected.retain(|e| e.id != evidence_id);
         let removed = before - self.evidence_collected.len();
         if removed > 0 {
-            debug!("Removed {} evidence item(s) matching '{}'", removed, evidence_id);
+            debug!(
+                "Removed {} evidence item(s) matching '{}'",
+                removed, evidence_id
+            );
             self.recalculate_readiness();
         }
     }
@@ -192,7 +196,10 @@ impl RecommendationReadinessEngine {
         let avg_confidence = if self.evidence_collected.is_empty() {
             0.0
         } else {
-            self.evidence_collected.iter().map(|e| e.confidence).sum::<f32>()
+            self.evidence_collected
+                .iter()
+                .map(|e| e.confidence)
+                .sum::<f32>()
                 / self.evidence_collected.len() as f32
         };
         let confidence_bonus = avg_confidence * 15.0;
@@ -315,10 +322,7 @@ impl RecommendationReadinessEngine {
         };
 
         self.current_readiness = (base_pct + intent_bonus + confidence_bonus).min(100.0);
-        debug!(
-            "Recalculated readiness: {:.1}%",
-            self.current_readiness
-        );
+        debug!("Recalculated readiness: {:.1}%", self.current_readiness);
     }
 
     /// Get evidence items filtered by type.
@@ -392,12 +396,8 @@ mod tests {
     #[test]
     fn test_remove_evidence() {
         let mut engine = RecommendationReadinessEngine::new();
-        let evidence = EvidenceItem::new(
-            "code_structure",
-            "observation",
-            "Found Rust project",
-            0.9,
-        );
+        let evidence =
+            EvidenceItem::new("code_structure", "observation", "Found Rust project", 0.9);
         let id = evidence.id.clone();
         engine.add_evidence(evidence);
 
@@ -409,12 +409,8 @@ mod tests {
     #[test]
     fn test_remove_nonexistent_evidence() {
         let mut engine = RecommendationReadinessEngine::new();
-        let evidence = EvidenceItem::new(
-            "code_structure",
-            "observation",
-            "Found Rust project",
-            0.9,
-        );
+        let evidence =
+            EvidenceItem::new("code_structure", "observation", "Found Rust project", 0.9);
         engine.add_evidence(evidence);
         engine.remove_evidence("nonexistent-id");
         assert_eq!(engine.get_evidence_count(), 1);
@@ -423,10 +419,7 @@ mod tests {
     #[test]
     fn test_set_missing_evidence() {
         let mut engine = RecommendationReadinessEngine::new();
-        engine.set_missing(vec![
-            "tech_stack".to_string(),
-            "intent".to_string(),
-        ]);
+        engine.set_missing(vec!["tech_stack".to_string(), "intent".to_string()]);
 
         let report = engine.get_report();
         assert_eq!(report.missing_evidence.len(), 2);
@@ -434,10 +427,8 @@ mod tests {
 
     #[test]
     fn test_readiness_report_gathering() {
-        let report = ReadinessReport::gathering(vec![
-            "tech_stack".to_string(),
-            "intent".to_string(),
-        ]);
+        let report =
+            ReadinessReport::gathering(vec!["tech_stack".to_string(), "intent".to_string()]);
         assert!(!report.is_ready);
         assert!(report.recommendation.contains("gathering"));
     }
@@ -515,15 +506,9 @@ mod tests {
 
         engine.update_from_workflow(&workflow_state);
 
-        assert_eq!(
-            engine.current_state,
-            Some("analysis".to_string())
-        );
+        assert_eq!(engine.current_state, Some("analysis".to_string()));
         assert_eq!(engine.get_evidence_count(), 1); // discovery state counted
-        assert_eq!(
-            engine.missing_evidence,
-            vec!["tech_stack".to_string()]
-        );
+        assert_eq!(engine.missing_evidence, vec!["tech_stack".to_string()]);
     }
 
     #[test]
@@ -606,26 +591,18 @@ mod tests {
 
         let report = engine.get_report();
         assert!(!report.evidence_collected.is_empty());
-        assert!(report
-            .evidence_collected[0]
-            .contains("code_structure"));
+        assert!(report.evidence_collected[0].contains("code_structure"));
     }
 
     #[test]
     fn test_confidence_clamping() {
         let evidence = EvidenceItem::new(
-            "test",
-            "obs",
-            "test",
-            1.5, // Should be clamped to 1.0
+            "test", "obs", "test", 1.5, // Should be clamped to 1.0
         );
         assert_eq!(evidence.confidence, 1.0);
 
         let evidence2 = EvidenceItem::new(
-            "test",
-            "obs",
-            "test",
-            -0.3, // Should be clamped to 0.0
+            "test", "obs", "test", -0.3, // Should be clamped to 0.0
         );
         assert_eq!(evidence2.confidence, 0.0);
     }
@@ -703,20 +680,10 @@ mod tests {
         let mut engine = RecommendationReadinessEngine::new();
         assert_eq!(engine.get_evidence_count(), 0);
 
-        engine.add_evidence(EvidenceItem::new(
-            "a",
-            "obs",
-            "a",
-            0.5,
-        ));
+        engine.add_evidence(EvidenceItem::new("a", "obs", "a", 0.5));
         assert_eq!(engine.get_evidence_count(), 1);
 
-        engine.add_evidence(EvidenceItem::new(
-            "b",
-            "obs",
-            "b",
-            0.7,
-        ));
+        engine.add_evidence(EvidenceItem::new("b", "obs", "b", 0.7));
         assert_eq!(engine.get_evidence_count(), 2);
 
         let first_id = engine.get_all_evidence()[0].id.clone();

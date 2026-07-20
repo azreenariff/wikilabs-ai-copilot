@@ -1,10 +1,11 @@
 //! Batch embedding — generate embeddings for multiple chunks efficiently.
 
 use super::provider::EmbeddingProvider;
-use super::{EmbeddingPipelineConfig, EmbeddingResult, EmbeddingPipelineResult, EmbeddingStatus};
+use super::{EmbeddingPipelineConfig, EmbeddingPipelineResult, EmbeddingResult, EmbeddingStatus};
 use crate::doc::KnowledgeChunk;
-use tracing::{debug, info, warn};
 use chrono::Utc;
+use tracing::{debug, info, warn};
+use uuid::Uuid;
 
 /// Batch embedder — processes chunks in configurable batch sizes.
 pub struct BatchEmbedder {
@@ -24,18 +25,21 @@ impl BatchEmbedder {
     }
 
     /// Generate embeddings for a batch of chunks.
-    pub async fn embed_batch(&self, chunks: &[KnowledgeChunk], provider: &dyn EmbeddingProvider) -> anyhow::Result<EmbeddingPipelineResult> {
+    pub async fn embed_batch(
+        &self,
+        chunks: &[KnowledgeChunk],
+        provider: &dyn EmbeddingProvider,
+    ) -> anyhow::Result<EmbeddingPipelineResult> {
         let start = Utc::now();
         let mut results = Vec::new();
         let mut successful = 0;
         let mut failed = 0;
         let mut skipped = 0;
 
-        // Filter out chunks that already have embeddings
-        let texts: Vec<String> = chunks.iter()
-            .filter(|c| c.embedding.is_none())
-            .map(|c| c.text.clone())
-            .collect();
+        // Filter out chunks that already have a vector_id (not empty).
+        let pending: Vec<&KnowledgeChunk> =
+            chunks.iter().filter(|c| c.vector_id.is_empty()).collect();
+        let texts: Vec<String> = pending.iter().map(|c| c.content.clone()).collect();
 
         let total_pending = texts.len();
         skipped = chunks.len().saturating_sub(total_pending);
@@ -60,22 +64,15 @@ impl BatchEmbedder {
             "Starting batch embedding"
         );
 
-        // Process in batches
-        let chunks_for_texts: Vec<&KnowledgeChunk> = chunks.iter()
-            .filter(|c| c.embedding.is_none())
-            .collect();
-
         for batch in texts.chunks(self.config.batch_size) {
-            let batch_chunks: Vec<&KnowledgeChunk> = chunks_for_texts
-                .iter()
-                .filter(|c| batch.iter().any(|t| t == &c.text))
-                .cloned()
-                .collect();
+            let batch_size = batch.len();
+            let batch_chunks = &pending[successful..successful + batch_size];
 
-            match provider.embed_batch(batch.to_vec()).await {
+            match provider.embed_batch(batch).await {
                 Ok(vectors) => {
                     for (i, vector) in vectors.iter().enumerate() {
-                        let chunk_id = batch_chunks.get(i)
+                        let chunk_id = batch_chunks
+                            .get(i)
                             .map(|c| c.id.to_string())
                             .unwrap_or_else(|| format!("batch_{}_{}", i, batch_chunks.len()));
 
@@ -99,10 +96,10 @@ impl BatchEmbedder {
                 }
                 Err(e) => {
                     warn!(error = %e, batch_size = batch.len(), "Batch embedding failed");
-                    for text in batch {
+                    for _ in batch {
                         failed += 1;
                         results.push(EmbeddingResult {
-                            chunk_id: text.chars().take(8).collect(),
+                            chunk_id: Uuid::new_v4().to_string(),
                             vector: Vec::new(),
                             model: self.config.model.clone(),
                             dimensions: self.config.dimensions,
@@ -119,11 +116,7 @@ impl BatchEmbedder {
 
         info!(
             total = chunks.len(),
-            successful,
-            failed,
-            skipped,
-            duration_ms,
-            "Batch embedding complete"
+            successful, failed, skipped, duration_ms, "Batch embedding complete"
         );
 
         Ok(EmbeddingPipelineResult {

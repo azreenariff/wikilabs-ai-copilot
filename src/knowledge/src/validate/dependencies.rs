@@ -143,13 +143,18 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_manifest_with_deps(tmp: &TempDir, deps: &[&str]) {
-        let deps_yaml: Vec<String> = deps.iter().map(|d| d.to_string()).collect();
-        let deps_yaml_str = serde_yaml::to_string(&deps_yaml).unwrap();
-        fs::write(
-            tmp.path().join("manifest.yaml"),
-            format!("schema_version: '1.0'\nname: test-pack\nversion: '1.0.0'\ndescription: test\nauthor: test\nlicense: MIT\nformat_version: '1.0'\ndocuments: []\ndependencies:\n{}", deps_yaml_str),
-        )
-        .unwrap();
+        let deps_block = if deps.is_empty() {
+            "dependencies: []".to_string()
+        } else {
+            let deps_yaml: Vec<String> = deps.iter().map(|d| d.to_string()).collect();
+            let deps_yaml_str = serde_yaml::to_string(&deps_yaml).unwrap();
+            format!("dependencies:\n{}", deps_yaml_str)
+        };
+        let manifest = format!(
+            "schema_version: '1.0'\nname: test-pack\nversion: '1.0.0'\ndescription: test\nauthor: test\nlicense: MIT\nformat_version: '1.0'\ndocuments: []\n{}",
+            deps_block
+        );
+        fs::write(tmp.path().join("manifest.yaml"), manifest).unwrap();
     }
 
     #[test]

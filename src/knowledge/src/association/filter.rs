@@ -18,7 +18,9 @@ impl WorkspaceKnowledgeFilter {
 
     /// Returns true if the given pack name is enabled for the workspace.
     pub fn is_pack_enabled(&self, pack_name: &str) -> bool {
-        self.enabled_packs.contains(&pack_name.to_string())
+        self.enabled_packs
+            .iter()
+            .any(|p| p.eq_ignore_ascii_case(pack_name))
     }
 
     /// Filters knowledge documents, keeping only those from enabled packs.
@@ -78,7 +80,8 @@ mod tests {
 
     #[test]
     fn test_filter_packs() {
-        let filter = WorkspaceKnowledgeFilter::new(vec!["pack-a".to_string(), "pack-b".to_string()]);
+        let filter =
+            WorkspaceKnowledgeFilter::new(vec!["pack-a".to_string(), "pack-b".to_string()]);
 
         let docs = vec![
             TestDoc {

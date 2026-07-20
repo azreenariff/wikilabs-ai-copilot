@@ -14,9 +14,10 @@ use uuid::Uuid;
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
 /// Priority level for pack loading order.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd)]
 #[serde(rename_all = "lowercase")]
 pub enum PackPriority {
+    #[default]
     Critical,
     High,
     Normal,
@@ -52,10 +53,6 @@ pub struct Manifest {
 
     /// Technology tags the pack covers (e.g. ["openshift", "kubernetes"]).
     pub technologies: Vec<String>,
-
-    /// Current schema version.
-    #[serde(default)]
-    pub schema_version: u32,
 
     /// Optional dependency packs.
     #[serde(default)]

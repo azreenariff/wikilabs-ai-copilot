@@ -1,12 +1,10 @@
 //! Batch embedding generation.
 //!
-/// Handles efficient batch embedding of multiple texts.
-
-use super::provider::{EmbeddingProvider, EmbeddingResult};
 use super::local::LocalEmbeddingProvider;
-use futures::stream::{self, StreamExt};
+/// Handles efficient batch embedding of multiple texts.
+use super::provider::{EmbeddingProvider, EmbeddingResult};
+use futures::stream::StreamExt;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 
 /// Configuration for batch embedding.
@@ -51,18 +49,17 @@ impl BatchEmbedder {
         info!(batch_size = total, "Starting batch embedding");
 
         // Try provider's native batch implementation first
-        let provider_batch_result = self.provider.embed_batch(texts.clone()).await;
+        let texts_clone: Vec<&str> = texts.clone();
+        let provider_batch_result = self.provider.embed_batch(texts_clone).await;
 
         let results = if let Ok(results) = provider_batch_result {
             if results.len() == texts.len() {
                 results
             } else {
-                // Fallback to individual embedding
-                self.embed_sequentially(&texts).await?
+                self.embed_sequentially(texts).await?
             }
         } else {
-            // Fallback to individual embedding
-            self.embed_sequentially(&texts).await?
+            self.embed_sequentially(texts).await?
         };
 
         debug!(
@@ -74,63 +71,35 @@ impl BatchEmbedder {
         Ok(results)
     }
 
-    /// Embed texts in parallel with concurrency control.
-    async fn embed_sequentially(&self, texts: &[&str]) -> anyhow::Result<Vec<EmbeddingResult>> {
+    /// Embed texts sequentially.
+    async fn embed_sequentially(&self, texts: Vec<&str>) -> anyhow::Result<Vec<EmbeddingResult>> {
+        let provider = Arc::clone(&self.provider);
         let mut results = Vec::with_capacity(texts.len());
-        let mut failed = Vec::new();
 
-        // Split into chunks and process in parallel
-        let chunks: Vec<Vec<&str>> = texts
-            .chunks(self.config.max_batch_size)
-            .map(|c| c.to_vec())
-            .collect();
-
-        for chunk in chunks {
-            let chunk_clone = chunk.clone();
-            let provider = Arc::clone(&self.provider);
-
-            let chunk_results = tokio::task::spawn_blocking(move || {
-                let mut chunk_results = Vec::new();
-                for text in chunk_clone {
-                    match futures::executor::block_on(provider.embed(text)) {
-                        Ok(result) => chunk_results.push(result),
-                        Err(e) => {
-                            warn!(text = text, error = %e, "Embedding failed in batch");
-                            failed.push(text.to_string());
-                        }
-                    }
-                }
-                chunk_results
-            }).await?;
-
-            results.extend(chunk_results);
+        for text in texts {
+            match provider.embed(text).await {
+                Ok(r) => results.push(r),
+                Err(e) => warn!(text = text, error = %e, "Embedding failed"),
+            }
         }
 
-        if !failed.is_empty() {
-            warn!(failed_count = failed.len(), total = texts.len(), "Some embeddings failed");
-        }
-
+        debug!(total = results.len(), "Sequential embedding complete");
         Ok(results)
     }
 
-    /// Embed texts with streaming output (each result as it completes).
+    /// Embed texts with streaming output.
     pub async fn embed_streaming(
         &self,
-        texts: Vec<&str>,
+        texts: Vec<String>,
     ) -> impl StreamExt<Item = anyhow::Result<EmbeddingResult>> {
         let provider = Arc::clone(&self.provider);
         let parallel_workers = self.config.parallel_workers;
 
-        let stream = stream::iter(texts.into_iter().map(move |text| {
+        futures::stream::iter(texts.into_iter().map(move |text| {
             let provider = Arc::clone(&provider);
-            let text = text.to_string();
-            async move {
-                provider.embed(&text).await
-            }
+            async move { provider.embed(&text).await }
         }))
-        .buffer_unordered(parallel_workers);
-
-        stream
+        .buffer_unordered(parallel_workers)
     }
 }
 

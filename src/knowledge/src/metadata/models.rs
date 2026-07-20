@@ -296,8 +296,8 @@ impl MetadataEntry {
             .filter(|s| !s.is_empty())
             .collect();
 
-        let properties: serde_json::Value = serde_json::from_str(&self.edge_properties)
-            .unwrap_or(serde_json::Value::Null);
+        let properties: serde_json::Value =
+            serde_json::from_str(&self.edge_properties).unwrap_or(serde_json::Value::Null);
 
         let created_at: DateTime<Utc> = self.created_at.parse().unwrap_or_else(|_| Utc::now());
         let updated_at: DateTime<Utc> = self.updated_at.parse().unwrap_or_else(|_| Utc::now());
@@ -306,6 +306,7 @@ impl MetadataEntry {
             id: Uuid::parse_str(&self.id).unwrap_or_else(|_| Uuid::new_v4()),
             category,
             title: self.title.clone(),
+            label: self.title.clone(),
             description: self.title.clone(),
             pack_name: self.knowledge_pack.clone(),
             technologies,
@@ -313,6 +314,7 @@ impl MetadataEntry {
             created_at,
             updated_at,
             properties,
+            vendor_metadata: None,
         }
     }
 }

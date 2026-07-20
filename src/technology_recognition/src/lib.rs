@@ -10,11 +10,11 @@
 //! - **RecognitionPipeline** (`pipeline`): Multi-pass pipeline for combining evidence
 //! - **EvidenceAggregator** (`aggregator`): Aggregates confidence from multiple detections
 
+pub mod aggregator;
 pub mod engine;
 pub mod pipeline;
-pub mod aggregator;
 
 // Re-export key types for convenience
+pub use aggregator::aggregate_by_technology;
 pub use engine::DetectionEngine;
 pub use pipeline::run_pass;
-pub use aggregator::aggregate_by_technology;

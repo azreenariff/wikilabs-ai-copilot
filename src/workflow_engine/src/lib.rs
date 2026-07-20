@@ -22,8 +22,8 @@ use std::path::Path;
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use tracing::{debug, info, warn};
+use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // Data types
@@ -170,23 +170,12 @@ impl WorkflowEngine {
         // Verify the initial state exists
         let valid = wf.states.iter().any(|s| s.current_state == start);
         if !valid {
-            bail!(
-                "Initial state '{}' not found in workflow '{}'",
-                start,
-                name
-            );
+            bail!("Initial state '{}' not found in workflow '{}'", start, name);
         }
 
-        let state = wf
-            .states
-            .iter()
-            .find(|s| s.current_state == start)
-            .unwrap();
+        let state = wf.states.iter().find(|s| s.current_state == start).unwrap();
 
-        info!(
-            "Started workflow '{}' at state '{}'",
-            name, start
-        );
+        info!("Started workflow '{}' at state '{}'", name, start);
 
         self.active_workflow = Some(name.to_string());
         self.active_state = Some(start.to_string());
@@ -259,7 +248,10 @@ impl WorkflowEngine {
 
         debug!(
             "Transitioned {} -> {} with trigger '{}' and {} evidence items",
-            from_state, to_state, trigger, evidence.len()
+            from_state,
+            to_state,
+            trigger,
+            evidence.len()
         );
 
         self.active_state = Some(to_state.to_string());
@@ -285,41 +277,35 @@ impl WorkflowEngine {
         let wf = self.workflows.get(workflow_name)?;
 
         // Gather history for this workflow
-        let history: Vec<&StateTransition> = if self
-            .active_workflow
-            .as_deref()
-            == Some(workflow_name)
-        {
-            self.state_history.iter().collect()
-        } else {
-            // If no workflow is active, return an empty state for the queried workflow
-            let start_state = wf
-                .states
-                .first()
-                .map(|s| s.current_state.clone())
-                .unwrap_or_default();
-            let completed = if start_state.is_empty() {
-                vec![]
+        let history: Vec<&StateTransition> =
+            if self.active_workflow.as_deref() == Some(workflow_name) {
+                self.state_history.iter().collect()
             } else {
-                vec![start_state.clone()]
+                // If no workflow is active, return an empty state for the queried workflow
+                let start_state = wf
+                    .states
+                    .first()
+                    .map(|s| s.current_state.clone())
+                    .unwrap_or_default();
+                let completed = if start_state.is_empty() {
+                    vec![]
+                } else {
+                    vec![start_state.clone()]
+                };
+                return Some(WorkflowState {
+                    current_state: start_state.clone(),
+                    completed_states: completed,
+                    evidence_collected: Vec::new(),
+                    missing_evidence: Vec::new(),
+                });
             };
-            return Some(WorkflowState {
-                current_state: start_state.clone(),
-                completed_states: completed,
-                evidence_collected: Vec::new(),
-                missing_evidence: Vec::new(),
-            });
-        };
 
         let current_state = history
             .last()
             .map(|h| h.to_state.clone())
             .unwrap_or_default();
 
-        let completed_states: Vec<String> = history
-            .iter()
-            .map(|h| h.to_state.clone())
-            .collect();
+        let completed_states: Vec<String> = history.iter().map(|h| h.to_state.clone()).collect();
 
         // Compute missing evidence from required transitions to current state
         let mut missing_evidence = Vec::new();
@@ -354,18 +340,13 @@ impl WorkflowEngine {
     pub fn can_transition(&self, from: &str, to: &str) -> bool {
         if let Some(wf_name) = &self.active_workflow {
             if let Some(wf) = self.workflows.get(wf_name) {
-                return wf
-                    .transitions
-                    .iter()
-                    .any(|t| t.from == from && t.to == to);
+                return wf.transitions.iter().any(|t| t.from == from && t.to == to);
             }
         }
         // If no active workflow, check all workflows
-        self.workflows.values().any(|wf| {
-            wf.transitions
-                .iter()
-                .any(|t| t.from == from && t.to == to)
-        })
+        self.workflows
+            .values()
+            .any(|wf| wf.transitions.iter().any(|t| t.from == from && t.to == to))
     }
 
     /// Get required evidence for a state's incoming transition.
@@ -396,15 +377,12 @@ impl WorkflowEngine {
             return 0.0;
         }
 
-        let history: Vec<&StateTransition> = if self
-            .active_workflow
-            .as_deref()
-            == Some(workflow_name)
-        {
-            self.state_history.iter().collect()
-        } else {
-            return 0.0;
-        };
+        let history: Vec<&StateTransition> =
+            if self.active_workflow.as_deref() == Some(workflow_name) {
+                self.state_history.iter().collect()
+            } else {
+                return 0.0;
+            };
 
         let completed = history.len() as f32;
         (completed / total_states * 100.0).min(100.0)
@@ -417,20 +395,17 @@ impl WorkflowEngine {
             None => return false,
         };
 
-        let history: Vec<&StateTransition> = if self
-            .active_workflow
-            .as_deref()
-            == Some(workflow_name)
-        {
-            self.state_history.iter().collect()
-        } else {
-            return false;
-        };
+        let history: Vec<&StateTransition> =
+            if self.active_workflow.as_deref() == Some(workflow_name) {
+                self.state_history.iter().collect()
+            } else {
+                return false;
+            };
 
         let visited: Vec<String> = history.iter().map(|h| h.to_state.clone()).collect();
         let all_states: Vec<String> = wf.states.iter().map(|s| s.current_state.clone()).collect();
 
-        visited.iter().all(|v| all_states.iter().any(|a| a == v))
+        all_states.iter().all(|a| visited.iter().any(|v| v == a))
     }
 
     /// Get the full state history.
@@ -468,10 +443,7 @@ impl WorkflowEngine {
         let workflows_dir = skill_path.join("workflows");
 
         if !workflows_dir.exists() {
-            debug!(
-                "No workflows directory found at '{}', skipping",
-                skill_dir
-            );
+            debug!("No workflows directory found at '{}', skipping", skill_dir);
             return Ok(());
         }
 
@@ -484,22 +456,16 @@ impl WorkflowEngine {
             let path = entry.path();
 
             if path.extension().map(|e| e == "md").unwrap_or(false) {
-                let content =
-                    fs::read_to_string(&path).with_context(|| format!("Failed to read {:?}", path))?;
+                let content = fs::read_to_string(&path)
+                    .with_context(|| format!("Failed to read {:?}", path))?;
                 let definition = self.parse_skill_workflow(&content)?;
                 self.register_or_update(definition.clone());
                 count += 1;
-                debug!(
-                    "Loaded workflow '{}' from {:?}",
-                    definition.name, path
-                );
+                debug!("Loaded workflow '{}' from {:?}", definition.name, path);
             }
         }
 
-        info!(
-            "Loaded {} workflow(s) from skill '{}'",
-            count, skill_dir
-        );
+        info!("Loaded {} workflow(s) from skill '{}'", count, skill_dir);
         Ok(())
     }
 
@@ -518,18 +484,15 @@ impl WorkflowEngine {
             (content, "")
         };
 
-        let fm: serde_json::Value =
-            serde_json::from_str(front_matter).with_context(|| "Failed to parse YAML front-matter")?;
+        let fm: serde_yaml::Value = serde_yaml::from_str(front_matter)
+            .with_context(|| "Failed to parse YAML front-matter")?;
 
         let name = fm["name"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("Missing 'name' in workflow front-matter"))?
             .to_string();
 
-        let description = fm["description"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let description = fm["description"].as_str().unwrap_or("").to_string();
 
         let technology_domain = fm["technology_domain"]
             .as_str()
@@ -537,11 +500,11 @@ impl WorkflowEngine {
             .to_string();
 
         // Parse states
-        let states_json = fm["states"]
-            .as_array()
+        let states_seq = fm["states"]
+            .as_sequence()
             .ok_or_else(|| anyhow::anyhow!("Missing or invalid 'states' array"))?;
 
-        let states: Vec<WorkflowState> = states_json
+        let states: Vec<WorkflowState> = states_seq
             .iter()
             .map(|obj| {
                 obj["current_state"]
@@ -557,11 +520,11 @@ impl WorkflowEngine {
             .collect::<Result<_>>()?;
 
         // Parse transitions
-        let transitions_json = fm["transitions"]
-            .as_array()
+        let transitions_seq = fm["transitions"]
+            .as_sequence()
             .ok_or_else(|| anyhow::anyhow!("Missing or invalid 'transitions' array"))?;
 
-        let transitions: Vec<WorkflowTransition> = transitions_json
+        let transitions: Vec<WorkflowTransition> = transitions_seq
             .iter()
             .map(|obj| {
                 let from = obj["from"]
@@ -573,7 +536,7 @@ impl WorkflowEngine {
                     .ok_or_else(|| anyhow::anyhow!("Missing 'to' in transition"))?
                     .to_string();
                 let req_evidence: Vec<String> = obj["required_evidence"]
-                    .as_array()
+                    .as_sequence()
                     .map(|a| {
                         a.iter()
                             .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -756,12 +719,11 @@ mod tests {
         let wf = sample_workflow();
         engine.register_workflow(wf);
 
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
         assert_eq!(engine.get_current_state(), Some("discovery"));
-        assert_eq!(
-            engine.get_active_workflow(),
-            Some("engineering-discovery")
-        );
+        assert_eq!(engine.get_active_workflow(), Some("engineering-discovery"));
         assert_eq!(engine.state_history.len(), 1);
     }
 
@@ -791,9 +753,15 @@ mod tests {
         let wf = sample_workflow();
         engine.register_workflow(wf);
 
-        engine.start_workflow("engineering-discovery", None).unwrap();
         engine
-            .transition_state("analysis", "discovery_done", vec!["code_structure".to_string()])
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
+        engine
+            .transition_state(
+                "analysis",
+                "discovery_done",
+                vec!["code_structure".to_string()],
+            )
             .unwrap();
         assert_eq!(engine.get_current_state(), Some("analysis"));
         assert_eq!(engine.state_history.len(), 2);
@@ -805,7 +773,9 @@ mod tests {
         let wf = sample_workflow();
         engine.register_workflow(wf);
 
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         // Cannot jump from discovery to synthesis (no direct edge)
         let result = engine.transition_state("synthesis", "skip_analysis", vec![]);
@@ -817,7 +787,10 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let result = engine.transition_state("some_state", "test", vec![]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No active workflow"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No active workflow"));
     }
 
     #[test]
@@ -825,7 +798,9 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let wf = sample_workflow();
         engine.register_workflow(wf);
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         assert!(engine.can_transition("discovery", "analysis"));
         assert!(!engine.can_transition("discovery", "synthesis"));
@@ -853,10 +828,15 @@ mod tests {
         engine.register_workflow(wf);
 
         // Not started: 0%
-        assert_eq!(engine.get_completion_percentage("engineering-discovery"), 0.0);
+        assert_eq!(
+            engine.get_completion_percentage("engineering-discovery"),
+            0.0
+        );
 
         // Started at first state (1 out of 4 visited)
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
         assert_eq!(
             engine.get_completion_percentage("engineering-discovery"),
             25.0
@@ -877,7 +857,9 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let wf = sample_workflow();
         engine.register_workflow(wf);
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         assert!(!engine.is_complete("engineering-discovery"));
 
@@ -904,7 +886,9 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let wf = sample_workflow();
         engine.register_workflow(wf);
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         let initial = &engine.state_history[0];
         assert_eq!(initial.from_state, "");
@@ -927,7 +911,9 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let wf = sample_workflow();
         engine.register_workflow(wf);
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         engine
             .transition_state("analysis", "done1", vec!["code_structure".to_string()])
@@ -944,14 +930,18 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let wf = sample_workflow();
         engine.register_workflow(wf);
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         engine
             .transition_state("analysis", "done1", vec![]) // Missing required evidence
             .unwrap();
 
         let state = engine.get_workflow_state("engineering-discovery").unwrap();
-        assert!(state.missing_evidence.contains(&"code_structure".to_string()));
+        assert!(state
+            .missing_evidence
+            .contains(&"code_structure".to_string()));
     }
 
     #[test]
@@ -959,7 +949,9 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let wf = sample_workflow();
         engine.register_workflow(wf);
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         engine.clear();
         assert!(engine.get_current_state().is_none());
@@ -973,7 +965,9 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let wf = sample_workflow();
         engine.register_workflow(wf);
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         engine.reset_active();
         assert!(engine.get_current_state().is_none());
@@ -1023,7 +1017,9 @@ mod tests {
         let mut engine = WorkflowEngine::new();
         let wf = sample_workflow();
         engine.register_workflow(wf);
-        engine.start_workflow("engineering-discovery", None).unwrap();
+        engine
+            .start_workflow("engineering-discovery", None)
+            .unwrap();
 
         // Provide no evidence, but transition should succeed (with a warning)
         let result = engine.transition_state("analysis", "incomplete", vec![]);

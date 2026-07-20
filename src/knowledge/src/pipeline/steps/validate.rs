@@ -2,9 +2,9 @@
 
 use super::discover::DiscoveredDoc;
 use crate::pipeline::PipelineConfig;
+use anyhow::Context;
 use std::fs;
 use std::io::Read;
-use anyhow::Context;
 use tracing::debug;
 
 /// Validation result.
@@ -87,8 +87,7 @@ impl ValidateStep {
     fn is_text_format(ext: &str) -> bool {
         matches!(
             ext,
-            "md" | "markdown" | "txt" | "text" | "html" | "htm" | "yaml" | "yml"
-                | "json" | "xml"
+            "md" | "markdown" | "txt" | "text" | "html" | "htm" | "yaml" | "yml" | "json" | "xml"
         )
     }
 }

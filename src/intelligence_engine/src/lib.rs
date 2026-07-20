@@ -6,7 +6,7 @@
 //!
 //! ## Architecture
 //!
-//! ```
+//! ```text
 //! FusedContext (from context_fusion)
 //!     │
 //!     ├─► AnomalyDetection → Unusual patterns discovered
@@ -24,21 +24,21 @@
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use wikilabs_data_types::TechnologyInference;
 use wikilabs_context_fusion::FusedContext;
+use wikilabs_data_types::TechnologyInference;
 
 use crate::{
     anomaly::AnomalyReport,
+    knowledge_gap::{KnowledgeGap, KnowledgeGapDetector},
     recommendation::{Recommendation, RecommendationBuilder},
     root_cause::RootCauseHypothesis,
-    knowledge_gap::{KnowledgeGap, KnowledgeGapDetector},
 };
 
 // Re-export sub-modules
 pub mod anomaly;
+pub mod knowledge_gap;
 pub mod recommendation;
 pub mod root_cause;
-pub mod knowledge_gap;
 
 // ---------------------------------------------------------------------------
 // Intelligence output
@@ -418,20 +418,10 @@ mod tests {
 
     #[test]
     fn test_intelligence_item_clamping() {
-        let anomaly = IntelligenceItem::anomaly(
-            "Test anomaly",
-            "Test",
-            1.5,
-            vec![],
-        );
+        let anomaly = IntelligenceItem::anomaly("Test anomaly", "Test", 1.5, vec![]);
         assert_eq!(anomaly.confidence, 1.0);
 
-        let low = IntelligenceItem::anomaly(
-            "Test",
-            "Test",
-            -0.5,
-            vec![],
-        );
+        let low = IntelligenceItem::anomaly("Test", "Test", -0.5, vec![]);
         assert_eq!(low.confidence, 0.0);
     }
 
@@ -439,11 +429,12 @@ mod tests {
     fn test_intelligence_report() {
         let items = vec![
             IntelligenceItem::recommendation(
-                "Rec 1", "Description 1", 0.8, vec!["ev1".to_string()],
+                "Rec 1",
+                "Description 1",
+                0.8,
+                vec!["ev1".to_string()],
             ),
-            IntelligenceItem::anomaly(
-                "Anomaly 1", "Description 2", 0.6, vec!["ev2".to_string()],
-            ),
+            IntelligenceItem::anomaly("Anomaly 1", "Description 2", 0.6, vec!["ev2".to_string()]),
         ];
 
         let report = IntelligenceReport::new(items, "Test summary".to_string());
@@ -464,7 +455,10 @@ mod tests {
         let mut engine = EngineeringIntelligenceEngine::new();
         let context = FusedContext {
             technologies: vec![TechnologyInference::new(
-                "OpenShift", 0.9, "observation", "oc command",
+                "OpenShift",
+                0.9,
+                "observation",
+                "oc command",
             )],
             intents: vec![],
             workflow_state: None,

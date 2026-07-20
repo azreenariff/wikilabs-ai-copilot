@@ -21,8 +21,8 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use wikilabs_intent::engine::Intent;
 use tracing::{debug, info, warn};
+use wikilabs_intent::engine::Intent;
 
 // ---------------------------------------------------------------------------
 // Data types
@@ -206,11 +206,17 @@ impl HumanFeedbackEngine {
                     // Format: "expected=X, actual=Y" or just a correction statement
                     let (expected, actual) = Self::parse_correction(&fb.content);
                     let correction = CorrectionRecord {
-                        correction_type: Self::feedback_to_correction_type(&fb.feedback_type, &fb.content),
+                        correction_type: Self::feedback_to_correction_type(
+                            &fb.feedback_type,
+                            &fb.content,
+                        ),
                         expected,
                         actual,
                         timestamp: fb.timestamp,
-                        context: Some(format!("Feedback from {} ({}): {}", fb.source, fb.feedback_type, fb.content)),
+                        context: Some(format!(
+                            "Feedback from {} ({}): {}",
+                            fb.source, fb.feedback_type, fb.content
+                        )),
                         applied: false,
                     };
                     let override_rec = Some(OverrideRecord {
@@ -307,21 +313,24 @@ impl HumanFeedbackEngine {
             *counts.entry(c.correction_type.clone()).or_insert(0) += 1;
         }
 
-        counts.into_iter().max_by_key(|(_, count)| *count).map(|(typ, _)| typ)
+        counts
+            .into_iter()
+            .max_by_key(|(_, count)| *count)
+            .map(|(typ, _)| typ)
     }
 
     /// Get all corrections for a specific type.
     pub fn get_corrections_for_target(&self, target: &str) -> Vec<&CorrectionRecord> {
         let typ = self.string_to_correction_type(target);
-        self.corrections.iter().filter(|c| c.correction_type == typ).collect()
+        self.corrections
+            .iter()
+            .filter(|c| c.correction_type == typ)
+            .collect()
     }
 
     /// Get the latest override for a specific target.
     pub fn get_latest_override(&self, target: &str) -> Option<&OverrideRecord> {
-        self.overrides
-            .iter()
-            .rev()
-            .find(|o| o.target == target)
+        self.overrides.iter().rev().find(|o| o.target == target)
     }
 
     /// Check if there is a human override for a given target.
@@ -333,8 +342,7 @@ impl HumanFeedbackEngine {
     /// Get the latest override value for a target (if any).
     /// Returns None if no override exists — AI inference should be used.
     pub fn get_override_value(&self, target: &str) -> Option<String> {
-        self.get_latest_override(target)
-            .map(|o| o.value.clone())
+        self.get_latest_override(target).map(|o| o.value.clone())
     }
 
     /// Apply overrides to an AI inference.
@@ -368,10 +376,7 @@ impl HumanFeedbackEngine {
         }
 
         let mut summary = String::new();
-        summary.push_str(&format!(
-            "Total corrections: {}\n",
-            self.corrections.len()
-        ));
+        summary.push_str(&format!("Total corrections: {}\n", self.corrections.len()));
 
         // Group by type
         let mut by_type: HashMap<String, usize> = HashMap::new();
@@ -416,10 +421,7 @@ impl HumanFeedbackEngine {
     }
 
     /// Convert a FeedbackType to a CorrectionType based on content.
-    fn feedback_to_correction_type(
-        feedback_type: &FeedbackType,
-        content: &str,
-    ) -> CorrectionType {
+    fn feedback_to_correction_type(feedback_type: &FeedbackType, content: &str) -> CorrectionType {
         let lower = content.to_lowercase();
         if lower.contains("intent") || lower.contains("goal") || lower.contains("purpose") {
             CorrectionType::IntentCorrection
@@ -462,11 +464,7 @@ impl HumanFeedbackEngine {
     /// these would update the intent recognition patterns or technology
     /// detection rules.
     pub fn apply_corrections(&mut self) -> usize {
-        let count = self
-            .corrections
-            .iter()
-            .filter(|c| !c.applied)
-            .count();
+        let count = self.corrections.iter().filter(|c| !c.applied).count();
 
         for c in &mut self.corrections {
             c.applied = true;

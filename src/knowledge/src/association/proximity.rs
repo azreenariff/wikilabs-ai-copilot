@@ -1,6 +1,6 @@
 //! Semantic proximity — compute and rank proximity between knowledge chunks.
 
-use super::{DiscoveryMethod, EdgeType, Weight, Relationship};
+use super::{DiscoveryMethod, EdgeType, Relationship, Weight};
 use crate::embedding_pipeline::cosine_similarity;
 use crate::retrieval::chunker::KnowledgeChunk;
 use tracing::debug;
@@ -29,17 +29,17 @@ impl SemanticProximity {
 
     /// Compute proximity between two chunks.
     pub fn compute_proximity(&self, a: &KnowledgeChunk, b: &KnowledgeChunk) -> ProximityScore {
-        let semantic = if let (Some(ref vec_a), Some(ref vec_b)) = (&a.content, &b.content) {
+        let semantic = if let (Some(ref vec_a), Some(ref vec_b)) = (&a.embedding, &b.embedding) {
             cosine_similarity(vec_a, vec_b)
         } else {
             0.0
         };
 
-        let lexical = self.lexical_similarity(&a.content, &b.content);
-        let structural = self.structural_similarity(&a, &b);
+        let lexical = self.lexical_similarity(&a.text, &b.text);
+        let structural = self.structural_similarity(&a.metadata, &b.metadata);
         let combined = semantic * 0.6 + lexical * 0.25 + structural * 0.15;
 
-        let relationship = self.infer_relationship(&a, &b);
+        let relationship = self.infer_relationship(&a.metadata, &b.metadata);
 
         ProximityScore {
             source_id: a.id.clone(),
@@ -63,7 +63,11 @@ impl SemanticProximity {
                 }
             }
         }
-        scores.sort_by(|a, b| b.combined_score.partial_cmp(&a.combined_score).unwrap_or(std::cmp::Ordering::Equal));
+        scores.sort_by(|a, b| {
+            b.combined_score
+                .partial_cmp(&a.combined_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         scores
     }
 
@@ -73,7 +77,10 @@ impl SemanticProximity {
             .iter()
             .filter(|s| s.combined_score >= self.threshold)
             .map(|s| {
-                let edge_type = s.relationship.unwrap_or_else(|| EdgeType::Related);
+                let edge_type = match s.relationship {
+                    Some(ref etype) => etype.clone(),
+                    None => EdgeType::Related,
+                };
                 let weight = if s.combined_score > 0.8 {
                     Weight::Strong
                 } else if s.combined_score > 0.5 {
@@ -138,9 +145,19 @@ impl SemanticProximity {
     }
 
     /// Infer relationship type from metadata.
-    fn infer_relationship(&self, meta_a: &serde_json::Value, meta_b: &serde_json::Value) -> Option<EdgeType> {
-        let a_type = meta_a.get("node_type").and_then(|v| v.as_str()).unwrap_or("");
-        let b_type = meta_b.get("node_type").and_then(|v| v.as_str()).unwrap_or("");
+    fn infer_relationship(
+        &self,
+        meta_a: &serde_json::Value,
+        meta_b: &serde_json::Value,
+    ) -> Option<EdgeType> {
+        let a_type = meta_a
+            .get("node_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let b_type = meta_b
+            .get("node_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
 
         if a_type.contains("spec") && b_type.contains("impl") {
             Some(EdgeType::Specification)

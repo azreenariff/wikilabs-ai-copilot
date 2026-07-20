@@ -17,7 +17,11 @@ impl McpServer {
         anyhow::bail!("Not yet implemented")
     }
 
-    pub async fn call_tool(&self, _name: &str, _arguments: serde_json::Value) -> anyhow::Result<ToolResult> {
+    pub async fn call_tool(
+        &self,
+        _name: &str,
+        _arguments: serde_json::Value,
+    ) -> anyhow::Result<ToolResult> {
         // TODO: Route to skill module
         anyhow::bail!("Not yet implemented")
     }

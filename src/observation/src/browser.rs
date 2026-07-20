@@ -14,17 +14,26 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::event::{ObservationEvent, EventType, ProviderType, ObservationPayload};
-use crate::provider::{ObservationProvider, ProviderConfig, ProviderState, ProviderLifecycle};
+use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
+use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 /// Known engineering portal URLs/patterns.
 const ENGINEERING_PORTAL_PATTERNS: &[&str] = &[
-    "openshift", "ocp", "okd",
-    "vcenter", "vmware", "vsphere",
-    "nagios", "checkmk",
-    "grafana", "prometheus",
-    "kubernetes", "k8s",
-    "jenkins", "gitlab", "github",
+    "openshift",
+    "ocp",
+    "okd",
+    "vcenter",
+    "vmware",
+    "vsphere",
+    "nagios",
+    "checkmk",
+    "grafana",
+    "prometheus",
+    "kubernetes",
+    "k8s",
+    "jenkins",
+    "gitlab",
+    "github",
 ];
 
 /// Browser context information.
@@ -42,14 +51,22 @@ pub struct BrowserContext {
 
 impl BrowserContext {
     fn from_title(browser: &str, title: &str, url: &str) -> Self {
-        let is_engineering = ENGINEERING_PORTAL_PATTERNS
-            .iter()
-            .any(|pattern| title.to_lowercase().contains(pattern) || url.to_lowercase().contains(pattern));
+        let is_engineering = ENGINEERING_PORTAL_PATTERNS.iter().any(|pattern| {
+            title.to_lowercase().contains(pattern) || url.to_lowercase().contains(pattern)
+        });
 
         Self {
             browser_name: browser.to_string(),
-            url: if url.is_empty() { None } else { Some(url.to_string()) },
-            title: if title.is_empty() { None } else { Some(title.to_string()) },
+            url: if url.is_empty() {
+                None
+            } else {
+                Some(url.to_string())
+            },
+            title: if title.is_empty() {
+                None
+            } else {
+                Some(title.to_string())
+            },
             is_engineering_portal: is_engineering,
         }
     }
@@ -193,18 +210,16 @@ impl ObservationProvider for BrowserProvider {
                     ObservationPayload::new(payload),
                 )])
             }
-            None => {
-                Ok(vec![ObservationEvent::new(
-                    EventType::BrowserContextChanged,
-                    ProviderType::Browser,
-                    "stub".to_string(),
-                    None,
-                    ObservationPayload::new(serde_json::json!({
-                        "status": "no_browser_context_detected",
-                        "platform": std::env::consts::OS,
-                    })),
-                )])
-            }
+            None => Ok(vec![ObservationEvent::new(
+                EventType::BrowserContextChanged,
+                ProviderType::Browser,
+                "stub".to_string(),
+                None,
+                ObservationPayload::new(serde_json::json!({
+                    "status": "no_browser_context_detected",
+                    "platform": std::env::consts::OS,
+                })),
+            )]),
         }
     }
 
@@ -216,11 +231,20 @@ impl ObservationProvider for BrowserProvider {
         let state = self.state.lock().unwrap();
         let mut details = HashMap::new();
         if let Some(ref ctx) = state.last_context {
-            details.insert("last_browser".to_string(), serde_json::json!(ctx.browser_name));
+            details.insert(
+                "last_browser".to_string(),
+                serde_json::json!(ctx.browser_name),
+            );
             details.insert("last_url".to_string(), serde_json::json!(ctx.url));
-            details.insert("is_portal".to_string(), serde_json::json!(ctx.is_engineering_portal));
+            details.insert(
+                "is_portal".to_string(),
+                serde_json::json!(ctx.is_engineering_portal),
+            );
         }
-        details.insert("platform".to_string(), serde_json::json!(std::env::consts::OS));
+        details.insert(
+            "platform".to_string(),
+            serde_json::json!(std::env::consts::OS),
+        );
         details
     }
 }
@@ -238,16 +262,29 @@ mod tests {
 
     #[test]
     fn test_engineering_portal_detection() {
-        let ctx = BrowserContext::from_title("firefox", "OpenShift Console", "https://openshift.example.com/console");
+        let ctx = BrowserContext::from_title(
+            "firefox",
+            "OpenShift Console",
+            "https://openshift.example.com/console",
+        );
         assert!(ctx.is_engineering_portal);
 
-        let ctx = BrowserContext::from_title("chrome", "Grafana - Dashboards", "https://grafana.example.com/d/dashboard");
+        let ctx = BrowserContext::from_title(
+            "chrome",
+            "Grafana - Dashboards",
+            "https://grafana.example.com/d/dashboard",
+        );
         assert!(ctx.is_engineering_portal);
 
-        let ctx = BrowserContext::from_title("safari", "My Personal Blog", "https://blog.example.com/post");
+        let ctx = BrowserContext::from_title(
+            "safari",
+            "My Personal Blog",
+            "https://blog.example.com/post",
+        );
         assert!(!ctx.is_engineering_portal);
 
-        let ctx = BrowserContext::from_title("firefox", "vCenter Server", "https://vcenter.example.com/");
+        let ctx =
+            BrowserContext::from_title("firefox", "vCenter Server", "https://vcenter.example.com/");
         assert!(ctx.is_engineering_portal);
     }
 

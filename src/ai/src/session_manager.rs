@@ -3,8 +3,8 @@
 //! Manages session configuration, state transitions,
 //! persistence, and cleanup.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// State of an AI session.
@@ -54,7 +54,11 @@ pub struct SessionConfig {
 }
 
 impl SessionConfig {
-    pub fn new(name: impl Into<String>, system_prompt: impl Into<String>, model: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        system_prompt: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             system_prompt: system_prompt.into(),
@@ -184,7 +188,8 @@ impl Session {
 
     /// Export session summary as JSON.
     pub fn summary_json(&self) -> anyhow::Result<String> {
-        serde_json::to_string_pretty(self).map_err(|e| anyhow::anyhow!("Failed to serialize session: {}", e))
+        serde_json::to_string_pretty(self)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize session: {}", e))
     }
 }
 
@@ -227,7 +232,9 @@ impl SessionManager {
 
     /// Get the active session (mutable).
     pub fn active_mut(&mut self) -> Option<&mut Session> {
-        self.active_id.as_ref().and_then(|id| self.sessions.get_mut(id))
+        self.active_id
+            .as_ref()
+            .and_then(|id| self.sessions.get_mut(id))
     }
 
     /// Get the active session (immutable).
@@ -252,7 +259,9 @@ impl SessionManager {
                 session.transition(SessionState::Ended);
             }
             // Pick next active session
-            self.active_id = self.sessions.iter()
+            self.active_id = self
+                .sessions
+                .iter()
                 .find(|(_, s)| s.state == SessionState::Active)
                 .map(|(id, _)| *id);
             Ok(())
@@ -297,7 +306,9 @@ impl SessionManager {
             anyhow::bail!("Session not found: {}", id);
         }
         if self.active_id == Some(id) {
-            self.active_id = self.sessions.iter()
+            self.active_id = self
+                .sessions
+                .iter()
                 .find(|(_, s)| s.state != SessionState::Ended)
                 .map(|(id, _)| *id);
         }
@@ -331,7 +342,8 @@ impl SessionManager {
 
     /// List sessions filtered by state.
     pub fn list_by_state(&self, state: SessionState) -> Vec<&Session> {
-        self.sessions.values()
+        self.sessions
+            .values()
             .filter(|s| s.state == state)
             .collect()
     }
@@ -348,8 +360,13 @@ impl SessionManager {
         let removed = before - self.sessions.len();
 
         // If we removed the active session, set a new one
-        if self.active_id.map_or(false, |id| !self.sessions.contains_key(&id)) {
-            self.active_id = self.sessions.iter()
+        if self
+            .active_id
+            .map_or(false, |id| !self.sessions.contains_key(&id))
+        {
+            self.active_id = self
+                .sessions
+                .iter()
                 .find(|(_, s)| s.state == SessionState::Active)
                 .map(|(id, _)| *id);
         }

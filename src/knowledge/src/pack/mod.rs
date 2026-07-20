@@ -68,6 +68,8 @@ impl KnowledgePack {
         metadata.last_indexed = Some(now);
         metadata.pack_name.clone_from(&manifest.name);
 
+        let manifest = manifest.clone();
+        let schema_version = manifest.schema_version.clone();
         Ok(Self {
             id: Uuid::new_v4(),
             manifest,
@@ -75,7 +77,7 @@ impl KnowledgePack {
             path,
             enabled,
             loaded_at: now,
-            schema_version: manifest.schema_version,
+            schema_version,
         })
     }
 

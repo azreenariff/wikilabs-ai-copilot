@@ -12,24 +12,24 @@
 //! - Version compatibility
 //! - Generates human-readable validation reports
 
+pub mod broken_refs;
+pub mod dependencies;
+pub mod documents;
+pub mod duplicate_id;
+pub mod embedding_compat;
 pub mod manifest;
 pub mod metadata;
-pub mod documents;
-pub mod embedding_compat;
-pub mod schema_version;
-pub mod duplicate_id;
-pub mod dependencies;
-pub mod broken_refs;
-pub mod version_compat;
 pub mod report;
+pub mod schema_version;
+pub mod version_compat;
 
+pub use broken_refs::check_broken_refs;
+pub use dependencies::validate_dependencies;
+pub use documents::validate_documents;
+pub use duplicate_id::check_duplicate_ids;
+pub use embedding_compat::validate_embedding_compat;
 pub use manifest::validate_manifest;
 pub use metadata::validate_metadata;
-pub use documents::validate_documents;
-pub use embedding_compat::validate_embedding_compat;
-pub use schema_version::validate_schema_version;
-pub use duplicate_id::check_duplicate_ids;
-pub use dependencies::validate_dependencies;
-pub use broken_refs::check_broken_refs;
-pub use version_compat::validate_version_compat;
 pub use report::{ValidationReport, ValidationResult as ValidationStatus};
+pub use schema_version::validate_schema_version;
+pub use version_compat::validate_version_compat;

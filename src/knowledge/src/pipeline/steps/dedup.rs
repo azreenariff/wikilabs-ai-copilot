@@ -1,7 +1,7 @@
 //! Duplicate detection step — content hashing (sha256).
 
-use super::discover::DiscoveredDoc;
 use super::compute_sha256;
+use super::discover::DiscoveredDoc;
 use std::fs;
 use tracing::debug;
 

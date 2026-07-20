@@ -1,9 +1,9 @@
 //! Engineering context — combined view of the user's development environment.
 
+use crate::TechnologyInference;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
-use crate::TechnologyInference;
 
 /// Combined engineering context from multiple observations.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -1,32 +1,32 @@
 //! Embedding pipeline module.
 
-pub mod provider;
-pub mod local;
 pub mod batch;
 pub mod incremental;
+pub mod local;
+pub mod provider;
 pub mod version;
 
-pub use provider::{EmbeddingProvider, EmbeddingPipelineError};
-pub use local::LocalEmbeddingProvider;
 pub use batch::BatchEmbedder;
 pub use incremental::IncrementalEmbedder;
-pub use version::{EmbeddingVersionManager, EmbeddingVersion};
+pub use local::LocalEmbeddingProvider;
+pub use provider::{EmbeddingPipelineError, EmbeddingProvider};
+pub use version::{EmbeddingVersion, EmbeddingVersionManager};
 
 pub(crate) type EmbeddingResult = super::embedding::provider::EmbeddingResult;
 use super::pipeline::result::PipelineResult;
 use crate::doc::{KnowledgeChunk, KnowledgeDocument};
 use crate::storage::vector_store::VectorStore;
 use anyhow::Context;
-use futures::stream::{self, StreamExt};
+use futures::stream::StreamExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 
 /// Configuration for the embedding pipeline.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct EmbeddingPipelineConfig {
     /// Provider to use for embedding generation
-    pub provider: Arc<dyn EmbeddingProvider>,
+    pub provider: Arc<dyn EmbeddingProvider + Send + Sync>,
     /// Maximum batch size for embedding generation
     pub batch_size: usize,
     /// Number of parallel workers
@@ -51,7 +51,7 @@ impl Default for EmbeddingPipelineConfig {
 /// The embedding pipeline orchestrator.
 pub struct EmbeddingPipeline {
     config: EmbeddingPipelineConfig,
-    version_manager: EmbeddingVersionManager,
+    version_manager: std::sync::Mutex<EmbeddingVersionManager>,
     vector_store: Option<Arc<Mutex<VectorStore>>>,
 }
 
@@ -60,7 +60,7 @@ impl EmbeddingPipeline {
         let config = config.unwrap_or_default();
         Self {
             config: config.clone(),
-            version_manager: EmbeddingVersionManager::new(),
+            version_manager: std::sync::Mutex::new(EmbeddingVersionManager::new()),
             vector_store: None,
         }
     }
@@ -70,65 +70,73 @@ impl EmbeddingPipeline {
         self
     }
 
-    pub fn provider(&self) -> &Arc<dyn EmbeddingProvider> {
+    pub fn provider(&self) -> &Arc<dyn EmbeddingProvider + Send + Sync> {
         &self.config.provider
     }
 
     /// Embed a single chunk of text.
-    pub async fn embed_chunk(&self, content: &str) -> anyhow::Result<Vec<f32>> {
-        self.config.provider
-            .embed(content)
+    async fn embed(&self, text: &str) -> anyhow::Result<Vec<f32>> {
+        let result = self
+            .config
+            .provider
+            .embed(text)
             .await
-            .with_context(|| format!("Failed to embed text ({} chars)", content.len()))
+            .with_context(|| format!("Failed to embed text ({} chars)", text.len()))?;
+        Ok(result.vector)
     }
 
     /// Embed chunks in parallel batches.
-    pub async fn embed_chunks(&self, chunks: &[&KnowledgeChunk]) -> anyhow::Result<Vec<EmbeddingResult>> {
+    pub async fn embed_chunks(
+        &self,
+        chunks: &[&KnowledgeChunk],
+    ) -> anyhow::Result<Vec<EmbeddingResult>> {
         let batch_size = self.config.batch_size;
         let mut results = Vec::new();
 
         for batch in chunks.chunks(batch_size) {
-            let batch_vecs: Vec<&KnowledgeChunk> = batch.to_vec();
-            let tasks: Vec<_> = batch_vecs.iter().map(|chunk| {
-                let content = chunk.content.clone();
-                tokio::spawn(async move {
-                    match self.config.provider.embed(&content).await {
-                        Ok(r) => Some(r),
-                        Err(e) => {
-                            warn!(chunk_id = %chunk.id, error = %e, "Embedding failed");
-                            None
+            let batch_data: Vec<(String, String)> = batch
+                .iter()
+                .map(|c| (c.content.clone(), c.id.to_string()))
+                .collect();
+            let tasks: Vec<_> = batch_data
+                .iter()
+                .map(|(content, chunk_id)| {
+                    let provider = self.config.provider.clone();
+                    let content = content.clone();
+                    let chunk_id = chunk_id.clone();
+                    tokio::spawn(async move {
+                        match provider.embed(&content).await {
+                            Ok(r) => Ok::<_, anyhow::Error>(Some(r)),
+                            Err(e) => {
+                                warn!(chunk_id = %chunk_id, error = %e, "Embedding failed");
+                                Ok(None)
+                            }
                         }
-                    }
+                    })
                 })
-            }).collect();
+                .collect();
 
             for task in futures::future::join_all(tasks).await {
                 match task {
                     Ok(Ok(Some(result))) => results.push(result),
                     Ok(Ok(None)) => {} // Failed embedding, already logged
                     Ok(Err(e)) => {
-                        warn!(error = %e, "Task error in embed_chunks");
+                        warn!(error = %e, "Task returned error in embed_chunks");
                     }
                     Err(e) => {
-                        warn!(error = %e, "Spawn error in embed_chunks");
+                        warn!(error = %e, "Task join error in embed_chunks");
                     }
                 }
             }
         }
 
-        debug!(
-            total = results.len(),
-            "Embedding complete"
-        );
+        debug!(total = results.len(), "Embedding complete");
 
         Ok(results)
     }
 
     /// Embed all chunks from a pipeline result and index them.
-    pub async fn embed_and_index(
-        &self,
-        result: &PipelineResult,
-    ) -> anyhow::Result<()> {
+    pub async fn embed_and_index(&mut self, result: &PipelineResult) -> anyhow::Result<()> {
         let docs = result.documents();
         let chunks = result.all_chunks();
 
@@ -137,22 +145,36 @@ impl EmbeddingPipeline {
             return Ok(());
         }
 
-        info!(doc_count = docs.len(), chunk_count = chunks.len(), "Starting embedding pipeline");
+        info!(
+            doc_count = docs.len(),
+            chunk_count = chunks.len(),
+            "Starting embedding pipeline"
+        );
 
         // Track version
-        let version = self.version_manager.create_version(
+        let version = self.version_manager.lock().unwrap().create_version(
             self.config.provider.name(),
             self.config.dimensions,
             format!("Indexed {} chunks", chunks.len()),
         );
 
         // Prepare chunks for embedding
-        let chunk_refs: Vec<&KnowledgeChunk> = chunks.iter().map(|c| c as &KnowledgeChunk).collect();
-        let embeddings = self.embed_chunks(&chunk_refs).await?;
+        let knowledge_chunks: Vec<KnowledgeChunk> = chunks
+            .iter()
+            .map(|c| KnowledgeChunk {
+                id: c.chunk_id,
+                document_id: c.document_id,
+                content: c.content.clone(),
+                vector_id: c.vector_id.clone(),
+            })
+            .collect();
+        let chunk_refs: Vec<&KnowledgeChunk> = knowledge_chunks.iter().collect();
+        // Embed each chunk individually
+        let embeddings: Vec<EmbeddingResult> = self.embed_chunks(&chunk_refs).await?;
 
         // Index embeddings in vector store if available
         if let Some(ref store) = self.vector_store {
-            let mut store_lock = store.lock().await;
+            let store_lock = store.lock().await;
 
             for (i, embedding) in embeddings.iter().enumerate() {
                 if i < chunks.len() {
@@ -162,17 +184,17 @@ impl EmbeddingPipeline {
                             &chunk.vector_id,
                             &embedding.vector,
                             &chunk.content,
-                            chunk.document_id.to_string(),
+                            &chunk.document_id.to_string(),
                         )
                         .await?;
                 }
             }
 
             // Update version
-            self.version_manager.finalize_version(
-                &version,
-                Some(embeddings.len()),
-            );
+            self.version_manager
+                .lock()
+                .unwrap()
+                .finalize_version(&version, Some(embeddings.len()));
         }
 
         debug!("Embedding and indexing complete");
@@ -180,15 +202,16 @@ impl EmbeddingPipeline {
     }
 
     /// Re-index documents with new embeddings.
-    pub async fn reindex(&self, doc_ids: &[uuid::Uuid]) -> anyhow::Result<()> {
+    pub async fn reindex(&mut self, doc_ids: &[uuid::Uuid]) -> anyhow::Result<()> {
         info!(count = doc_ids.len(), "Starting reindex");
 
         for doc_id in doc_ids {
             debug!(doc_id = %doc_id, "Re-indexing document");
             // Placeholder: in a full implementation, fetch chunks, re-embed, and update store
             // For now, just track the version
-            self.version_manager.create_version(
-                self.config.provider.name(),
+            // Track the version
+            self.version_manager.lock().unwrap().create_version(
+                self.config.provider.name().clone(),
                 self.config.dimensions,
                 format!("Re-indexed document {}", doc_id),
             );

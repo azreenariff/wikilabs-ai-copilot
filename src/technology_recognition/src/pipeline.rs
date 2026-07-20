@@ -4,15 +4,12 @@
 //! knowledge retrieval, RAG, MCP execution, command execution,
 //! automation, screen AI analysis, OCR reasoning, or autonomous actions.
 
+use crate::engine::DetectionEngine;
 use wikilabs_data_types::{DetectionRule, TechnologyInference};
 use wikilabs_observation::ObservationEvent;
-use crate::engine::DetectionEngine;
 
 /// Run a recognition pass using the detection engine.
-pub fn run_pass(
-    rules: &[DetectionRule],
-    event: &ObservationEvent,
-) -> Vec<TechnologyInference> {
+pub fn run_pass(rules: &[DetectionRule], event: &ObservationEvent) -> Vec<TechnologyInference> {
     let mut engine = DetectionEngine::new();
     for rule in rules {
         engine.add_rule(rule.clone());
@@ -24,7 +21,7 @@ pub fn run_pass(
 mod tests {
     use super::*;
     use wikilabs_data_types::DetectionType;
-    use wikilabs_observation::{ObservationEvent, EventType, ProviderType, ObservationPayload};
+    use wikilabs_observation::{EventType, ObservationEvent, ObservationPayload, ProviderType};
 
     #[test]
     fn test_run_pass_empty_rules() {

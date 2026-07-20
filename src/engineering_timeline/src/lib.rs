@@ -177,12 +177,9 @@ impl EngineeringTimeline {
     }
 
     /// Get entries within a time range.
-    pub fn get_range(
-        &self,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
-    ) -> Vec<TimelineEntry> {
-        self.entries.iter()
+    pub fn get_range(&self, start: DateTime<Utc>, end: DateTime<Utc>) -> Vec<TimelineEntry> {
+        self.entries
+            .iter()
             .filter(|e| e.timestamp >= start && e.timestamp <= end)
             .cloned()
             .collect()
@@ -196,7 +193,8 @@ impl EngineeringTimeline {
 
     /// Get entries filtered by source.
     pub fn get_by_source(&self, source: &TimelineSource) -> Vec<TimelineEntry> {
-        self.entries.iter()
+        self.entries
+            .iter()
             .filter(|e| &e.source == source)
             .cloned()
             .collect()
@@ -208,7 +206,8 @@ impl EngineeringTimeline {
             return Vec::new();
         }
         let pattern_lower = pattern.to_lowercase();
-        self.entries.iter()
+        self.entries
+            .iter()
             .filter(|e| e.label.to_lowercase().contains(&pattern_lower))
             .cloned()
             .collect()
@@ -226,7 +225,8 @@ impl EngineeringTimeline {
 
     /// Get entries for a specific observation event.
     pub fn get_by_observation(&self, observation_id: Uuid) -> Vec<TimelineEntry> {
-        self.entries.iter()
+        self.entries
+            .iter()
             .filter(|e| e.related_observation_id == Some(observation_id))
             .cloned()
             .collect()
@@ -329,7 +329,11 @@ mod tests {
         let mut timeline = EngineeringTimeline::new(1000);
 
         // Add a recent entry
-        timeline.append("Recent".to_string(), TimelineSource::Observation, "detail".to_string());
+        timeline.append(
+            "Recent".to_string(),
+            TimelineSource::Observation,
+            "detail".to_string(),
+        );
 
         // Add an old entry (simulate 2 hours ago)
         let old_id = Uuid::new_v4();
@@ -473,9 +477,21 @@ mod tests {
     #[test]
     fn test_get_last() {
         let mut timeline = EngineeringTimeline::new(1000);
-        timeline.append("1".to_string(), TimelineSource::Observation, "detail".to_string());
-        timeline.append("2".to_string(), TimelineSource::Observation, "detail".to_string());
-        timeline.append("3".to_string(), TimelineSource::Observation, "detail".to_string());
+        timeline.append(
+            "1".to_string(),
+            TimelineSource::Observation,
+            "detail".to_string(),
+        );
+        timeline.append(
+            "2".to_string(),
+            TimelineSource::Observation,
+            "detail".to_string(),
+        );
+        timeline.append(
+            "3".to_string(),
+            TimelineSource::Observation,
+            "detail".to_string(),
+        );
 
         let last_2 = timeline.get_last(2);
         assert_eq!(last_2.len(), 2);
@@ -505,9 +521,21 @@ mod tests {
     fn test_summary_by_source() {
         let mut timeline = EngineeringTimeline::new(1000);
 
-        timeline.append("A".to_string(), TimelineSource::Observation, "detail".to_string());
-        timeline.append("B".to_string(), TimelineSource::Intent, "detail".to_string());
-        timeline.append("C".to_string(), TimelineSource::Observation, "detail".to_string());
+        timeline.append(
+            "A".to_string(),
+            TimelineSource::Observation,
+            "detail".to_string(),
+        );
+        timeline.append(
+            "B".to_string(),
+            TimelineSource::Intent,
+            "detail".to_string(),
+        );
+        timeline.append(
+            "C".to_string(),
+            TimelineSource::Observation,
+            "detail".to_string(),
+        );
         timeline.append("D".to_string(), TimelineSource::User, "detail".to_string());
 
         let summary = timeline.summary_by_source();
@@ -519,7 +547,11 @@ mod tests {
     #[test]
     fn test_serialization() {
         let mut timeline = EngineeringTimeline::new(1000);
-        timeline.append("Test".to_string(), TimelineSource::Observation, "detail".to_string());
+        timeline.append(
+            "Test".to_string(),
+            TimelineSource::Observation,
+            "detail".to_string(),
+        );
 
         let json = timeline.to_json().unwrap();
         let restored = EngineeringTimeline::from_json(&json).unwrap();

@@ -309,7 +309,7 @@ fn test_sdk_validation(pack_path: &str) -> TestResult {
 }
 
 /// A single test result.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestResult {
     pub name: String,
     pub passed: bool,
@@ -366,7 +366,11 @@ mod tests {
             "pack_name: valid-pack\npack_version: '1.0.0'\ndescription: A valid pack\nembedding_model: all-MiniLM-L6-v2\nembedding_dimensions: 384\ntags: []\ncategories: []\nreferences: []\ncreated_at: '2024-01-01T00:00:00Z'\nupdated_at: '2024-01-01T00:00:00Z'\n",
         )
         .unwrap();
-        fs::write(pack_dir.join("documents/doc1.md"), "# Test Doc\n\nContent.\n").unwrap();
+        fs::write(
+            pack_dir.join("documents/doc1.md"),
+            "# Test Doc\n\nContent.\n",
+        )
+        .unwrap();
         tmp.path().join("valid-pack").to_string_lossy().to_string()
     }
 
@@ -385,7 +389,7 @@ mod tests {
     fn test_pack_structure_fail() {
         let tmp = TempDir::new().unwrap();
         let pack_dir = tmp.path().join("broken-pack");
-        fs::create_dir_all(pack_dir).unwrap();
+        fs::create_dir_all(&pack_dir).unwrap();
 
         let results = test_pack(pack_dir.to_str().unwrap());
         assert!(!results.all_passed());

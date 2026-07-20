@@ -40,11 +40,10 @@ impl KnowledgeGapDetector {
         if context.technologies.is_empty() {
             gaps.push(KnowledgeGap {
                 title: "No technology detected".to_string(),
-                description:
-                    "No technologies have been detected in the current context. \
+                description: "No technologies have been detected in the current context. \
                     Without knowing which technologies are involved, the AI cannot \
                     provide relevant advice."
-                        .to_string(),
+                    .to_string(),
                 confidence: 0.9,
                 evidence: vec![
                     "technology list is empty".to_string(),
@@ -57,11 +56,10 @@ impl KnowledgeGapDetector {
         if context.intents.is_empty() {
             gaps.push(KnowledgeGap {
                 title: "No intent detected".to_string(),
-                description:
-                    "No engineering intent has been recognized. Without knowing \
+                description: "No engineering intent has been recognized. Without knowing \
                     what the engineer is trying to accomplish, the AI cannot \
                     provide targeted advice."
-                        .to_string(),
+                    .to_string(),
                 confidence: 0.8,
                 evidence: vec![
                     "intent list is empty".to_string(),
@@ -74,14 +72,11 @@ impl KnowledgeGapDetector {
         if context.workflow_state.is_none() {
             gaps.push(KnowledgeGap {
                 title: "Workflow state not established".to_string(),
-                description:
-                    "No workflow state has been identified. The workflow engine \
+                description: "No workflow state has been identified. The workflow engine \
                     needs to know the current stage to provide appropriate guidance."
-                        .to_string(),
+                    .to_string(),
                 confidence: 0.6,
-                evidence: vec![
-                    "workflow_state is None".to_string(),
-                ],
+                evidence: vec!["workflow_state is None".to_string()],
             });
         }
 
@@ -89,18 +84,15 @@ impl KnowledgeGapDetector {
         if context.confidence_scores.is_empty() && !context.technologies.is_empty() {
             gaps.push(KnowledgeGap {
                 title: "No confidence scores for technologies".to_string(),
-                description:
-                    "Technologies have been detected but no confidence scores \
+                description: "Technologies have been detected but no confidence scores \
                     exist for them. Without confidence scores, we cannot \
                     assess the reliability of technology identification."
-                        .to_string(),
+                    .to_string(),
                 confidence: 0.7,
-                evidence: vec![
-                    format!(
-                        "{} technologies detected with no confidence scores",
-                        context.technologies.len()
-                    ),
-                ],
+                evidence: vec![format!(
+                    "{} technologies detected with no confidence scores",
+                    context.technologies.len()
+                )],
             });
         }
 

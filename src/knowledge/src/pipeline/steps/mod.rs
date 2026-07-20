@@ -1,22 +1,22 @@
 //! Pipeline step trait and common types.
 
-pub mod discover;
-pub mod validate;
-pub mod dedup;
-pub mod incremental;
-pub mod parse;
-pub mod clean;
-pub mod normalize;
 pub mod chunk;
-pub mod metadata_extract;
-pub mod version_detect;
+pub mod clean;
+pub mod dedup;
+pub mod discover;
+pub mod incremental;
 pub mod index_prepare;
+pub mod metadata_extract;
+pub mod normalize;
+pub mod parse;
+pub mod validate;
+pub mod version_detect;
 
 use std::path::Path;
 
 use anyhow::Context;
 use regex::Regex;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use tracing::debug;
 
 /// Supported languages for detection.
@@ -34,11 +34,8 @@ impl Language {
         }
 
         // Check for non-ASCII characters (non-English scripts)
-        let non_ascii_ratio = text
-            .chars()
-            .filter(|c| *c > '\x7f')
-            .count() as f64
-            / text.chars().count() as f64;
+        let non_ascii_ratio =
+            text.chars().filter(|c| *c > '\x7f').count() as f64 / text.chars().count() as f64;
 
         if non_ascii_ratio > 0.1 {
             return Self::Unknown;
@@ -82,12 +79,6 @@ pub fn filename_to_title(filename: &str) -> String {
         .to_string()
         .chars()
         .enumerate()
-        .map(|(i, c)| {
-            if i == 0 {
-                c.to_ascii_uppercase()
-            } else {
-                c
-            }
-        })
+        .map(|(i, c)| if i == 0 { c.to_ascii_uppercase() } else { c })
         .collect()
 }

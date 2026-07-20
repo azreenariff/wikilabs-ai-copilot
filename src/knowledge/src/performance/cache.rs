@@ -37,20 +37,20 @@ impl<T> RetrievalCache<T> {
 
     /// Gets a value from the cache. Returns None if not found or expired.
     pub fn get(&mut self, key: &str) -> Option<&T> {
-        let key = key.to_string();
+        let key_owned = key.to_string();
 
         // Check if entry exists and is not expired
-        let entry = self.entries.get(&key)?;
+        let entry = self.entries.get(&key_owned)?;
         if Instant::now() > entry.expires_at {
-            self.remove(&key);
+            self.remove(&key_owned);
             return None;
         }
 
         // Update access order for LRU
-        self.access_order.retain(|k| k != &key);
-        self.access_order.push(key);
+        self.access_order.retain(|k| k != &key_owned);
+        self.access_order.push(key_owned.clone());
 
-        self.entries.get(&key).map(|e| &e.value)
+        self.entries.get(&key_owned).map(|e| &e.value)
     }
 
     /// Inserts a value into the cache, evicting if necessary.
@@ -90,7 +90,7 @@ impl<T> RetrievalCache<T> {
                 expires_at,
             },
         );
-        self.access_order.push(access_key);
+        self.access_order.push(access_key.clone());
 
         debug!(key = %access_key, cache_size = self.entries.len(), "Cached retrieval result");
     }
@@ -118,12 +118,15 @@ impl<T> RetrievalCache<T> {
             .map(|(key, _)| key.clone())
             .collect();
 
-        for key in expired_keys {
-            self.entries.remove(&key);
+        for key in &expired_keys {
+            self.entries.remove(key);
         }
 
         if !expired_keys.is_empty() {
-            debug!(expired = expired_keys.len(), "Evicted expired cache entries");
+            debug!(
+                expired = expired_keys.len(),
+                "Evicted expired cache entries"
+            );
         }
     }
 
@@ -193,8 +196,7 @@ mod tests {
 
     #[test]
     fn test_ttl_expiry() {
-        let mut cache: RetrievalCache<String> =
-            RetrievalCache::new(10, Duration::from_millis(50));
+        let mut cache: RetrievalCache<String> = RetrievalCache::new(10, Duration::from_millis(50));
 
         cache.put("key1".to_string(), "value1".to_string());
         assert_eq!(cache.get("key1"), Some(&"value1".to_string()));

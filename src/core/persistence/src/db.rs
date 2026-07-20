@@ -64,7 +64,12 @@ impl Database {
     }
 
     /// Run a closure that returns multiple rows.
-    pub fn query_all<T, F>(&self, sql: &str, params: &[&dyn rusqlite::ToSql], f: F) -> Result<Vec<T>>
+    pub fn query_all<T, F>(
+        &self,
+        sql: &str,
+        params: &[&dyn rusqlite::ToSql],
+        f: F,
+    ) -> Result<Vec<T>>
     where
         F: FnMut(&Row) -> std::result::Result<T, rusqlite::Error>,
     {

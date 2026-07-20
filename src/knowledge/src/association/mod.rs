@@ -3,17 +3,17 @@
 //! Discovers and manages relationships between knowledge documents,
 //! including topic associations, semantic proximity, and structural links.
 
-pub mod graph;
-pub mod topic;
-pub mod proximity;
 pub mod filter;
+pub mod graph;
+pub mod proximity;
+pub mod topic;
 pub mod workspace_store;
 
-pub use graph::KnowledgeGraph;
-pub use topic::TopicAssociation;
-pub use proximity::SemanticProximity;
 pub use filter::WorkspaceKnowledgeFilter;
-pub use workspace_store::{WorkspaceKnowledgeStore, AssociationStatus};
+pub use graph::KnowledgeGraph;
+pub use proximity::SemanticProximity;
+pub use topic::TopicAssociation;
+pub use workspace_store::{AssociationStatus, WorkspaceKnowledgeStore};
 
 /// Edge type in the knowledge graph.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +41,7 @@ pub enum EdgeType {
 }
 
 /// Weight of a relationship.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Weight {
     /// Strong relationship.
     Strong,

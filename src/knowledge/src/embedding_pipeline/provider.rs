@@ -1,10 +1,10 @@
 //! Embedding provider trait and concrete implementations.
 
-use super::{EmbeddingPipelineConfig, EmbeddingStatus, EmbeddingResult, EmbeddingPipelineResult};
+use super::{EmbeddingPipelineConfig, EmbeddingPipelineResult, EmbeddingResult, EmbeddingStatus};
 use async_trait::async_trait;
-use tracing::{debug, warn};
-use std::collections::HashMap;
 use chrono::Utc;
+use std::collections::HashMap;
+use tracing::{debug, warn};
 
 /// Trait for embedding providers.
 ///
@@ -57,7 +57,10 @@ impl EmbeddingProviderRegistry {
     }
 
     pub fn get(&self, name: &str) -> Option<&dyn EmbeddingProvider> {
-        self.providers.iter().find(|p| p.name() == name).map(|p| p.as_ref())
+        self.providers
+            .iter()
+            .find(|p| p.name() == name)
+            .map(|p| p.as_ref())
     }
 
     pub fn all(&self) -> &[Box<dyn EmbeddingProvider>] {
@@ -74,18 +77,26 @@ pub struct LocalEmbeddingProvider {
 impl LocalEmbeddingProvider {
     pub fn new() -> Self {
         Self {
-            pipeline: crate::embedding::EmbeddingPipeline::new(crate::embedding::EmbeddingPipelineConfig::default()),
+            pipeline: crate::embedding::EmbeddingPipeline::new(Some(
+                crate::embedding::EmbeddingPipelineConfig::default(),
+            )),
         }
     }
 }
 
 #[async_trait]
 impl EmbeddingProvider for LocalEmbeddingProvider {
-    fn name(&self) -> &str { "local" }
+    fn name(&self) -> &str {
+        "local"
+    }
 
-    fn model_name(&self) -> &str { "all-MiniLM-L6-v2" }
+    fn model_name(&self) -> &str {
+        "all-MiniLM-L6-v2"
+    }
 
-    fn dimensions(&self) -> usize { 384 }
+    fn dimensions(&self) -> usize {
+        384
+    }
 
     async fn embed(&self, text: &str) -> anyhow::Result<Vec<f32>> {
         Ok(vec![0.0; 384])
@@ -99,7 +110,9 @@ impl EmbeddingProvider for LocalEmbeddingProvider {
         Ok(results)
     }
 
-    fn is_available(&self) -> bool { true }
+    fn is_available(&self) -> bool {
+        true
+    }
 }
 
 impl Default for LocalEmbeddingProvider {

@@ -15,23 +15,30 @@
 //! 9. **Token Budget Manager** — Token estimation, intelligent trimming, summarization
 //! 10. **Manual Context Selection** — User-configurable context influence
 
-pub mod provider;
 pub mod context;
-pub mod token_counter;
-pub mod response;
-pub mod conversation_manager;
 pub mod context_manager;
-pub mod prompt_manager;
+pub mod conversation_manager;
 pub mod persona;
+pub mod prompt_manager;
+pub mod provider;
+pub mod response;
 pub mod session_manager;
 pub mod token_budget;
+pub mod token_counter;
 
 // Re-export common types for convenience
-pub use provider::{AiProvider, ProviderInfo, ModelInfo, AiMessage, AiRequest, AiResponse, TokenUsage, ToolCall, EmbedRequest, EmbedResponse, EmbeddingData, OpenAICompatibleProvider};
-pub use context::{ContextWindow, ContextAllocation, ContextEntry};
-pub use conversation_manager::{ConversationManager, Conversation, ConversationRole, ConversationSummary};
-pub use context_manager::{ContextManager as AiContextManager, ContextSource, ContextPriority, AggregatedContext};
-pub use prompt_manager::{PromptManager, PromptTemplate, PromptAssembly, PromptVersion};
+pub use context::{ContextAllocation, ContextEntry, ContextWindow};
+pub use context_manager::{
+    AggregatedContext, ContextManager as AiContextManager, ContextPriority, ContextSource,
+};
+pub use conversation_manager::{
+    Conversation, ConversationManager, ConversationRole, ConversationSummary,
+};
 pub use persona::EngineeringPersona;
-pub use session_manager::{SessionManager, SessionConfig, SessionState};
-pub use token_budget::{TokenBudgetManager, BudgetAction, BudgetPolicy};
+pub use prompt_manager::{PromptAssembly, PromptManager, PromptTemplate, PromptVersion};
+pub use provider::{
+    AiMessage, AiProvider, AiRequest, AiResponse, EmbedRequest, EmbedResponse, EmbeddingData,
+    ModelInfo, OpenAICompatibleProvider, ProviderInfo, TokenUsage, ToolCall,
+};
+pub use session_manager::{SessionConfig, SessionManager, SessionState};
+pub use token_budget::{BudgetAction, BudgetPolicy, TokenBudgetManager};

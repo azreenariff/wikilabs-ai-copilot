@@ -66,7 +66,9 @@ impl IndexManager {
 
         let mut stored = self.store.lock().await;
         for (vector_id, vector_data, content, doc_id) in vectors {
-            stored.insert_vector(&vector_id, &vector_data, &content, &doc_id).await?;
+            stored
+                .insert_vector(&vector_id, &vector_data, &content, &doc_id)
+                .await?;
         }
 
         debug!(count, "Index built");

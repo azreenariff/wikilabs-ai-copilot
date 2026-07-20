@@ -18,13 +18,21 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::event::{ObservationEvent, EventType, ProviderType, ObservationPayload};
-use crate::provider::{ObservationProvider, ProviderConfig, ProviderState, ProviderLifecycle};
+use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
+use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 /// Configuration file extensions that trigger file observation.
 const CONFIG_EXTENSIONS: &[&str] = &[
-    "yml", "yaml", "json", "xml", "ini", "cfg", "conf",
-    "properties", "toml", "env",
+    "yml",
+    "yaml",
+    "json",
+    "xml",
+    "ini",
+    "cfg",
+    "conf",
+    "properties",
+    "toml",
+    "env",
 ];
 
 /// File metadata observed.
@@ -95,7 +103,9 @@ pub struct FileObserverProvider {
 impl FileObserverProvider {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(Mutex::new(FileObserverState::new(ProviderConfig::default()))),
+            state: Arc::new(Mutex::new(
+                FileObserverState::new(ProviderConfig::default()),
+            )),
         }
     }
 
@@ -199,10 +209,7 @@ impl ObservationProvider for FileObserverProvider {
         let files = self.detect_opened_files();
 
         // Only emit events for config files
-        let config_files: Vec<&FileMetadata> = files
-            .iter()
-            .filter(|f| f.is_config_file)
-            .collect();
+        let config_files: Vec<&FileMetadata> = files.iter().filter(|f| f.is_config_file).collect();
 
         if !config_files.is_empty() {
             let mut events = Vec::new();
@@ -265,7 +272,10 @@ impl ObservationProvider for FileObserverProvider {
             "recently_edited".to_string(),
             serde_json::json!(state.recently_edited_files.len()),
         );
-        details.insert("platform".to_string(), serde_json::json!(std::env::consts::OS));
+        details.insert(
+            "platform".to_string(),
+            serde_json::json!(std::env::consts::OS),
+        );
         details
     }
 }

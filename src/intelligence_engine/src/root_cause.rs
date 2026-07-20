@@ -48,10 +48,7 @@ impl RootCauseAnalyzer {
         if let Some(tech) = context.technologies.first() {
             if tech.confidence < 0.5 {
                 hypotheses.push(RootCauseHypothesis {
-                    title: format!(
-                        "Technology mismatch for {}",
-                        tech.name
-                    ),
+                    title: format!("Technology mismatch for {}", tech.name),
                     description: format!(
                         "The detected technology '{}' has low confidence ({:.0}%). \
                         This may indicate the system is running a different version, \
@@ -60,12 +57,10 @@ impl RootCauseAnalyzer {
                         tech.confidence * 100.0
                     ),
                     confidence: 0.6,
-                    evidence: vec![
-                        format!(
-                            "Technology '{}' has confidence {:.2}",
-                            tech.name, tech.confidence
-                        ),
-                    ],
+                    evidence: vec![format!(
+                        "Technology '{}' has confidence {:.2}",
+                        tech.name, tech.confidence
+                    )],
                 });
             }
         }
@@ -84,14 +79,8 @@ impl RootCauseAnalyzer {
                     ),
                     confidence: 0.5,
                     evidence: vec![
-                        format!(
-                            "Intent '{}' at {:.2}",
-                            top.intent, top.confidence
-                        ),
-                        format!(
-                            "Intent '{}' at {:.2}",
-                            second.intent, second.confidence
-                        ),
+                        format!("Intent '{}' at {:.2}", top.intent, top.confidence),
+                        format!("Intent '{}' at {:.2}", second.intent, second.confidence),
                         "Confidence gap < 0.15".to_string(),
                     ],
                 });

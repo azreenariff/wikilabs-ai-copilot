@@ -7,7 +7,7 @@
 //! - Knowledge association per workspace
 //! - JSON export / import
 
-pub mod manager;
 pub mod config;
-pub mod history;
 pub mod context;
+pub mod history;
+pub mod manager;

@@ -37,7 +37,11 @@ mod tests {
         // ~40 chars ≈ 10 tokens
         let text = "a".repeat(40);
         let tokens = count_tokens(&text);
-        assert!(tokens >= 8 && tokens <= 12, "Expected ~10 tokens for 40 chars, got {}", tokens);
+        assert!(
+            tokens >= 8 && tokens <= 12,
+            "Expected ~10 tokens for 40 chars, got {}",
+            tokens
+        );
     }
 
     #[test]

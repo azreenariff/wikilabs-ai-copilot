@@ -3,8 +3,8 @@
 //! Parses YAML into structured Document elements representing
 //! key-value pairs, lists, nested structures, and code blocks.
 
-use super::{DocumentElement, ParserProvider};
 use super::Document;
+use super::{DocumentElement, ParserProvider};
 use serde_yaml::Value;
 use tracing::debug;
 
@@ -31,24 +31,35 @@ impl YamlParser {
 
                     match val {
                         Value::String(s) => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: {}", new_path, s)));
+                            elements
+                                .push(DocumentElement::Paragraph(format!("{}: {}", new_path, s)));
                         }
                         Value::Number(n) => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: {}", new_path, n)));
+                            elements
+                                .push(DocumentElement::Paragraph(format!("{}: {}", new_path, n)));
                         }
                         Value::Bool(b) => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: {}", new_path, b)));
+                            elements
+                                .push(DocumentElement::Paragraph(format!("{}: {}", new_path, b)));
                         }
                         Value::Null => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: (null)", new_path)));
+                            elements
+                                .push(DocumentElement::Paragraph(format!("{}: (null)", new_path)));
                         }
                         Value::Sequence(seq) => {
                             elements.push(DocumentElement::Heading(level + 1, key_str.to_string()));
                             for (idx, item) in seq.iter().enumerate() {
                                 if let Value::String(s) = item {
-                                    elements.push(DocumentElement::Paragraph(format!("- {} [{}]: {}", new_path, idx, s)));
+                                    elements.push(DocumentElement::Paragraph(format!(
+                                        "- {} [{}]: {}",
+                                        new_path, idx, s
+                                    )));
                                 } else {
-                                    let sub = self.convert_value(item, &format!("{}.{}", new_path, idx), level + 2);
+                                    let sub = self.convert_value(
+                                        item,
+                                        &format!("{}.{}", new_path, idx),
+                                        level + 2,
+                                    );
                                     elements.extend(sub);
                                 }
                             }
@@ -59,7 +70,10 @@ impl YamlParser {
                             elements.extend(sub);
                         }
                         Value::Tagged(_) => {
-                            elements.push(DocumentElement::Paragraph(format!("{}: (tagged value)", new_path)));
+                            elements.push(DocumentElement::Paragraph(format!(
+                                "{}: (tagged value)",
+                                new_path
+                            )));
                         }
                     }
                 }
@@ -70,7 +84,8 @@ impl YamlParser {
                     if let Value::String(s) = item {
                         items.push(format!("- {} [{}]: {}", path, idx, s));
                     } else {
-                        let converted = self.convert_value(item, &format!("{}.{}", path, idx), level + 1);
+                        let converted =
+                            self.convert_value(item, &format!("{}.{}", path, idx), level + 1);
                         for el in converted {
                             if let DocumentElement::Paragraph(text) = el {
                                 items.push(text);

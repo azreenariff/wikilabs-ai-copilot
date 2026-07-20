@@ -3,18 +3,18 @@
 //! Provides namespace isolation, workspace isolation, incremental indexing,
 //! deletion support, versioning, and migration capabilities.
 
-pub mod vector_store;
-pub mod namespace;
-pub mod index;
-pub mod incremental;
 pub mod deletion;
+pub mod incremental;
+pub mod index;
 pub mod migration;
+pub mod namespace;
+pub mod vector_store;
 
-pub use vector_store::{VectorStore, VectorStoreConfig};
-pub use index::{IndexManager, IndexStats};
-pub use incremental::IncrementalIndexer;
 pub use deletion::DocumentDeleter;
-pub use migration::{SchemaMigration, MigrationResult};
+pub use incremental::IncrementalIndexer;
+pub use index::{IndexManager, IndexStats};
+pub use migration::{MigrationResult, SchemaMigration};
+pub use vector_store::{VectorStore, VectorStoreConfig};
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -90,7 +90,9 @@ impl VectorStorage {
         doc_id: &str,
     ) -> anyhow::Result<()> {
         let mut store = self.store.lock().await;
-        store.insert_vector(vector_id, vector, content, doc_id).await
+        store
+            .insert_vector(vector_id, vector, content, doc_id)
+            .await
     }
 
     pub async fn search(

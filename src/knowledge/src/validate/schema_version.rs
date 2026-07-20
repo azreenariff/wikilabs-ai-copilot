@@ -48,10 +48,14 @@ pub fn validate_schema_version(pack_path: &str) -> Result<SchemaVersionResult> {
 
     // Check for deprecated versions
     if version.starts_with("0.") || version == "1.0-beta" {
+        result
+            .errors
+            .push(format!("schema version '{}' is deprecated", version));
         result.warnings.push(format!(
             "schema version '{}' is deprecated, consider upgrading to '{}'",
             version, CURRENT_SCHEMA_VERSION
         ));
+        result.supported = false;
     } else if !version.starts_with("1.") {
         result.errors.push(format!(
             "unsupported schema version '{}', expected '{}'",

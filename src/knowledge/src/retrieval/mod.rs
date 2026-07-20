@@ -4,12 +4,17 @@
 //! Retrieval — chunking, vector search, hybrid search, and answer generation.
 
 pub mod chunker;
-pub mod search;
+pub mod context;
 pub mod hybrid;
+pub mod search;
 
-pub use chunker::{Chunker, ChunkStrategy};
-pub use search::VectorSearcher;
+pub use chunker::{ChunkStrategy, Chunker};
+pub use context::{
+    detect_technologies, extract_keywords, ContextAwareRetriever, Intent, RankingWeights,
+    RetrievalContext,
+};
 pub use hybrid::HybridRetriever;
+pub use search::VectorSearcher;
 
 /// Filter criteria for retrieval.
 #[derive(Debug, Clone)]

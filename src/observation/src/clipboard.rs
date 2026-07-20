@@ -9,8 +9,8 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::event::{ObservationEvent, EventType, ProviderType, ObservationPayload};
-use crate::provider::{ObservationProvider, ProviderConfig, ProviderState, ProviderLifecycle};
+use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
+use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 /// Clipboard content observed.
 #[derive(Debug, Clone)]
@@ -32,13 +32,19 @@ impl ClipboardContent {
         let text_length = text.len() as u64;
         let text_lower = text.to_lowercase();
 
-        let looks_like_error = text_lower.contains(&["error", "exception", "failed", "critical", "fatal"][0])
+        let looks_like_error = text_lower
+            .contains(&["error", "exception", "failed", "critical", "fatal"][0])
             || text.contains(&["Error:", "Exception:", "FAILED", "FATAL:"][0])
             || (text_lower.contains("at ") && text.contains("("));
 
         let looks_like_stack_trace = text_lower.contains(&["traceback", "stack:", "call stack"][0])
             || text.contains(&["    at ", "  File \"", "  -> "][0])
-            || (text_lower.contains("at ") && (text.contains(".java:") || text.contains(".kt:") || text.contains(".py:") || text.contains(".js:") || text.contains(".rs:")));
+            || (text_lower.contains("at ")
+                && (text.contains(".java:")
+                    || text.contains(".kt:")
+                    || text.contains(".py:")
+                    || text.contains(".js:")
+                    || text.contains(".rs:")));
 
         let looks_like_log = text_lower.contains(&["info:", "warn:", "debug:", "error:"][0])
             || text.contains(&["[ERROR]", "[INFO]", "[WARN]", "[DEBUG]"][0])
@@ -234,8 +240,14 @@ impl ObservationProvider for ClipboardProvider {
         let state = self.state.lock().unwrap();
         let mut details = HashMap::new();
         if let Some(ref content) = state.last_content {
-            details.insert("text_length".to_string(), serde_json::json!(content.text_length));
-            details.insert("looks_like_error".to_string(), serde_json::json!(content.looks_like_error));
+            details.insert(
+                "text_length".to_string(),
+                serde_json::json!(content.text_length),
+            );
+            details.insert(
+                "looks_like_error".to_string(),
+                serde_json::json!(content.looks_like_error),
+            );
         }
         details
     }
@@ -258,7 +270,9 @@ mod tests {
         assert!(content.looks_like_error);
         assert!(!content.looks_like_stack_trace);
 
-        let content = ClipboardContent::from_text("at com.example.Main.run(Main.java:42)\n  at com.example.Main.main(Main.java:10)");
+        let content = ClipboardContent::from_text(
+            "at com.example.Main.run(Main.java:42)\n  at com.example.Main.main(Main.java:10)",
+        );
         assert!(content.looks_like_stack_trace);
         assert!(content.looks_like_error);
 

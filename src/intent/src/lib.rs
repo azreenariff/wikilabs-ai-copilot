@@ -6,7 +6,7 @@
 //! - "Unknown" intent state (first-class concept)
 //! - Human correction mechanisms
 
-pub mod engine;
-pub mod model;
 pub mod confidence;
 pub mod correction;
+pub mod engine;
+pub mod model;

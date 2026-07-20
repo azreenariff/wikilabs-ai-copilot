@@ -5,7 +5,11 @@ pub trait McpProtocol: Send + Sync {
     async fn list_resources(&self) -> anyhow::Result<Vec<ResourceDefinition>>;
     async fn read_resource(&self, _uri: &str) -> anyhow::Result<String>;
     async fn list_prompts(&self) -> anyhow::Result<Vec<PromptDefinition>>;
-    async fn get_prompt(&self, _name: &str, _arguments: serde_json::Value) -> anyhow::Result<Vec<PromptMessage>>;
+    async fn get_prompt(
+        &self,
+        _name: &str,
+        _arguments: serde_json::Value,
+    ) -> anyhow::Result<Vec<PromptMessage>>;
 }
 
 #[derive(Clone, Debug)]

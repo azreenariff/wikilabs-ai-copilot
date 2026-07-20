@@ -3,8 +3,8 @@
 //! Manages multiple conversations with CRUD operations,
 //! history tracking, and export/restore capabilities.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Role for a message in a conversation.
@@ -146,12 +146,15 @@ impl Conversation {
 
     /// Get messages formatted for API request.
     pub fn messages_for_api(&self) -> Vec<serde_json::Value> {
-        self.messages.iter().map(|m| {
-            serde_json::json!({
-                "role": m.role.to_string(),
-                "content": m.content,
+        self.messages
+            .iter()
+            .map(|m| {
+                serde_json::json!({
+                    "role": m.role.to_string(),
+                    "content": m.content,
+                })
             })
-        }).collect()
+            .collect()
     }
 
     /// Get the most recent message, if any.
@@ -166,7 +169,8 @@ impl Conversation {
 
     /// Generate a preview for listing.
     pub fn first_message_preview(&self) -> String {
-        self.messages.first()
+        self.messages
+            .first()
             .map(|m| {
                 let max_len = 80;
                 if m.content.len() > max_len {
@@ -201,21 +205,31 @@ impl Conversation {
 
     /// Export conversation as formatted text.
     pub fn export_text(&self) -> String {
-        let mut output = format!("Conversation: {}\nCreated: {}\n\n", self.name, self.created_at);
+        let mut output = format!(
+            "Conversation: {}\nCreated: {}\n\n",
+            self.name, self.created_at
+        );
         for msg in &self.messages {
-            output.push_str(&format!("[{}] {}:\n{}\n\n", msg.role.to_string(), msg.created_at, msg.content));
+            output.push_str(&format!(
+                "[{}] {}:\n{}\n\n",
+                msg.role.to_string(),
+                msg.created_at,
+                msg.content
+            ));
         }
         output
     }
 
     /// Serialize to JSON string.
     pub fn export_json(&self) -> anyhow::Result<String> {
-        serde_json::to_string_pretty(self).map_err(|e| anyhow::anyhow!("Failed to serialize conversation: {}", e))
+        serde_json::to_string_pretty(self)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize conversation: {}", e))
     }
 
     /// Deserialize from JSON string.
     pub fn from_json(json: &str) -> anyhow::Result<Self> {
-        serde_json::from_str(json).map_err(|e| anyhow::anyhow!("Failed to deserialize conversation: {}", e))
+        serde_json::from_str(json)
+            .map_err(|e| anyhow::anyhow!("Failed to deserialize conversation: {}", e))
     }
 
     /// Restore messages from JSON (for recovery).
@@ -263,12 +277,16 @@ impl ConversationManager {
 
     /// Get the active conversation (mutable).
     pub fn active_mut(&mut self) -> Option<&mut Conversation> {
-        self.active_id.as_ref().and_then(|id| self.conversations.get_mut(id))
+        self.active_id
+            .as_ref()
+            .and_then(|id| self.conversations.get_mut(id))
     }
 
     /// Get the active conversation (immutable).
     pub fn active(&self) -> Option<&Conversation> {
-        self.active_id.as_ref().and_then(|id| self.conversations.get(id))
+        self.active_id
+            .as_ref()
+            .and_then(|id| self.conversations.get(id))
     }
 
     /// Add a message to the active conversation.
@@ -291,14 +309,17 @@ impl ConversationManager {
 
     /// List all conversations as summaries.
     pub fn list(&self) -> Vec<ConversationSummary> {
-        self.conversations.values().map(|c| ConversationSummary {
-            id: c.id,
-            name: c.name.clone(),
-            created_at: c.created_at,
-            updated_at: c.updated_at,
-            message_count: c.messages.len(),
-            first_message_preview: c.first_message_preview(),
-        }).collect()
+        self.conversations
+            .values()
+            .map(|c| ConversationSummary {
+                id: c.id,
+                name: c.name.clone(),
+                created_at: c.created_at,
+                updated_at: c.updated_at,
+                message_count: c.messages.len(),
+                first_message_preview: c.first_message_preview(),
+            })
+            .collect()
     }
 
     /// Delete a conversation.
@@ -315,7 +336,8 @@ impl ConversationManager {
 
     /// Rename a conversation.
     pub fn rename(&mut self, id: Uuid, new_name: &str) -> anyhow::Result<()> {
-        self.conversations.get_mut(&id)
+        self.conversations
+            .get_mut(&id)
             .ok_or_else(|| anyhow::anyhow!("Conversation not found: {}", id))?
             .rename(new_name);
         Ok(())
@@ -323,7 +345,8 @@ impl ConversationManager {
 
     /// Export a conversation as JSON.
     pub fn export(&self, id: Uuid) -> anyhow::Result<String> {
-        self.conversations.get(&id)
+        self.conversations
+            .get(&id)
             .ok_or_else(|| anyhow::anyhow!("Conversation not found: {}", id))?
             .export_json()
     }
@@ -433,7 +456,8 @@ mod tests {
         let mut cm = ConversationManager::new();
         let id = cm.create("Chat 1");
         cm.add_message(ConversationMessage::user("Hi")).unwrap();
-        cm.add_message(ConversationMessage::assistant("Hello!")).unwrap();
+        cm.add_message(ConversationMessage::assistant("Hello!"))
+            .unwrap();
 
         let json = cm.export(id).unwrap();
         let restored_id = cm.restore(&json).unwrap();
@@ -501,11 +525,10 @@ mod tests {
 
     #[test]
     fn test_message_with_tool_calls() {
-        let msg = ConversationMessage::assistant("test")
-            .with_tool_calls(vec![serde_json::json!({
-                "name": "read_file",
-                "arguments": {"path": "/test.txt"}
-            })]);
+        let msg = ConversationMessage::assistant("test").with_tool_calls(vec![serde_json::json!({
+            "name": "read_file",
+            "arguments": {"path": "/test.txt"}
+        })]);
         assert_eq!(msg.tool_calls.len(), 1);
         assert_eq!(msg.tool_calls[0]["name"], "read_file");
     }

@@ -6,12 +6,14 @@
 //! - Connection pool for concurrent access
 
 pub mod db;
-pub mod schema;
 pub mod migrations;
 pub mod repositories;
+pub mod schema;
 
 pub use db::Database;
+pub use repositories::{
+    AuditLogRepository, ChatMessageRepository, ChatMessageRow, KnowledgeChunkRepository,
+    KnowledgeDocumentRepository, KnowledgeDocumentRow, RepositoryFactory, SettingsRepository,
+    WorkspaceRepository, WorkspaceRow,
+};
 pub use schema::INIT_SQL;
-pub use repositories::{RepositoryFactory, WorkspaceRepository, ChatMessageRepository,
-    KnowledgeDocumentRepository, KnowledgeChunkRepository, SettingsRepository,
-    AuditLogRepository, WorkspaceRow, ChatMessageRow, KnowledgeDocumentRow};

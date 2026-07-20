@@ -1,5 +1,5 @@
 use wikilabs_data_types::{DetectionRule, DetectionType, EngineeringContext, TechnologyInference};
-use wikilabs_observation::{ObservationEvent, EventType, ProviderType};
+use wikilabs_observation::{EventType, ObservationEvent, ProviderType};
 
 /// DetectionEngine — core technology recognition engine.
 ///
@@ -93,10 +93,7 @@ impl DetectionEngine {
     }
 
     /// Recognize technologies from an engineering context.
-    pub fn recognize_from_context(
-        &self,
-        context: &EngineeringContext,
-    ) -> Vec<TechnologyInference> {
+    pub fn recognize_from_context(&self, context: &EngineeringContext) -> Vec<TechnologyInference> {
         tracing::trace!("Recognizing from engineering context");
 
         let mut inferences = Vec::new();
@@ -249,11 +246,7 @@ impl DetectionEngine {
         }
     }
 
-    fn pattern_matches_payload(
-        &self,
-        pattern: &str,
-        value: &serde_json::Value,
-    ) -> bool {
+    fn pattern_matches_payload(&self, pattern: &str, value: &serde_json::Value) -> bool {
         if let Some(s) = value.get("url").and_then(|v| v.as_str()) {
             if self.pattern_matches(pattern, s) {
                 return true;

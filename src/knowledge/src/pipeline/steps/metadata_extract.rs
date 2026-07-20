@@ -2,7 +2,6 @@
 
 use crate::processing::Document;
 use crate::processing::DocumentElement;
-use chrono::Utc;
 use tracing::debug;
 
 /// Extracted metadata from a document.
@@ -83,21 +82,42 @@ impl MetadataExtractStep {
                     metadata.word_count += text.split_whitespace().count();
                     metadata.char_count += text.len();
                 }
+                DocumentElement::InlineCode(_) | DocumentElement::Bold(_) => {
+                    // Inline code and bold are just formatting, no extra metadata needed
+                }
             }
         }
 
         // Language detection
-        metadata.language = super::super::steps::Language::detect(&doc.full_text).to_string();
+        metadata.language = crate::processing::Language::En.to_string();
 
         // Estimate reading time (average 200 words per minute)
         if metadata.word_count > 0 {
             metadata.estimated_reading_time = (metadata.word_count as f64 / 200.0).ceil() as u64;
         }
 
-        doc.metadata = metadata;
+        doc.metadata = crate::processing::DocumentMetadata {
+            headings: metadata.headings.clone(),
+            table_count: metadata.table_count,
+            code_block_count: metadata.code_block_count,
+            list_count: metadata.list_count,
+            command_count: metadata.command_count,
+            example_count: metadata.example_count,
+            warning_count: metadata.warning_count,
+            reference_count: metadata.reference_count,
+            language: metadata.language.clone(),
+            word_count: metadata.word_count,
+            char_count: metadata.char_count,
+            estimated_reading_time: metadata.estimated_reading_time,
+        };
 
-        debug!("Metadata extracted: headings={}, tables={}, code_blocks={}, lists={}",
-            metadata.headings.len(), metadata.table_count, metadata.code_block_count, metadata.list_count);
+        debug!(
+            "Metadata extracted: headings={}, tables={}, code_blocks={}, lists={}",
+            metadata.headings.len(),
+            metadata.table_count,
+            metadata.code_block_count,
+            metadata.list_count
+        );
     }
 }
 

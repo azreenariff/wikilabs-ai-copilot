@@ -7,14 +7,14 @@
 //! - `testing`: utilities for testing knowledge packs
 //! - `schema`: JSON schema definitions for pack manifests
 
+pub mod create_pack;
+pub mod packager;
 pub mod schema;
 pub mod templates;
-pub mod create_pack;
-pub mod validate;
-pub mod packager;
 pub mod testing;
+pub mod validate;
 
-pub use schema::*;
-pub use templates::*;
 pub use create_pack::*;
 pub use packager::*;
+pub use schema::*;
+pub use templates::*;

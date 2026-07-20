@@ -4,9 +4,9 @@
 //! Every event has a unique ID, timestamp, source provider, workspace context,
 //! and a typed payload. All events are serializable to JSON.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 /// Unique event identifier.
 pub type EventId = Uuid;
@@ -240,9 +240,15 @@ mod tests {
 
     #[test]
     fn test_event_type_display() {
-        assert_eq!(EventType::ApplicationChanged.to_string(), "application_changed");
+        assert_eq!(
+            EventType::ApplicationChanged.to_string(),
+            "application_changed"
+        );
         assert_eq!(EventType::TerminalCommand.to_string(), "terminal_command");
-        assert_eq!(EventType::ScreenshotCaptured.to_string(), "screenshot_captured");
+        assert_eq!(
+            EventType::ScreenshotCaptured.to_string(),
+            "screenshot_captured"
+        );
         assert_eq!(
             EventType::BrowserContextChanged.to_string(),
             "browser_context_changed"
@@ -317,10 +323,7 @@ mod tests {
         assert_eq!(deserialized.event_type, EventType::BrowserContextChanged);
         assert_eq!(deserialized.provider, ProviderType::Browser);
         assert_eq!(deserialized.source, "firefox");
-        assert_eq!(
-            deserialized.payload.data["url"],
-            "https://example.com"
-        );
+        assert_eq!(deserialized.payload.data["url"], "https://example.com");
     }
 
     #[test]

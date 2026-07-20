@@ -9,8 +9,8 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use wikilabs_data_types::ProviderDocument;
 use std::collections::HashMap;
+use wikilabs_data_types::ProviderDocument;
 
 /// File extension to provider kind mapping.
 pub const EXTENSION_PROVIDER_MAP: &[(&str, ProviderKind)] = &[
@@ -143,26 +143,94 @@ impl ProviderKind {
     pub fn supported_formats(&self) -> Vec<String> {
         match self {
             Self::Filesystem => vec![
-                "txt", "md", "markdown", "html", "htm", "yaml", "yml", "json",
-                "xml", "csv", "log", "conf", "cfg", "ini", "toml", "sh", "bash",
-                "py", "rs", "go", "java", "js", "ts", "c", "cpp", "h", "hpp",
-                "rb", "php", "pl", "sql", "r", "scala", "kt", "swift", "m",
+                "txt".to_string(),
+                "md".to_string(),
+                "markdown".to_string(),
+                "html".to_string(),
+                "htm".to_string(),
+                "yaml".to_string(),
+                "yml".to_string(),
+                "json".to_string(),
+                "xml".to_string(),
+                "csv".to_string(),
+                "log".to_string(),
+                "conf".to_string(),
+                "cfg".to_string(),
+                "ini".to_string(),
+                "toml".to_string(),
+                "sh".to_string(),
+                "bash".to_string(),
+                "py".to_string(),
+                "rs".to_string(),
+                "go".to_string(),
+                "java".to_string(),
+                "js".to_string(),
+                "ts".to_string(),
+                "c".to_string(),
+                "cpp".to_string(),
+                "h".to_string(),
+                "hpp".to_string(),
+                "rb".to_string(),
+                "php".to_string(),
+                "pl".to_string(),
+                "sql".to_string(),
+                "r".to_string(),
+                "scala".to_string(),
+                "kt".to_string(),
+                "swift".to_string(),
+                "m".to_string(),
             ],
-            Self::Markdown => vec!["md", "markdown"],
-            Self::Html => vec!["html", "htm"],
-            Self::Pdf => vec!["pdf"],
-            Self::Docx => vec!["docx"],
-            Self::Txt => vec!["txt", "text", "log", "conf", "cfg", "ini", "md", "rst"],
-            Self::Yaml => vec!["yaml", "yml"],
-            Self::Json => vec!["json"],
-            Self::Xml => vec!["xml"],
+            Self::Markdown => vec!["md".to_string(), "markdown".to_string()],
+            Self::Html => vec!["html".to_string(), "htm".to_string()],
+            Self::Pdf => vec!["pdf".to_string()],
+            Self::Docx => vec!["docx".to_string()],
+            Self::Txt => vec![
+                "txt".to_string(),
+                "text".to_string(),
+                "log".to_string(),
+                "conf".to_string(),
+                "cfg".to_string(),
+                "ini".to_string(),
+                "md".to_string(),
+                "rst".to_string(),
+            ],
+            Self::Yaml => vec!["yaml".to_string(), "yml".to_string()],
+            Self::Json => vec!["json".to_string()],
+            Self::Xml => vec!["xml".to_string()],
             Self::Git => vec![
-                "md", "txt", "html", "yaml", "yml", "json", "xml", "sh", "bash",
-                "py", "rs", "go", "java", "js", "ts", "toml", "conf", "cfg",
-                "ini", "dockerfile", "gitignore", "gitattributes",
+                "md".to_string(),
+                "txt".to_string(),
+                "html".to_string(),
+                "yaml".to_string(),
+                "yml".to_string(),
+                "json".to_string(),
+                "xml".to_string(),
+                "sh".to_string(),
+                "bash".to_string(),
+                "py".to_string(),
+                "rs".to_string(),
+                "go".to_string(),
+                "java".to_string(),
+                "js".to_string(),
+                "ts".to_string(),
+                "toml".to_string(),
+                "conf".to_string(),
+                "cfg".to_string(),
+                "ini".to_string(),
+                "dockerfile".to_string(),
+                "gitignore".to_string(),
+                "gitattributes".to_string(),
             ],
-            Self::Confluence => vec!["confluence-page", "confluence-space", "confluence-attachment"],
-            Self::SharePoint => vec!["sharepoint-document", "sharepoint-site", "sharepoint-page"],
+            Self::Confluence => vec![
+                "confluence-page".to_string(),
+                "confluence-space".to_string(),
+                "confluence-attachment".to_string(),
+            ],
+            Self::SharePoint => vec![
+                "sharepoint-document".to_string(),
+                "sharepoint-site".to_string(),
+                "sharepoint-page".to_string(),
+            ],
         }
     }
 }
@@ -270,16 +338,15 @@ pub use txt::TxtProvider;
 pub use xml::XmlProvider;
 pub use yaml::YamlProvider;
 
-mod filesystem;
-mod markdown;
-mod html;
-mod pdf;
-mod docx;
-mod txt;
-mod yaml;
-mod json;
-mod xml;
-mod git;
 mod confluence;
+mod docx;
+mod filesystem;
+mod git;
+mod html;
+mod json;
+mod markdown;
+mod pdf;
 mod sharepoint;
-
+mod txt;
+mod xml;
+mod yaml;

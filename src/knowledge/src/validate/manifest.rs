@@ -22,7 +22,9 @@ pub fn validate_manifest(pack_path: &str) -> Result<Manifest> {
     let manifest: Manifest =
         serde_yaml::from_str(&content).context("manifest.yaml is not valid YAML")?;
 
-    manifest.validate().context("manifest.yaml failed schema validation")?;
+    manifest
+        .validate()
+        .context("manifest.yaml failed schema validation")?;
 
     tracing::debug!(
         pack_name = %manifest.name,
@@ -36,10 +38,11 @@ pub fn validate_manifest(pack_path: &str) -> Result<Manifest> {
 
 /// Validates a manifest from a raw YAML string.
 pub fn validate_manifest_from_str(yaml: &str) -> Result<Manifest> {
-    let manifest: Manifest =
-        serde_yaml::from_str(yaml).context("Input is not valid YAML")?;
+    let manifest: Manifest = serde_yaml::from_str(yaml).context("Input is not valid YAML")?;
 
-    manifest.validate().context("Manifest failed schema validation")?;
+    manifest
+        .validate()
+        .context("Manifest failed schema validation")?;
 
     Ok(manifest)
 }

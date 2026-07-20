@@ -57,4 +57,3 @@ impl KnowledgeProvider for SharePointProvider {
         anyhow::bail!("SharePoint provider is not yet implemented")
     }
 }
-

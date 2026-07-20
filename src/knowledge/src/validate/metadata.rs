@@ -22,7 +22,9 @@ pub fn validate_metadata(pack_path: &str) -> Result<Metadata> {
     let metadata: Metadata =
         serde_yaml::from_str(&content).context("metadata.yaml is not valid YAML")?;
 
-    metadata.validate().context("metadata.yaml failed schema validation")?;
+    metadata
+        .validate()
+        .context("metadata.yaml failed schema validation")?;
 
     tracing::debug!(
         pack_name = %metadata.pack_name,
@@ -36,10 +38,11 @@ pub fn validate_metadata(pack_path: &str) -> Result<Metadata> {
 
 /// Validates metadata from a raw YAML string.
 pub fn validate_metadata_from_str(yaml: &str) -> Result<Metadata> {
-    let metadata: Metadata =
-        serde_yaml::from_str(yaml).context("Input is not valid YAML")?;
+    let metadata: Metadata = serde_yaml::from_str(yaml).context("Input is not valid YAML")?;
 
-    metadata.validate().context("Metadata failed schema validation")?;
+    metadata
+        .validate()
+        .context("Metadata failed schema validation")?;
 
     Ok(metadata)
 }

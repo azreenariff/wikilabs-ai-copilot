@@ -41,7 +41,11 @@ impl KnowledgeProvider for ConfluenceProvider {
     }
 
     fn supported_formats(&self) -> &[&str] {
-        &["confluence-page", "confluence-space", "confluence-attachment"]
+        &[
+            "confluence-page",
+            "confluence-space",
+            "confluence-attachment",
+        ]
     }
 
     fn get_enabled(&self, enabled: bool) -> bool {
@@ -58,4 +62,3 @@ impl KnowledgeProvider for ConfluenceProvider {
         anyhow::bail!("Confluence provider is not yet implemented")
     }
 }
-

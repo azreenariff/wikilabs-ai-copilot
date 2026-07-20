@@ -26,11 +26,11 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use tracing::{debug, info};
 use wikilabs_data_types::technology::TechnologyInference;
 use wikilabs_data_types::timeline::TimelineEntry;
 use wikilabs_human_feedback::CorrectionRecord;
 use wikilabs_observation::ObservationEvent;
-use tracing::{debug, info};
 
 // ---------------------------------------------------------------------------
 // Data types
@@ -144,10 +144,7 @@ impl ContextFusionEngine {
 
     /// Set the conversation context.
     pub fn set_conversation_context(&mut self, context: String) {
-        debug!(
-            "Set conversation context ({} chars)",
-            context.len()
-        );
+        debug!("Set conversation context ({} chars)", context.len());
         self.conversation_context = context;
         self.cached_fused = None;
     }
@@ -165,9 +162,10 @@ impl ContextFusionEngine {
             inference.name, inference.confidence, inference.source
         );
         // Avoid duplicate entries for the same technology from the same source
-        let exists = self.technology_inferences.iter().any(|t| {
-            t.name == inference.name && t.source == inference.source
-        });
+        let exists = self
+            .technology_inferences
+            .iter()
+            .any(|t| t.name == inference.name && t.source == inference.source);
         if !exists {
             self.technology_inferences.push(inference);
         }
@@ -181,9 +179,10 @@ impl ContextFusionEngine {
             inference.intent, inference.confidence, inference.source
         );
         // Avoid duplicate exact matches
-        let exists = self.intent_inferences.iter().any(|i| {
-            i.intent == inference.intent && i.source == inference.source
-        });
+        let exists = self
+            .intent_inferences
+            .iter()
+            .any(|i| i.intent == inference.intent && i.source == inference.source);
         if !exists {
             self.intent_inferences.push(inference);
         }
@@ -271,7 +270,8 @@ impl ContextFusionEngine {
         self.last_fused_at = fused_at;
         self.cached_fused = Some(fused.clone());
 
-        debug!("Fused context: {} technologies, {} intents, {} timeline entries",
+        debug!(
+            "Fused context: {} technologies, {} intents, {} timeline entries",
             fused.technologies.len(),
             fused.intents.len(),
             fused.timeline.len()
@@ -318,20 +318,18 @@ impl ContextFusionEngine {
                 .iter()
                 .map(|e| format!("{} from {}", e.event_type, e.source))
                 .collect();
-            parts.push(format!("Observations: {} events recorded ({})", self.observation_events.len(), event_types.join(", ")));
+            parts.push(format!(
+                "Observations: {} events recorded ({})",
+                self.observation_events.len(),
+                event_types.join(", ")
+            ));
         }
 
         if !self.technology_inferences.is_empty() {
             let techs: Vec<String> = self
                 .technology_inferences
                 .iter()
-                .map(|t| {
-                    format!(
-                        "{} ({:.0}%)",
-                        t.name,
-                        t.confidence * 100.0
-                    )
-                })
+                .map(|t| format!("{} ({:.0}%)", t.name, t.confidence * 100.0))
                 .collect();
             parts.push(format!("Technologies detected: {}", techs.join(", ")));
         }
@@ -340,13 +338,7 @@ impl ContextFusionEngine {
             let intents: Vec<String> = self
                 .intent_inferences
                 .iter()
-                .map(|i| {
-                    format!(
-                        "{} (confidence: {:.0}%)",
-                        i.intent,
-                        i.confidence * 100.0
-                    )
-                })
+                .map(|i| format!("{} (confidence: {:.0}%)", i.intent, i.confidence * 100.0))
                 .collect();
             parts.push(format!("Intents identified: {}", intents.join(", ")));
         }
@@ -361,11 +353,7 @@ impl ContextFusionEngine {
         }
 
         if !self.human_corrections.is_empty() {
-            let applied = self
-                .human_corrections
-                .iter()
-                .filter(|c| c.applied)
-                .count();
+            let applied = self.human_corrections.iter().filter(|c| c.applied).count();
             parts.push(format!(
                 "Human corrections: {} total, {} applied",
                 self.human_corrections.len(),
@@ -441,7 +429,9 @@ impl ContextFusionEngine {
                 .map(|t| t.confidence)
                 .sum::<f32>()
                 / count as f32;
-            let names: Vec<String> = self.technology_inferences.iter()
+            let names: Vec<String> = self
+                .technology_inferences
+                .iter()
                 .map(|t| t.name.clone())
                 .collect();
             format!(
@@ -467,10 +457,7 @@ impl ContextFusionEngine {
             )
         };
 
-        let event_summary = format!(
-            "{}",
-            self.observation_events.len()
-        );
+        let event_summary = format!("{}", self.observation_events.len());
 
         let correction_summary = if self.human_corrections.is_empty() {
             "No human corrections".to_string()
@@ -683,10 +670,7 @@ mod tests {
     fn test_set_workspace_context() {
         let mut engine = ContextFusionEngine::new();
         engine.set_workspace_context(Some("customer-a".to_string()));
-        assert_eq!(
-            engine.workspace_context,
-            Some("customer-a".to_string())
-        );
+        assert_eq!(engine.workspace_context, Some("customer-a".to_string()));
         engine.set_workspace_context(None);
         assert!(engine.workspace_context.is_none());
     }
@@ -697,14 +681,8 @@ mod tests {
         engine.update_confidence("rust_detection", 0.9);
         engine.update_confidence("intent_accuracy", 0.75);
 
-        assert_eq!(
-            engine.confidence_scores.get("rust_detection"),
-            Some(&0.9)
-        );
-        assert_eq!(
-            engine.confidence_scores.get("intent_accuracy"),
-            Some(&0.75)
-        );
+        assert_eq!(engine.confidence_scores.get("rust_detection"), Some(&0.9));
+        assert_eq!(engine.confidence_scores.get("intent_accuracy"), Some(&0.75));
     }
 
     #[test]
@@ -713,14 +691,8 @@ mod tests {
         engine.update_confidence("over", 1.5);
         engine.update_confidence("under", -0.3);
 
-        assert_eq!(
-            engine.confidence_scores.get("over"),
-            Some(&1.0)
-        );
-        assert_eq!(
-            engine.confidence_scores.get("under"),
-            Some(&0.0)
-        );
+        assert_eq!(engine.confidence_scores.get("over"), Some(&1.0));
+        assert_eq!(engine.confidence_scores.get("under"), Some(&0.0));
     }
 
     #[test]
@@ -789,10 +761,16 @@ mod tests {
     fn test_different_tech_inferences_allowed() {
         let mut engine = ContextFusionEngine::new();
         engine.add_technology_inference(TechnologyInference::new(
-            "Rust".to_string(), 0.9, "obs".to_string(), "Found Cargo.toml".to_string(),
+            "Rust".to_string(),
+            0.9,
+            "obs".to_string(),
+            "Found Cargo.toml".to_string(),
         ));
         engine.add_technology_inference(TechnologyInference::new(
-            "Linux".to_string(), 0.8, "obs".to_string(), "Found bash scripts".to_string(),
+            "Linux".to_string(),
+            0.8,
+            "obs".to_string(),
+            "Found bash scripts".to_string(),
         ));
         assert_eq!(engine.get_technology_count(), 2);
     }
@@ -801,10 +779,14 @@ mod tests {
     fn test_different_intent_inferences_allowed() {
         let mut engine = ContextFusionEngine::new();
         engine.add_intent_inference(IntentInference::new(
-            "troubleshooting".to_string(), 0.8, "engine".to_string(),
+            "troubleshooting".to_string(),
+            0.8,
+            "engine".to_string(),
         ));
         engine.add_intent_inference(IntentInference::new(
-            "deployment".to_string(), 0.6, "engine".to_string(),
+            "deployment".to_string(),
+            0.6,
+            "engine".to_string(),
         ));
         assert_eq!(engine.get_intent_count(), 2);
     }
@@ -887,10 +869,16 @@ mod tests {
     fn test_fused_context_highest_confidence_tech() {
         let mut engine = ContextFusionEngine::new();
         engine.add_technology_inference(TechnologyInference::new(
-            "Rust".to_string(), 0.9, "obs".to_string(), "Found Cargo.toml".to_string(),
+            "Rust".to_string(),
+            0.9,
+            "obs".to_string(),
+            "Found Cargo.toml".to_string(),
         ));
         engine.add_technology_inference(TechnologyInference::new(
-            "Kubernetes".to_string(), 0.7, "obs".to_string(), "Found kubectl".to_string(),
+            "Kubernetes".to_string(),
+            0.7,
+            "obs".to_string(),
+            "Found kubectl".to_string(),
         ));
 
         let fused = engine.fuse();
@@ -911,9 +899,7 @@ mod tests {
 
         let fused = engine.fuse();
         assert!(!fused.human_corrections_applied.is_empty());
-        assert!(fused
-            .human_corrections_applied[0]
-            .contains("deployment"));
+        assert!(fused.human_corrections_applied[0].contains("deployment"));
     }
 
     #[test]

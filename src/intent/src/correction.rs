@@ -37,7 +37,11 @@ impl CorrectionEngine {
         });
     }
 
-    pub fn record_simple(&mut self, expected: crate::engine::Intent, actual: crate::engine::Intent) {
+    pub fn record_simple(
+        &mut self,
+        expected: crate::engine::Intent,
+        actual: crate::engine::Intent,
+    ) {
         self.record_correction(expected, actual, None);
     }
 
@@ -153,7 +157,10 @@ mod tests {
             Some("pod config issue".to_string()),
         );
         assert_eq!(engine.correction_count(), 1);
-        assert_eq!(engine.corrections[0].context, Some("pod config issue".to_string()));
+        assert_eq!(
+            engine.corrections[0].context,
+            Some("pod config issue".to_string())
+        );
     }
 
     #[test]

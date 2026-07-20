@@ -43,10 +43,14 @@ impl Manifest {
             return Err(SchemaError::Manifest("name must not be empty".to_string()));
         }
         if self.version.is_empty() {
-            return Err(SchemaError::Manifest("version must not be empty".to_string()));
+            return Err(SchemaError::Manifest(
+                "version must not be empty".to_string(),
+            ));
         }
         if self.license.is_empty() {
-            return Err(SchemaError::Manifest("license must not be empty".to_string()));
+            return Err(SchemaError::Manifest(
+                "license must not be empty".to_string(),
+            ));
         }
         for doc in &self.documents {
             if doc.id.is_empty() {
@@ -55,9 +59,10 @@ impl Manifest {
                 ));
             }
             if doc.path.is_empty() {
-                return Err(SchemaError::Manifest(
-                    format!("document '{}' path must not be empty", doc.id),
-                ));
+                return Err(SchemaError::Manifest(format!(
+                    "document '{}' path must not be empty",
+                    doc.id
+                )));
             }
         }
         Ok(())
@@ -96,7 +101,12 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    pub fn new(pack_name: &str, pack_version: &str, description: &str, embedding_model: &str) -> Self {
+    pub fn new(
+        pack_name: &str,
+        pack_version: &str,
+        description: &str,
+        embedding_model: &str,
+    ) -> Self {
         let now = chrono::Utc::now();
         Self {
             pack_name: pack_name.to_string(),
@@ -114,7 +124,9 @@ impl Metadata {
 
     pub fn validate(&self) -> Result<(), SchemaError> {
         if self.pack_name.is_empty() {
-            return Err(SchemaError::Metadata("pack_name must not be empty".to_string()));
+            return Err(SchemaError::Metadata(
+                "pack_name must not be empty".to_string(),
+            ));
         }
         if self.embedding_model.is_empty() {
             return Err(SchemaError::Metadata(

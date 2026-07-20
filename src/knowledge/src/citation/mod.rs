@@ -3,13 +3,13 @@
 //! Supports: inline citations, reference lists, link verification,
 //! and cross-references between knowledge documents.
 
-pub mod manager;
-pub mod link;
 pub mod crossref;
+pub mod link;
+pub mod manager;
 
-pub use manager::CitationManager;
-pub use link::CitationLink;
 pub use crossref::CrossReference;
+pub use link::CitationLink;
+pub use manager::CitationManager;
 
 /// Citation type for different source categories.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,7 +76,7 @@ impl Citation {
     }
 
     pub fn with_metadata(mut self, metadata: serde_json::Value) -> Self {
-        self = metadata;
+        self.metadata = metadata;
         self
     }
 }
@@ -106,21 +106,10 @@ pub fn generate_citation_from_chunk(
     chunk: &wikilabs_data_types::KnowledgeChunk,
     knowledge_pack: &str,
 ) -> Citation {
-    let mut citation = Citation::new(
-        &chunk.id,
-        &chunk.get("title").and_then(|v| v.as_str()).unwrap_or(&chunk.id),
-        CitationType::Documentation,
-    );
+    let title = chunk.content.chars().take(80).collect::<String>();
 
-    if let Some(ref url) = chunk.get("url").and_then(|v| v.as_str()) {
-        citation = citation.with_url(url);
-    }
+    let mut citation = Citation::new(&chunk.id.to_string(), &title, CitationType::Documentation);
 
-    if let Some(ref author) = chunk.get("author").and_then(|v| v.as_str()) {
-        citation = citation.with_author(author);
-    }
-
-    citation = chunk.clone();
     citation
 }
 
@@ -148,7 +137,7 @@ pub fn format_citation(citation: &Citation, format: &str) -> String {
             citation
                 .url
                 .as_ref()
-                .map(|url| format! (" [link]({url})"))
+                .map(|url| format!(" [link]({url})"))
                 .unwrap_or_default(),
             citation
                 .author

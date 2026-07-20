@@ -281,7 +281,10 @@ impl TokenBudgetManager {
 
     /// Estimate tokens for a message list.
     pub fn estimate_messages(&self, messages: &[&str]) -> usize {
-        messages.iter().map(|m| crate::token_counter::count_tokens(m)).sum()
+        messages
+            .iter()
+            .map(|m| crate::token_counter::count_tokens(m))
+            .sum()
     }
 
     /// Trim conversation messages to fit within budget.
@@ -296,7 +299,8 @@ impl TokenBudgetManager {
         let mut removed = 0;
 
         loop {
-            let current_tokens = self.estimate_messages(&result.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+            let current_tokens =
+                self.estimate_messages(&result.iter().map(|s| s.as_str()).collect::<Vec<_>>());
             let used = system_tokens + current_tokens;
             let effective_budget = match &self.policy {
                 BudgetPolicy::Strict => budget,
@@ -402,7 +406,10 @@ mod tests {
             .check(500, &BudgetPolicy::Strict);
 
         assert!(!check.within_budget);
-        assert!(matches!(check.recommended_action, BudgetAction::TrimConversation | BudgetAction::Summarize));
+        assert!(matches!(
+            check.recommended_action,
+            BudgetAction::TrimConversation | BudgetAction::Summarize
+        ));
         assert_eq!(check.excess_tokens, 200);
         assert_eq!(check.total_tokens, 700);
     }
@@ -478,8 +485,8 @@ mod tests {
 
     #[test]
     fn test_token_budget_manager_with_buffer() {
-        let manager = TokenBudgetManager::new(1000)
-            .with_policy(BudgetPolicy::WithBuffer { buffer_pct: 0.1 });
+        let manager =
+            TokenBudgetManager::new(1000).with_policy(BudgetPolicy::WithBuffer { buffer_pct: 0.1 });
 
         // Effective budget = 1100
         assert!(manager.is_within_budget(1100));
@@ -526,10 +533,10 @@ mod tests {
             "tiny".to_string(),
         ];
         let (trimmed, _removed) = manager.trim_conversation(messages, 50, 0);
-                // Should trim until within budget
-                assert!(trimmed.len() <= 3);
-                let trimmed_refs: Vec<&str> = trimmed.iter().map(|s| s.as_str()).collect();
-                let current_tokens = manager.estimate_messages(&trimmed_refs);
+        // Should trim until within budget
+        assert!(trimmed.len() <= 3);
+        let trimmed_refs: Vec<&str> = trimmed.iter().map(|s| s.as_str()).collect();
+        let current_tokens = manager.estimate_messages(&trimmed_refs);
     }
 
     #[test]
@@ -591,12 +598,14 @@ mod tests {
 
     #[test]
     fn test_token_budget_manager_with_aggressive_policy() {
-        let manager = TokenBudgetManager::new(100)
-            .with_policy(BudgetPolicy::Aggressive);
+        let manager = TokenBudgetManager::new(100).with_policy(BudgetPolicy::Aggressive);
 
         let check = manager.check(0, 0, 150, 0, 0);
         assert!(!check.within_budget);
-        assert!(matches!(check.recommended_action, BudgetAction::TrimConversation));
+        assert!(matches!(
+            check.recommended_action,
+            BudgetAction::TrimConversation
+        ));
     }
 
     #[test]

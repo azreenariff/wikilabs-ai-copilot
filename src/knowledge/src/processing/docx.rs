@@ -4,8 +4,8 @@
 //! DOCX files are ZIP archives containing XML; we extract text and
 //! preserve structural elements.
 
-use super::{DocumentElement, ParserProvider};
 use super::Document;
+use super::{DocumentElement, ParserProvider};
 use tracing::{debug, warn};
 
 /// DOCX parser.
@@ -93,7 +93,8 @@ impl DocxParser {
             }
 
             // Check for heading patterns
-            if trimmed.len() < 100 && (trimmed == trimmed.to_uppercase() || trimmed.ends_with(':')) {
+            if trimmed.len() < 100 && (trimmed == trimmed.to_uppercase() || trimmed.ends_with(':'))
+            {
                 elements.push(DocumentElement::Heading(1, trimmed.to_string()));
                 continue;
             }

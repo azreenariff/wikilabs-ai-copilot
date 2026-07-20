@@ -28,9 +28,15 @@ impl NamespaceManager {
     }
 
     /// Create a new namespace.
-    pub fn create(&self, name: &str, workspace_id: Option<&str>, knowledge_pack: &str, dimensions: usize) -> Result<Namespace> {
+    pub fn create(
+        &self,
+        name: &str,
+        workspace_id: Option<&str>,
+        knowledge_pack: &str,
+        dimensions: usize,
+    ) -> Result<Namespace> {
         let now = Utc::now().to_rfc3339();
-        let stmt = self.conn.prepare(
+        let mut stmt = self.conn.prepare(
             r#"
             INSERT INTO knowledge_namespaces (name, workspace_id, knowledge_pack, embedding_dimensions)
             VALUES (?1, ?2, ?3, ?4)
@@ -38,30 +44,39 @@ impl NamespaceManager {
             "#,
         )?;
 
-        let row = stmt.query_row(
-            rusqlite::params![
-                name,
-                workspace_id.map(|s| s.to_string()),
-                knowledge_pack,
-                dimensions as i32,
-            ],
-            |row| Ok(Namespace {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                workspace_id: row.get(2)?,
-                knowledge_pack: row.get(3)?,
-                embedding_dimensions: row.get(4)?,
-                created_at: row.get(5)?,
-                updated_at: row.get(6)?,
-            }),
-        )
-        .context("Failed to create namespace")?;
+        let row = stmt
+            .query_row(
+                rusqlite::params![
+                    name,
+                    workspace_id.map(|s| s.to_string()),
+                    knowledge_pack,
+                    dimensions as i32,
+                ],
+                |row| {
+                    Ok(Namespace {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        workspace_id: row.get(2)?,
+                        knowledge_pack: row.get(3)?,
+                        embedding_dimensions: row.get(4)?,
+                        created_at: row.get(5)?,
+                        updated_at: row.get(6)?,
+                    })
+                },
+            )
+            .context("Failed to create namespace")?;
 
         Ok(row)
     }
 
     /// Get or create a namespace.
-    pub fn get_or_create(&self, name: &str, workspace_id: Option<&str>, knowledge_pack: &str, dimensions: usize) -> Result<Namespace> {
+    pub fn get_or_create(
+        &self,
+        name: &str,
+        workspace_id: Option<&str>,
+        knowledge_pack: &str,
+        dimensions: usize,
+    ) -> Result<Namespace> {
         match self.get(name) {
             Ok(ns) => Ok(ns),
             Err(_) => self.create(name, workspace_id, knowledge_pack, dimensions),
@@ -78,15 +93,17 @@ impl NamespaceManager {
             "#,
         )?;
 
-        stmt.query_row(rusqlite::params![name], |row| Ok(Namespace {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            workspace_id: row.get(2)?,
-            knowledge_pack: row.get(3)?,
-            embedding_dimensions: row.get(4)?,
-            created_at: row.get(5)?,
-            updated_at: row.get(6)?,
-        }))
+        stmt.query_row(rusqlite::params![name], |row| {
+            Ok(Namespace {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                workspace_id: row.get(2)?,
+                knowledge_pack: row.get(3)?,
+                embedding_dimensions: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })
         .context(format!("Namespace not found: {}", name))
     }
 
@@ -100,15 +117,17 @@ impl NamespaceManager {
             "#,
         )?;
 
-        let rows = stmt.query_map(rusqlite::params![], |row| Ok(Namespace {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            workspace_id: row.get(2)?,
-            knowledge_pack: row.get(3)?,
-            embedding_dimensions: row.get(4)?,
-            created_at: row.get(5)?,
-            updated_at: row.get(6)?,
-        }))?;
+        let rows = stmt.query_map(rusqlite::params![], |row| {
+            Ok(Namespace {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                workspace_id: row.get(2)?,
+                knowledge_pack: row.get(3)?,
+                embedding_dimensions: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?;
 
         rows.collect::<Result<Vec<_>, _>>()
             .context("Failed to list namespaces")
@@ -135,15 +154,17 @@ impl NamespaceManager {
             "#,
         )?;
 
-        stmt.query_row(rusqlite::params![id], |row| Ok(Namespace {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            workspace_id: row.get(2)?,
-            knowledge_pack: row.get(3)?,
-            embedding_dimensions: row.get(4)?,
-            created_at: row.get(5)?,
-            updated_at: row.get(6)?,
-        }))
+        stmt.query_row(rusqlite::params![id], |row| {
+            Ok(Namespace {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                workspace_id: row.get(2)?,
+                knowledge_pack: row.get(3)?,
+                embedding_dimensions: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })
         .context(format!("Namespace ID not found: {}", id))
     }
 }

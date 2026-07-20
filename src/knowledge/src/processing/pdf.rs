@@ -3,8 +3,8 @@
 //! Uses text extraction, preserving headings, paragraphs, tables,
 //! code blocks, and other structure from extracted text.
 
-use super::{DocumentElement, ParserProvider};
 use super::Document;
+use super::{DocumentElement, ParserProvider};
 use tracing::{debug, warn};
 
 /// PDF parser using text extraction from raw bytes.
@@ -49,7 +49,9 @@ impl PdfParser {
             }
 
             // Code block detection: indented or monospace patterns
-            if self.is_code_block_line(line) || (i + 1 < lines.len() && self.is_code_block_line(lines[i + 1])) {
+            if self.is_code_block_line(line)
+                || (i + 1 < lines.len() && self.is_code_block_line(lines[i + 1]))
+            {
                 let mut code_lines = Vec::new();
                 while i < lines.len() && !lines[i].trim().is_empty() {
                     code_lines.push(lines[i]);
@@ -62,14 +64,20 @@ impl PdfParser {
 
             // Warning / Alert detection
             let lower = line.to_lowercase();
-            if lower.contains("warning") || lower.contains("caution") || lower.contains("important:") {
+            if lower.contains("warning")
+                || lower.contains("caution")
+                || lower.contains("important:")
+            {
                 elements.push(DocumentElement::Warning(line.to_string()));
                 i += 1;
                 continue;
             }
 
             // Example detection
-            if line.starts_with("> ") || line.starts_with("Example:") || lower.starts_with("sample:") {
+            if line.starts_with("> ")
+                || line.starts_with("Example:")
+                || lower.starts_with("sample:")
+            {
                 let text = if line.starts_with("> ") {
                     &line[2..]
                 } else {
@@ -128,13 +136,20 @@ impl PdfParser {
         }
 
         // All caps short line (potential heading)
-        if len < 100 && trimmed.chars().all(|c| c.is_uppercase() || c.is_whitespace() || c == '-' || c == '.' || c == '_')
-            && trimmed.chars().filter(|c| c.is_alphabetic()).count() > 2 {
+        if len < 100
+            && trimmed
+                .chars()
+                .all(|c| c.is_uppercase() || c.is_whitespace() || c == '-' || c == '.' || c == '_')
+            && trimmed.chars().filter(|c| c.is_alphabetic()).count() > 2
+        {
             return true;
         }
 
         // Line with colon at end and short length
-        if len < 80 && trimmed.ends_with(':') && trimmed.chars().filter(|c| c.is_alphabetic()).count() < 50 {
+        if len < 80
+            && trimmed.ends_with(':')
+            && trimmed.chars().filter(|c| c.is_alphabetic()).count() < 50
+        {
             return true;
         }
 
@@ -154,10 +169,18 @@ impl PdfParser {
         // Check for numbered sections
         let section_re = regex::Regex::new(r"^(\d+)\.([A-Z])").unwrap();
         if section_re.is_match(trimmed) {
-            let caps: Vec<u32> = section_re.captures(trimmed).map(|c| {
-                let num = c[1].len();
-                if num == 0 { 1 } else { num as u32 }
-            }).into_iter().collect();
+            let caps: Vec<u32> = section_re
+                .captures(trimmed)
+                .map(|c| {
+                    let num = c[1].len();
+                    if num == 0 {
+                        1
+                    } else {
+                        num as u32
+                    }
+                })
+                .into_iter()
+                .collect();
             return caps.first().copied().unwrap_or(2);
         }
 
@@ -166,8 +189,10 @@ impl PdfParser {
 
     fn is_code_block_line(&self, line: &str) -> bool {
         let trimmed = line.trim();
-        trimmed.starts_with("    ") || trimmed.starts_with("\t")
-            || trimmed.starts_with("```") || trimmed.starts_with("$ ")
+        trimmed.starts_with("    ")
+            || trimmed.starts_with("\t")
+            || trimmed.starts_with("```")
+            || trimmed.starts_with("$ ")
     }
 
     fn parse_pipe_table(&self, lines: &[&str], i: &mut usize) -> Option<Vec<Vec<String>>> {
@@ -177,7 +202,12 @@ impl PdfParser {
             let line = lines[*i].trim();
 
             // Skip separator lines
-            if line.chars().filter(|c| *c == '|' || *c == '-' || *c == ':').count() > line.len() / 2 {
+            if line
+                .chars()
+                .filter(|c| *c == '|' || *c == '-' || *c == ':')
+                .count()
+                > line.len() / 2
+            {
                 *i += 1;
                 continue;
             }

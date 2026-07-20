@@ -9,7 +9,10 @@ pub enum DataClassification {
 
 impl DataClassification {
     pub fn requires_encryption(&self) -> bool {
-        matches!(self, DataClassification::Confidential | DataClassification::Restricted)
+        matches!(
+            self,
+            DataClassification::Confidential | DataClassification::Restricted
+        )
     }
 
     pub fn requires_audit(&self) -> bool {

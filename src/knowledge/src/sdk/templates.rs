@@ -1,6 +1,6 @@
 //! Templates for knowledge pack generation — predefined starter configurations.
 
-use crate::sdk::schema::{Manifest, Metadata, DocumentManifest};
+use crate::sdk::schema::{DocumentManifest, Manifest, Metadata};
 
 /// Supported template categories.
 #[derive(Debug, Clone, PartialEq)]
@@ -31,7 +31,9 @@ pub fn openshift_template() -> Template {
             schema_version: "1.0".to_string(),
             name: "openshift-knowledge".to_string(),
             version: "1.0.0".to_string(),
-            description: "Knowledge pack for OpenShift container platform documentation and best practices".to_string(),
+            description:
+                "Knowledge pack for OpenShift container platform documentation and best practices"
+                    .to_string(),
             author: "Wiki Labs Team".to_string(),
             license: "MIT".to_string(),
             format_version: "1.0".to_string(),
@@ -58,8 +60,6 @@ pub fn openshift_template() -> Template {
             "all-MiniLM-L6-v2",
         ),
         directory_structure: vec![
-            ("manifest.yaml".to_string(), true),
-            ("metadata.yaml".to_string(), true),
             ("documents/".to_string(), false),
             ("documents/getting-started.md".to_string(), false),
             ("documents/operator-basics.md".to_string(), false),
@@ -79,18 +79,18 @@ pub fn engineering_template() -> Template {
             schema_version: "1.0".to_string(),
             name: "engineering-knowledge".to_string(),
             version: "1.0.0".to_string(),
-            description: "Knowledge pack for engineering best practices, design patterns, and methodologies".to_string(),
+            description:
+                "Knowledge pack for engineering best practices, design patterns, and methodologies"
+                    .to_string(),
             author: "Wiki Labs Team".to_string(),
             license: "MIT".to_string(),
             format_version: "1.0".to_string(),
-            documents: vec![
-                DocumentManifest {
-                    id: "architecture-patterns".to_string(),
-                    path: "documents/architecture-patterns.md".to_string(),
-                    format: "markdown".to_string(),
-                    embed: true,
-                },
-            ],
+            documents: vec![DocumentManifest {
+                id: "architecture-patterns".to_string(),
+                path: "documents/architecture-patterns.md".to_string(),
+                format: "markdown".to_string(),
+                embed: true,
+            }],
             dependencies: vec![],
         },
         metadata: Metadata::new(
@@ -120,18 +120,18 @@ pub fn documentation_template() -> Template {
             schema_version: "1.0".to_string(),
             name: "documentation-knowledge".to_string(),
             version: "1.0.0".to_string(),
-            description: "Knowledge pack for project documentation, API references, and user guides".to_string(),
+            description:
+                "Knowledge pack for project documentation, API references, and user guides"
+                    .to_string(),
             author: "Wiki Labs Team".to_string(),
             license: "MIT".to_string(),
             format_version: "1.0".to_string(),
-            documents: vec![
-                DocumentManifest {
-                    id: "api-reference".to_string(),
-                    path: "documents/api-reference.md".to_string(),
-                    format: "markdown".to_string(),
-                    embed: true,
-                },
-            ],
+            documents: vec![DocumentManifest {
+                id: "api-reference".to_string(),
+                path: "documents/api-reference.md".to_string(),
+                format: "markdown".to_string(),
+                embed: true,
+            }],
             dependencies: vec![],
         },
         metadata: Metadata::new(
@@ -238,6 +238,9 @@ mod tests {
     fn test_display_category() {
         assert_eq!(format!("{}", TemplateCategory::Openshift), "openshift");
         assert_eq!(format!("{}", TemplateCategory::Engineering), "engineering");
-        assert_eq!(format!("{}", TemplateCategory::Documentation), "documentation");
+        assert_eq!(
+            format!("{}", TemplateCategory::Documentation),
+            "documentation"
+        );
     }
 }

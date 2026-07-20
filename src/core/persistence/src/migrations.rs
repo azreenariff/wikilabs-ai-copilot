@@ -136,9 +136,10 @@ impl MigrationManager {
             &[],
             |row| {
                 let applied_at_str: String = row.get(1)?;
-                let applied_at = chrono::NaiveDateTime::parse_from_str(&applied_at_str, "%Y-%m-%d %H:%M:%S")
-                    .map(|naive| naive.and_utc())
-                    .unwrap_or_else(|_| Utc::now());
+                let applied_at =
+                    chrono::NaiveDateTime::parse_from_str(&applied_at_str, "%Y-%m-%d %H:%M:%S")
+                        .map(|naive| naive.and_utc())
+                        .unwrap_or_else(|_| Utc::now());
                 Ok(SchemaMigration {
                     version: row.get(0)?,
                     applied_at,

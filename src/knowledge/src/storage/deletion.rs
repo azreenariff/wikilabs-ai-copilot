@@ -1,7 +1,6 @@
 //! Document deletion from vector storage.
 //!
 /// Supports removing documents and their associated vectors from the store.
-
 use super::vector_store::VectorStore;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -19,14 +18,15 @@ impl DocumentDeleter {
 
     /// Delete all vectors associated with a document.
     pub async fn delete_by_doc_id(&self, doc_id: &str) -> anyhow::Result<usize> {
-        let conn = self.store.lock().await;
+        let store = self.store.lock().await;
 
         // Count vectors to delete
-        let count: usize = conn
+        let count: usize = store
+            .conn()
             .query_row(
                 &format!(
                     "SELECT COUNT(*) FROM {} WHERE doc_id = ?",
-                    conn.lock().unwrap()
+                    store.config.namespace
                 ),
                 rusqlite::params![doc_id],
                 |row| row.get(0),

@@ -134,7 +134,11 @@ impl IntentEngine {
     }
 
     /// Register technology-specific intents for a domain.
-    pub fn register_technology_intents(&mut self, technology: &str, intents: Vec<IntentDefinition>) {
+    pub fn register_technology_intents(
+        &mut self,
+        technology: &str,
+        intents: Vec<IntentDefinition>,
+    ) {
         debug!(
             "Registered {} intents for technology '{}'",
             intents.len(),
@@ -182,11 +186,7 @@ impl IntentEngine {
     }
 
     /// Internal multi-intent recognition logic.
-    fn recognize_multi_impl(
-        &self,
-        context: &str,
-        technology: Option<&str>,
-    ) -> Vec<(Intent, f32)> {
+    fn recognize_multi_impl(&self, context: &str, technology: Option<&str>) -> Vec<(Intent, f32)> {
         let mut results: Vec<(Intent, f32)> = Vec::new();
 
         // Evaluate generic patterns
@@ -231,9 +231,7 @@ impl IntentEngine {
                     for pattern in &intent_def.patterns {
                         if let Ok(re) = Regex::new(pattern) {
                             if re.is_match(context) {
-                                let confidence = intent_def
-                                    .confidence_boost
-                                    .clamp(0.0, 1.0);
+                                let confidence = intent_def.confidence_boost.clamp(0.0, 1.0);
                                 let intent = self.map_intent_def_to_enum(&intent_def.name);
                                 results.push((intent, confidence));
                             }
@@ -286,7 +284,8 @@ impl IntentEngine {
     pub fn apply_correction(&mut self, expected: &str, actual: &str, context: Option<String>) {
         let expected_intent = Self::label_to_intent(expected);
         let actual_intent = Self::label_to_intent(actual);
-        self.correction_engine.record_correction(expected_intent, actual_intent, context);
+        self.correction_engine
+            .record_correction(expected_intent, actual_intent, context);
         debug!(
             "Recorded intent correction: expected='{}', actual='{}'",
             expected, actual
@@ -320,12 +319,7 @@ impl IntentEngine {
         let tech_patterns: usize = self
             .technology_intents
             .values()
-            .map(|intents| {
-                intents
-                    .iter()
-                    .flat_map(|i| i.patterns.iter())
-                    .count()
-            })
+            .map(|intents| intents.iter().flat_map(|i| i.patterns.iter()).count())
             .sum();
         self.generic_patterns.len() + tech_patterns
     }
@@ -351,7 +345,11 @@ impl IntentEngine {
     }
 
     /// Get all recognized intents for context, with scores.
-    pub fn get_all_intents(&self, context: &str, technology: Option<&str>) -> Vec<RecognizedIntent> {
+    pub fn get_all_intents(
+        &self,
+        context: &str,
+        technology: Option<&str>,
+    ) -> Vec<RecognizedIntent> {
         let results = self.recognize_multi_impl(context, technology);
         results
             .into_iter()
@@ -383,9 +381,18 @@ mod tests {
     #[test]
     fn test_recognize_troubleshooting() {
         let engine = IntentEngine::new();
-        assert_eq!(engine.recognize("fix this crash", None).0, Intent::Troubleshooting);
-        assert_eq!(engine.recognize("debug the error", None).0, Intent::Troubleshooting);
-        assert_eq!(engine.recognize("solve the bug", None).0, Intent::Troubleshooting);
+        assert_eq!(
+            engine.recognize("fix this crash", None).0,
+            Intent::Troubleshooting
+        );
+        assert_eq!(
+            engine.recognize("debug the error", None).0,
+            Intent::Troubleshooting
+        );
+        assert_eq!(
+            engine.recognize("solve the bug", None).0,
+            Intent::Troubleshooting
+        );
     }
 
     #[test]
@@ -502,17 +509,15 @@ mod tests {
     #[test]
     fn test_register_technology_intents() {
         let mut engine = IntentEngine::new();
-        let tech_intents = vec![
-            IntentDefinition {
-                id: "rust-deploy".to_string(),
-                name: "Deploy Rust".to_string(),
-                description: "Deploy a Rust application".to_string(),
-                patterns: vec!["(?i)(cargo deploy|cargo build --release)".to_string()],
-                confidence_boost: 0.9,
-                required_domain: "rust".to_string(),
-                priority: 10,
-            },
-        ];
+        let tech_intents = vec![IntentDefinition {
+            id: "rust-deploy".to_string(),
+            name: "Deploy Rust".to_string(),
+            description: "Deploy a Rust application".to_string(),
+            patterns: vec!["(?i)(cargo deploy|cargo build --release)".to_string()],
+            confidence_boost: 0.9,
+            required_domain: "rust".to_string(),
+            priority: 10,
+        }];
         engine.register_technology_intents("rust", tech_intents);
 
         assert_eq!(engine.technology_intent_count(), 1);
@@ -528,17 +533,15 @@ mod tests {
     #[test]
     fn test_technology_aware_recognition() {
         let mut engine = IntentEngine::new();
-        let tech_intents = vec![
-            IntentDefinition {
-                id: "rust-deploy".to_string(),
-                name: "Deploy Rust".to_string(),
-                description: "Deploy Rust app".to_string(),
-                patterns: vec!["(?i)cargo build --release".to_string()],
-                confidence_boost: 0.95,
-                required_domain: "rust".to_string(),
-                priority: 10,
-            },
-        ];
+        let tech_intents = vec![IntentDefinition {
+            id: "rust-deploy".to_string(),
+            name: "Deploy Rust".to_string(),
+            description: "Deploy Rust app".to_string(),
+            patterns: vec!["(?i)cargo build --release".to_string()],
+            confidence_boost: 0.95,
+            required_domain: "rust".to_string(),
+            priority: 10,
+        }];
         engine.register_technology_intents("rust", tech_intents);
 
         // Generic pattern match
@@ -560,13 +563,14 @@ mod tests {
     #[test]
     fn test_recognize_multi() {
         let engine = IntentEngine::new();
-        let results =
-            engine.recognize_multi("fix and configure the system", None);
+        let results = engine.recognize_multi("fix and configure the system", None);
         assert!(!results.is_empty());
         // Should have at least troubleshooting and configuration
         let intents: Vec<String> = results.iter().map(|(i, _)| i.to_string()).collect();
-        assert!(intents.contains(&"troubleshooting".to_string())
-            || intents.contains(&"configuration".to_string()));
+        assert!(
+            intents.contains(&"troubleshooting".to_string())
+                || intents.contains(&"configuration".to_string())
+        );
         // Results should be sorted by confidence descending
         for i in 0..results.len() - 1 {
             assert!(results[i].1 >= results[i + 1].1);
@@ -576,7 +580,11 @@ mod tests {
     #[test]
     fn test_apply_correction() {
         let mut engine = IntentEngine::new();
-        engine.apply_correction("deployment", "troubleshooting", Some("User meant deployment".to_string()));
+        engine.apply_correction(
+            "deployment",
+            "troubleshooting",
+            Some("User meant deployment".to_string()),
+        );
 
         // The correction is recorded but won't change the current result
         // since it's based on context, not previous intent
@@ -594,8 +602,9 @@ mod tests {
 
         // After registering tech intents
         let mut engine2 = IntentEngine::new();
-        engine2.register_technology_intents("test", vec![
-            IntentDefinition {
+        engine2.register_technology_intents(
+            "test",
+            vec![IntentDefinition {
                 id: "test-1".to_string(),
                 name: "Test 1".to_string(),
                 description: "Test".to_string(),
@@ -603,8 +612,8 @@ mod tests {
                 confidence_boost: 0.8,
                 required_domain: "test".to_string(),
                 priority: 5,
-            },
-        ]);
+            }],
+        );
         assert_eq!(engine2.technology_intent_count(), 1);
         let total = engine2.total_intent_patterns();
         assert_eq!(total, generic_count + 1);
@@ -643,7 +652,10 @@ mod tests {
         // "fix" matches troubleshooting, "debug" also matches troubleshooting
         // But should deduplicate to one troubleshooting entry
         let results = engine.recognize_multi("fix and debug the issue", None);
-        let troubleshooting_count = results.iter().filter(|(i, _)| *i == Intent::Troubleshooting).count();
+        let troubleshooting_count = results
+            .iter()
+            .filter(|(i, _)| *i == Intent::Troubleshooting)
+            .count();
         assert_eq!(troubleshooting_count, 1);
     }
 }

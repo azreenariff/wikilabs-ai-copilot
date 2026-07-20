@@ -76,10 +76,15 @@ impl SchemaRegistry {
             let path = entry.path();
 
             if path.extension().map(|e| e == "json").unwrap_or(false) {
-                let schema_name = path
+                let stem = path
                     .file_stem()
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_default();
+                // Strip .schema suffix so "manifest.schema.json" registers as "manifest"
+                let schema_name = stem
+                    .strip_suffix(".schema")
+                    .map(|s| s.to_string())
+                    .unwrap_or(stem);
                 let content = fs::read_to_string(&path)
                     .with_context(|| format!("Failed to read schema: {:?}", path))?;
                 let value: Value = serde_json::from_str(&content)
@@ -258,7 +263,9 @@ impl SkillSDK {
                                 errors.push("manifest.yaml: 'version' field is empty".to_string());
                             }
                         } else {
-                            errors.push("manifest.yaml: missing required 'version' field".to_string());
+                            errors.push(
+                                "manifest.yaml: missing required 'version' field".to_string(),
+                            );
                         }
                     }
                     Err(e) => {
@@ -292,11 +299,17 @@ impl SkillSDK {
                 match serde_yaml::from_str::<Vec<Value>>(&content) {
                     Ok(items) => {
                         for (i, item) in items.iter().enumerate() {
-                            if item.get("id").and_then(|v| v.as_str()).map(|s| s.is_empty()).unwrap_or(true) {
+                            if item
+                                .get("id")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.is_empty())
+                                .unwrap_or(true)
+                            {
                                 errors.push(format!("intents.yaml[{}]: 'id' is empty", i));
                             }
                             if item.get("patterns").is_none() {
-                                errors.push(format!("intents.yaml[{}]: missing 'patterns' field", i));
+                                errors
+                                    .push(format!("intents.yaml[{}]: missing 'patterns' field", i));
                             }
                         }
                     }
@@ -490,24 +503,23 @@ impl SkillSDK {
 mod tests {
     use super::*;
     use std::fs;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static TEST_COUNTER: AtomicU32 = AtomicU32::new(0);
 
     fn setup_test_sdk() -> (SkillSDK, PathBuf) {
-        let temp_dir = std::env::temp_dir().join("wikilabs_skill_sdk_test");
+        let test_id = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let temp_dir = std::env::temp_dir().join(format!("wikilabs_skill_sdk_test_{}", test_id));
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(temp_dir.join("schemas")).unwrap();
         fs::create_dir_all(temp_dir.join("templates")).unwrap();
 
         // Write a simple manifest schema
-        let schema = r#"{
-            "type": "object",
-            "required": ["id", "name", "version"],
-            "properties": {
-                "id": {"type": "string"},
-                "name": {"type": "string"},
-                "version": {"type": "string"}
-            }
-        }"#;
-        fs::write(temp_dir.join("schemas").join("manifest.schema.json"), schema).unwrap();
+        let schema = r#"{"type":"object","required":["id","name","version"],"properties":{"id":{"type":"string"},"name":{"type":"string"},"version":{"type":"string"}}}"#;
+        fs::write(
+            temp_dir.join("schemas").join("manifest.schema.json"),
+            schema,
+        )
+        .unwrap();
 
         (SkillSDK::new(temp_dir.to_str().unwrap()).unwrap(), temp_dir)
     }
@@ -533,12 +545,15 @@ mod tests {
         assert!(!template.generated_files.is_empty());
 
         // Check manifest is present
-        let manifest = template.generated_files.iter().find(|f| f.path == "manifest.yaml");
+        let manifest = template
+            .generated_files
+            .iter()
+            .find(|f| f.path == "manifest.yaml");
         assert!(manifest.is_some());
 
         let manifest = manifest.unwrap();
         assert_eq!(manifest.schema, "manifest");
-        assert!(manifest.content.contains("\"id\": \"test-skill\""));
+        assert!(manifest.content.contains(r#""id":"test-skill""#));
 
         cleanup(temp_dir.as_path());
     }
@@ -689,7 +704,11 @@ dependencies: []
         fs::create_dir_all(&skill_dir).unwrap();
 
         // Write invalid YAML
-        fs::write(skill_dir.join("manifest.yaml"), "key: [invalid: yaml: content").unwrap();
+        fs::write(
+            skill_dir.join("manifest.yaml"),
+            "key: [invalid: yaml: content",
+        )
+        .unwrap();
 
         let report = sdk.validate_skill(skill_dir.to_str().unwrap()).unwrap();
         assert!(!report.is_valid);
@@ -748,12 +767,22 @@ dependencies: []
         let template = sdk.create_skill_template("my-skill").unwrap();
 
         assert_eq!(template.skill_name, "my-skill");
-        assert!(template.directory_structure.contains(&"my-skill".to_string()));
-        assert!(template.directory_structure.contains(&"templates/".to_string()));
-        assert!(template.directory_structure.contains(&"schemas/".to_string()));
+        assert!(template
+            .directory_structure
+            .contains(&"my-skill".to_string()));
+        assert!(template
+            .directory_structure
+            .contains(&"templates/".to_string()));
+        assert!(template
+            .directory_structure
+            .contains(&"schemas/".to_string()));
 
         // Count files
-        let paths: Vec<&str> = template.generated_files.iter().map(|f| f.path.as_str()).collect();
+        let paths: Vec<&str> = template
+            .generated_files
+            .iter()
+            .map(|f| f.path.as_str())
+            .collect();
         assert!(paths.contains(&"manifest.yaml"));
         assert!(paths.contains(&"technology.yaml"));
         assert!(paths.contains(&"intents.yaml"));
@@ -773,8 +802,13 @@ dependencies: []
         fs::create_dir_all(temp_dir.join("schemas")).unwrap();
         fs::create_dir_all(temp_dir.join("templates")).unwrap();
 
-        let schema = r#"{"type": "object", "required": ["id"], "properties": {"id": {"type": "string"}}}"#;
-        fs::write(temp_dir.join("schemas").join("manifest.schema.json"), schema).unwrap();
+        let schema =
+            r#"{"type": "object", "required": ["id"], "properties": {"id": {"type": "string"}}}"#;
+        fs::write(
+            temp_dir.join("schemas").join("manifest.schema.json"),
+            schema,
+        )
+        .unwrap();
 
         let sdk = SkillSDK::new(temp_dir.to_str().unwrap()).unwrap();
         assert!(sdk.get_schema("manifest").is_some());

@@ -166,7 +166,9 @@ impl ConfidenceAssessment {
             level: ConfidenceLevel::High,
             score: 0.9,
             reasoning: reasoning.to_string(),
-            suggested_verification: Some("Standard practice — verify in non-production first".to_string()),
+            suggested_verification: Some(
+                "Standard practice — verify in non-production first".to_string(),
+            ),
         }
     }
 
@@ -213,10 +215,7 @@ mod tests {
 
     #[test]
     fn test_custom_persona() {
-        let persona = EngineeringPersona::custom(
-            "Custom Role",
-            "Custom instructions here.",
-        );
+        let persona = EngineeringPersona::custom("Custom Role", "Custom instructions here.");
         assert_eq!(persona.role, "Custom Role");
         assert_eq!(persona.system_prompt, "Custom instructions here.");
         assert!(persona.is_active());
@@ -286,7 +285,10 @@ mod tests {
         );
         assert_eq!(assessment.level, ConfidenceLevel::Low);
         assert_eq!(assessment.score, 0.3);
-        assert!(assessment.suggested_verification.unwrap().contains("What is the operating system version?"));
+        assert!(assessment
+            .suggested_verification
+            .unwrap()
+            .contains("What is the operating system version?"));
     }
 
     #[test]

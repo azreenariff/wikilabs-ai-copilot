@@ -44,8 +44,9 @@ impl KnowledgeProvider for HtmlProvider {
 
         let mut docs = Vec::new();
         if p.is_file() {
-            if p.extension().and_then(|e| e.to_str()) == Some("html") || 
-               p.extension().and_then(|e| e.to_str()) == Some("htm") {
+            if p.extension().and_then(|e| e.to_str()) == Some("html")
+                || p.extension().and_then(|e| e.to_str()) == Some("htm")
+            {
                 docs.push(self.parse(&p.to_string_lossy()).await?);
             }
         } else if p.is_dir() {
@@ -70,17 +71,20 @@ impl KnowledgeProvider for HtmlProvider {
 
     async fn parse(&self, path: &str) -> Result<ProviderDocument> {
         let p = Path::new(path);
-        let content = fs::read_to_string(p)
-            .with_context(|| format!("Failed to read HTML file: {}", path))?;
+        let content =
+            fs::read_to_string(p).with_context(|| format!("Failed to read HTML file: {}", path))?;
 
-        let metadata = fs::metadata(p)
-            .with_context(|| format!("Failed to read metadata: {}", path))?;
+        let metadata =
+            fs::metadata(p).with_context(|| format!("Failed to read metadata: {}", path))?;
 
         let modified_at = metadata
             .modified()
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| Utc::timestamp_opt(d.as_secs() as i64, 0))
+            .map(|d| {
+                chrono::DateTime::<chrono::Utc>::from_timestamp(d.as_secs() as i64, 0)
+                    .unwrap_or_default()
+            })
             .unwrap_or_else(Utc::now);
 
         // Extract title from HTML
@@ -115,4 +119,3 @@ impl HtmlProvider {
         "Unknown".to_string()
     }
 }
-
