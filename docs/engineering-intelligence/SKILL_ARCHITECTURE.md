@@ -1,6 +1,6 @@
 # Skill Architecture
 
-> Wiki Labs AI Copilot v0.4.0-alpha
+> Wiki Labs AI Copilot v0.8.0-alpha
 
 ## Design Principle
 
@@ -34,12 +34,13 @@ skill-name/
 ### manifest.yaml
 
 ```yaml
-name: openshift
+id: openshift
+name: "Red Hat OpenShift"
 version: "0.4.0"
 display_name: "Red Hat OpenShift"
 description: "OpenShift cluster operations and troubleshooting"
 author: "Wiki Labs"
-depends_on: []
+dependencies: []
 ```
 
 ### technology.yaml

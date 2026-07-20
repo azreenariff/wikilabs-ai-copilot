@@ -1,6 +1,6 @@
 # Skill SDK Guide
 
-> Wiki Labs AI Copilot v0.4.0-alpha
+> Wiki Labs AI Copilot v0.8.0-alpha
 
 ## Purpose
 

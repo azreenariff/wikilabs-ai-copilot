@@ -5,7 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] — 2026-07-20
+## [0.8.0] — 2026-07-20
+
+### Added
+
+#### Skill Platform Documentation (Phase 11)
+
+- **SKILL_MANIFEST_SPEC.md** — Full schema for skill manifests including required/optional fields, validation rules, and schema evolution
+- **SKILL_DISCOVERY.md** — Discovery engine internals: signals, signatures, scoring, filtering, and integration flow
+- **SKILL_ACTIVATION.md** — Activation engine internals: lifecycle, dependency resolution, health monitoring, notifications
+- **SKILL_PACKAGING.md** — Packaging format (.wls), install/uninstall/update workflows, validation, security, versioning
+- **SKILL_DEVELOPMENT_GUIDE.md** — End-to-end developer guide: manifest, detection rules, workflows, knowledge base, guidance, testing, SDK commands
+- **LINUX_SKILL.md** — Reference skill documentation covering detection, knowledge base, workflows, commands, best practices, known issues
+
+### Changed
+
+- **Version bump** — `0.7.0-alpha` → `0.8.0-alpha`
+- **SKILL_ARCHITECTURE.md** — Updated to v0.8.0, fixed manifest example to include `id` field and `dependencies` (was `depends_on`)
+- **SKILL_SDK_GUIDE.md** — Updated to v0.8.0
 
 ### Added
 

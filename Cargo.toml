@@ -30,7 +30,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.7.0-alpha"
+version = "0.8.0-alpha"
 edition = "2021"
 authors = ["Wiki Labs Team"]
 repository = "https://github.com/wikilabs/wikilabs-ai-copilot"
