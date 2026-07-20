@@ -1,0 +1,135 @@
+- id: systemctl-restart
+  name: systemctl restart
+  description: Restart a systemd service
+  syntax: systemctl restart <service>
+  category: service-management
+  sudo: true
+  example: systemctl restart nginx
+  note: Reloads the service and all associated processes
+
+- id: systemctl-status
+  name: systemctl status
+  description: Check the status of a systemd service
+  syntax: systemctl status <service>
+  category: service-management
+  example: systemctl status nginx
+  note: Shows active state, PID, and recent log lines
+
+- id: journalctl-logs
+  name: journalctl
+  description: Query and display systemd journal logs
+  syntax: journalctl -u <service> [-n <lines>] [--no-pager]
+  category: logging
+  sudo: true
+  example: journalctl -u nginx -n 50 --no-pager
+  note: Use -f for follow mode (like tail -f)
+
+- id: df-disk-usage
+  name: df
+  description: Display disk space usage
+  syntax: df -h
+  category: filesystem
+  example: df -h
+  note: -h for human-readable output
+
+- id: du-directory-size
+  name: du
+  description: Estimate file space usage
+  syntax: du -sh <directory>
+  category: filesystem
+  example: du -sh /var/log
+  note: -s for summary, -h for human-readable
+
+- id: find-large-files
+  name: find large files
+  description: Find large files in the filesystem
+  syntax: find / -type f -size +100M -exec ls -lh {} \; 2>/dev/null | head -20
+  category: filesystem
+  sudo: true
+  example: find /var -type f -size +10M
+  note: Adjust size threshold and path as needed
+
+- id: ps-process-list
+  name: ps
+  description: Display process status
+  syntax: ps aux | grep <process>
+  category: process-management
+  example: ps aux | grep nginx
+  note: Use htop for interactive process view
+
+- id: top-realtime
+  name: top
+  description: Real-time process monitor
+  syntax: top
+  category: process-management
+  example: top
+  note: Press q to quit, M to sort by memory
+
+- id: ip-address
+  name: ip addr
+  description: Show network interfaces and IP addresses
+  syntax: ip addr show
+  category: networking
+  example: ip addr show
+  note: Use ip link for interface state
+
+- id: ss-sockets
+  name: ss
+  description: Show socket statistics
+  syntax: ss -tlnp
+  category: networking
+  example: ss -tlnp | grep :80
+  note: -t TCP, -l listening, -n numeric, -p process
+
+- id: iptables-list
+  name: iptables -L
+  description: List iptables firewall rules
+  syntax: iptables -L -n -v
+  category: security
+  sudo: true
+  example: iptables -L -n -v
+  note: Use iptables-save for flush and restore
+
+- id: chmod-permission
+  name: chmod
+  description: Change file permissions
+  syntax: chmod <mode> <file>
+  category: permissions
+  sudo: true
+  example: chmod 644 /etc/nginx/nginx.conf
+  note: Use symbolic modes (u+x, go-w) or numeric (755, 644)
+
+- id: chown-owner
+  name: chown
+  description: Change file owner and group
+  syntax: chown <user>:<group> <file>
+  category: permissions
+  sudo: true
+  example: chown www-data:www-data /var/www/html
+  note: Recursive with -R flag
+
+- id: useradd-create
+  name: useradd
+  description: Create a new user
+  syntax: useradd -m -s /bin/bash <username>
+  category: user-management
+  sudo: true
+  example: useradd -m -s /bin/bash devops
+  note: Set password with passwd <username>
+
+- id: apt-install
+  name: apt install
+  description: Install a package using apt
+  syntax: apt install <package>
+  category: package-management
+  sudo: true
+  example: apt install nginx
+  note: Use apt update first to refresh package lists
+
+- id: dpkg-check
+  name: dpkg
+  description: Check installed packages
+  syntax: dpkg -l | grep <package>
+  category: package-management
+  example: dpkg -l | grep nginx
+  note: Use apt list --installed for apt-based systems

@@ -1,0 +1,166 @@
+- id: ssh-hardening
+  name: SSH Security Hardening
+  description: >
+    Workflows for hardening SSH server configuration.
+    Covers key-based auth, port security, and access controls.
+  states:
+    - id: assessment
+      name: SSH Assessment
+      description: >
+        Analyze current SSH configuration and identify weak points.
+        Check PermitRootLogin, PasswordAuthentication, Port, and other security settings.
+      initial: true
+      terminal: false
+      commands:
+        - cat /etc/ssh/sshd_config
+        - ss -tlnp | grep ssh
+        - last -f /var/log/wtmp
+    - id: remediation
+      name: Apply Hardening
+      description: >
+        Apply security hardening changes based on assessment findings.
+        Enable key-based auth only, disable root login, change default port.
+      initial: false
+      terminal: false
+      commands:
+        - sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+        - sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+        - systemctl reload sshd
+    - id: verification
+      name: Verify Configuration
+      description: >
+        Verify that hardening changes are active and secure.
+        Test key-based authentication and confirm root login is disabled.
+      initial: false
+      terminal: true
+      commands:
+        - ssh -o StrictHostKeyChecking=no test@localhost
+        - ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no test@localhost
+  transitions:
+    - from: assessment
+      to: remediation
+      condition: "weak_config_found"
+      description: "Move to remediation when weak configuration detected"
+    - from: remediation
+      to: verification
+      condition: "hardening_applied"
+      description: "Move to verification after hardening applied"
+    - from: verification
+      to: remediation
+      condition: "verification_failed"
+      description: "Return to remediation if verification fails"
+  evidence_requirements:
+    - "Current sshd_config"
+    - "Active SSH processes"
+    - "Authentication logs"
+    - "Last login records"
+  required: true
+
+- id: disk-space-remediation
+  name: Disk Space Remediation
+  description: >
+    Workflows for identifying and resolving disk space issues.
+    Covers large file cleanup, log rotation, and filesystem management.
+  states:
+    - id: discovery
+      name: Disk Space Discovery
+      description: >
+        Identify which filesystems are consuming space and why.
+        Use df, du, and find to locate large files and directories.
+      initial: true
+      terminal: false
+      commands:
+        - df -h
+        - du -sh /* 2>/dev/null | sort -rh | head -20
+        - find / -type f -size +100M -exec ls -lh {} \; 2>/dev/null | head -30
+    - id: cleanup
+      name: Cleanup Space
+      description: >
+        Clean up disk space by removing old logs, caches, and temp files.
+        Rotate logs and remove unused packages.
+      initial: false
+      terminal: false
+      commands:
+        - journalctl --vacuum-time=3d
+        - apt-get clean
+        - rm -rf /tmp/*
+        - find /var/log -name "*.gz" -delete
+    - id: monitoring
+      name: Monitor Usage
+      description: >
+        Set up monitoring to prevent future disk space issues.
+        Configure logrotate and disk space alerts.
+      initial: false
+      terminal: true
+      commands:
+        - cat /etc/logrotate.conf
+        - df -h
+        - du -sh /var/log
+  transitions:
+    - from: discovery
+      to: cleanup
+      condition: "space_issues_found"
+      description: "Move to cleanup when space issues identified"
+    - from: cleanup
+      to: monitoring
+      condition: "space_freed"
+      description: "Move to monitoring after cleanup"
+  evidence_requirements:
+    - "Current disk usage (df output)"
+    - "Large files/directories"
+    - "Log file sizes"
+  required: true
+
+- id: service-troubleshoot
+  name: Service Troubleshooting
+  description: >
+    Workflows for diagnosing and fixing systemd service failures.
+    Covers journal analysis, configuration review, and restart procedures.
+  states:
+    - id: diagnosis
+      name: Service Diagnosis
+      description: >
+        Diagnose the failed service by examining logs and status.
+        Use systemctl and journalctl to understand the failure.
+      initial: true
+      terminal: false
+      commands:
+        - systemctl status <service>
+        - journalctl -u <service> -n 50 --no-pager
+        - systemctl list-units --state=failed
+    - id: analysis
+      name: Root Cause Analysis
+      description: >
+        Analyze the failure cause from logs and configuration.
+        Check for dependency issues, configuration errors, and resource constraints.
+      initial: false
+      terminal: false
+      commands:
+        - journalctl -u <service> --since "1 hour ago"
+        - cat /etc/systemd/system/<service>.service
+        - dmesg | tail -20
+    - id: resolution
+      name: Apply Resolution
+      description: >
+        Apply the fix and restart the service.
+        Fix configuration issues, reload systemd, and restart.
+      initial: false
+      terminal: true
+      commands:
+        - systemctl daemon-reload
+        - systemctl restart <service>
+        - systemctl status <service>
+  transitions:
+    - from: diagnosis
+      to: analysis
+      condition: "failure_detected"
+      description: "Move to analysis when failure detected"
+    - from: analysis
+      to: resolution
+      condition: "root_cause_identified"
+      description: "Move to resolution when root cause found"
+  evidence_requirements:
+    - "Service status output"
+    - "Journal logs"
+    - "Service configuration file"
+  required: true

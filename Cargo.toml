@@ -21,6 +21,8 @@ members = [
     "src/context_fusion",
     "src/skill_runtime",
     "src/skill_sdk",
+    "src/skill_discovery",
+    "src/skill_activation",
     "src/intelligence_engine",
     "src/copilot",
     "src/guidance",
@@ -28,7 +30,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.5.0-alpha"
+version = "0.7.0-alpha"
 edition = "2021"
 authors = ["Wiki Labs Team"]
 repository = "https://github.com/wikilabs/wikilabs-ai-copilot"
@@ -50,3 +52,4 @@ tracing = "0.1"
 uuid = { version = "1", features = ["v4", "serde"] }
 globset = "0.4"
 sha2 = "0.10"
+walkdir = "2"

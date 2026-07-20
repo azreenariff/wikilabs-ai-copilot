@@ -1,0 +1,45 @@
+id: linux-engineering
+name: Linux Engineering
+version: 1.0.0
+description: >
+  Comprehensive Linux engineering skill covering system administration,
+  troubleshooting, kernel management, networking, storage, and security.
+  Provides expert-level guidance for Linux administrators and DevOps engineers.
+author: Wiki Labs Team
+technology_domain: Linux
+vendor: Wiki Labs
+category: Engineering
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - linux
+  - sysadmin
+  - devops
+  - system-administration
+  - kernel
+  - networking
+  - storage
+  - security
+keywords:
+  - systemctl
+  - systemd
+  - network-manager
+  - lvm
+  - filesystem
+  - kernel-modules
+  - firewall
+  - ssh
+  - permissions
+  - processes
+icon: 🐧
+supported_environments:
+  - ubuntu
+  - debian
+  - centos
+  - rhel
+  - fedora
+  - arch
+  - alpine
+  - sles
+documentation_url: https://docs.wikilabs.ai/skills/linux-engineering

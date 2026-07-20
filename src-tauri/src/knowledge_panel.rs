@@ -13,6 +13,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use tokio::runtime::Handle;
 use tokio::sync::Mutex;
 
 /// Pack information displayed in the knowledge management UI.
@@ -130,21 +131,26 @@ impl KnowledgePanel {
 
             // Load manifest
             let manifest_content = std::fs::read_to_string(&manifest_path)?;
-            let manifest: crate::sdk::schema::Manifest =
+            let manifest: wikilabs_knowledge::sdk::schema::Manifest =
                 serde_yaml::from_str(&manifest_content).ok().unwrap_or(
-                    crate::sdk::schema::Manifest::new(
-                        "unknown",
-                        "0.0.0",
-                        "No manifest loaded",
-                        "all-MiniLM-L6-v2",
-                    ),
+                    wikilabs_knowledge::sdk::schema::Manifest {
+                        schema_version: "1.0".to_string(),
+                        name: "unknown".to_string(),
+                        version: "0.0.0".to_string(),
+                        description: "No manifest loaded".to_string(),
+                        author: "unknown".to_string(),
+                        license: "unknown".to_string(),
+                        format_version: "1.0".to_string(),
+                        documents: vec![],
+                        dependencies: vec![],
+                    },
                 );
 
             // Load metadata
             let metadata_content = std::fs::read_to_string(&metadata_path)?;
-            let metadata: crate::sdk::schema::Metadata =
+            let metadata: wikilabs_knowledge::sdk::schema::Metadata =
                 serde_yaml::from_str(&metadata_content).ok().unwrap_or(
-                    crate::sdk::schema::Metadata::new(
+                    wikilabs_knowledge::sdk::schema::Metadata::new(
                         "unknown",
                         "0.0.0",
                         "No metadata loaded",
@@ -154,10 +160,10 @@ impl KnowledgePanel {
 
             // Run validation
             let validation_report =
-                crate::validate::validate_pack_comprehensive(entry_path.to_str().unwrap())
-                    .unwrap_or(crate::validate::ValidationReport {
+                wikilabs_knowledge::validate::validate_pack_comprehensive(entry_path.to_str().unwrap())
+                    .unwrap_or_else(|_| wikilabs_knowledge::validate::ValidationReport {
                         pack_path: entry_path.display().to_string(),
-                        overall_status: crate::validate::ValidationResult::Error {
+                        overall_status: wikilabs_knowledge::validate::ValidationResult::Error {
                             message: "Validation failed".to_string(),
                         },
                         manifest_ok: false,
@@ -178,21 +184,21 @@ impl KnowledgePanel {
             let (validation_status, error_count, warning_count) = match &validation_report
                 .overall_status
             {
-                crate::validate::ValidationResult::Valid => {
-                    ("OK".to_string(), 0, 0)
+                wikilabs_knowledge::validate::ValidationResult::Valid => {
+                    ("OK".to_string(), 0usize, 0usize)
                 }
-                crate::validate::ValidationResult::Invalid {
+                wikilabs_knowledge::validate::ValidationResult::Invalid {
                     error_count: ec,
                     warning_count: wc,
                 } => {
                     if *ec > 0 {
                         ("ERRORS".to_string(), *ec, *wc)
                     } else {
-                        ("WARNINGS".to_string(), 0, *wc)
+                        ("WARNINGS".to_string(), 0usize, *wc)
                     }
                 }
-                crate::validate::ValidationResult::Error { message } => {
-                    ("ERROR".to_string(), 1, message.clone())
+                wikilabs_knowledge::validate::ValidationResult::Error { message } => {
+                    ("ERROR".to_string(), 1usize, 0usize)
                 }
             };
 
@@ -303,37 +309,37 @@ impl KnowledgePanel {
         let path = PathBuf::from(&pack.path);
 
         // Run validation
-        let report = crate::validate::validate_pack_comprehensive(path.to_str().unwrap())?;
+        let report = wikilabs_knowledge::validate::validate_pack_comprehensive(path.to_str().unwrap())?;
 
         let status = match &report.overall_status {
-            crate::validate::ValidationResult::Valid => "VALID",
-            crate::validate::ValidationResult::Invalid {
+            wikilabs_knowledge::validate::ValidationResult::Valid => "VALID".to_string(),
+            wikilabs_knowledge::validate::ValidationResult::Invalid {
                 error_count: 0,
                 warning_count,
             } => {
                 if *warning_count > 0 {
-                    "WARNINGS"
+                    "WARNINGS".to_string()
                 } else {
-                    "VALID"
+                    "VALID".to_string()
                 }
             }
-            crate::validate::ValidationResult::Invalid {
+            wikilabs_knowledge::validate::ValidationResult::Invalid {
                 error_count,
-                warning_count,
+                warning_count: _,
             } => {
                 if *error_count > 0 {
-                    "ERRORS"
+                    "ERRORS".to_string()
                 } else {
-                    "WARNINGS"
+                    "WARNINGS".to_string()
                 }
             }
-            crate::validate::ValidationResult::Error { message } => {
+            wikilabs_knowledge::validate::ValidationResult::Error { message } => {
                 format!("ERROR: {}", message)
             }
         };
 
         Ok(ValidationReport {
-            status: status.to_string(),
+            status,
             errors: report.errors,
             warnings: report.warnings,
         })
@@ -351,10 +357,9 @@ impl KnowledgePanel {
 
         let pack_path = PathBuf::from(&pack.path);
 
-        crate::sdk::package_pack(
+        wikilabs_knowledge::sdk::packager::package_pack(
             pack_path.to_str().unwrap(),
             output_path,
-            Some(name.to_string()),
         )?;
 
         Ok(())
@@ -364,15 +369,16 @@ impl KnowledgePanel {
     ///
     /// Extracts the archive to the knowledge packs directory.
     pub async fn import_pack(&self, archive_path: &str, destination: &str) -> Result<String> {
-        let extracted = crate::sdk::unpack_archive(archive_path, destination)?;
+        wikilabs_knowledge::sdk::packager::extract_pack(archive_path, destination)?;
 
         // Discover the imported pack name from manifest
-        let extracted_path = PathBuf::from(&extracted);
+        let dest_path = PathBuf::from(destination);
+        let extracted_path = dest_path.clone();
         let manifest_path = extracted_path.join("manifest.yaml");
 
         if manifest_path.exists() {
             let content = std::fs::read_to_string(&manifest_path)?;
-            let manifest: crate::sdk::schema::Manifest =
+            let manifest: wikilabs_knowledge::sdk::schema::Manifest =
                 serde_yaml::from_str(&content)?;
 
             // Re-register the pack
@@ -397,9 +403,10 @@ impl KnowledgePanel {
                 categories: vec![],
                 sdk_created: false,
             });
+            Ok(extracted_path.display().to_string())
+        } else {
+            Err(anyhow::anyhow!("No manifest.yaml found in extracted pack"))
         }
-
-        Ok(extracted)
     }
 
     /// Re-indexes a pack by marking it as un-indexed and clearing its cache.
@@ -491,4 +498,47 @@ pub fn knowledge_reindex_pack(name: String) -> Result<(), String> {
     Handle::current()
         .block_on(panel.reindex_pack(&name))
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pack_info_default() {
+        let pack = PackInfo {
+            name: "test".to_string(),
+            version: "1.0".to_string(),
+            description: "Test pack".to_string(),
+            author: "Test Author".to_string(),
+            license: "MIT".to_string(),
+            document_count: 5,
+            embedding_model: "all-MiniLM-L6-v2".to_string(),
+            embedding_dimensions: 384,
+            enabled: true,
+            indexed: false,
+            last_indexed: None,
+            validation_status: "OK".to_string(),
+            validation_errors: 0,
+            validation_warnings: 0,
+            path: "/tmp/test".to_string(),
+            tags: vec![],
+            categories: vec![],
+            sdk_created: true,
+        };
+        assert_eq!(pack.name, "test");
+        assert!(pack.enabled);
+        assert!(!pack.indexed);
+    }
+
+    #[test]
+    fn test_validation_report() {
+        let report = ValidationReport {
+            status: "VALID".to_string(),
+            errors: vec![],
+            warnings: vec![],
+        };
+        assert_eq!(report.status, "VALID");
+        assert!(report.errors.is_empty());
+    }
 }

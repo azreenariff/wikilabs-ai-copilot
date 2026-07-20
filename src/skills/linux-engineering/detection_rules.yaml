@@ -1,0 +1,87 @@
+- id: linux-detect-systemd
+  name: Systemd Service Detection
+  description: Detect systemd services and their state
+  detection_type: File
+  pattern: /etc/systemd/system/
+  confidence: 0.9
+  technology_domain: Linux
+  priority: 10
+  flags: ""
+  extract: null
+
+- id: linux-detect-apt
+  name: APT Package Manager Detection
+  description: Detect Ubuntu/Debian package management
+  detection_type: File
+  pattern: /etc/apt/
+  confidence: 0.85
+  technology_domain: Linux
+  priority: 8
+  flags: ""
+  extract: null
+
+- id: linux-detect-ssh
+  name: SSH Server Detection
+  description: Detect SSH server configuration
+  detection_type: File
+  pattern: /etc/ssh/sshd_config
+  confidence: 0.9
+  technology_domain: Linux
+  priority: 9
+  flags: ""
+  extract: null
+
+- id: linux-detect-lvm
+  name: LVM Storage Detection
+  description: Detect LVM configuration and volumes
+  detection_type: File
+  pattern: /etc/lvm/
+  confidence: 0.85
+  technology_domain: Linux
+  priority: 8
+  flags: ""
+  extract: null
+
+- id: linux-detect-firewall
+  name: Firewall Detection
+  description: Detect iptables or firewalld configuration
+  detection_type: File
+  pattern: /etc/iptables/
+  confidence: 0.8
+  technology_domain: Linux
+  priority: 9
+  flags: ""
+  extract: null
+
+- id: linux-detect-cron
+  name: Cron Schedule Detection
+  description: Detect cron jobs and schedules
+  detection_type: File
+  pattern: /etc/cron
+  confidence: 0.85
+  technology_domain: Linux
+  priority: 7
+  flags: ""
+  extract: null
+
+- id: linux-detect-kernel
+  name: Kernel Version Detection
+  description: Detect kernel version and modules
+  detection_type: Command
+  pattern: ^uname -r$
+  confidence: 0.9
+  technology_domain: Linux
+  priority: 10
+  flags: ""
+  extract: null
+
+- id: linux-detect-network
+  name: Network Configuration Detection
+  description: Detect network interfaces and configuration
+  detection_type: File
+  pattern: /etc/network/
+  confidence: 0.8
+  technology_domain: Linux
+  priority: 8
+  flags: ""
+  extract: null

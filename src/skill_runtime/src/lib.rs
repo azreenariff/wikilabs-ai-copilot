@@ -7,6 +7,16 @@
 //! - Enabling/disabling skills at runtime
 //! - Resolving and checking skill dependencies
 //! - Providing access to intents, workflows, detection rules, and commands from loaded skills
+//! - Orchestrating dynamic skill activation via the Skill Discovery and Activation Engines
+//!
+//! ## Lifecycle
+//!
+//! 1. **Discover** — scan for skill directories
+//! 2. **Load** — parse YAML manifests
+//! 3. **Validate** — check schema compliance
+//! 4. **Enable** — activate for runtime use
+//! 5. **Activate** — dynamically activate based on workspace signals
+//! 6. **Monitor** — health check and manage lifecycle
 
 use std::collections::HashMap;
 use std::fs;
@@ -16,6 +26,8 @@ use anyhow::{anyhow, Context, Result};
 use serde_yaml;
 use tracing::{debug, info, warn};
 use wikilabs_data_types::*;
+pub use wikilabs_skill_activation::{ActivationCandidate, ActivationConfig, ActivationState, ActivatedSkill, SkillActivationEngine, SkillDefinition};
+pub use wikilabs_skill_discovery::{DiscoveryConfig, DiscoveryReport, DiscoveredSkill, TechSignal, TechSignature, SkillDiscoveryEngine};
 
 /// Skill runtime: discover, load, validate, enable/disable skills.
 pub struct SkillRuntime {
@@ -27,6 +39,10 @@ pub struct SkillRuntime {
     enabled_skills: HashMap<String, bool>,
     /// Schema version supported by this runtime.
     schema_version: String,
+    /// Skill discovery engine for workspace scanning.
+    discovery_engine: Option<SkillDiscoveryEngine>,
+    /// Skill activation engine for dynamic activation.
+    activation_engine: Option<SkillActivationEngine>,
 }
 
 impl SkillRuntime {
@@ -37,7 +53,74 @@ impl SkillRuntime {
             skill_base_dir: PathBuf::from(skill_base_dir),
             enabled_skills: HashMap::new(),
             schema_version: "1.0".to_string(),
+            discovery_engine: None,
+            activation_engine: None,
         }
+    }
+
+    /// Set up skill discovery and activation engines.
+    pub fn setup_engines(&mut self, discovery_config: DiscoveryConfig, activation_config: ActivationConfig) {
+        let mut discovery = SkillDiscoveryEngine::with_config(discovery_config);
+        let mut activation = SkillActivationEngine::with_config(activation_config);
+
+        // Register default technology signatures
+        discovery.register_signature(TechSignature {
+            domain: "Linux".to_string(),
+            file_patterns: vec!["**/manifest.yaml".to_string(), "**/Dockerfile".to_string()],
+            command_patterns: vec![
+                            "uname".to_string(),
+                            "lsmod".to_string(),
+                            "iptables".to_string(),
+                        ],
+            base_confidence: 0.7,
+            priority: 10,
+        });
+
+        discovery.register_signature(TechSignature {
+            domain: "Docker".to_string(),
+            file_patterns: vec!["**/Dockerfile".to_string(), "**/docker-compose.yml".to_string()],
+            command_patterns: vec![
+                        "docker".to_string(),
+                        "docker-compose".to_string(),
+                    ],
+            base_confidence: 0.8,
+            priority: 9,
+        });
+
+        discovery.register_signature(TechSignature {
+            domain: "Kubernetes".to_string(),
+            file_patterns: vec!["**/*.yaml".to_string()],
+            command_patterns: vec!["kubectl".to_string(), "helm".to_string()],
+            base_confidence: 0.85,
+            priority: 9,
+        });
+
+        // Register known skills
+        discovery.register_known_skill(wikilabs_skill_discovery::KnownSkill {
+            id: "linux-engineering".to_string(),
+            name: "Linux Engineering".to_string(),
+            technology: "Linux".to_string(),
+            category: "Engineering".to_string(),
+            required_signals: vec!["Linux".to_string()],
+            optional_signals: vec!["Docker".to_string()],
+        });
+
+        self.discovery_engine = Some(discovery);
+
+        // Register skill definitions in activation engine
+        for (id, skill) in &self.skills {
+            activation.register_skill(SkillDefinition {
+                id: id.clone(),
+                name: skill.manifest.name.clone(),
+                technology: skill.manifest.technology_domain.clone(),
+                category: skill.manifest.technology_domain.clone(),
+                enabled: self.enabled_skills.get(id).copied().unwrap_or(false),
+                dependencies: skill.manifest.dependencies.clone(),
+            });
+        }
+
+        self.activation_engine = Some(activation);
+        info!("Skill discovery and activation engines configured");
     }
 
     /// Discover all skill directories in the base directory.
@@ -267,6 +350,19 @@ impl SkillRuntime {
         }
         self.enabled_skills.insert(skill_id.to_string(), true);
         info!("Enabled skill: {}", skill_id);
+
+        // Update activation engine if available
+        if let Some(activation) = self.activation_engine.as_mut() {
+            for skill_def in activation.skill_definitions().values() {
+                if skill_def.id == skill_id {
+                    let mut new_def = skill_def.clone();
+                    new_def.enabled = true;
+                    activation.register_skill(new_def);
+                    break;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -393,6 +489,84 @@ impl SkillRuntime {
             discovered.len()
         );
         Ok(loaded)
+    }
+
+    /// Scan the workspace for technology signals using the discovery engine.
+    pub fn scan_workspace(&self) -> Option<DiscoveryReport> {
+        if let Some(ref engine) = self.discovery_engine {
+            match engine.scan() {
+                Ok(report) => {
+                    info!("Workspace scan complete: {} signals, {} skills", report.technologies.len(), report.skills.len());
+                    Some(report)
+                }
+                Err(e) => {
+                    warn!("Workspace scan failed: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Activate skills based on workspace signals.
+    ///
+    /// Processes the discovery report and activates matching skills.
+    pub fn activate_from_signals(&mut self, signals: &[TechSignal]) -> Result<Vec<ActivatedSkill>> {
+        let mut candidates = Vec::new();
+
+        for signal in signals {
+            // Check if there's a known skill for this technology
+            if let Some(ref engine) = self.discovery_engine {
+                if let Some(known_skill) = engine.known_skills().get(&signal.technology) {
+                    candidates.push(ActivationCandidate {
+                        skill_id: known_skill.id.clone(),
+                        skill_name: known_skill.name.clone(),
+                        technology: signal.technology.clone(),
+                        confidence: signal.confidence,
+                        auto_activate: true,
+                        reason: format!("Detected {} at {:.0}% confidence", signal.technology, signal.confidence * 100.0),
+                    });
+                }
+            }
+        }
+
+        if let Some(ref mut activation) = self.activation_engine {
+            activation.process_discovery(candidates)
+        } else {
+            Err(anyhow!("Activation engine not configured. Call setup_engines() first."))
+        }
+    }
+
+    /// Get active skills from the activation engine.
+    pub fn get_active_skills(&self) -> Vec<&ActivatedSkill> {
+        if let Some(ref activation) = self.activation_engine {
+            activation.get_active_skills()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Perform health checks on all activated skills.
+    pub fn health_check_all(&mut self) -> Result<()> {
+        if let Some(ref mut activation) = self.activation_engine {
+            for skill_id in activation.skill_ids() {
+                if let Err(e) = activation.health_check(&skill_id) {
+                    warn!("Health check failed for {}: {}", skill_id, e);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Get the discovery engine (if configured).
+    pub fn discovery_engine(&self) -> Option<&SkillDiscoveryEngine> {
+        self.discovery_engine.as_ref()
+    }
+
+    /// Get the activation engine (if configured).
+    pub fn activation_engine(&self) -> Option<&SkillActivationEngine> {
+        self.activation_engine.as_ref()
     }
 }
 

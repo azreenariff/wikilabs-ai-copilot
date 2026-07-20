@@ -30,6 +30,6 @@ pub use duplicate_id::check_duplicate_ids;
 pub use embedding_compat::validate_embedding_compat;
 pub use manifest::validate_manifest;
 pub use metadata::validate_metadata;
-pub use report::{ValidationReport, ValidationResult as ValidationStatus};
+pub use report::{ValidationReport, ValidationResult, ValidationResult as ValidationStatus, validate_pack_comprehensive};
 pub use schema_version::validate_schema_version;
 pub use version_compat::validate_version_compat;

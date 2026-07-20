@@ -353,3 +353,326 @@ impl LoadedSkill {
         self.commands.iter().map(|c| c.id.as_str()).collect()
     }
 }
+
+// ────────────────────────────────────────────────────────
+// Phase 11 — Enterprise Skill Platform Types
+// ────────────────────────────────────────────────────────
+
+/// How a technology was detected, driving skill discovery.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DetectionSource {
+    /// Detected via browser URL / web content
+    Browser,
+    /// Detected via terminal command or output
+    Terminal,
+    /// Detected via file system patterns
+    Filesystem,
+    /// Detected via active window title
+    ActiveWindow,
+    /// Detected via environment variables
+    Environment,
+    /// Detected via running processes
+    Process,
+    /// User explicitly specified
+    User,
+}
+
+impl std::fmt::Display for DetectionSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DetectionSource::Browser => write!(f, "browser"),
+            DetectionSource::Terminal => write!(f, "terminal"),
+            DetectionSource::Filesystem => write!(f, "filesystem"),
+            DetectionSource::ActiveWindow => write!(f, "active_window"),
+            DetectionSource::Environment => write!(f, "environment"),
+            DetectionSource::Process => write!(f, "process"),
+            DetectionSource::User => write!(f, "user"),
+        }
+    }
+}
+
+/// Evidence that supports a skill activation decision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ActivationEvidence {
+    /// Source of the evidence.
+    pub source: DetectionSource,
+    /// The specific signal (e.g., "oc version", "vcenter.example.com").
+    pub signal: String,
+    /// Confidence contributed by this evidence point (0.0–1.0).
+    pub confidence: f32,
+    /// Human-readable explanation.
+    pub explanation: String,
+}
+
+impl ActivationEvidence {
+    pub fn new(
+        source: DetectionSource,
+        signal: impl Into<String>,
+        confidence: f32,
+        explanation: impl Into<String>,
+    ) -> Self {
+        Self {
+            source,
+            signal: signal.into(),
+            confidence,
+            explanation: explanation.into(),
+        }
+    }
+}
+
+/// Lifecycle state of a skill during runtime.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SkillLifecycle {
+    /// Skill is installed but not available (disabled).
+    Disabled,
+    /// Skill is available and loaded.
+    Available,
+    /// Skill is actively matched to current context.
+    Active,
+    /// Skill is temporarily inactive (e.g., low confidence).
+    Suspended,
+}
+
+impl std::fmt::Display for SkillLifecycle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SkillLifecycle::Disabled => write!(f, "disabled"),
+            SkillLifecycle::Available => write!(f, "available"),
+            SkillLifecycle::Active => write!(f, "active"),
+            SkillLifecycle::Suspended => write!(f, "suspended"),
+        }
+    }
+}
+
+/// Confidence level for skill activation decisions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ConfidenceLevel {
+    /// Very low — should not activate.
+    Low,
+    /// Moderate — conditional activation.
+    Moderate,
+    /// High — confident activation.
+    High,
+}
+
+impl ConfidenceLevel {
+    pub fn from_score(score: f32) -> Self {
+        let s = score.clamp(0.0, 1.0);
+        if s >= 0.8 {
+            ConfidenceLevel::High
+        } else if s >= 0.5 {
+            ConfidenceLevel::Moderate
+        } else {
+            ConfidenceLevel::Low
+        }
+    }
+}
+
+/// Result of skill discovery for a given technology.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillDiscoveryResult {
+    /// Skill ID that was discovered.
+    pub skill_id: String,
+    /// Display name.
+    pub skill_name: String,
+    /// Combined confidence score (0.0–1.0).
+    pub confidence: f32,
+    /// Derived confidence level.
+    pub confidence_level: ConfidenceLevel,
+    /// All evidence pieces supporting this discovery.
+    pub evidence: Vec<ActivationEvidence>,
+    /// Whether this skill should be activated.
+    pub should_activate: bool,
+    /// Technology domain matched.
+    pub technology_domain: String,
+}
+
+impl SkillDiscoveryResult {
+    pub fn new(
+        skill_id: impl Into<String>,
+        skill_name: impl Into<String>,
+        confidence: f32,
+        technology_domain: impl Into<String>,
+    ) -> Self {
+        let confidence = confidence.clamp(0.0, 1.0);
+        Self {
+            skill_id: skill_id.into(),
+            skill_name: skill_name.into(),
+            confidence,
+            confidence_level: ConfidenceLevel::from_score(confidence),
+            evidence: Vec::new(),
+            should_activate: confidence >= 0.5,
+            technology_domain: technology_domain.into(),
+        }
+    }
+
+    /// Add evidence and recalculate combined confidence.
+    pub fn add_evidence(mut self, evidence: ActivationEvidence) -> Self {
+        self.evidence.push(evidence);
+        if !self.evidence.is_empty() {
+            let avg: f32 = self
+                .evidence
+                .iter()
+                .map(|e| e.confidence)
+                .sum::<f32>()
+                / self.evidence.len() as f32;
+            self.confidence = avg;
+            self.confidence_level = ConfidenceLevel::from_score(avg);
+            self.should_activate = avg >= 0.5;
+        }
+        self
+    }
+}
+
+/// Result of the dynamic activation engine.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ActivationResult {
+    /// The skill that was activated.
+    pub skill_id: String,
+    /// Current lifecycle state.
+    pub lifecycle: SkillLifecycle,
+    /// Confidence score.
+    pub confidence: f32,
+    /// Confidence level.
+    pub confidence_level: ConfidenceLevel,
+    /// All evidence supporting activation.
+    pub evidence: Vec<ActivationEvidence>,
+    /// Workspace restrictions that may limit this skill.
+    pub restrictions: Vec<String>,
+    /// Whether activation was approved or blocked.
+    pub approved: bool,
+    /// Timestamp of activation (ISO 8601).
+    pub activated_at: String,
+}
+
+impl ActivationResult {
+    pub fn new(
+        skill_id: impl Into<String>,
+        confidence: f32,
+        lifecycle: SkillLifecycle,
+        evidence: Vec<ActivationEvidence>,
+        restrictions: Vec<String>,
+        approved: bool,
+        activated_at: String,
+    ) -> Self {
+        Self {
+            skill_id: skill_id.into(),
+            lifecycle,
+            confidence,
+            confidence_level: ConfidenceLevel::from_score(confidence),
+            evidence,
+            restrictions,
+            approved,
+            activated_at,
+        }
+    }
+}
+
+/// Skill catalog entry — what the registry knows about each skill.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillCatalogEntry {
+    /// Skill ID.
+    pub id: String,
+    /// Display name.
+    pub name: String,
+    /// Version.
+    pub version: String,
+    /// Technology domain.
+    pub technology_domain: String,
+    /// Current lifecycle state.
+    pub lifecycle: SkillLifecycle,
+    /// Current confidence score (0.0–1.0).
+    pub confidence: f32,
+    /// Dependencies.
+    pub dependencies: Vec<String>,
+    /// Whether the skill is available for activation.
+    pub available: bool,
+    /// Last health check timestamp.
+    pub last_healthy: String,
+    /// Validation errors (empty if valid).
+    pub validation_errors: Vec<String>,
+}
+
+/// Workspace policy — restrictions set by the customer/workspace.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WorkspacePolicy {
+    /// Customer or organization name.
+    pub customer: String,
+    /// Technologies explicitly allowed.
+    pub allowed_technologies: Vec<String>,
+    /// Technologies explicitly disallowed.
+    pub blocked_technologies: Vec<String>,
+    /// Whether production guidance is permitted.
+    pub allow_production_guidance: bool,
+    /// Whether self-remediation guidance is permitted.
+    pub allow_self_remediation: bool,
+    /// List of SOP document references.
+    pub sop_references: Vec<String>,
+}
+
+impl WorkspacePolicy {
+    /// Check if a technology is allowed by this policy.
+    pub fn is_technology_allowed(&self, technology: &str) -> bool {
+        let tech = technology.to_lowercase();
+        if self
+            .blocked_technologies
+            .iter()
+            .any(|b| b.to_lowercase() == tech)
+        {
+            return false;
+        }
+        if !self.allowed_technologies.is_empty() {
+            return self
+                .allowed_technologies
+                .iter()
+                .any(|a| a.to_lowercase() == tech);
+        }
+        true
+    }
+
+    /// Check if production guidance is allowed for this technology.
+    pub fn allow_production_guidance(&self, technology: &str) -> bool {
+        self.allow_production_guidance && self.is_technology_allowed(technology)
+    }
+
+    /// Get all active restrictions as human-readable strings.
+    pub fn active_restrictions(&self) -> Vec<String> {
+        let mut restrictions = Vec::new();
+        if !self.blocked_technologies.is_empty() {
+            restrictions.push(format!(
+                "Blocked technologies: {}",
+                self.blocked_technologies.join(", ")
+            ));
+        }
+        if !self.allow_production_guidance {
+            restrictions.push("No production modification guidance".to_string());
+        }
+        if !self.allow_self_remediation {
+            restrictions.push("Self-remediation guidance disabled".to_string());
+        }
+        restrictions
+    }
+}
+
+/// Skill package metadata — format for .wls-skill packages.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillPackageMetadata {
+    /// Package version.
+    pub package_version: String,
+    /// Format spec version.
+    pub format_version: String,
+    /// Skill ID.
+    pub skill_id: String,
+    /// Skill name.
+    pub skill_name: String,
+    /// Skill version.
+    pub skill_version: String,
+    /// Vendor/author.
+    pub vendor: String,
+    /// Technology domain.
+    pub technology_domain: String,
+    /// Files included in package.
+    pub files: Vec<String>,
+    /// MD5 checksum of package (if verified).
+    pub checksum: Option<String>,
+}

@@ -8,12 +8,15 @@ publish = false
 anyhow = { workspace = true }
 chrono = { workspace = true }
 globset = { workspace = true }
-serde = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
-uuid = { workspace = true }
-regex = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+walkdir = { workspace = true }
 wikilabs-data-types = { path = "../core/data_types" }
+wikilabs-skill-discovery = { path = "../skill_discovery" }
+wikilabs-skill-activation = { path = "../skill_activation" }

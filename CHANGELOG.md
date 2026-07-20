@@ -5,11 +5,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] — 2026-07-20
 
 ### Added
 
-#### AI Runtime (Phase 5) — Intelligence Layer
+#### Guidance Engine (Phase 10) — Context-Aware Engineering Guidance
+
+- **Guidance Panel** — Tauri-native sidebar panel for engineering guidance with session-level, skill-level, and cross-skill context
+- **Session Context Provider** — Provides session-level context: current engineering task, session duration, prior decisions, pending approvals, open recommendations
+- **Skill Context Provider** — Provides skill-level context: active technologies, available commands, workflow state, relevant documentation
+- **Cross-Skill Context Provider** — Provides cross-skill context: multi-skill interactions, shared state, cross-cutting concerns
+- **Guidance Manager** — Aggregates and surfaces context-aware guidance items across all providers
+- **Guidance Item Types** — Recommendations, warnings, suggestions, tips, explanations with priority levels, technology tags, confidence scores, and action links
+- **Integration** — Full integration with existing copilot engine for unified guidance delivery
+
+- **New crates** — `src/guidance/` (Guidance Engine), `src-tauri/src/guidance_panel.rs` (Tauri panel)
+- **Documentation** — `docs/guidance-engine/` with architecture overview, API reference, and integration guide
+- **132 tests passing** — Comprehensive test suite across all Guidance Engine modules
+
+#### Skill Platform (Phase 11) — Dynamic Skill Discovery, Activation, and Management
+
+- **Skill Discovery Engine** (`src/skill_discovery/`) — Scans the workspace for technology signals using glob patterns, command detection, and configuration file matching. Produces discovery reports with confidence scores and prioritization for 14+ technology domains.
+  - Technology signal detection (file patterns, command presence, configuration files)
+  - Confidence scoring based on signal strength and source reliability
+  - Discovery configuration (scan paths, signal thresholds, ignored directories)
+  - Comprehensive discovery report generation
+
+- **Skill Activation Engine** (`src/skill_activation/`) — Dynamically activates detected skills with dependency resolution, health monitoring, and lifecycle management.
+  - Activation candidate matching (discovered skills → skill definitions)
+  - Dependency checking and resolution (skills must have all prerequisites loaded/enabled)
+  - Health monitoring with configurable max failure count and recovery
+  - Graceful activation/deactivation with notification support
+  - Auto-activation for high-confidence detections
+
+- **Skill Runtime Extension** (`src/skill_runtime/`) — Extended to orchestrate the full skill lifecycle: discover → load → validate → enable → activate → monitor.
+  - Integration with Skill Discovery Engine (auto-discovery loop)
+  - Integration with Skill Activation Engine (dependency-aware activation)
+  - Schema version validation and version compatibility checking
+  - Comprehensive validation exports (`validate_pack_comprehensive`)
+  - Skill lifecycle state management (Loaded, Enabled, Active, Suspended, Disabled)
+
+- **Skill SDK Extension** (`src/skill_sdk/`) — Extended with packaging and CLI capabilities.
+  - Template generation for 8 skill types (technology, workflow, command, detection, intent, knowledge, policy, guidance)
+  - Schema validation for 7 YAML/JSON skill components
+  - Skill packager (create, validate, package, list-templates commands)
+  - Developer documentation and schema registry
+
+- **Linux Engineering Skill** (`src/skills/linux-engineering/`) — Reference skill demonstrating the complete skill platform: manifest, technology definitions, detection rules, commands, workflows, best practices, guidance rules, known issues, and knowledge base.
+  - SSH hardening knowledge base
+  - Systemd troubleshooting knowledge base
+  - LVM management knowledge base
+  - Systemd service workflow
+  - SSH key rotation workflow
+  - Performance troubleshooting workflow
+
+- **Skill Management UI** (`src-tauri/src/skill_management.rs`) — Tauri panel for managing enterprise skills.
+  - List installed skills with version, technology, status, confidence, dependencies
+  - View skill documentation
+  - Enable/disable skill availability
+  - Validate skill integrity
+  - Update skills from packages
+
+- **Knowledge Panel Update** — Integrated validation exports and guidance panel imports into the knowledge panel UI
+
+- **Architecture Decision Record** — `docs/adr/ADR-012-SKILL-PLATFORM.md` — Comprehensive ADR documenting the three-component Skill Platform architecture
+
+- **Documentation** — 3 Phase 11 documentation files: Skill Platform Architecture, Skill Platform Quickstart, updated engineering intelligence docs
+
+- **2677 lines of new Rust code** across 4 new crates and 1 extended crate
+
+### Changed
+
+- Updated ROADMAP.md to reflect Phase 10 and Phase 11 completion
+- Version bumped from 0.5.0-alpha to 0.7.0-alpha
+
+### New Workspace Members Added
+
+- `src/skill_discovery/` — Skill Discovery Engine
+- `src/skill_activation/` — Dynamic Skill Activation Engine
+- `src/skill_runtime/` — Extended Skill Runtime (now includes discovery and activation orchestration)
+- `src/skill_sdk/` — Extended Skill SDK (now includes packaging and CLI)
+- `src/skills/` — Reference skill packages (Linux Engineering)
+- `src/guidance/` — Guidance Engine (Phase 10)
+- `src-tauri/src/skill_management.rs` — Skill Management UI panel
+
+## [0.5.0] — 2026-07-17
+
+### Added
+
+#### Knowledge Management & CLI SDK (Phase 8) — v0.5.0-alpha
 
 - **AI Provider Abstraction** — Unified `AiProvider` trait with `OpenAICompatibleProvider` implementation supporting OpenAI, vLLM, and Ollama
   - Chat, streaming chat, embeddings, health checks

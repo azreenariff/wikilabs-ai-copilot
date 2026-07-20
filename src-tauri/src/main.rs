@@ -7,10 +7,21 @@ use wikilabs_ai::provider::{AiProvider, AiRequest, OpenAICompatibleProvider, Pro
 use wikilabs_data_types::chat::ChatMessage;
 use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 
+use wikilabs_knowledge::validate::{ValidationReport, ValidationResult, ValidationStatus, validate_pack_comprehensive};
+
 mod config;
 mod guidance_panel;
 mod knowledge_panel;
+mod skill_management;
 use config::{AiProviderConfig, AppSettings, AppSettingsStore};
+use guidance_panel::{
+    guidance_add_evidence, guidance_add_timeline_event, guidance_clear_all, guidance_complete_step,
+    guidance_dismiss_recommendation, guidance_get_active_recommendations, guidance_get_all_recommendations,
+    guidance_get_available_modes, guidance_get_evidence_status, guidance_get_feedback_stats,
+    guidance_get_mode, guidance_get_recent_events, guidance_get_timeline, guidance_get_workflow_progress,
+    guidance_mark_missing, guidance_record_feedback, guidance_set_mode, guidance_start_workflow,
+    guidance_update_recommendation_status,
+};
 
 /// Shared application state — uses Arc for Clone safety.
 #[derive(Clone)]

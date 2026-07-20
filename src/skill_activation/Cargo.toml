@@ -1,0 +1,12 @@
+[package]
+name = "wikilabs-skill-activation"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+serde = { workspace = true, features = ["derive"] }
+tracing.workspace = true
+wikilabs-data-types = { path = "../core/data_types" }

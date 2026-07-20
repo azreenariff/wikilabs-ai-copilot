@@ -1,0 +1,92 @@
+domain: Linux
+version: 1.0.0
+description: >
+  Linux Operating System — covers all major distributions and kernel versions.
+  Includes system administration, kernel management, shell scripting, and
+  core utilities.
+features:
+  - name: Process Management
+    description: Process lifecycle, signals, job control, cgroups
+    related_commands:
+      - ps
+      - top
+      - htop
+      - kill
+      - systemctl
+  - name: Filesystem Management
+    description: Mount, LVM, filesystem types, disk management
+    related_commands:
+      - mount
+      - df
+      - du
+      - lvm
+      - fdisk
+  - name: Network Management
+    description: Interfaces, routing, DNS, firewall, networking tools
+    related_commands:
+      - ip
+      - netstat
+      - ss
+      - iptables
+      - firewalld
+  - name: User & Permissions
+    description: Users, groups, sudo, ACLs, capabilities
+    related_commands:
+      - useradd
+      - usermod
+      - chmod
+      - chown
+      - sudo
+  - name: Service Management
+    description: systemd, init systems, cron, services
+    related_commands:
+      - systemctl
+      - service
+      - crontab
+      - journalctl
+  - name: Package Management
+    description: apt, yum, dnf, pacman, snap
+    related_commands:
+      - apt
+      - yum
+      - dnf
+      - pacman
+      - snap
+  - name: Kernel Management
+    description: Kernel modules, parameters, boot process
+    related_commands:
+      - uname
+      - modprobe
+      - insmod
+      - sysctl
+      - grub
+  - name: Logging & Monitoring
+    description: systemd-journald, rsyslog, logging configuration
+    related_commands:
+      - journalctl
+      - dmesg
+      - tail
+      - syslog
+  - name: Security
+    description: SELinux, AppArmor, SSH hardening, auditing
+    related_commands:
+      - getenforce
+      - sestatus
+      - sshd
+      - auditctl
+  - name: Automation
+    description: Bash scripting, automation tools
+    related_commands:
+      - bash
+      - awk
+      - sed
+      - find
+      - xargs
+related_domains:
+  - DevOps
+  - Infrastructure
+  - Cloud
+  - Containerization
+  - Security
+  - Networking
+documentation_url: https://docs.wikilabs.ai/technology/linux

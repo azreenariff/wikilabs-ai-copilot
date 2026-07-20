@@ -1,0 +1,16 @@
+[package]
+name = "wikilabs-skill-discovery"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde_yaml.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+globset.workspace = true
+wikilabs-data-types = { path = "../core/data_types" }

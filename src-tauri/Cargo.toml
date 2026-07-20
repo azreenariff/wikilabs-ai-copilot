@@ -35,3 +35,5 @@ wikilabs-data-types = { path = "../src/core/data_types" }
 wikilabs-security = { path = "../src/security" }
 wikilabs-workspace = { path = "../src/workspace" }
 wikilabs-knowledge = { path = "../src/knowledge" }
+serde_yaml = "0.9"
+once_cell = "1"
