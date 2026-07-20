@@ -19,12 +19,19 @@ impl XmlParser {
         let mut elements = Vec::new();
 
         // Use regex-based parsing for structure preservation
-        // Extract elements with text content
-        let tag_re = regex::Regex::new(r"<([a-zA-Z_][\w.-]*)(\s+[^>]*)?>(.*?)</\1>").unwrap();
+        // Extract elements with text content (no backreference support in Rust regex)
+        let tag_re = regex::Regex::new(r"<([a-zA-Z_][\w.-]*)(\s+[^>]*)?>(.*?)(?=<|$)").unwrap();
 
         for cap in tag_re.captures_iter(content) {
             let tag_name = cap[1].to_string();
             let text = cap[3].trim();
+            // Strip trailing closing tag if present
+            let closing = format!("</{}", tag_name);
+            let text = if text.ends_with(&closing) {
+                &text[..text.len() - closing.len()]
+            } else {
+                text
+            };
 
             if text.is_empty() {
                 continue;

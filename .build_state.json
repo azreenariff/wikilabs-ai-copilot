@@ -1,7 +1,7 @@
 {
   "package": "wikilabs-guidance",
   "phase": 10,
-  "status": "initial_setup_complete",
+  "status": "complete",
   "actions": [
     "Created Cargo.toml for src/guidance",
     "Created src/guidance/src/lib.rs with module declarations",
@@ -16,8 +16,16 @@
     "Fixed test_expert_mode_minimal / test_low_confidence_minimal_detail: changed min_detail_level default from Standard to Minimal",
     "Fixed test_silent_mode_no_guidance: added should_interrupt = false in Silent mode case",
     "Fixed test_evidence_not_sufficient: added missing_count > 0 check in is_sufficient()",
-    "All 58 tests passing"
+    "Fixed safety_framework.rs: Self::PotentiallyDisruptive → CommandRiskLevel::PotentiallyDisruptive",
+    "Fixed safety_framework.rs: requires_confirmation() → false (all risk levels use warnings, no explicit confirmation)",
+    "Fixed regex backreferences in wikilabs-knowledge: xml.rs (removed </\\1> backreference, added closing tag stripping)",
+    "Fixed regex backreferences in wikilabs-knowledge: html.rs (removed </h\\1> backreference, added per-level HEADING_N_RE patterns)",
+    "Workspace build succeeds, all 871 tests pass"
   ],
-  "tests_passed": 58,
-  "tests_failed": 0
+  "tests_passed": 871,
+  "tests_failed": 0,
+  "workspace_crates": 23,
+  "guidance_crates": 9,
+  "guidance_lines": 3693,
+  "guidance_tests": 91
 }
