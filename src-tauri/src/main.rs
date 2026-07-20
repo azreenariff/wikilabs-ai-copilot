@@ -8,6 +8,8 @@ use wikilabs_data_types::chat::ChatMessage;
 use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 
 mod config;
+mod guidance_panel;
+mod knowledge_panel;
 use config::{AiProviderConfig, AppSettings, AppSettingsStore};
 
 /// Shared application state — uses Arc for Clone safety.
@@ -397,6 +399,26 @@ fn main() {
             get_conversations,
             get_messages,
             save_message,
+            // Knowledge panel commands
+            guidance_get_active_recommendations,
+            guidance_get_all_recommendations,
+            guidance_dismiss_recommendation,
+            guidance_update_recommendation_status,
+            guidance_get_evidence_status,
+            guidance_add_evidence,
+            guidance_mark_missing,
+            guidance_get_workflow_progress,
+            guidance_start_workflow,
+            guidance_complete_step,
+            guidance_get_timeline,
+            guidance_add_timeline_event,
+            guidance_get_recent_events,
+            guidance_record_feedback,
+            guidance_get_feedback_stats,
+            guidance_set_mode,
+            guidance_get_mode,
+            guidance_get_available_modes,
+            guidance_clear_all,
             // System commands
             get_status,
             get_logs,
