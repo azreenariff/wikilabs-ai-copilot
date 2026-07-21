@@ -1,273 +1,493 @@
-# User Guide — Wiki Labs AI Copilot
+# User Guide — Wiki Labs AI Copilot v1.0.0
 
-## Installation
+> Complete user manual for end users.
 
-### Prerequisites
+## Table of Contents
 
-- **Rust 1.70+** — `rustup install stable`
-- **Cargo** — Included with Rust toolchain
+1. [Getting Started](#getting-started)
+2. [Workspace Management](#workspace-management)
+3. [AI Chat](#ai-chat)
+4. [Knowledge Management](#knowledge-management)
+5. [Skill Packs](#skill-packs)
+6. [Guidance Panel](#guidance-panel)
+7. [Settings](#settings)
+8. [Privacy Controls](#privacy-controls)
+9. [Keyboard Shortcuts](#keyboard-shortcuts)
+10. [Common Tasks](#common-tasks)
+11. [Tips & Best Practices](#tips--best-practices)
 
-### Building from Source
+## Getting Started
 
-```bash
-# Clone the repository
-git clone https://github.com/wikilabs/wikilabs-ai-copilot.git
-cd wikilabs-ai-copilot
+### First Launch
 
-# Build the project
-cargo build --release
+When you first launch Wiki Labs AI Copilot, you will see:
 
-# Run the CLI
-cargo run --release
-```
+1. **Sidebar** — Left side with navigation panels
+2. **Chat area** — Central area for conversations
+3. **Knowledge panel** — Right side for knowledge documents
+4. **Skills panel** — Right side for active skill packs
 
-### Testing
+### Configuring Your AI Provider
 
-```bash
-# Run all workspace tests
-cargo test --workspace
+Before you can chat with the AI, you need to configure an AI provider:
 
-# Run tests for a specific package
-cargo test --package wikilabs-ai
+1. Click the **Settings** icon (gear ⚙) in the sidebar
+2. Navigate to the **AI Provider** section
+3. Fill in the required fields:
 
-# Run tests with output
-cargo test --package wikilabs-ai -- --nocapture
-```
+   | Field | Description | Example |
+   |-------|-------------|---------|
+   | Name | Provider name | `OpenAI` |
+   | Endpoint | API URL | `https://api.openai.com/v1` |
+   | API Key | Your API key | `sk-...` |
+   | Model | Model to use | `gpt-4o` |
+   | Max Tokens | Response length limit | `4096` |
+   | Context Window | Available context tokens | `128000` |
 
-## Quick Start
+4. Click **Test Connection** to verify your configuration
+5. Click **Save** to store your settings
 
-### 1. Configure an AI Provider
+The API key is stored securely using Windows Credential Manager (or local encryption as a fallback).
 
-The AI Copilot uses OpenAI-compatible APIs. Configure your provider by setting:
+### Available AI Providers
 
-- **Base URL** — API endpoint (e.g., `https://api.openai.com/v1` or `http://localhost:8000/v1`)
-- **API Key** — Your API key (can be empty for local providers like vLLM or Ollama)
-- **Model** — Default model to use (e.g., `gpt-4o`, `llama3`)
-
-### 2. Create a Workspace
-
-Workspaces organize your AI sessions around specific customers or projects:
-
-1. Click "New Workspace" in the workspace sidebar
-2. Enter a workspace name (e.g., "ABC Bank")
-3. Select technologies (e.g., Kubernetes, MySQL, Linux)
-4. Click "Create"
-
-Each workspace maintains its own:
-- Technology stack configuration
-- Engineering task focus
-- AI session state
-
-### 3. Start a Conversation
-
-1. Select or create a workspace
-2. Click "New Conversation"
-3. Type your question in the chat input
-4. Press Enter or click "Send"
-
-The AI will respond with analysis, recommendations, and step-by-step debugging guidance.
-
-### 4. Manage Conversations
-
-- **Rename** — Right-click a conversation in the sidebar and select "Rename"
-- **Tags** — Add tags to categorize conversations (e.g., "bugfix", "production", "urgent")
-- **Export** — Export a conversation as JSON for backup or sharing
-- **Delete** — Right-click and select "Delete" to remove a conversation
-
-## AI Runtime
-
-### Provider Integration
-
-The AI Copilot supports any OpenAI-compatible provider:
-
-| Provider | URL | API Key |
-|---|---|---|
-| OpenAI | `https://api.openai.com/v1` | `sk-...` |
-| vLLM | `http://localhost:8000/v1` | (empty) |
-| Ollama | `http://localhost:11434/v1` | `ollama` |
-
-### Streaming Responses
-
-The AI Copilot displays responses progressively as they are generated. This provides:
-
-- Immediate feedback while the AI is thinking
-- Ability to read while the response continues generating
-- Better perceived performance for long responses
-
-### Conversation History
-
-Each conversation maintains a full message history:
-
-- **System messages** — AI instructions and behavioral constraints
-- **User messages** — Your questions and inputs
-- **Assistant messages** — AI responses with reasoning and recommendations
-
-Messages are stored in memory and can be exported as JSON.
+| Provider | Endpoint | API Key | Notes |
+|----------|----------|---------|-------|
+| **OpenAI** | `https://api.openai.com/v1` | Yes | Standard GPT models |
+| **vLLM** | `http://localhost:8000/v1` | No | Self-hosted, local |
+| **Ollama** | `http://localhost:11434/v1` | No | Local inference |
 
 ## Workspace Management
 
-### Technology Stack
+### Creating a Workspace
 
-Each workspace has a technology stack that influences the AI's responses:
+1. Click the **Workspace** panel in the sidebar
+2. Click **New Workspace**
+3. Enter a **Workspace Name** (required)
+4. Enter a **Customer Name** (optional)
+5. Add **Technology Stack** items (optional):
+   - Click the technology dropdown
+   - Select one or more technologies
+   - Technologies provide context for AI responses
 
-1. Click the workspace settings icon
-2. Add or remove technologies (e.g., Rust, Kubernetes, Docker, MySQL)
-3. The AI uses this context to provide more relevant suggestions
+### Switching Workspaces
 
-### Current Task
+1. Click the **Workspace** panel
+2. Click on any workspace in the list
+3. The sidebar and chat area update to show that workspace's data
 
-Set your current engineering task to give the AI more context:
+### Deleting a Workspace
 
-1. Click the task field in the workspace sidebar
-2. Type your current task (e.g., "Debugging OOM in production")
-3. The AI will tailor its responses to this context
+1. Click the **Workspace** panel
+2. Right-click (or click the menu) on the workspace you want to delete
+3. Click **Delete Workspace**
+4. Confirm the deletion in the dialog
 
-### Workspace Sessions
+> **Warning:** Deleting a workspace removes all its chat history and knowledge. This cannot be undone.
 
-Each workspace maintains its own AI sessions:
+### Workspace Structure
 
-- **Active** — Currently in progress
-- **Paused** — Suspended (e.g., you switched to another task)
-- **Suspended** — Paused due to workspace switch
-- **Ended** — Conversation closed
+Each workspace maintains its own:
+- Chat conversations and history
+- Knowledge documents
+- Active skill packs
+- Technology stack
+- Settings overrides
 
-Sessions track token consumption and message counts for cost tracking.
+## AI Chat
 
-## Manual Context
+### Starting a Conversation
 
-You can add manual context sources to influence AI responses:
+1. Select your workspace from the sidebar
+2. Type your question or message in the chat input
+3. Press **Enter** to send, or click the **Send** button
 
-1. Click "Add Context" in the conversation
-2. Enter a name (e.g., "Production Logs", "Kubernetes Events")
-3. Enter the context content (e.g., error logs, config snippets)
-4. Set the priority (High, Normal, Low)
-5. Add tags for filtering
+### Sending Messages
 
-### Context Priority
+- Press **Enter** to send a message
+- Press **Shift + Enter** to insert a new line
+- Messages are sent to the AI provider and streamed back in real time
 
-| Priority | Behavior |
-|---|---|
-| High | Never truncated, always included in prompt |
-| Normal | Included if budget allows |
-| Low | First to be removed when budget is tight |
+### Managing Conversations
 
-### Context Tags
+| Action | How |
+|--------|-----|
+| New conversation | Click **New Conversation** in the sidebar |
+| Switch conversation | Click on a conversation in the list |
+| Rename conversation | Right-click conversation → **Rename** |
+| Delete conversation | Right-click conversation → **Delete** |
+| Export conversation | Right-click conversation → **Export as JSON** |
+| Clear conversation | Click **Clear** button (removes all messages) |
 
-Tags enable filtering context by category:
+### Chat Features
 
-- `production` — Production environment context
-- `kubernetes` — Kubernetes-related context
-- `logs` — Log output context
-- `config` — Configuration context
+- **Streaming responses:** Messages appear character by character as the AI generates them
+- **Tool calls:** Some models support tool calls (function calling) — these appear inline
+- **Conversation history:** Previous messages are preserved and sent with each new message
+- **Tag-based categorization:** Tag conversations for easier organization
 
-## Token Budget
+### AI Best Practices
 
-The AI Copilot manages token usage to prevent context window overflow:
+1. **Be specific:** Provide detailed context in your questions
+2. **Use technology context:** Set your workspace technology stack for better responses
+3. **Reference knowledge:** Import relevant documentation into your knowledge base
+4. **Iterate:** Ask follow-up questions to refine answers
+5. **Check confidence:** The guidance panel shows confidence levels for recommendations
 
-### Budget Policies
+## Knowledge Management
 
-| Policy | Behavior |
-|---|---|
-| Strict | Never exceed budget, reject if over |
-| With Buffer | Allow small overflow (configurable percentage) |
-| Aggressive | Always trim to fit within budget |
+### Importing Knowledge
 
-### Trimming Strategy
+1. Click the **Knowledge** panel in the sidebar
+2. Click **Import Knowledge**
+3. Select a `.wkl` knowledge archive (or individual `.txt`, `.md`, `.json` files)
+4. The application parses and indexes the documents
 
-When the context window is full, the AI Copilot uses this order:
+### Knowledge Features
 
-1. **Trim conversation** — Remove older messages first
-2. **Summarize** — Replace old messages with summaries
-3. **Drop low-priority context** — Remove low-priority context sources
-4. **Reject** — Refuse to send the request (Strict mode only)
+- **Vector search:** Semantic search over your knowledge documents
+- **Keyword search:** Full-text search using SQLite FTS5
+- **Automatic chunking:** Documents are automatically split into searchable chunks
+- **384-dim embeddings:** Generated locally using ONNX Runtime
 
-### Token Tracking
+### Managing Knowledge Documents
 
-Each session tracks:
-- **Prompt tokens** — Tokens in the input prompt
-- **Completion tokens** — Tokens in the AI response
-- **Total tokens** — Sum of prompt and completion tokens
-- **Message count** — Number of messages exchanged
+| Action | How |
+|--------|-----|
+| Import documents | Click **Import Knowledge** |
+| View documents | Click on a document in the list |
+| Search knowledge | Use the search bar in the Knowledge panel |
+| Delete documents | Right-click document → **Delete** |
 
-## Engineering Persona
+### Knowledge Best Practices
 
-The AI Copilot uses an engineering persona that:
+1. **Import relevant SOPs:** Import standard operating procedures and manuals
+2. **Organize by workspace:** Create separate knowledge bases per workspace
+3. **Keep documents current:** Re-import when procedures change
+4. **Use descriptive titles:** Makes searching and browsing easier
 
-- Explains reasoning step-by-step
-- Provides evidence-based recommendations
-- Suggests verification steps
-- States confidence levels (HIGH / MEDIUM / LOW)
-- Never claims to observe things not explicitly provided
-- Asks clarifying questions rather than guessing
+## Skill Packs
 
-### Confidence Levels
+### What Are Skill Packs?
 
-| Level | Meaning |
-|---|---|
-| HIGH | Strong evidence, standard practice |
-| MEDIUM | Reasonable inference, note uncertainty |
-| LOW | Speculative, requires verification |
+Skill packs provide expert knowledge for specific technologies. They include:
+- Detection rules to identify relevant technology
+- Best practices and troubleshooting guides
+- Command references and workflows
+- Engineering context and reasoning
 
-## Security
+### Browsing Skills
 
-### Data Residency
+1. Click the **Skills** panel in the sidebar
+2. Browse the list of available skills
+3. Click on a skill to see details and configuration
 
-- All data is stored locally on your machine
-- API keys are stored in the OS keychain (if available)
-- No data is sent to third parties except the configured AI provider
+### Enabling and Disabling Skills
 
-### API Key Protection
+| Action | How |
+|--------|-----|
+| Enable skill | Click the skill in the list → Click **Enable** |
+| Disable skill | Click the skill → Click **Disable** |
+| Update skill | Click the skill → Click **Update** (if available) |
 
-- API keys are encrypted using OS keychain or derived key encryption
-- Keys are never logged or displayed in plain text
-- Keys are only sent to the configured provider
+### Available Skill Packs
 
-### Audit Logging
+| Skill Pack | Technology | Description |
+|-----------|------------|-------------|
+| OpenShift | Red Hat OpenShift 4.x | Container platform administration |
+| Linux Engineering | Linux Administration | General Linux system management |
+| VMware vSphere | VMware vSphere | Virtualization management |
+| Nagios XI | Nagios XI | Monitoring system administration |
+| Nagios Log Server | Nagios Log Server | Log management |
+| Checkmk | Checkmk | Monitoring and management |
+| Ansible | Ansible | Configuration management |
+| MySQL | MySQL 8.0 | Database administration |
+| EDB PostgreSQL | EDB PostgreSQL 15/16 | Database administration |
+| Microsoft SQL Server | SQL Server 2022 | Database administration |
 
-All API calls are logged for audit purposes:
-- Timestamp
-- Provider used
-- Model used
-- Token usage
-- Error status (no content logged)
+### Skill Detection
+
+The Skill Discovery Engine automatically detects technology in your environment:
+- Browser URL patterns
+- Terminal commands
+- Active application context
+- Configuration files
+
+When a technology is detected, the corresponding skill pack activates automatically.
+
+## Guidance Panel
+
+### What Is the Guidance Panel?
+
+The Guidance Panel provides context-aware engineering guidance based on:
+- Your current activity
+- Detected technology
+- Active skill packs
+- Conversation context
+
+### Guidance Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| **Recommendation** | Actionable advice | "Consider increasing buffer pool size" |
+| **Warning** | Potential issue alert | "Replication lag exceeds 30 seconds" |
+| **Suggestion** | Helpful tip | "Check the slow query log" |
+| **Tip** | Best practice reminder | "Use EXPLAIN ANALYZE" |
+| **Explanation** | Context explanation | "This error indicates a lock timeout" |
+
+### Controlling Guidance
+
+1. Click the **Guidance** panel in the sidebar
+2. Adjust the operating mode:
+   - **Minimal** — Only critical recommendations
+   - **Balanced** — Critical + important (default)
+   - **Teaching** — All recommendations with explanations
+   - **Expert** — All recommendations, technical detail
+   - **Silent** — No recommendations
+
+### Human Approval
+
+For actionable recommendations, the guidance panel supports approval workflows:
+- **Pending** — Recommendation awaiting your action
+- **Approved** — You accepted the recommendation
+- **Denied** — You rejected the recommendation
+- **AutoApproved** — Auto-approved after timeout
+
+## Settings
+
+### Overview
+
+Settings are organized into 8 sections in the Settings panel:
+
+### 1. AI Provider
+
+Configure your AI provider connection.
+
+| Setting | Description |
+|---------|-------------|
+| Provider Name | Display name for this provider |
+| Endpoint | API endpoint URL |
+| API Key | Securely stored API key |
+| Model | AI model to use |
+| Max Tokens | Maximum response length |
+| Context Window | Available context size |
+
+### 2. UI Settings
+
+Customize the application appearance.
+
+| Setting | Description |
+|---------|-------------|
+| Theme | Dark, Light, or System default |
+| Font Size | Text size in the interface |
+| Zoom Level | Overall UI scaling |
+| Language | Interface language |
+| Minimize to Tray | Minimize to system tray instead of closing |
+| Shortcuts Help | Show keyboard shortcuts reference |
+
+### 3. Privacy Settings
+
+Control what data the application can observe.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Screen Observation | Allow screen content capture | **Off** |
+| OCR | Optical character recognition on screens | **On** |
+| Clipboard Observation | Allow clipboard content capture | **Off** |
+| Diagnostics | Allow crash reports | **On** |
+| Telemetry | Allow analytics data | **Off** |
+| Privacy Mode | One-click disable all observation | **Off** |
+
+> **Privacy mode** disables all observation and data collection when enabled. This is recommended when sharing your screen or using the application in public environments.
+
+### 4. Security Settings
+
+Configure credential storage and encryption.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Use Credential Manager | Use Windows Credential Manager | **On** |
+| Local Encryption | Fallback to local AES-256-GCM | **On** |
+| Encryption Algorithm | AES-256-GCM or ChaCha20-Poly1305 | AES-256-GCM |
+| Auto-Lock | Lock after N minutes of inactivity | 30 minutes |
+| PIN Protection | Require PIN for credential access | **Off** |
+
+### 5. Update Settings
+
+Configure automatic update behavior.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Auto-Check | Automatically check for updates | **On** |
+| Channel | Update channel (stable/preview/internal) | Stable |
+| Show Dialog | Show notification when update available | **On** |
+| Allow Deferral | Allow user to postpone update | **On** |
+
+### 6. Logging Settings
+
+Configure application logging.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Log Level | Minimum log level (trace/debug/info/warn/error) | Info |
+| File Logging | Write logs to file | **On** |
+| Max Log Size | Maximum log file size (MB) | 10 MB |
+| Max Log Files | Number of log files to retain | 3 |
+| Structured Logging | Use JSON format | **On** |
+
+### 7. Window Settings
+
+Control window behavior and appearance.
+
+| Setting | Description |
+|---------|-------------|
+| Window Width | Width in pixels |
+| Window Height | Height in pixels |
+| Window Position | X, Y coordinates |
+| Maximized | Window starts maximized |
+| Last Workspace | Resume to this workspace on launch |
+| Active Panel | Default panel to show |
+
+### 8. Profile Management
+
+Manage named profiles with independent settings.
+
+| Action | Description |
+|--------|-------------|
+| Create Profile | New named profile |
+| Switch Profile | Change active profile |
+| Export Profile | Export settings as JSON |
+| Import Profile | Import settings from JSON |
+| Delete Profile | Remove a profile |
+
+## Privacy Controls
+
+### Understanding Privacy Controls
+
+All observation features are **disabled by default**. The application respects your privacy choices:
+
+| Feature | What It Does | Default |
+|---------|-------------|---------|
+| Screen Observation | Captures screen content for context | **Off** |
+| OCR | Extracts text from screen images | **On** (but only when screen observation is on) |
+| Clipboard Observation | Reads clipboard contents | **Off** |
+| Diagnostics | Sends crash reports | **On** |
+| Telemetry | Sends usage analytics | **Off** |
+
+### One-Click Privacy Mode
+
+Privacy mode is a quick way to disable all observation features:
+
+1. Open Settings → Privacy
+2. Toggle **Privacy Mode** to On
+3. All observation features are immediately disabled
+4. Toggle off to re-enable individual features at their saved settings
+
+### What Data Is Collected
+
+- **Local only:** All data (chats, knowledge, settings) is stored locally
+- **AI requests:** Only the current conversation context is sent to the AI provider
+- **No telemetry by default:** Analytics are opt-in only
+- **No screen storage:** Screen observations are not stored, only processed in memory
 
 ## Keyboard Shortcuts
 
+### General Shortcuts
+
 | Shortcut | Action |
-|---|---|
+|----------|--------|
 | `Enter` | Send message |
 | `Shift + Enter` | New line in message |
 | `Ctrl + N` | New conversation |
 | `Ctrl + W` | New workspace |
-| `Ctrl + S` | Save current conversation |
 | `Ctrl + E` | Export conversation |
 | `Ctrl + K` | Clear conversation |
+| `Ctrl + ,` | Open Settings |
+| `Ctrl + L` | Focus search |
+| `Escape` | Close panel/modal |
+| `F1` | Help / Keyboard shortcuts |
 
-## Troubleshooting
+### Navigation Shortcuts
 
-### Provider Connection Failed
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl + Tab` | Cycle through panels |
+| `Ctrl + 1` | Switch to Workspace panel |
+| `Ctrl + 2` | Switch to Knowledge panel |
+| `Ctrl + 3` | Switch to Skills panel |
 
-1. Check your API key is correct
-2. Verify the base URL is accessible
-3. Check your network connection
-4. Try the "Test Connection" button in provider settings
+### Guidance Shortcuts
 
-### Slow Responses
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl + G` | Focus Guidance panel |
+| `Ctrl + A` | Approve recommendation |
+| `Ctrl + D` | Deny recommendation |
 
-1. Check if you're using a local provider (slower than cloud)
-2. Try a smaller model (faster but less capable)
-3. Reduce context window size
-4. Check system resources (CPU, memory)
+## Common Tasks
 
-### Context Window Overflow
+### Task: Ask About a Linux Server Issue
 
-1. Reduce the number of conversations
-2. Archive old conversations
-3. Remove low-priority manual context
-4. Switch to a provider with a larger context window
+1. Create a workspace named "Production Server"
+2. Set the technology stack to include "Linux"
+3. Import your server documentation into the Knowledge panel
+4. Type in chat: "How do I diagnose high CPU on this Linux server?"
+5. The AI responds with evidence-based guidance
 
-## Getting Help
+### Task: Search Knowledge for a Configuration
 
-- Check the documentation in `docs/`
-- Open an issue on GitHub
-- Join the community Discord
+1. Open the Knowledge panel
+2. Type your search term in the search bar
+3. Results appear from both vector and keyword search
+4. Click a result to view the full document
+
+### Task: Get Guidance on a Specific Technology
+
+1. Browse the Skills panel
+2. Find your technology (e.g., "MySQL")
+3. Enable the skill pack
+4. The Guidance panel will now show MySQL-specific recommendations
+
+### Task: Export a Conversation for Documentation
+
+1. In the conversation list, right-click the conversation
+2. Select **Export as JSON**
+3. Save the file to share or archive
+
+### Task: Switch Between Work Environments
+
+1. Create profiles for different environments (e.g., "Work", "Home")
+2. Each profile has its own provider, settings, and observation preferences
+3. Switch profiles from Settings → Profiles
+
+## Tips & Best Practices
+
+### Productivity Tips
+
+1. **Use workspaces per project:** Create separate workspaces for different projects or environments
+2. **Import documentation:** Build a knowledge base of your SOPs and manuals
+3. **Enable relevant skills:** Activate skill packs for technologies you use daily
+4. **Use conversation tags:** Tag conversations for easy retrieval later
+5. **Leverage guidance:** Pay attention to the guidance panel for proactive suggestions
+
+### Privacy Tips
+
+1. **Start with privacy mode on:** Enable it during sensitive work
+2. **Disable screen observation:** Unless you specifically need it for context
+3. **Review privacy settings:** Periodically check your privacy configuration
+4. **Use profiles:** Separate work and personal environments
+
+### AI Interaction Tips
+
+1. **Provide context:** Tell the AI what technology you're working with
+2. **Be specific:** Detailed questions get better answers
+3. **Iterate:** Follow up with clarifying questions
+4. **Check confidence:** The guidance panel shows confidence levels
+5. **Verify critical advice:** Always verify important recommendations before acting
+
+---
+
+*For system administration, see [Administrator Guide](admin-guide/ADMINISTRATOR_GUIDE.md).*
+*For installation guidance, see [Installation Guide](INSTALLATION_GUIDE.md).*
+*For technical details, see [Architecture Guide](ARCHITECTURE_GUIDE.md).*
+*For support, see [Support Guide](SUPPORT_GUIDE.md).*

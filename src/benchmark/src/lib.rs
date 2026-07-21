@@ -115,11 +115,7 @@ impl BenchmarkTimer {
                 .map(|d| d.as_secs())
                 .unwrap_or(0),
             duration_ns,
-            duration_human: duration
-                .as_micros()
-                .div_f64(1_000.0)
-                .ceil() as u64
-                .to_string(),
+            duration_human: (((duration.as_micros() as f64) / 1_000.0).ceil() as u64).to_string(),
             metadata: self.metadata,
         }
     }
