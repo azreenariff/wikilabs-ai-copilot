@@ -24,7 +24,10 @@ jobs:
           components: clippy
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --version ^2
+        run: |
+          curl -sL https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.6.0/tauri-cli-x86_64-pc-windows-msvc.zip -o tauri.zip
+          7z x tauri.zip -oC:\tauri -y
+          echo "C:\tauri" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Cache dependencies
         uses: actions/cache@v4
