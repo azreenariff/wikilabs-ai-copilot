@@ -37,6 +37,16 @@ jobs:
         run: |
           cargo install tauri-cli --version "^2"
 
+      # Install WiX Toolset for MSI builds
+      - name: Install WiX Toolset
+        run: |
+          choco install wixtoolset -y
+
+      # Install NSIS for NSIS installer builds
+      - name: Install NSIS
+        run: |
+          choco install nsis -y
+
       # C++ build tools are pre-installed on windows-latest runner
       - name: Cache dependencies
         uses: actions/cache@v4
