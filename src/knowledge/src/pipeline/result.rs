@@ -3,7 +3,6 @@
 use crate::doc::KnowledgeDocument;
 pub use crate::pipeline::steps::discover::DiscoveredDoc;
 use crate::pipeline::DocPipelineState;
-use crate::pipeline::StepStatus;
 use crate::processing::DocumentElement;
 use chrono::{DateTime, Utc};
 

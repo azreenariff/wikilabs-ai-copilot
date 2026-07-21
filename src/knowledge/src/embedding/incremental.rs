@@ -7,7 +7,7 @@ use super::BatchEmbedder;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// State for incremental embedding tracking.
 #[derive(Debug, Clone)]

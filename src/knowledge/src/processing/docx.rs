@@ -6,7 +6,7 @@
 
 use super::Document;
 use super::{DocumentElement, ParserProvider};
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// DOCX parser.
 pub struct DocxParser;

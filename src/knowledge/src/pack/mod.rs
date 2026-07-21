@@ -4,7 +4,7 @@
 mod manifest;
 mod metadata;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -13,7 +13,7 @@ use tracing::debug;
 use uuid::Uuid;
 
 use manifest::{Manifest, PackPriority};
-use metadata::{DocumentEncoding, PackDocumentEntry, PackMetadata};
+use metadata::PackMetadata;
 
 /// Required subdirectories that every pack must contain.
 const REQUIRED_DIRS: &[&str] = &[

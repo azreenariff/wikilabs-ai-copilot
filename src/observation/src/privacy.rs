@@ -365,16 +365,14 @@ mod tests {
 
     #[test]
     fn test_mode_disabled_disallows_all() {
-        let mut config = PrivacyConfig::default();
-        config.mode = ObservationMode::Disabled;
+        let config = PrivacyConfig { mode: ObservationMode::Disabled, ..Default::default() };
         assert!(!config.is_provider_allowed(&ProviderType::ActiveWindow));
         assert!(!config.is_provider_allowed(&ProviderType::Clipboard));
     }
 
     #[test]
     fn test_mode_paused_disallows_all() {
-        let mut config = PrivacyConfig::default();
-        config.mode = ObservationMode::Paused;
+        let config = PrivacyConfig { mode: ObservationMode::Paused, ..Default::default() };
         assert!(!config.is_provider_allowed(&ProviderType::ActiveWindow));
     }
 
@@ -383,8 +381,7 @@ mod tests {
         let config = PrivacyConfig::default();
         assert!(!config.allows_clipboard());
 
-        let mut config = PrivacyConfig::default();
-        config.store_clipboard_content = true;
+        let config = PrivacyConfig { store_clipboard_content: true, ..Default::default() };
         assert!(config.allows_clipboard());
     }
 
@@ -393,8 +390,7 @@ mod tests {
         let config = PrivacyConfig::default();
         assert!(!config.allows_file_content());
 
-        let mut config = PrivacyConfig::default();
-        config.store_file_content = true;
+        let config = PrivacyConfig { store_file_content: true, ..Default::default() };
         assert!(config.allows_file_content());
     }
 
@@ -403,8 +399,7 @@ mod tests {
         let config = PrivacyConfig::default();
         assert!(config.allows_screenshots());
 
-        let mut config = PrivacyConfig::default();
-        config.screenshot_retention_days = 0;
+        let config = PrivacyConfig { screenshot_retention_days: 0, ..Default::default() };
         assert!(!config.allows_screenshots());
     }
 

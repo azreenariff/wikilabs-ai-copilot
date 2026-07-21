@@ -8,10 +8,10 @@ impl EncryptionEngine {
     }
 
     pub fn encrypt(&self, _key: &[u8], _plaintext: &[u8]) -> anyhow::Result<Vec<u8>> {
-        unimplemented!()
+        anyhow::bail!("Not yet implemented")
     }
 
     pub fn decrypt(&self, _key: &[u8], _ciphertext: &[u8]) -> anyhow::Result<Vec<u8>> {
-        unimplemented!()
+        anyhow::bail!("Not yet implemented")
     }
 }

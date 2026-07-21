@@ -1,7 +1,6 @@
 //! Knowledge graph — nodes, edges, traversal, and analysis.
 
-use super::{EdgeType, GraphAnalysis, KnowledgeEdge, Weight};
-use chrono::Utc;
+use super::{EdgeType, GraphAnalysis};
 use std::collections::{HashMap, HashSet};
 use tracing::debug;
 

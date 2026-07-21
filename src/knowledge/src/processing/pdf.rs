@@ -3,9 +3,7 @@
 //! Uses text extraction, preserving headings, paragraphs, tables,
 //! code blocks, and other structure from extracted text.
 
-use super::Document;
-use super::{DocumentElement, ParserProvider};
-use tracing::{debug, warn};
+use super::{Document, DocumentElement, ParserProvider};
 
 /// PDF parser using text extraction from raw bytes.
 pub struct PdfParser;

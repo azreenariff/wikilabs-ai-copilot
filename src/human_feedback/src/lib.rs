@@ -21,7 +21,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use wikilabs_intent::engine::Intent;
 
 // ---------------------------------------------------------------------------
@@ -421,7 +421,7 @@ impl HumanFeedbackEngine {
     }
 
     /// Convert a FeedbackType to a CorrectionType based on content.
-    fn feedback_to_correction_type(feedback_type: &FeedbackType, content: &str) -> CorrectionType {
+    fn feedback_to_correction_type(_feedback_type: &FeedbackType, content: &str) -> CorrectionType {
         let lower = content.to_lowercase();
         if lower.contains("intent") || lower.contains("goal") || lower.contains("purpose") {
             CorrectionType::IntentCorrection
@@ -454,7 +454,8 @@ impl HumanFeedbackEngine {
     /// Get all corrections sorted by timestamp (newest first).
     pub fn recent_corrections(&self, limit: usize) -> Vec<&CorrectionRecord> {
         let mut sorted: Vec<&CorrectionRecord> = self.corrections.iter().collect();
-        sorted.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        sorted.sort_by_key(|a| a.timestamp);
+        sorted.reverse();
         sorted.into_iter().take(limit).collect()
     }
 

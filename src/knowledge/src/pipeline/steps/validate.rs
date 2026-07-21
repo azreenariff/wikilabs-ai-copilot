@@ -1,10 +1,7 @@
 //! Validation step — check format, size, readability.
 
 use super::discover::DiscoveredDoc;
-use crate::pipeline::PipelineConfig;
-use anyhow::Context;
 use std::fs;
-use std::io::Read;
 use tracing::debug;
 
 /// Validation result.

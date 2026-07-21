@@ -10,10 +10,10 @@ use crate::embedding::EmbeddingPipeline;
 use crate::embedding::EmbeddingPipelineConfig;
 use crate::pipeline::PipelineConfig;
 use crate::processing::{MarkdownParser, ParserProvider, TxtParser};
-use crate::retrieval::chunker::{ChunkStrategy, Chunker, KnowledgeChunk};
+use crate::retrieval::chunker::{ChunkStrategy, Chunker};
 use crate::storage::namespace::NamespaceManager;
 use crate::storage::vector_store::VectorStore;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Utc;
 use rusqlite::Connection;
 use serde_json::json;
@@ -227,7 +227,7 @@ impl ImportPipeline {
                 }
 
                 // Update namespace metadata
-                if let Ok(_) = ns_result {
+                if ns_result.is_ok() {
                     let _ = store_lock.update_metadata(1, chunks_imported, "local", dimensions);
                 }
             }
@@ -268,7 +268,7 @@ impl ImportPipeline {
         let document = crate::processing::Document::new(
             content.to_string(),
             "text-import",
-            &format!("text://{}", title),
+            format!("text://{}", title),
         );
 
         // Step 2: Create document record
@@ -369,7 +369,7 @@ impl ImportPipeline {
                 }
 
                 // Update namespace metadata
-                if let Ok(_) = ns_result {
+                if ns_result.is_ok() {
                     let _ = store_lock.update_metadata(1, chunks_imported, "local", dimensions);
                 }
             }

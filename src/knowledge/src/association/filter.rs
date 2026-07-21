@@ -1,6 +1,5 @@
 //! Filter knowledge retrieval results by workspace-enabled packs.
 
-use anyhow::Result;
 use tracing::debug;
 
 /// Filters knowledge document retrieval results to only include

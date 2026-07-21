@@ -18,6 +18,7 @@ use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType
 use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 /// Known engineering portal URLs/patterns.
+#[allow(dead_code)]
 const ENGINEERING_PORTAL_PATTERNS: &[&str] = &[
     "openshift",
     "ocp",
@@ -50,6 +51,7 @@ pub struct BrowserContext {
 }
 
 impl BrowserContext {
+    #[allow(dead_code)]
     fn from_title(browser: &str, title: &str, url: &str) -> Self {
         let is_engineering = ENGINEERING_PORTAL_PATTERNS.iter().any(|pattern| {
             title.to_lowercase().contains(pattern) || url.to_lowercase().contains(pattern)
@@ -183,11 +185,15 @@ impl ObservationProvider for BrowserProvider {
         match self.detect_browser_context() {
             Some(context) => {
                 // Only emit event if context changed
-                let changed = state.last_context.as_ref().map_or(true, |prev| {
-                    prev.browser_name != context.browser_name
-                        || prev.url != context.url
-                        || prev.title != context.title
-                });
+                let changed = state
+                    .last_context
+                    .as_ref()
+                    .map(|prev| {
+                        prev.browser_name != context.browser_name
+                            || prev.url != context.url
+                            || prev.title != context.title
+                    })
+                    .unwrap_or(true);
 
                 state.last_context = Some(context.clone());
 

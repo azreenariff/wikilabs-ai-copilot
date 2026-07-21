@@ -3,7 +3,6 @@
 use super::{DiscoveryMethod, EdgeType, Relationship, Weight};
 use crate::embedding_pipeline::cosine_similarity;
 use crate::retrieval::chunker::KnowledgeChunk;
-use tracing::debug;
 
 /// Proximity between two knowledge chunks.
 #[derive(Debug, Clone)]

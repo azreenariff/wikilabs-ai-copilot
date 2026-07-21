@@ -3,7 +3,7 @@
 /// Tracks schema versions and applies migrations when the database
 /// is opened.
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 

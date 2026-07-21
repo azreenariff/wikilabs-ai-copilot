@@ -1,10 +1,7 @@
 //! Embedding provider trait and concrete implementations.
 
-use super::{EmbeddingPipelineConfig, EmbeddingPipelineResult, EmbeddingResult, EmbeddingStatus};
 use async_trait::async_trait;
-use chrono::Utc;
-use std::collections::HashMap;
-use tracing::{debug, warn};
+use tracing::{debug, info};
 
 /// Trait for embedding providers.
 ///
@@ -98,7 +95,7 @@ impl EmbeddingProvider for LocalEmbeddingProvider {
         384
     }
 
-    async fn embed(&self, text: &str) -> anyhow::Result<Vec<f32>> {
+    async fn embed(&self, _text: &str) -> anyhow::Result<Vec<f32>> {
         Ok(vec![0.0; 384])
     }
 

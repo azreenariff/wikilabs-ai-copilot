@@ -8,11 +8,9 @@
 //!
 //! Combines vector similarity with contextual scoring for smarter results.
 
-use crate::retrieval::{RelevanceLevel, RetrievalFilter, RetrievalResult, RetrievedChunk};
+use crate::retrieval::{RelevanceLevel, RetrievedChunk};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::collections::HashMap;
-use tracing::{debug, info, warn};
+use tracing::debug;
 
 /// Context signals available for ranking.
 #[derive(Debug, Clone, Default)]

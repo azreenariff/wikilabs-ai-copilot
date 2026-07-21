@@ -220,6 +220,12 @@ impl ObservationStats {
     }
 }
 
+impl Default for ObservationStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -387,30 +393,12 @@ mod tests {
     #[test]
     fn test_confidence_clamping() {
         let payload = ObservationPayload::empty();
-        let event = ObservationEvent::new(
+        let _event = ObservationEvent::new(
             EventType::FileActivity,
             ProviderType::FileObserver,
             "test".to_string(),
             None,
             payload,
         );
-
-        // Test that confidence is clamped to 1.0 max
-        let json = serde_json::json!({});
-        let serialized = serde_json::json!({
-            "event_id": "00000000-0000-0000-0000-000000000000",
-            "timestamp": "2025-01-01T00:00:00Z",
-            "event_type": "file_activity",
-            "provider": "file_observer",
-            "source": "test",
-            "workspace": null,
-            "metadata": {},
-            "confidence": 2.0,
-            "payload": {"data": json}
-        });
-
-        let result: Result<ObservationEvent, _> = serde_json::from_value(serialized);
-        // This may fail due to UUID format, but if it parses, confidence > 1 should deserialize as-is
-        // The clamp happens at construction time, not serialization
     }
 }

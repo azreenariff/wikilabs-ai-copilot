@@ -2,6 +2,12 @@
 
 pub struct IntentModel;
 
+impl Default for IntentModel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IntentModel {
     pub fn new() -> Self {
         Self

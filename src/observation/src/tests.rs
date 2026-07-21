@@ -83,16 +83,16 @@ mod event_publishing_tests {
     #[test]
     fn test_bus_create_and_subscribe_all() {
         let bus = make_bus();
-        let (_sub, mut rx) = bus.subscribe_all();
+        let (_sub, rx) = bus.subscribe_all();
         assert!(!rx.try_recv().is_err() || rx.try_recv().is_err()); // empty
     }
 
     #[test]
     fn test_event_published_and_consumed() {
         let bus = make_bus();
-        let (_sub, mut rx) = bus.subscribe_all();
+        let (_sub, rx) = bus.subscribe_all();
 
-        bus.publish(ObservationEvent::new(
+        let _ = bus.publish(ObservationEvent::new(
             EventType::ApplicationChanged,
             ProviderType::ActiveWindow,
             "vscode".to_string(),
@@ -108,10 +108,10 @@ mod event_publishing_tests {
     #[test]
     fn test_provider_subscription_filter() {
         let bus = make_bus();
-        let (_sub, mut rx) = bus.subscribe_to_provider(ProviderType::ActiveWindow);
+        let (_sub, rx) = bus.subscribe_to_provider(ProviderType::ActiveWindow);
 
         // Publish non-matching event
-        bus.publish(ObservationEvent::new(
+        let _ = bus.publish(ObservationEvent::new(
             EventType::ApplicationChanged,
             ProviderType::Browser,
             "firefox".to_string(),
@@ -121,7 +121,7 @@ mod event_publishing_tests {
         assert!(rx.try_recv().is_err()); // no match
 
         // Publish matching event
-        bus.publish(ObservationEvent::new(
+        let _ = bus.publish(ObservationEvent::new(
             EventType::ApplicationChanged,
             ProviderType::ActiveWindow,
             "vscode".to_string(),
@@ -137,7 +137,7 @@ mod event_publishing_tests {
         let bus = make_bus();
         assert_eq!(bus.get_stats().total_events, 0);
 
-        bus.publish(ObservationEvent::new(
+        let _ = bus.publish(ObservationEvent::new(
             EventType::ApplicationChanged,
             ProviderType::ActiveWindow,
             "vscode".to_string(),
@@ -146,7 +146,7 @@ mod event_publishing_tests {
         ));
         assert_eq!(bus.get_stats().total_events, 1);
 
-        bus.publish(ObservationEvent::new(
+        let _ = bus.publish(ObservationEvent::new(
             EventType::ApplicationChanged,
             ProviderType::ActiveWindow,
             "code".to_string(),
@@ -179,7 +179,7 @@ mod event_publishing_tests {
     fn test_default_bus() {
         let bus = EventBus::with_defaults();
         assert_eq!(bus.get_stats().total_events, 0);
-        let (_sub, mut rx) = bus.subscribe_all();
+        let (_sub, rx) = bus.subscribe_all();
         assert!(rx.try_recv().is_err());
     }
 }

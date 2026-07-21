@@ -44,7 +44,7 @@ impl MigrationManager {
                 [],
                 |row| row.get::<_, u32>(0),
             )
-            .map_err(|e| anyhow::Error::from(e))?;
+            .map_err(|e| anyhow::anyhow!(e))?;
 
         if version == 0 {
             // Run the initial schema

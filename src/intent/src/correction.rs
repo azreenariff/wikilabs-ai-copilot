@@ -16,6 +16,12 @@ pub struct CorrectionEngine {
     corrections: Vec<CorrectionRecord>,
 }
 
+impl Default for CorrectionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CorrectionEngine {
     pub fn new() -> Self {
         Self {
@@ -99,7 +105,7 @@ impl CorrectionEngine {
     pub fn apply_intent_correction(
         &self,
         confidence: f32,
-        context: &str,
+        _context: &str,
         intent_label: &str,
     ) -> f32 {
         // If there are corrections for this intent, slightly boost confidence

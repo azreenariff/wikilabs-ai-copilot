@@ -17,6 +17,6 @@ impl AuditLog {
     }
 
     pub async fn append(&self, _entry: AuditEntry) -> anyhow::Result<()> {
-        unimplemented!()
+        anyhow::bail!("Not yet implemented")
     }
 }

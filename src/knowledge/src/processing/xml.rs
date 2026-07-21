@@ -3,9 +3,7 @@
 //! Parses XML into structured Document elements representing
 //! elements, attributes, text content, and code blocks.
 
-use super::Document;
-use super::{DocumentElement, ParserProvider};
-use tracing::debug;
+use super::{Document, DocumentElement, ParserProvider};
 
 /// XML parser.
 pub struct XmlParser;

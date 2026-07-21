@@ -2,7 +2,6 @@
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use uuid::Uuid;
 
 // ── Errors ──────────────────────────────────────────────────────────
 

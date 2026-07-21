@@ -33,12 +33,12 @@ impl ClipboardContent {
         let text_lower = text.to_lowercase();
 
         let looks_like_error = text_lower
-            .contains(&["error", "exception", "failed", "critical", "fatal"][0])
-            || text.contains(&["Error:", "Exception:", "FAILED", "FATAL:"][0])
+            .contains(["error", "exception", "failed", "critical", "fatal"][0])
+            || text.contains(["Error:", "Exception:", "FAILED", "FATAL:"][0])
             || (text_lower.contains("at ") && text.contains("("));
 
-        let looks_like_stack_trace = text_lower.contains(&["traceback", "stack:", "call stack"][0])
-            || text.contains(&["    at ", "  File \"", "  -> "][0])
+        let looks_like_stack_trace = text_lower.contains(["traceback", "stack:", "call stack"][0])
+            || text.contains(["    at ", "  File \"", "  -> "][0])
             || (text_lower.contains("at ")
                 && (text.contains(".java:")
                     || text.contains(".kt:")
@@ -46,9 +46,9 @@ impl ClipboardContent {
                     || text.contains(".js:")
                     || text.contains(".rs:")));
 
-        let looks_like_log = text_lower.contains(&["info:", "warn:", "debug:", "error:"][0])
-            || text.contains(&["[ERROR]", "[INFO]", "[WARN]", "[DEBUG]"][0])
-            || text_lower.contains(&["[info]", "[warn]", "[debug]", "[error]"][0]);
+        let looks_like_log = text_lower.contains(["info:", "warn:", "debug:", "error:"][0])
+            || text.contains(["[ERROR]", "[INFO]", "[WARN]", "[DEBUG]"][0])
+            || text_lower.contains(["[info]", "[warn]", "[debug]", "[error]"][0]);
 
         Self {
             text: Some(text.to_string()),
@@ -59,6 +59,7 @@ impl ClipboardContent {
         }
     }
 
+    #[allow(dead_code)]
     fn from_length(text_length: u64) -> Self {
         Self {
             text: None,
@@ -325,6 +326,6 @@ mod tests {
         let provider = ClipboardProvider::new();
         let details = provider.status_details();
         // No last_content initially, so details should be empty or just platform
-        assert!(details.is_empty() || details.contains_key("text_length") == false);
+        assert!(details.is_empty() || !details.contains_key("text_length"));
     }
 }

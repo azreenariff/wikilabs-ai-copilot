@@ -473,7 +473,7 @@ mod tests {
 
     #[test]
     fn test_status_details() {
-        let mut provider = ActiveWindowProvider::new();
+        let provider = ActiveWindowProvider::new();
         let details = provider.status_details();
         assert!(details.contains_key("platform"));
     }

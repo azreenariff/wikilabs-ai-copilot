@@ -23,6 +23,12 @@ pub struct ConfidenceEngine {
     uncertain_threshold: f32,
 }
 
+impl Default for ConfidenceEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConfidenceEngine {
     pub fn new() -> Self {
         Self {

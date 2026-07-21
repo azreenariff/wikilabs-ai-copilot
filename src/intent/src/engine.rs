@@ -162,7 +162,6 @@ impl IntentEngine {
         results
             .into_iter()
             .next()
-            .map(|(intent, confidence)| (intent, confidence))
             .unwrap_or((self.default_intent.clone(), 0.1))
     }
 
@@ -194,7 +193,7 @@ impl IntentEngine {
             if regex.is_match(context) {
                 // Check for technology-specific boost
                 let mut confidence = 0.7;
-                let mut domain: Option<String> = None;
+                let _domain: Option<String> = None;
 
                 if let Some(domain_name) = technology {
                     if let Some(tech_intents) = self.technology_intents.get(domain_name) {
@@ -204,7 +203,7 @@ impl IntentEngine {
                                     if let Ok(re) = Regex::new(pattern) {
                                         if re.is_match(context) {
                                             confidence = ti.confidence_boost.max(confidence);
-                                            domain = Some(domain_name.to_string());
+                                            let _ = domain_name.to_string();
                                         }
                                     }
                                 }

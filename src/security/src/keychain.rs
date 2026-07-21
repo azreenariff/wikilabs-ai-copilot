@@ -15,10 +15,10 @@ impl Keychain {
     }
 
     pub async fn store(&self, _secret: Secret) -> anyhow::Result<()> {
-        unimplemented!()
+        anyhow::bail!("Not yet implemented")
     }
 
     pub async fn retrieve(&self, _service: &str, _username: &str) -> anyhow::Result<Secret> {
-        unimplemented!()
+        anyhow::bail!("Not yet implemented")
     }
 }

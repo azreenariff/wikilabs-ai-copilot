@@ -1,7 +1,6 @@
 //! Embedding versioning — track which model generated which embeddings.
 //!
 /// Supports embedding version tracking for rollback and migration.
-use super::provider::EmbeddingResult;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::debug;

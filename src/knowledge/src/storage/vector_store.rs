@@ -4,9 +4,9 @@
 //! Supports flat search and HNSW index via SQLite VSS extension.
 
 use anyhow::Context;
-use rusqlite::{params, Connection, OptionalExtension, Statement};
+use rusqlite::{params, Connection};
 use std::sync::{Arc, Mutex};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Configuration for the vector store.
 #[derive(Debug, Clone)]
@@ -223,8 +223,8 @@ SELECT load_extension('mod_spatialite') WHERE 1=0;
     ) -> anyhow::Result<Vec<super::search::SearchResult>> {
         let conn = self.connection.lock().expect("Vector store lock poisoned");
 
-        let query_blob = Self::serialize_vector(query_vector);
-        let dimensions = query_vector.len();
+        let _query_blob = Self::serialize_vector(query_vector);
+        let _dimensions = query_vector.len();
 
         // Use vector distance for flat search
         // Note: SQLite VSS extension provides vector_distance() function
@@ -241,7 +241,7 @@ SELECT load_extension('mod_spatialite') WHERE 1=0;
             .collect();
 
         let mut search_results = Vec::new();
-        for (vector_id, content, doc_id, chunk_index) in results {
+        for (vector_id, content, doc_id, _chunk_index) in results {
             search_results.push(super::search::SearchResult {
                 vector_id,
                 score: 0.0,

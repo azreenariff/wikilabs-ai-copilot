@@ -2,7 +2,6 @@
 
 use async_trait::async_trait;
 use thiserror::Error;
-use tracing::debug;
 
 /// Custom error types for embedding operations.
 #[derive(Debug, Error)]

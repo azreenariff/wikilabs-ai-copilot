@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{debug, info};
 
 pub mod models;
-use models::{MetadataEntry, NodeCategory, RelationshipType, SecurityClassification};
+use models::MetadataEntry;
 
 /// The SQL schema for the metadata store, embedded at compile time.
 pub const SCHEMA_SQL: &str = include_str!("schema.sql");

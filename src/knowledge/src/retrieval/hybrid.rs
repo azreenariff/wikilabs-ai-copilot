@@ -1,6 +1,5 @@
 //! Hybrid retrieval — combines vector similarity with full-text search.
 
-use super::chunker::KnowledgeChunk;
 use super::{RelevanceLevel, RetrievalFilter, RetrievalResult, RetrievedChunk};
 use crate::storage::namespace::NamespaceManager;
 use crate::storage::vector_store::VectorStore;
@@ -171,9 +170,9 @@ impl HybridRetriever {
     /// FTS search (simple text match fallback).
     async fn search_fts(
         &self,
-        query: &str,
-        namespace_id: i64,
-        top_k: usize,
+        _query: &str,
+        _namespace_id: i64,
+        _top_k: usize,
     ) -> Result<Vec<(String, String, String, f32, Option<String>)>> {
         // Simple fallback: return empty results
         // In production, this would query the FTS5 index

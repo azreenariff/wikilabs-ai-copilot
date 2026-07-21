@@ -1,7 +1,6 @@
 //! LRU cache for recent retrieval results.
 
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::time::{Duration, Instant};
 use tracing::debug;
 

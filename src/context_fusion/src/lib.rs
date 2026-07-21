@@ -226,12 +226,11 @@ impl ContextFusionEngine {
     /// Fuse all context sources into a single unified snapshot.
     pub fn fuse(&mut self) -> FusedContext {
         info!("Fusing context from {} sources", {
-            let count = self.observation_events.len()
+            self.observation_events.len()
                 + self.technology_inferences.len()
                 + self.intent_inferences.len()
                 + self.timeline.len()
-                + self.human_corrections.len();
-            count
+                + self.human_corrections.len()
         });
 
         // Compute missing evidence from tech inferences with low confidence

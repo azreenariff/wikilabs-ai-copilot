@@ -10,15 +10,8 @@ use tracing::debug;
 use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider for DOCX files.
-pub struct DocxProvider {
-    enabled: bool,
-}
-
-impl Default for DocxProvider {
-    fn default() -> Self {
-        Self { enabled: false }
-    }
-}
+#[derive(Default)]
+pub struct DocxProvider;
 
 impl DocxProvider {
     pub fn new() -> Self {
@@ -130,7 +123,7 @@ impl DocxProvider {
 
         if !text.is_empty() {
             if !result.is_empty() {
-                result.push_str("\n");
+                result.push('\n');
             }
             result.push_str(&text);
         }
@@ -186,28 +179,26 @@ impl DocxProvider {
 
         // Try docProps/app.xml first
         if let Some(app_start) = text.find("docProps/app.xml") {
-            if let Some(title_re) = regex::Regex::new(r"<Title>([^<]*)</Title>").ok() {
-                if let Some(cap) =
-                    title_re.captures(&text[app_start..app_start.saturating_add(500)])
-                {
-                    let title = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
-                    if !title.is_empty() {
-                        return title;
-                    }
+            let title_re = regex::Regex::new(r"<Title>([^<]*)</Title>").unwrap();
+            if let Some(cap) =
+                title_re.captures(&text[app_start..app_start.saturating_add(500)])
+            {
+                let title = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
+                if !title.is_empty() {
+                    return title;
                 }
             }
         }
 
         // Try docProps/core.xml (dc:title)
         if let Some(core_start) = text.find("docProps/core.xml") {
-            if let Some(title_re) = regex::Regex::new(r"<dc:title[^>]*>([^<]*)</dc:title>").ok() {
-                if let Some(cap) =
-                    title_re.captures(&text[core_start..core_start.saturating_add(1000)])
-                {
-                    let title = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
-                    if !title.is_empty() {
-                        return title;
-                    }
+            let title_re = regex::Regex::new(r"<dc:title[^>]*>([^<]*)</dc:title>").unwrap();
+            if let Some(cap) =
+                title_re.captures(&text[core_start..core_start.saturating_add(1000)])
+            {
+                let title = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
+                if !title.is_empty() {
+                    return title;
                 }
             }
         }
@@ -221,24 +212,22 @@ impl DocxProvider {
 
         // Try docProps/app.xml (LastAuthor)
         if let Some(app_start) = text.find("docProps/app.xml") {
-            if let Some(re) = regex::Regex::new(r"<LastAuthor>([^<]*)</LastAuthor>").ok() {
-                if let Some(cap) = re.captures(&text[app_start..app_start.saturating_add(500)]) {
-                    let author = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
-                    if !author.is_empty() {
-                        return author;
-                    }
+            let re = regex::Regex::new(r"<LastAuthor>([^<]*)</LastAuthor>").unwrap();
+            if let Some(cap) = re.captures(&text[app_start..app_start.saturating_add(500)]) {
+                let author = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
+                if !author.is_empty() {
+                    return author;
                 }
             }
         }
 
         // Try docProps/core.xml (dc:creator)
         if let Some(core_start) = text.find("docProps/core.xml") {
-            if let Some(re) = regex::Regex::new(r"<dc:creator[^>]*>([^<]*)</dc:creator>").ok() {
-                if let Some(cap) = re.captures(&text[core_start..core_start.saturating_add(1000)]) {
-                    let author = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
-                    if !author.is_empty() {
-                        return author;
-                    }
+            let re = regex::Regex::new(r"<dc:creator[^>]*>([^<]*)</dc:creator>").unwrap();
+            if let Some(cap) = re.captures(&text[core_start..core_start.saturating_add(1000)]) {
+                let author = cap.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
+                if !author.is_empty() {
+                    return author;
                 }
             }
         }

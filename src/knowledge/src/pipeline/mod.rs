@@ -22,11 +22,9 @@ use steps::Language;
 
 use crate::doc::{KnowledgeChunk, KnowledgeDocument};
 use crate::pipeline::result::{DiscoveredDoc, PipelineResult};
-use crate::processing::Document;
 pub use result::ChunkInfo;
 
 use std::collections::HashSet;
-use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, error, info, warn};

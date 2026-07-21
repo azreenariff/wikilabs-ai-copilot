@@ -14,10 +14,8 @@ pub mod version_detect;
 
 use std::path::Path;
 
-use anyhow::Context;
 use regex::Regex;
 use sha2::{Digest, Sha256};
-use tracing::debug;
 
 /// Supported languages for detection.
 #[derive(Debug, Clone, PartialEq)]

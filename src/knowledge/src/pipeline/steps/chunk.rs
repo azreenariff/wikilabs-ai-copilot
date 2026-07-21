@@ -140,7 +140,7 @@ impl ChunkStep {
         chunks
     }
 
-    fn find_break_point(&self, text: &str, current_end: usize, total: usize) -> usize {
+    fn find_break_point(&self, text: &str, current_end: usize, _total: usize) -> usize {
         // Look for sentence/paragraph boundaries after current_size
         let after_text = &text[current_end.min(text.len())..];
         let after: Vec<char> = after_text.chars().collect();
@@ -204,7 +204,7 @@ impl ChunkStep {
         idx: usize,
         content: &str,
         source: &str,
-        workspace_id: uuid::Uuid,
+        _workspace_id: uuid::Uuid,
         structured: bool,
     ) -> KnowledgeChunk {
         let id = uuid::Uuid::new_v4();
@@ -214,7 +214,7 @@ impl ChunkStep {
             idx,
             if structured { "s" } else { "t" }
         );
-        let now = Utc::now();
+        let _now = Utc::now();
 
         KnowledgeChunk {
             id,

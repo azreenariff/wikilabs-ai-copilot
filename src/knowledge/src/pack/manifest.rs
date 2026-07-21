@@ -3,12 +3,10 @@
 //! Each pack's `manifest.yaml` defines its identity, versioning, and dependencies.
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use thiserror::Error;
 use tracing::debug;
-use uuid::Uuid;
 
 /// Current manifest schema version.
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;

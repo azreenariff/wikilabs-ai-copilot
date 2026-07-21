@@ -215,16 +215,14 @@ impl EventBus {
         stats
             .events_by_provider
             .keys()
-            .filter_map(|name| {
-                Some(match name.as_str() {
-                    "active_window" => ProviderType::ActiveWindow,
-                    "terminal" => ProviderType::Terminal,
-                    "browser" => ProviderType::Browser,
-                    "clipboard" => ProviderType::Clipboard,
-                    "file_observer" => ProviderType::FileObserver,
-                    "screen_capture" => ProviderType::ScreenCapture,
-                    _ => ProviderType::Custom(name.clone()),
-                })
+            .map(|name| match name.as_str() {
+                "active_window" => ProviderType::ActiveWindow,
+                "terminal" => ProviderType::Terminal,
+                "browser" => ProviderType::Browser,
+                "clipboard" => ProviderType::Clipboard,
+                "file_observer" => ProviderType::FileObserver,
+                "screen_capture" => ProviderType::ScreenCapture,
+                _ => ProviderType::Custom(name.clone()),
             })
             .collect()
     }
@@ -268,7 +266,7 @@ mod tests {
     #[test]
     fn test_publish_and_consume() {
         let bus = EventBus::with_defaults();
-        let (_sub, mut rx) = bus.subscribe_all();
+        let (_sub, rx) = bus.subscribe_all();
 
         let payload = ObservationPayload::empty();
         let event = ObservationEvent::new(
@@ -288,7 +286,7 @@ mod tests {
     #[test]
     fn test_publish_to_disabled_provider() {
         let bus = EventBus::with_defaults();
-        let (_sub, mut rx) = bus.subscribe_all();
+        let (_sub, rx) = bus.subscribe_all();
 
         bus.set_provider_enabled(ProviderType::ActiveWindow, false);
 
@@ -321,8 +319,8 @@ mod tests {
     fn test_multiple_subscribers() {
         let bus = EventBus::with_defaults();
 
-        let (_sub1, mut rx1) = bus.subscribe_to_provider(ProviderType::ActiveWindow);
-        let (_sub2, mut rx2) = bus.subscribe_to_provider(ProviderType::ActiveWindow);
+        let (_sub1, rx1) = bus.subscribe_to_provider(ProviderType::ActiveWindow);
+        let (_sub2, rx2) = bus.subscribe_to_provider(ProviderType::ActiveWindow);
 
         let payload = ObservationPayload::empty();
         let event = ObservationEvent::new(
@@ -383,7 +381,7 @@ mod tests {
     #[test]
     fn test_subscribe_all() {
         let bus = EventBus::with_defaults();
-        let (_sub, mut rx) = bus.subscribe_all();
+        let (_sub, rx) = bus.subscribe_all();
 
         let payload = ObservationPayload::empty();
 

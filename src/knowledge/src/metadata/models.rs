@@ -4,7 +4,6 @@
 //! Also provides helper methods to convert between metadata entries and
 //! graph node/edge types from the core data-types crate.
 
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

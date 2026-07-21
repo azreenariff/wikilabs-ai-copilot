@@ -17,7 +17,6 @@ use super::pipeline::result::PipelineResult;
 use crate::doc::{KnowledgeChunk, KnowledgeDocument};
 use crate::storage::vector_store::VectorStore;
 use anyhow::Context;
-use futures::stream::StreamExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, info, warn};

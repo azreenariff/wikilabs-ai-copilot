@@ -1,11 +1,12 @@
 //! Workspace-Pack association manager — stores and retrieves workspace-enablement status
 //! for knowledge packs using SQLite.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Utc;
 use rusqlite::{params, Connection};
 use tracing::{debug, error};
-use uuid::Uuid;
+
+use anyhow::Context;
 
 /// Manages workspace-pack associations in SQLite.
 pub struct WorkspaceKnowledgeStore {

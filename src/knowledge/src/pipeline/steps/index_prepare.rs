@@ -1,10 +1,8 @@
 //! Index preparation step — format for vector indexing.
 
-use crate::doc::{KnowledgeChunk, KnowledgeDocument};
+use crate::doc::KnowledgeDocument;
 use crate::pipeline::DocPipelineState;
-use crate::pipeline::PipelineConfig;
-use crate::processing::DocumentElement;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use tracing::debug;
 
 /// The index preparation pipeline step.

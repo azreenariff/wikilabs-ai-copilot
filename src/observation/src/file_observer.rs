@@ -22,6 +22,7 @@ use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType
 use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 /// Configuration file extensions that trigger file observation.
+#[allow(dead_code)]
 const CONFIG_EXTENSIONS: &[&str] = &[
     "yml",
     "yaml",
@@ -53,6 +54,7 @@ pub struct FileMetadata {
 }
 
 impl FileMetadata {
+    #[allow(dead_code)]
     fn from_path(path: &str) -> Self {
         let extension = std::path::Path::new(path)
             .extension()

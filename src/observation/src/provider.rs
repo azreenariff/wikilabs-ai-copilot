@@ -114,6 +114,12 @@ impl ProviderLifecycle {
     }
 }
 
+impl Default for ProviderLifecycle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// The core trait that all observation providers must implement.
 ///
 /// This trait defines the contract for:
@@ -266,6 +272,12 @@ impl ProviderRegistry {
     }
 }
 
+impl Default for ProviderRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Status snapshot of a single provider.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderStatus {
@@ -341,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_provider_registry_get_unregister() {
-        let mut registry = ProviderRegistry::new();
+        let registry = ProviderRegistry::new();
         assert!(registry.get("nonexistent").is_none());
 
         // Can't easily test registration without a concrete provider impl,

@@ -1,15 +1,12 @@
 //! Vector search — semantic similarity retrieval.
 
-use super::chunker::KnowledgeChunk;
-use super::hybrid::HybridRetriever;
 use super::{RelevanceLevel, RetrievalFilter, RetrievalResult, RetrievedChunk};
-use crate::embedding_pipeline::{cosine_similarity, normalize_vector};
 use crate::storage::namespace::NamespaceManager;
 use crate::storage::vector_store::VectorStore;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Utc;
 use serde_json::json;
-use tracing::{debug, info};
+use tracing::info;
 
 /// Searches vector storage for the most relevant chunks.
 pub struct VectorSearcher {
@@ -39,7 +36,7 @@ impl VectorSearcher {
         let filter = filters;
 
         // Get namespace
-        let namespace = self.namespace_mgr.get_or_create(
+        let _namespace = self.namespace_mgr.get_or_create(
             knowledge_pack,
             None,
             knowledge_pack,
@@ -125,7 +122,7 @@ impl VectorSearcher {
     }
 
     /// Calculate relevance score based on text overlap with query.
-    fn calculate_relevance(&self, query_vector: &[f32], text: &str) -> f32 {
+    fn calculate_relevance(&self, query_vector: &[f32], _text: &str) -> f32 {
         // Placeholder: compute a simple score
         // In production, this would use the embedding model to generate
         // a query embedding and compare with text embedding
@@ -154,8 +151,9 @@ impl VectorSearcher {
         filters: RetrievalFilter,
         max_tokens: usize,
     ) -> Result<String> {
+        let _query_vector = query_vector;
         let result = self
-            .search(query, query_vector, knowledge_pack, filters)
+            .search(query, _query_vector, knowledge_pack, filters)
             .await?;
 
         let context: String = result
