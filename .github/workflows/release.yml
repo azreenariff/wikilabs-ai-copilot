@@ -34,11 +34,7 @@ jobs:
         run: |
           cargo install tauri-cli --version ^2
 
-      - name: Install Visual Studio C++ build tools
-        uses: mailto/matthiaseisen/visual-studio-audio@v1
-        with:
-          workloads: "vctools"
-
+      # C++ build tools are pre-installed on windows-latest runner
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
