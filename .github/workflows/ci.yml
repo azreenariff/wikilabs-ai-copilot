@@ -18,29 +18,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust stable
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: x86_64-pc-windows-msvc
 
       - name: Install Tauri CLI
-        run: |
-          curl -sL https://github.com/tauri-apps/tauri/releases/download/tauri-cli-v2.6.0/tauri-cli-x86_64-pc-windows-msvc.zip -o tauri.zip
-          7z x tauri.zip -oC:\tauri -y
-          echo "C:\tauri" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
+        uses: tauri-apps/tauri-action/setup@v0
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-
+          arch: x86_64
+          os: windows
 
       - name: Build Tauri app
         run: cargo tauri build --target x86_64-pc-windows-msvc
@@ -54,21 +42,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust stable
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-test-
 
       - name: Run tests
         run: cargo test --workspace --exclude wikilabs-desktop
@@ -80,23 +55,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust stable
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-clippy-
 
       - name: Run clippy
         run: cargo clippy --workspace --exclude wikilabs-desktop -- -D warnings
@@ -108,21 +70,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust stable
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-docs-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-docs-
 
       - name: Build documentation
         run: cargo doc --workspace --no-deps --document-private-items
