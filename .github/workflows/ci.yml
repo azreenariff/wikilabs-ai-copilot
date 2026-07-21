@@ -25,10 +25,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: Install Tauri CLI
-        uses: tauri-apps/tauri-action/setup@v0
-        with:
-          arch: x86_64
-          os: windows
+        run: curl https://get.tauri.dev --proto '=https' --tlsv1.2 -sSf | sh -s -- --no-modify-path --no-menu
 
       - name: Build Tauri app
         run: cargo tauri build --target x86_64-pc-windows-msvc
