@@ -118,7 +118,7 @@ impl MetadataStore {
             .lock()
             .expect("Metadata store lock poisoned");
 
-        let updated_at = Utc::now().to_rfc3339();
+        let _updated_at = Utc::now().to_rfc3339();
         let updated = entry.updated_at.clone();
 
         let rows = conn

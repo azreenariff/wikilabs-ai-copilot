@@ -11,17 +11,14 @@ use tracing::debug;
 /// Encoding used for documents in the pack.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum DocumentEncoding {
+    #[default]
     Utf8,
     Ascii,
     Iso8859,
 }
 
-impl Default for DocumentEncoding {
-    fn default() -> Self {
-        Self::Utf8
-    }
-}
 
 /// Information about a single document within a pack.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

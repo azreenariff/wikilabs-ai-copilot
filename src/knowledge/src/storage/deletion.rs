@@ -4,7 +4,7 @@
 use super::vector_store::VectorStore;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, info};
+use tracing::info;
 
 /// Handles document deletion from the vector store.
 pub struct DocumentDeleter {

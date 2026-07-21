@@ -114,10 +114,10 @@ impl Chunker {
 
         while i < current.len() {
             // Find heading
-            let mut heading_line = i;
+            let mut _heading_line = i;
             if let Some(heading_idx) = current.iter().position(|l| l.starts_with('#')) {
-                heading_line = heading_idx;
-                i = heading_line;
+                _heading_line = heading_idx;
+                i = heading_idx;
             }
 
             // Collect section content

@@ -124,8 +124,7 @@ impl DependenciesResult {
                 lines.push(format!(
                     "    - {}",
                     cycle
-                        .iter()
-                        .map(|s| s.clone())
+                        .iter().cloned()
                         .collect::<Vec<_>>()
                         .join(" -> ")
                 ));

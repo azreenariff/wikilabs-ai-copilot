@@ -88,7 +88,7 @@ impl IncrementalEmbedder {
         for (i, text) in pending_texts.iter().enumerate() {
             match provider.embed(text).await {
                 Ok(vector) => {
-                    let mut result = EmbeddingResult {
+                    let result = EmbeddingResult {
                         chunk_id: pending_ids[i].clone(),
                         vector: if self.config.normalize {
                             normalize_vector(vector)

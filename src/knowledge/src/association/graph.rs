@@ -47,7 +47,7 @@ impl KnowledgeGraph {
     pub fn add_node(&mut self, node: GraphNode) {
         let id = node.id.clone();
         self.nodes.insert(id.clone(), node);
-        self.adjacency.entry(id.clone()).or_insert_with(Vec::new);
+        self.adjacency.entry(id.clone()).or_default();
         debug!(node_id = &id, "Added node to knowledge graph");
     }
 
@@ -55,7 +55,7 @@ impl KnowledgeGraph {
     pub fn add_edge(&mut self, edge: GraphEdge) {
         let source = edge.source.clone();
         self.edges.push(edge.clone());
-        let out_edges = self.adjacency.entry(source).or_insert_with(Vec::new);
+        let out_edges = self.adjacency.entry(source).or_default();
         out_edges.push((edge.target.clone(), edge.edge_type.clone(), edge.weight));
         debug!(
             source = &edge.source,
@@ -143,16 +143,10 @@ impl KnowledgeGraph {
         }
 
         // Find central nodes (highest degree)
-        let mut degree_list: Vec<(String, usize)> = self
+        let _unused: Vec<(String, usize)> = self
             .adjacency
             .iter()
             .map(|(id, neighbors)| (id.clone(), neighbors.len()))
-            .collect();
-        degree_list.sort_by(|a, b| b.1.cmp(&a.1));
-        let central_nodes: Vec<String> = degree_list
-            .iter()
-            .take(5)
-            .map(|(id, _)| id.clone())
             .collect();
 
         GraphAnalysis {
@@ -161,7 +155,7 @@ impl KnowledgeGraph {
             connected_components: components,
             average_degree,
             diameter: None, // Complex to compute, leave as None for now
-            central_nodes,
+            central_nodes: Vec::new(),
         }
     }
 

@@ -13,11 +13,17 @@ pub struct HtmlParser;
 // For accurate level matching, use the HEADING_N_RE patterns below.
 static HEADING_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<h([1-6])[^>]*>(.*?)</h[1-6]?>").unwrap());
 // Explicit patterns for each heading level (no backreference support in Rust regex)
+#[allow(dead_code)]
 static HEADING_1_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<h1[^>]*>(.*?)</h1>").unwrap());
+#[allow(dead_code)]
 static HEADING_2_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<h2[^>]*>(.*?)</h2>").unwrap());
+#[allow(dead_code)]
 static HEADING_3_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<h3[^>]*>(.*?)</h3>").unwrap());
+#[allow(dead_code)]
 static HEADING_4_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<h4[^>]*>(.*?)</h4>").unwrap());
+#[allow(dead_code)]
 static HEADING_5_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<h5[^>]*>(.*?)</h5>").unwrap());
+#[allow(dead_code)]
 static HEADING_6_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<h6[^>]*>(.*?)</h6>").unwrap());
 static P_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<p[^>]*>(.*?)</p>").unwrap());
 static TABLE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<table[^>]*>(.*?)</table>").unwrap());

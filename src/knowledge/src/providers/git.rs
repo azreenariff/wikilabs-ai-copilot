@@ -101,17 +101,16 @@ impl KnowledgeProvider for GitProvider {
                         continue;
                     }
                     let full_path = repo_path.join(file);
-                    if full_path.is_file() {
-                        if self.extensions.is_empty()
+                    if full_path.is_file()
+                        && (self.extensions.is_empty()
                             || self.extensions.iter().any(|e| {
                                 full_path.extension().and_then(|ext| ext.to_str())
                                     == Some(e.as_str())
-                            })
-                        {
-                            match self.parse(&full_path.to_string_lossy()).await {
-                                Ok(doc) => docs.push(doc),
-                                Err(e) => warn!(file, error = %e, "Failed to parse git file"),
-                            }
+                            }))
+                    {
+                        match self.parse(&full_path.to_string_lossy()).await {
+                            Ok(doc) => docs.push(doc),
+                            Err(e) => warn!(file, error = %e, "Failed to parse git file"),
                         }
                     }
                 }

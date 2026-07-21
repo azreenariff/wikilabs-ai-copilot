@@ -16,6 +16,7 @@ struct CacheEntry<T> {
 /// Uses a hybrid of a HashMap for O(1) lookups and a sorted access-order
 /// list for LRU eviction. When the cache exceeds `max_capacity`, the least
 /// recently used entry is evicted. Entries also expire after `ttl`.
+#[allow(dead_code)]
 pub struct RetrievalCache<T> {
     max_capacity: usize,
     ttl: Duration,

@@ -312,14 +312,22 @@ impl EncryptionService {
         }
     }
 
-    /// Decrypt hex-encoded data.
-    pub fn decrypt(&self, ciphertext_hex: &str) -> Result<String, anyhow::Error> {
-        let ciphertext = hex::decode(ciphertext_hex)?;
-
-        if self.algorithm == "aes-256-gcm" {
-            self.decrypt_aes(&ciphertext)
+    /// Decrypt data. Accepts either hex-encoded data or `nonce:ciphertext` format.
+    pub fn decrypt(&self, input: &str) -> Result<String, anyhow::Error> {
+        // If input contains ':' it's likely `nonce:ciphertext` format from encrypt
+        if input.contains(':') {
+            if self.algorithm == "aes-256-gcm" {
+                self.decrypt_aes(input.as_bytes())
+            } else {
+                self.decrypt_chacha(input.as_bytes())
+            }
         } else {
-            self.decrypt_chacha(&ciphertext)
+            let ciphertext = hex::decode(input)?;
+            if self.algorithm == "aes-256-gcm" {
+                self.decrypt_aes(&ciphertext)
+            } else {
+                self.decrypt_chacha(&ciphertext)
+            }
         }
     }
 
@@ -565,36 +573,33 @@ pub fn redact_secrets(input: &str) -> String {
     let mut result = input.to_string();
 
     for pattern in SECRET_PATTERNS {
-        // Case-insensitive search
         let search = pattern.to_lowercase();
-        let pattern_len = search.len();
+        let esc_pattern = regex::escape(pattern);
+        let esc_search = regex::escape(&search);
 
-        // Replace the value after the key name
-        let search_with_equals = format!("{}=\"", search);
-        let search_with_colon = format!("{}: ", search);
-        let search_with_equals_no_space = format!("{}:", search);
-        let search_with_space = format!("{}=\"", search);
+        // JSON format: "key": "value"
+        let pat_json = format!("\"{}\"\\s*:\\s*\"[^\"]*\"", esc_search);
+        if let Some(re) = regex::Regex::new(&pat_json).ok() {
+            result = re.replace_all(&result, format!("\"{}\": \"[REDACTED]\"", search)).to_string();
+        }
 
-        result = result.replace(&search_with_equals, &format!("{}=\"[REDACTED]\"", search));
-        result = result
-            .replace(&search_with_colon, &format!("{}: [REDACTED]", search));
-        result = result.replace(&search_with_equals_no_space, &format!("{}:[REDACTED]", search));
+        // Key-value format: key = "value" (case insensitive)
+        let pat_kv = format!("(?i){}\\s*=\\s*\"[^\"]*\"", esc_pattern);
+        if let Some(re) = regex::Regex::new(&pat_kv).ok() {
+            result = re.replace_all(&result, format!("{} = \"[REDACTED]\"", pattern)).to_string();
+        }
 
-        // Also handle JSON-like patterns
-        result = result.replace(&format!("\"{}\"", search), &format!("\"{}\"", search));
-    }
+        // Colon format: key: value (non-quoted, case insensitive)
+        let pat_colon = format!("(?i){}\\s*:\\s*\\S+", esc_pattern);
+        if let Some(re) = regex::Regex::new(&pat_colon).ok() {
+            result = re.replace_all(&result, format!("{}: [REDACTED]", pattern)).to_string();
+        }
 
-    // Redact any string that looks like a base64 token (20+ chars, alphanumeric + /+=)
-    let re = regex::Regex::new(r#""([A-Za-z0-9+/]{20,}={0,2})""#).ok();
-    if let Some(ref re) = re {
-        result = re.replace_all(&result, |caps: &regex::Captures| {
-            if caps.get(1).unwrap().as_str().contains('.') {
-                caps.get(0).unwrap().as_str().to_string() // Skip if it looks like a URL/path
-            } else {
-                "\"[REDACTED]\"".to_string()
-            }
-        })
-        .to_string();
+        // Key-value format: key="value" (no space, case insensitive)
+        let pat_eq = format!("(?i){}=\"[^\"]*\"", esc_pattern);
+        if let Some(re) = regex::Regex::new(&pat_eq).ok() {
+            result = re.replace_all(&result, format!("{}=\"[REDACTED]\"", pattern)).to_string();
+        }
     }
 
     result
@@ -724,18 +729,19 @@ Wiki Labs AI Copilot — Security Threat Model (v1.0)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::PrivacySettings;
 
     #[test]
-    fn test_encryption_roundtrip() {
-        let settings = SecuritySettings::default();
-        let encryption = EncryptionService::new(&settings);
+        fn test_encryption_roundtrip() {
+            let settings = SecuritySettings::default();
+            let encryption = EncryptionService::new(&settings);
 
-        let plaintext = "sk-test-secret-key-12345";
-        let encrypted = encryption.encrypt(plaintext).unwrap();
-        let decrypted = encryption.decrypt(encrypted.as_bytes()).unwrap();
+            let plaintext = "«redacted:sk-…»";
+            let encrypted = encryption.encrypt(plaintext).unwrap();
+            let decrypted = encryption.decrypt(&encrypted).unwrap();
 
-        assert_eq!(plaintext, decrypted);
-    }
+            assert_eq!(plaintext, decrypted);
+        }
 
     #[test]
     fn test_redaction_api_key() {
@@ -790,6 +796,7 @@ mod tests {
     fn test_credential_manager_store_and_load() {
         let settings = SecuritySettings::default();
         let temp_dir = std::env::temp_dir().join("wikilabs_test");
+        std::fs::create_dir_all(&temp_dir).ok();
         let cm = CredentialManager::new(&settings, temp_dir.clone());
 
         cm.store("test-service", "user1", "secret-pass").unwrap();

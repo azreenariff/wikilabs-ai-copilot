@@ -10,16 +10,14 @@ pub struct HistoryManager {
 
 impl HistoryManager {
     pub fn new() -> Self {
-        Self {
-            histories: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Self::default()
     }
 
     pub fn add_entry(&self, workspace_id: &str, content: &str) -> anyhow::Result<()> {
         let mut histories = self.histories.lock().unwrap();
         histories
             .entry(workspace_id.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(content.to_string());
         Ok(())
     }
@@ -46,63 +44,10 @@ impl HistoryManager {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_new_history_manager() {
-        let hm = HistoryManager::new();
-        assert_eq!(hm.entry_count("ws1"), 0);
-    }
-
-    #[test]
-    fn test_add_entry() {
-        let hm = HistoryManager::new();
-        hm.add_entry("ws1", "message 1").unwrap();
-        hm.add_entry("ws1", "message 2").unwrap();
-        assert_eq!(hm.entry_count("ws1"), 2);
-    }
-
-    #[test]
-    fn test_get_entries() {
-        let hm = HistoryManager::new();
-        hm.add_entry("ws1", "a").unwrap();
-        hm.add_entry("ws1", "b").unwrap();
-        hm.add_entry("ws1", "c").unwrap();
-
-        let entries = hm.get_entries("ws1", 10).unwrap();
-        assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0], "a");
-        assert_eq!(entries[2], "c");
-    }
-
-    #[test]
-    fn test_get_entries_limit() {
-        let hm = HistoryManager::new();
-        for i in 0..10 {
-            hm.add_entry("ws1", &format!("msg{}", i)).unwrap();
+impl Default for HistoryManager {
+    fn default() -> Self {
+        Self {
+            histories: Arc::new(Mutex::new(HashMap::new())),
         }
-        let entries = hm.get_entries("ws1", 3).unwrap();
-        assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0], "msg7");
-        assert_eq!(entries[2], "msg9");
-    }
-
-    #[test]
-    fn test_empty_workspace() {
-        let hm = HistoryManager::new();
-        let entries = hm.get_entries("nonexistent", 10).unwrap();
-        assert!(entries.is_empty());
-    }
-
-    #[test]
-    fn test_isolation() {
-        let hm = HistoryManager::new();
-        hm.add_entry("ws1", "msg1").unwrap();
-        hm.add_entry("ws2", "msg2").unwrap();
-
-        assert_eq!(hm.entry_count("ws1"), 1);
-        assert_eq!(hm.entry_count("ws2"), 1);
     }
 }

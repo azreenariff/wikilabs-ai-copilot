@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use std::fs;
-use std::io::{self, Write};
+
 use std::path::Path;
 use tracing::{debug, info};
 

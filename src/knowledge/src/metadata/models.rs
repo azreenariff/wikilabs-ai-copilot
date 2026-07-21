@@ -218,6 +218,7 @@ impl MetadataEntry {
     }
 
     /// Parse a metadata entry from a database row.
+    #[allow(clippy::too_many_arguments)]
     pub fn from_row(
         id: String,
         document_id: String,

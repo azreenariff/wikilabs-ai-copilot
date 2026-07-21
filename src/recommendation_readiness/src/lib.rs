@@ -16,8 +16,6 @@
 //! - Human feedback overrides all AI inference
 //! - Works in conjunction with the WorkflowEngine for state-aware readiness
 
-use std::collections::HashSet;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};

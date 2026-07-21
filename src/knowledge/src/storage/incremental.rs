@@ -84,7 +84,7 @@ impl IncrementalIndexer {
             return Ok(0);
         }
 
-        let mut store = self.store.lock().await;
+        let store = self.store.lock().await;
         let mut indexed = 0;
 
         for (doc_id, content, vector) in to_index {

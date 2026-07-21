@@ -59,14 +59,12 @@ impl IndexManager {
         vectors: Vec<(String, Vec<f32>, String, String)>,
     ) -> anyhow::Result<()> {
         // vectors: (vector_id, vector_data, content, doc_id)
-        let store = self.store.lock().await;
-
         let count = vectors.len();
         debug!(count, "Building index with vectors");
 
-        let mut stored = self.store.lock().await;
+        let store = self.store.lock().await;
         for (vector_id, vector_data, content, doc_id) in vectors {
-            stored
+            store
                 .insert_vector(&vector_id, &vector_data, &content, &doc_id)
                 .await?;
         }
@@ -85,7 +83,7 @@ impl IndexManager {
 
     /// Update document count and metadata.
     pub async fn update_document_count(&self, count: usize) -> anyhow::Result<()> {
-        let mut stored = self.store.lock().await;
+        let stored = self.store.lock().await;
         stored.update_metadata(count, count * 3, "local", 384).await
     }
 }

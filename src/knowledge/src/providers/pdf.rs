@@ -10,15 +10,12 @@ use tracing::debug;
 use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider that extracts text from PDF files.
+#[derive(Default)]
 pub struct PdfProvider {
     enabled: bool,
 }
 
-impl Default for PdfProvider {
-    fn default() -> Self {
-        Self { enabled: false }
-    }
-}
+
 
 impl PdfProvider {
     pub fn new() -> Self {
@@ -211,8 +208,6 @@ impl PdfProvider {
                         })
                         .collect();
                     return decoded;
-                    // Fallback: return hex as-is
-                    return format!("<{}>", hex_str);
                 }
             }
         }
@@ -256,7 +251,7 @@ impl PdfProvider {
                 .filter(|c| !c.is_control())
                 .collect::<String>()
                 .into_bytes();
-            if bytes.len() >= 2 && bytes.len() % 2 == 0 {
+            if bytes.len() >= 2 && bytes.len().is_multiple_of(2) {
                 let chars: Vec<char> = bytes
                     .chunks(2)
                     .filter_map(|c| {

@@ -35,7 +35,7 @@ impl NamespaceManager {
         knowledge_pack: &str,
         dimensions: usize,
     ) -> Result<Namespace> {
-        let now = Utc::now().to_rfc3339();
+        let _now = Utc::now().to_rfc3339();
         let mut stmt = self.conn.prepare(
             r#"
             INSERT INTO knowledge_namespaces (name, workspace_id, knowledge_pack, embedding_dimensions)

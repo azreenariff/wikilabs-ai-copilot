@@ -54,7 +54,7 @@ pub fn validate_documents(pack_path: &str) -> Result<DocumentValidationResult> {
         }
 
         // Check if file is readable
-        if let Err(_) = fs::metadata(&doc_path) {
+        if fs::metadata(&doc_path).is_err() {
             result.unreadable.push(doc.path.clone());
             continue;
         }

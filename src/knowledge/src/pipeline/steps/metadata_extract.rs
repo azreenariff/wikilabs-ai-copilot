@@ -112,11 +112,11 @@ impl MetadataExtractStep {
         };
 
         debug!(
-            "Metadata extracted: headings={}, tables={}, code_blocks={}, lists={}",
-            metadata.headings.len(),
-            metadata.table_count,
-            metadata.code_block_count,
-            metadata.list_count
+            headings = metadata.headings.len(),
+            tables = metadata.table_count,
+            code_blocks = metadata.code_block_count,
+            lists = metadata.list_count,
+            "Metadata extracted"
         );
     }
 }

@@ -23,8 +23,6 @@ use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
-use uuid::Uuid;
-
 // ---------------------------------------------------------------------------
 // Data types
 // ---------------------------------------------------------------------------
@@ -173,7 +171,7 @@ impl WorkflowEngine {
             bail!("Initial state '{}' not found in workflow '{}'", start, name);
         }
 
-        let state = wf.states.iter().find(|s| s.current_state == start).unwrap();
+        let _state = wf.states.iter().find(|s| s.current_state == start).unwrap();
 
         info!("Started workflow '{}' at state '{}'", name, start);
 
@@ -447,7 +445,7 @@ impl WorkflowEngine {
             return Ok(());
         }
 
-        let mut entries = fs::read_dir(&workflows_dir)
+        let entries = fs::read_dir(&workflows_dir)
             .with_context(|| format!("Failed to read directory '{}'", workflows_dir.display()))?;
 
         let mut count = 0usize;

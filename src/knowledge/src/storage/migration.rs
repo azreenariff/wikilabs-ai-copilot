@@ -129,7 +129,7 @@ impl SchemaMigration {
     }
 
     /// Update the schema version in the metadata table.
-    fn update_schema_version(&self, conn: &Connection, version: u32) -> anyhow::Result<()> {
+    fn update_schema_version(&self, _conn: &Connection, version: u32) -> anyhow::Result<()> {
         // In a full implementation, this would update a schema_version column
         debug!(version, "Schema version updated");
         Ok(())

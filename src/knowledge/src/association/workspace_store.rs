@@ -161,7 +161,7 @@ impl WorkspaceKnowledgeStore {
 
     /// Removes an association entirely.
     pub fn remove_association(&mut self, workspace_id: &str, pack_name: &str) -> Result<()> {
-        let changes = self.db.execute(
+        let _changes = self.db.execute(
             "DELETE FROM workspace_pack_associations
              WHERE workspace_id = ?1 AND pack_name = ?2",
             params![workspace_id, pack_name],

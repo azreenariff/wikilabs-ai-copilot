@@ -89,7 +89,7 @@ impl VectorStorage {
         content: &str,
         doc_id: &str,
     ) -> anyhow::Result<()> {
-        let mut store = self.store.lock().await;
+        let store = self.store.lock().await;
         store
             .insert_vector(vector_id, vector, content, doc_id)
             .await
@@ -110,7 +110,7 @@ impl VectorStorage {
 
     pub async fn get_index_stats(&self) -> anyhow::Result<IndexStats> {
         let store = self.store.lock().await;
-        Ok(self.index_manager.get_stats(&*store).await)
+        Ok(self.index_manager.get_stats(&store).await)
     }
 
     pub fn namespace(&self) -> &str {

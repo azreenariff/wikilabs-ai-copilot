@@ -127,8 +127,8 @@ impl ParserProvider for XmlParser {
         for cap in code_re.captures_iter(content) {
             if let Some(text) = cap.get(1) {
                 elements.push(DocumentElement::CodeBlock(
-                    String::new(),
                     text.as_str().to_string(),
+                    "xml".to_string(),
                 ));
             }
         }

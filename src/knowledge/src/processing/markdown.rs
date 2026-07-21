@@ -15,11 +15,15 @@ static HEADING_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.*)$").u
 static CODE_BLOCK_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^```(\w*)\s*\n(.*?)```$").unwrap());
 static LIST_ITEM_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*[-*+]\s+(.*)$").unwrap());
 static ORDERED_LIST_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*\d+\.\s+(.*)$").unwrap());
+#[allow(dead_code)]
 static BOLD_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\*\*(.*?)\*\*").unwrap());
+#[allow(dead_code)]
 static INLINE_CODE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"`([^`]+)`").unwrap());
+#[allow(dead_code)]
 static REFERENCE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").unwrap());
 static WARNING_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(>|\*)\s*(?:⚠|WARNING|WARN|⛔)\s*(.*)$").unwrap());
+#[allow(dead_code)]
 static COMMAND_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^```\s*\n([^\n].*)$").unwrap());
 static EXAMPLE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^>\s+(.*)$").unwrap());
 static HORIZONTAL_RULE_RE: Lazy<Regex> =

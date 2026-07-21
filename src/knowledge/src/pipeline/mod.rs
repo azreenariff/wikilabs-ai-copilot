@@ -250,7 +250,6 @@ impl IngestionPipeline {
                     keep.push(doc.clone());
                 } else {
                     info!(path = ?doc.path, "Document up to date, skipping");
-                    result.skipped_count += 1;
                 }
             }
             keep

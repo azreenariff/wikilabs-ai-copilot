@@ -104,13 +104,11 @@ pub enum LinkStatus {
 /// Generate a citation from a knowledge chunk.
 pub fn generate_citation_from_chunk(
     chunk: &wikilabs_data_types::KnowledgeChunk,
-    knowledge_pack: &str,
+    _knowledge_pack: &str,
 ) -> Citation {
     let title = chunk.content.chars().take(80).collect::<String>();
 
-    let mut citation = Citation::new(&chunk.id.to_string(), &title, CitationType::Documentation);
-
-    citation
+    Citation::new(&chunk.id.to_string(), &title, CitationType::Documentation)
 }
 
 /// Format a citation for display.

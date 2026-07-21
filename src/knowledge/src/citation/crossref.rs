@@ -57,7 +57,7 @@ impl CrossReference {
     }
 
     pub fn with_strength(mut self, strength: f32) -> Self {
-        self.strength = strength.min(1.0).max(0.0);
+        self.strength = strength.clamp(0.0, 1.0);
         self
     }
 }

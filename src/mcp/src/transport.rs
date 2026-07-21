@@ -2,6 +2,12 @@
 
 pub struct TransportLayer;
 
+impl Default for TransportLayer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TransportLayer {
     pub fn new() -> Self {
         Self

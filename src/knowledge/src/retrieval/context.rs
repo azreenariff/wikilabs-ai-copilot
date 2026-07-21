@@ -226,7 +226,7 @@ impl ContextAwareRetriever {
                 if chunk
                     .heading_context
                     .as_ref()
-                    .map_or(false, |h| h.to_lowercase().contains(&tech_lower))
+                    .is_some_and(|h| h.to_lowercase().contains(&tech_lower))
                 {
                     matches += 2;
                 } else {
@@ -476,6 +476,7 @@ mod tests {
     use super::*;
     use crate::retrieval::RetrievedChunk;
     use serde_json;
+    use serde_json::json;
 
     fn make_chunk(text: &str, score: f32) -> RetrievedChunk {
         RetrievedChunk {

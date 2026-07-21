@@ -1,7 +1,7 @@
 //! Embedding provider trait and concrete implementations.
 
 use async_trait::async_trait;
-use tracing::{debug, info};
+
 
 /// Trait for embedding providers.
 ///

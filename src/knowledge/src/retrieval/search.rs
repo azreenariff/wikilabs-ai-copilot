@@ -122,7 +122,7 @@ impl VectorSearcher {
     }
 
     /// Calculate relevance score based on text overlap with query.
-    fn calculate_relevance(&self, query_vector: &[f32], _text: &str) -> f32 {
+    fn calculate_relevance(&self, _query_vector: &[f32], _text: &str) -> f32 {
         // Placeholder: compute a simple score
         // In production, this would use the embedding model to generate
         // a query embedding and compare with text embedding
@@ -149,7 +149,7 @@ impl VectorSearcher {
         query_vector: &[f32],
         knowledge_pack: &str,
         filters: RetrievalFilter,
-        max_tokens: usize,
+        _max_tokens: usize,
     ) -> Result<String> {
         let _query_vector = query_vector;
         let result = self

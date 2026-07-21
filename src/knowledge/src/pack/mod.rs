@@ -69,7 +69,7 @@ impl KnowledgePack {
         metadata.pack_name.clone_from(&manifest.name);
 
         let manifest = manifest.clone();
-        let schema_version = manifest.schema_version.clone();
+        let schema_version = manifest.schema_version;
         Ok(Self {
             id: Uuid::new_v4(),
             manifest,
@@ -207,7 +207,7 @@ pub fn discover_packs(parent: &Path) -> Result<Vec<PathBuf>> {
 }
 
 /// Sort packs by priority order (Critical > High > Normal > Low).
-pub fn sort_packs_by_priority(packs: &mut Vec<KnowledgePack>) {
+pub fn sort_packs_by_priority(packs: &mut [KnowledgePack]) {
     packs.sort_by_key(|p| p.manifest.priority.clone());
 }
 

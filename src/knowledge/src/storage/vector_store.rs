@@ -49,7 +49,7 @@ impl VectorStore {
 
 impl Clone for VectorStore {
     fn clone(&self) -> Self {
-        let new_conn = Connection::open(&format!("{}_clone", self.config.namespace))
+        let new_conn = Connection::open(format!("{}_clone", self.config.namespace))
             .expect("Failed to open clone connection");
         Self {
             connection: Arc::new(Mutex::new(new_conn)),
@@ -166,7 +166,7 @@ SELECT load_extension('mod_spatialite') WHERE 1=0;
         unsafe {
             std::slice::from_raw_parts(
                 vector.as_ptr() as *const u8,
-                vector.len() * std::mem::size_of::<f32>(),
+                std::mem::size_of_val(vector),
             )
             .to_vec()
         }

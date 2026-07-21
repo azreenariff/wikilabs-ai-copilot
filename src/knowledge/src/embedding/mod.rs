@@ -14,7 +14,7 @@ pub use version::{EmbeddingVersion, EmbeddingVersionManager};
 
 pub(crate) type EmbeddingResult = super::embedding::provider::EmbeddingResult;
 use super::pipeline::result::PipelineResult;
-use crate::doc::{KnowledgeChunk, KnowledgeDocument};
+use crate::doc::KnowledgeChunk;
 use crate::storage::vector_store::VectorStore;
 use anyhow::Context;
 use std::sync::Arc;

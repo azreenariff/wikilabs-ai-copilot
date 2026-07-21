@@ -366,7 +366,7 @@ mod tests {
         };
         assert_eq!(card.id, "linux");
         assert_eq!(card.knowledge_count, 50);
-        assert!(!card.enabled); // Wait, it should be true
+        assert!(card.enabled);
     }
 
     #[test]

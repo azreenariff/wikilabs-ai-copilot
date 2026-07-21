@@ -1,15 +1,17 @@
 //! MCP protocol definition — internal abstraction.
 
+use std::future::Future;
+
 pub trait McpProtocol: Send + Sync {
-    async fn initialize(&self) -> anyhow::Result<()>;
-    async fn list_resources(&self) -> anyhow::Result<Vec<ResourceDefinition>>;
-    async fn read_resource(&self, _uri: &str) -> anyhow::Result<String>;
-    async fn list_prompts(&self) -> anyhow::Result<Vec<PromptDefinition>>;
-    async fn get_prompt(
+    fn initialize(&self) -> impl Future<Output = anyhow::Result<()>> + Send;
+    fn list_resources(&self) -> impl Future<Output = anyhow::Result<Vec<ResourceDefinition>>> + Send;
+    fn read_resource(&self, _uri: &str) -> impl Future<Output = anyhow::Result<String>> + Send;
+    fn list_prompts(&self) -> impl Future<Output = anyhow::Result<Vec<PromptDefinition>>> + Send;
+    fn get_prompt(
         &self,
         _name: &str,
         _arguments: serde_json::Value,
-    ) -> anyhow::Result<Vec<PromptMessage>>;
+    ) -> impl Future<Output = anyhow::Result<Vec<PromptMessage>>> + Send;
 }
 
 #[derive(Clone, Debug)]

@@ -65,7 +65,7 @@ impl BackgroundIndexer {
     }
 
     /// Starts the background indexing loop.
-    pub fn start<F>(&mut self, index_fn: F)
+    pub fn start<F>(&mut self, _index_fn: F)
     where
         F: Fn(DocChange) -> tokio::task::JoinHandle<()> + Send + 'static,
     {

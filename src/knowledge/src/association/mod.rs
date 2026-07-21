@@ -59,7 +59,7 @@ impl Weight {
             Weight::Strong => 0.9,
             Weight::Moderate => 0.6,
             Weight::Weak => 0.3,
-            Weight::Numeric(w) => w.min(1.0).max(0.0),
+            Weight::Numeric(w) => w.clamp(0.0, 1.0),
         }
     }
 }

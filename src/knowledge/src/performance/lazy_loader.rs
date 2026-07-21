@@ -32,10 +32,7 @@ pub struct PackData {
 impl LazyPackLoader {
     /// Creates a new lazy pack loader.
     pub fn new() -> Self {
-        Self {
-            packs: Arc::new(Mutex::new(HashMap::new())),
-            loaded: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Self::default()
     }
 
     /// Registers a pack directory for lazy loading.
@@ -168,6 +165,15 @@ impl LazyPackLoader {
         let packs = self.packs.lock().await;
         let loaded = self.loaded.lock().await;
         packs.keys().filter(|k| !loaded.contains_key(*k)).count()
+    }
+}
+
+impl Default for LazyPackLoader {
+    fn default() -> Self {
+        Self {
+            packs: Arc::new(Mutex::new(HashMap::new())),
+            loaded: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 }
 

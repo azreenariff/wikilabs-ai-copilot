@@ -65,6 +65,7 @@ impl IncrementalEmbedder {
     }
 
     /// Compute content hash for a document.
+    #[allow(clippy::unused_self)]
     pub fn compute_content_hash(&self, text: &str) -> String {
         (self.content_hasher)(text)
     }
@@ -117,7 +118,10 @@ impl IncrementalEmbedder {
         let mut state = self.state.lock().await;
         let mut output = Vec::new();
 
-        for ((doc_id, _, hash), result) in to_embed.into_iter().zip(results.into_iter()) {
+        for (
+            (doc_id, _text, hash),
+            result,
+        ) in to_embed.into_iter().zip(results.into_iter()) {
             state.embedded_hashes.insert(doc_id.clone(), hash);
             output.push((doc_id, result));
         }

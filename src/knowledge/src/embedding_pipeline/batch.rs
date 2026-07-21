@@ -34,7 +34,6 @@ impl BatchEmbedder {
         let mut results = Vec::new();
         let mut successful = 0;
         let mut failed = 0;
-        let mut skipped = 0;
 
         // Filter out chunks that already have a vector_id (not empty).
         let pending: Vec<&KnowledgeChunk> =
@@ -42,7 +41,7 @@ impl BatchEmbedder {
         let texts: Vec<String> = pending.iter().map(|c| c.content.clone()).collect();
 
         let total_pending = texts.len();
-        skipped = chunks.len().saturating_sub(total_pending);
+        let skipped = chunks.len().saturating_sub(total_pending);
 
         if total_pending == 0 {
             info!("All chunks already have embeddings, skipping");

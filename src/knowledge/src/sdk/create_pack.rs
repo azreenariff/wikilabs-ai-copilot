@@ -109,7 +109,7 @@ fn generate_file_content(template_name: &str, path: &str) -> String {
                 .trim_end_matches(".md");
             format!(
                 "# {}\n\n## Introduction\n\nThis document is part of the {} knowledge pack.\n\n## Content\n\nReplace this placeholder with your actual knowledge content.\n\n## References\n\nAdd references and links to external resources here.\n",
-                doc_name.replace('-', " ").replace('_', " "),
+                doc_name.replace(['-', '_'], " "),
                 template_name
             )
         }

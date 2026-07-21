@@ -1,7 +1,7 @@
 //! SDK-level validation tool for knowledge packs.
 //!
 /// Validates that a knowledge pack directory has the correct structure.
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::fs;
 use std::path::Path;
 use tracing::debug;
@@ -109,11 +109,9 @@ pub fn validate_pack(pack_path: &str) -> Result<ValidationResult> {
         fs::read_dir(&documents_dir)
             .map(|mut entries| {
                 let mut count = 0;
-                for entry in entries.by_ref() {
-                    if let Ok(e) = entry {
-                        if e.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                            count += 1;
-                        }
+                for e in entries.by_ref().flatten() {
+                    if e.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                        count += 1;
                     }
                 }
                 count

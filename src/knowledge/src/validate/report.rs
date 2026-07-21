@@ -9,7 +9,7 @@ use crate::validate::manifest::validate_manifest;
 use crate::validate::metadata::validate_metadata;
 use crate::validate::schema_version::validate_schema_version;
 use crate::validate::version_compat::validate_version_compat;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use tracing::debug;
 
 /// Overall validation status of a knowledge pack.

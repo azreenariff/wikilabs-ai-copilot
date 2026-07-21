@@ -15,7 +15,7 @@ pub struct DocxProvider;
 
 impl DocxProvider {
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 }
 

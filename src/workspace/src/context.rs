@@ -47,9 +47,7 @@ pub struct ContextManager {
 
 impl ContextManager {
     pub fn new() -> Self {
-        Self {
-            contexts: std::collections::HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn get_or_build_context(
@@ -75,6 +73,14 @@ impl ContextManager {
 
     pub fn remove_context(&mut self, workspace_id: &uuid::Uuid) {
         self.contexts.remove(workspace_id);
+    }
+}
+
+impl Default for ContextManager {
+    fn default() -> Self {
+        Self {
+            contexts: std::collections::HashMap::new(),
+        }
     }
 }
 
