@@ -440,7 +440,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_log::Builder::new().build())
         .manage(settings)
-        .setup(|app| {
+        .setup(move |app| {
             let state_setup_start = Instant::now();
             let state = AppState::new(app.handle().clone())?;
             let state_time = state_setup_start.elapsed();

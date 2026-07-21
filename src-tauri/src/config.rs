@@ -762,6 +762,8 @@ impl AppSettingsStore {
                 .backup_dir
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string()),
+            performance_metrics: serde_json::json!({}),
+            performance_summary: "N/A".to_string(),
         }
     }
 
