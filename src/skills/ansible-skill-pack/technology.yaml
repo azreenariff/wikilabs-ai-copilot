@@ -1,0 +1,85 @@
+domain: Ansible / Infrastructure Automation
+version: 1.0.0
+description: >
+  Red Hat Ansible Automation Platform and Ansible Core — infrastructure
+  automation, configuration management, application deployment, and orchestration.
+  Covers control node architecture, managed nodes, playbooks, roles, modules,
+  inventory, Vault, Galaxy collections, and the automation controller (AAP/AWX).
+features:
+  - name: Control Node
+    description: The machine that runs Ansible. Requires Python 3.8+, Ansible Core installed, SSH access to managed nodes, and inventory configuration.
+    related_commands:
+      - ansible --version
+      - ansible --syntax-check playbook.yaml
+      - ansible-playbook --check --diff playbook.yaml
+  - name: Managed Nodes
+    description: Target hosts that Ansible manages. Must be reachable via SSH (Linux) or WinRM (Windows), with Python 3.8+ (or PyPy 3.9+) installed for most modules.
+    related_commands:
+      - ansible all -m ping
+      - ansible all -m setup
+      - ansible-inventory --list
+  - name: Playbooks
+    description: YAML files defining automation tasks in a structured, reusable format. Each playbook contains one or more plays that map hosts to tasks.
+    related_commands:
+      - ansible-playbook playbook.yaml
+      - ansible-playbook --syntax-check playbook.yaml
+      - ansible-playbook --check --diff playbook.yaml
+  - name: Roles
+    description: Structured directory layout for reusable playbook components — tasks, handlers, variables, templates, files, defaults, and meta.
+    related_commands:
+      - ansible-galaxy init role_name
+      - ansible-playbook --list-tasks playbook.yaml
+      - ansible-playbook playbook.yaml --list-tags
+  - name: Tasks
+    description: Individual units of work within a play — invoking modules, conditionally executing code, handling failures, and notifying handlers.
+    related_commands:
+      - ansible-playbook playbook.yaml --start-at-task="Install Packages"
+      - ansible-playbook playbook.yaml --step
+      - ansible-playbook playbook.yaml --list-tasks
+  - name: Modules
+    description: Reusable units of automation code — package, service, file, copy, template, command, shell, yum, apt, docker, kubernetes.core.k8s, and thousands more.
+    related_commands:
+      - ansible-doc module_name
+      - ansible all -m ping
+      - ansible-doc -l | grep "package"
+  - name: Inventory
+    description: Host and group definitions that determine where playbooks run. Supports static INI/YAML/JSON files and dynamic inventory scripts/plugins (AWS, GCP, Azure, VMWare, Ansible Automation Platform).
+    related_commands:
+      - ansible-inventory --list
+      - ansible-inventory --graph
+      - ansible-inventory -i inventory.yaml --list
+  - name: Ansible Automation Platform (AAP) / AWX
+    description: Red Hat's enterprise automation platform (AAP) and its upstream project (AWX) — provides web UI, job scheduling, credential management, RBAC, audit logs, and API access.
+    related_commands:
+      - ansible --version
+      - aap-cli job list
+      - aap-cli inventory list
+  - name: Vault
+    description: Ansible's encryption subsystem for sensitive data — encrypts individual files, directory contents, and variables within playbooks.
+    related_commands:
+      - ansible-vault encrypt playbook.yaml
+      - ansible-vault decrypt playbook.yaml
+      - ansible-vault view playbook.yaml
+      - ansible-vault create secret.yaml
+  - name: Galaxy
+    description: Ansible's community collection registry. Install, publish, and manage reusable content — collections, roles, and CI tools.
+    related_commands:
+      - ansible-galaxy collection install namespace.collection
+      - ansible-galaxy role install author.role
+      - ansible-galaxy collection list
+      - ansible-galaxy collection build
+  - name: Ansible Engine
+    description: The core automation engine powering Ansible Core. Executes playbooks, manages idempotency, connects to nodes via SSH, and enforces configuration via ansible.cfg.
+    related_commands:
+      - ansible-config dump
+      - ansible-config dump --only-changed
+      - ansible --version
+related_domains:
+  - Infrastructure Automation
+  - Configuration Management
+  - DevOps
+  - Cloud Automation
+  - Security & Compliance
+  - Orchestration
+  - IT Operations
+documentation_url: https://docs.wikilabs.ai/technology/ansible

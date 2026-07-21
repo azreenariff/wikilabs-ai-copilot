@@ -1,0 +1,472 @@
+- id: nagios-detect-browser-url
+  name: Nagios XI Browser URL Detection
+  description: Detect Nagios XI web console or CGI URLs in browser navigation
+  detection_type: Browser
+  pattern: 'nagiosxi|nagiosxi/nagios|nagiosxi/admin|nagios|nagios/cgi-bin'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-browser-url-admin
+  name: Nagios XI Admin Panel Detection
+  description: Detect Nagios XI admin configuration pages
+  detection_type: Browser
+  pattern: 'nagiosxi/admin/includes/components/|nagiosxi/admin/configure/'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-browser-cgi
+  name: Nagios XI CGI Pages Detection
+  description: Detect Nagios CGI status/report pages
+  detection_type: Browser
+  pattern: 'nagios/cgi-bin/|showstatus|showhost|showservice|showdowntime|showowntime'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-window-title
+  name: Nagios XI Window Title Detection
+  description: Detect Nagios XI window titles in browser
+  detection_type: WindowTitle
+  pattern: 'Nagios XI|Nagios|Nagios XI Dashboard'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-window-title-xi
+  name: Nagios XI Specific Window Title Detection
+  description: Detect Nagios XI-specific window titles
+  detection_type: WindowTitle
+  pattern: 'Nagios XI - Dashboard|Nagios XI - Service Detail|Nagios XI - Host Detail'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-cli-check-nrpe
+  name: NRPE Check Command Detection
+  description: Detect check_nrpe CLI usage in terminal
+  detection_type: Command
+  pattern: 'check_nrpe\s+(-H|--host)\s+\S+'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: 'check_nrpe\s+.*?-H\s+(\S+)'
+
+- id: nagios-detect-cli-nagios
+  name: Nagios CLI Command Detection
+  description: Detect Nagios Core CLI commands
+  detection_type: Command
+  pattern: '(sudo\s+)?(systemctl\s+(status|restart|stop|start)\s+nagios|/usr/local/nagios/bin/nagios|nagios\s+-v\s+/usr/local/nagios/etc/nagios\.cfg)'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-cli-ndo2db
+  name: NDOUtils NDO2DB Detection
+  description: Detect NDOUtils ndo2db process management commands
+  detection_type: Command
+  pattern: '(systemctl\s+(status|restart|stop|start)\s+ndo2db|ndo2db\s+-h|--help)'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-cli-service
+  name: Nagios Service Management Detection
+  description: Detect service command for Nagios systemd service
+  detection_type: Command
+  pattern: 'service\s+nagios\s+(status|restart|stop|start|reload)'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-cli-check-snmp
+  name: SNMP Check Command Detection
+  description: Detect check_snmp CLI usage for SNMP monitoring
+  detection_type: Command
+  pattern: 'check_snmp\s+-H\s+\S+\s+-C\s+\S+'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: 'check_snmp\s+.*?-H\s+(\S+)'
+
+- id: nagios-detect-cli-check-ncpa
+  name: NCPA Check Command Detection
+  description: Detect check_ncpa.py CLI usage for NCPA agent monitoring
+  detection_type: Command
+  pattern: 'check_ncpa\.py\s+-H\s+\S+\s+-t\s+\S+'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: 'check_ncpa\.py\s+.*?-H\s+(\S+)'
+
+- id: nagios-detect-cli-show-status
+  name: Nagios CGI Status Detection
+  description: Detect Nagios CGI show commands
+  detection_type: Command
+  pattern: '(show-service-status|show-host-status|show-hostgroup|show-servicegroup|showdowntime|showreport)'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagios-detect-cli-nagios-log
+  name: Nagios Log Server Detection
+  description: Detect Nagios Log Server CLI usage
+  detection_type: Command
+  pattern: '(nagioslog|nagios-log-server|nagios_log_server)'
+  confidence: 0.85
+  technology_domain: Nagios XI
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: nagios-detect-process-nagios
+  name: Nagios Process Detection
+  description: Detect Nagios Core process in process listings
+  detection_type: Process
+  pattern: '(?<!\w)nagios(?!\w)'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-process-ndo2db
+  name: NDOUtils NDO2DB Process Detection
+  description: Detect ndo2db process in process listings
+  detection_type: Process
+  pattern: '(?<!\w)ndo2db(?!\w)'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-process-nrpe
+  name: NRPE Process Detection
+  description: Detect NRPE process in process listings
+  detection_type: Process
+  pattern: '(?<!\w)nrpe(?!\w)'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-process-ncpa
+  name: NCPA Process Detection
+  description: Detect NCPA listener process in process listings
+  detection_type: Process
+  pattern: '(?<!\w)ncpa_?(listener|agent)(?!\w)'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-nagios-log
+  name: Nagios Log File Detection
+  description: Detect references to Nagios core log file
+  detection_type: File
+  pattern: '/usr/local/nagios/var/nagios\.log|/var/log/nagios/nagios\.log'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-status
+  name: Nagios Status Log Detection
+  description: Detect references to Nagios status data files
+  detection_type: File
+  pattern: '/usr/local/nagios/var/(status\.dat|rw/nagios\.cmd|hoststate\.dat|servicestate\.dat)'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-crITICAL
+  name: Nagios CRITICAL State Detection
+  description: Detect CRITICAL service or host state in Nagios logs or output
+  detection_type: TextPattern
+  pattern: '\bCRITICAL\b|state: CRITICAL|CRITICAL.*-|SERVICE.*CRITICAL|HOST.*CRITICAL'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-WARNING
+  name: Nagios WARNING State Detection
+  description: Detect WARNING service or host state in Nagios logs or output
+  detection_type: TextPattern
+  pattern: '\bWARNING\b|state: WARNING|WARNING.*-|SERVICE.*WARNING|HOST.*WARNING'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-UNKNOWN
+  name: Nagios UNKNOWN State Detection
+  description: Detect UNKNOWN service or host state in Nagios logs or output
+  detection_type: TextPattern
+  pattern: '\bUNKNOWN\b|state: UNKNOWN|UNKNOWN.*-|SERVICE.*UNKNOWN|HOST.*UNKNOWN'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-UNREACHABLE
+  name: Nagios Host Unreachable Detection
+  description: Detect host unreachable state in Nagios logs or output
+  detection_type: TextPattern
+  pattern: '\bUNREACHABLE\b|HOST UNREACHABLE|host is unreachable|host_down'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-DOWNTIME
+  name: Nagios Downtime Detection
+  description: Detect downtime entries in Nagios logs
+  detection_type: TextPattern
+  pattern: 'DOWNTIME|scheduled_downtime|downtime_added|downtime_removed|flex_downtime'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-FLAPPING
+  name: Nagios Flapping Detection
+  description: Detect flapping events in Nagios logs
+  detection_type: TextPattern
+  pattern: '\bFLAPPING\b|flapping_detected|flapping_disabled|host_flapping|service_flapping'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-config-nagios-cfg
+  name: Nagios Configuration File Detection
+  description: Detect references to Nagios main configuration file
+  detection_type: File
+  pattern: '/usr/local/nagios/etc/nagios\.cfg|nagios\.cfg'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagios-detect-config-hosts
+  name: Nagios Host Config Detection
+  description: Detect references to Nagios host configuration files
+  detection_type: File
+  pattern: '/usr/local/nagios/etc/hosts\.cfg|hosts\.cfg'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-config-services
+  name: Nagios Service Config Detection
+  description: Detect references to Nagios service configuration files
+  detection_type: File
+  pattern: '/usr/local/nagios/etc/services\.cfg|services\.cfg'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-config-commands
+  name: Nagios Command Config Detection
+  description: Detect references to Nagios command configuration files
+  detection_type: File
+  pattern: '/usr/local/nagios/etc/commands\.cfg|commands\.cfg'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagios-detect-config-nrpe-cfg
+  name: NRPE Config Detection
+  description: Detect references to NRPE configuration files
+  detection_type: File
+  pattern: '/usr/local/nagios/etc/nrpe\.cfg|/etc/nagios/nrpe\.cfg|nrpe\.cfg'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-config-ndo2db-cfg
+  name: NDO2DB Config Detection
+  description: Detect references to NDO2DB configuration files
+  detection_type: File
+  pattern: '/usr/local/nagios/etc/ndo2db\.cfg|/usr/local/nagios/etc/ndo2cfg\.cfg|ndo2db\.cfg'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-notification
+  name: Nagios Notification Log Detection
+  description: Detect notification-related log entries
+  detection_type: TextPattern
+  pattern: '\bNOTIFICATION\b|notification_sent|contact_notified|host_notification|service_notification'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-check-result
+  name: Nagios Check Result Detection
+  description: Detect check result processing entries in logs
+  detection_type: TextPattern
+  pattern: 'check_result|process_check_result|service_check_result|host_check_result|check_execution'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagios-detect-log-ndoutils
+  name: NDOUtils Log Detection
+  description: Detect NDOUtils-related log entries
+  detection_type: TextPattern
+  pattern: '\bNDOUtils\b|ndo2db|ndo2db.log|database.*import|ndo.*mysql'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-snmp-community
+  name: SNMP Community String Detection
+  description: Detect SNMP community string usage
+  detection_type: TextPattern
+  pattern: '-C\s+\S+\s+-o\s+\S+|check_snmp.*?-C\s+\S+|community.*?\w{2,}'
+  confidence: 0.8
+  technology_domain: Nagios XI
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: nagios-detect-ncpa-token
+  name: NCPA Token Detection
+  description: Detect NCPA authentication token usage
+  detection_type: TextPattern
+  pattern: 'check_ncpa.*?-t\s+\S+|ncpa.*?token.*?\w{6,}'
+  confidence: 0.8
+  technology_domain: Nagios XI
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: nagios-detect-flapping-active
+  name: Active Flapping Detection
+  description: Detect services or hosts currently in flapping state
+  detection_type: TextPattern
+  pattern: 'is_flapping|flapping_status: on|flapping: true|flapping_detected: true'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-passive-check
+  name: Passive Check Detection
+  description: Detect passive check processing in Nagios
+  detection_type: TextPattern
+  pattern: 'passive_check|passive.*?result|PASSIVE.*?CHECK|process_passive_check'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagios-detect-external-command
+  name: External Command Detection
+  description: Detect Nagios external command processing
+  detection_type: TextPattern
+  pattern: '/usr/local/nagios/var/rw/nagios\.cmd|external_command|PROCESS_SERVICE_CHECK_RESULT|PROCESS_HOST_CHECK_RESULT'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagios-detect-performance-data
+  name: Performance Data Detection
+  description: Detect Nagios performance data in check output
+  detection_type: TextPattern
+  pattern: '\|\s*\w+=\d+'
+  confidence: 0.85
+  technology_domain: Nagios XI
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: nagios-detect-nagiosxi-database
+  name: Nagios XI Database Detection
+  description: Detect Nagios XI MySQL/MariaDB database references
+  detection_type: TextPattern
+  pattern: 'nagiosxi.*?database|mysql.*?nagiosxi|ndo2db.*?mysql|mariadb.*?nagios'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagios-detect-pnp4nagios
+  name: PNP4Nagios Detection
+  description: Detect PNP4Nagios performance data files and configuration
+  detection_type: File
+  pattern: '/usr/local/nagios/share/perfdata/|pnp4nagios|PNP4Nagios'
+  confidence: 0.9
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagios-detect-config-contacts
+  name: Nagios Contact Config Detection
+  description: Detect references to Nagios contact configuration
+  detection_type: File
+  pattern: 'contacts\.cfg|contact_groups\.cfg|timeperiods\.cfg'
+  confidence: 0.95
+  technology_domain: Nagios XI
+  priority: 8
+  flags: ''
+  extract: null

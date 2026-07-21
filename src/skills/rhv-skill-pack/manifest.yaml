@@ -1,0 +1,90 @@
+id: rhv-engineering-skill-pack
+name: Red Hat Virtualization Engineering
+version: 1.0.0
+description: >
+  Comprehensive Red Hat Virtualization (RHV) engineering skill for Engine
+  management, host administration, VM troubleshooting, cluster operations,
+  storage domains, networking, and high availability. Covers RHV 4.4, 4.5, 4.6.
+author: Wiki Labs Team
+technology_domain: Red Hat Virtualization
+vendor: Wiki Labs
+category: Engineering
+platform:
+  name: Red Hat Virtualization
+  codename: rhev
+  supported_versions:
+    - "4.4"
+    - "4.5"
+    - "4.6"
+  hypervisor: KVM/QEMU
+  management: RHV Manager (Engine)
+components:
+  - name: Engine (ovirt-engine)
+    role: Central management server
+    services:
+      - ovirt-engine
+      - ovirt-engine-websocket-proxy
+      - postgresql
+    logs: /var/log/ovirt-engine/
+  - name: Host (vdsm)
+    role: KVM hypervisor host
+    services:
+      - vdsm
+      - libvirtd
+      - virtlogd
+    logs: /var/log/vdsm/
+  - name: Hosted Engine
+    role: RHV Manager VM
+    services:
+      - ovirt-hosted-engine-ha
+    logs: /var/log/hosted-engine/
+storage_types:
+  - name: ISO Domain
+    purpose: ISO images for OS installation
+    backends: [NFS, FC, iSCSI]
+  - name: Data Domain
+    purpose: VM disk images
+    backends: [Gluster, NFS, FC, iSCSI, POSIX]
+  - name: Export Domain
+    purpose: VM template/export storage
+    backends: [NFS, FC, iSCSI]
+  - name: Backup Domain
+    purpose: Backup target storage
+    backends: [NFS]
+networking:
+  types:
+    - Virtual Network (isolated)
+    - Trusted Network (physical)
+  features:
+    - VLAN tagging
+    - Bonded interfaces (NIC teaming)
+    - SR-IOV (PCI passthrough)
+    - OVS (Open vSwitch)
+ha:
+  host_ha:
+    modes:
+      - Non-Responsive: VM restarts on unresponsive host
+      - Down: VM restarts on powered-off host
+      - Manual: No automatic restart
+  engine_ha:
+    mode: Hosted Engine
+    description: RHV Manager runs as VM with automatic failover
+detection_rules: detection/reference.md
+workflows: RHV_WORKFLOWS.md
+commands: RHV_COMMAND_REFERENCE.md
+guidance: RHV_GUIDANCE.md
+tests: tests/reference.md
+enabled: true
+schema_version: 1.0
+tags:
+  - rhv
+  - red-hat-virtualization
+  - rhevm
+  - ovirt
+  - kvm
+  - virtualization
+  - hosted-engine
+  - gluster
+  - vdsm
+  - virtio
+  - spice

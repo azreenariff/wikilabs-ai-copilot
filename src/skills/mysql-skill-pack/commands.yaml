@@ -1,0 +1,1469 @@
+- id: mysql-connect
+  name: mysql (connect to server)
+  description: Connect to MySQL server using the command-line client
+  syntax: mysql [-h host] [-P port] [-u user] [-p] [database]
+  category: connection
+  risk: Low
+  example: mysql -h 10.0.0.10 -P 3306 -u app_user -p production_db
+  note: '-p prompts for password; use --defaults-extra-file for non-interactive scripts'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysql.html
+
+- id: mysql-version
+  name: mysql --version
+  description: Display MySQL client version information
+  syntax: mysql --version
+  category: connection
+  risk: Low
+  example: mysql --version
+  note: 'Shows client version, not server version. Use SELECT VERSION() for server version.'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysql.html
+
+- id: mysql-database
+  name: mysql --database
+  description: Connect directly to a specific database
+  syntax: mysql [-h host] [-u user] [-p] database
+  category: connection
+  risk: Low
+  example: mysql -h dbhost -u root -p mydb
+  note: 'Shortcut for -D database'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysql.html
+
+- id: mysql-tee
+  name: mysql --tee
+  description: Enable query logging to a file
+  syntax: mysql --tee=<file> [-h host] [-u user] database
+  category: connection
+  risk: Low
+  example: mysql --tee=/tmp/queries.log -h dbhost -u root mydb
+  note: 'All queries and results are appended to the file; use -o for overwrite'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysql.html
+
+- id: mysql-source
+  name: source (execute SQL file)
+  description: Execute an SQL script file within the mysql client
+  syntax: source <filename> | \. <filename>
+  category: connection
+  risk: Medium
+  example: source /tmp/schema_migration.sql
+  note: 'Runs within the current database session; ensure correct database is selected'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysql.html
+
+- id: mysql-show-databases
+  name: SHOW DATABASES
+  description: List all databases accessible to the current user
+  syntax: SHOW DATABASES;
+  category: schema-management
+  risk: Low
+  example: SHOW DATABASES;
+  note: 'Shows databases the user has privileges to see'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-databases.html
+
+- id: mysql-use-db
+  name: USE database
+  description: Set the default database for the current session
+  syntax: USE database_name;
+  category: schema-management
+  risk: Low
+  example: USE production_db;
+  note: 'All subsequent queries use this database as default schema'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/use.html
+
+- id: mysql-show-tables
+  name: SHOW TABLES
+  description: List tables in the current database
+  syntax: SHOW TABLES [FROM db_name] [LIKE 'pattern'];
+  category: schema-management
+  risk: Low
+  example: SHOW TABLES LIKE 'user%';
+  note: 'Use SHOW FULL TABLES to also show views'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-tables.html
+
+- id: mysql-describe
+  name: DESCRIBE / DESC
+  description: Show table structure including columns, types, keys
+  syntax: DESCRIBE table_name; | DESC table_name;
+  category: schema-management
+  risk: Low
+  example: DESC users;
+  note: 'Equivalent to SHOW COLUMNS FROM table_name'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/desc.html
+
+- id: mysql-show-create-table
+  name: SHOW CREATE TABLE
+  description: Show the CREATE TABLE statement for an existing table
+  syntax: SHOW CREATE TABLE table_name;
+  category: schema-management
+  risk: Low
+  example: SHOW CREATE TABLE users\G
+  note: 'The \G format prints vertically for better readability of large CREATE statements'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-create-table.html
+
+- id: mysql-show-indices
+  name: SHOW INDEX
+  description: Show index information for a table
+  syntax: SHOW INDEX FROM table_name;
+  category: schema-management
+  risk: Low
+  example: SHOW INDEX FROM orders;
+  note: 'Shows cardinality, non_unique, key_name, and column sequences'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-indexes.html
+
+- id: mysql-show-charset
+  name: SHOW CHARSET / SHOW CHARACTER SET
+  description: Show available character sets
+  syntax: SHOW CHARACTER SET;
+  category: schema-management
+  risk: Low
+  example: SHOW CHARACTER SET LIKE 'utf8%';
+  note: 'utf8mb4 is recommended for full Unicode support including emojis'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/charset.html
+
+- id: mysql-show-collations
+  name: SHOW COLLATION
+  description: Show available collations
+  syntax: SHOW COLLATION [LIKE 'pattern'];
+  category: schema-management
+  risk: Low
+  example: SHOW COLLATION LIKE 'utf8mb4%';
+  note: 'utf8mb4_unicode_ci is a safe default for most applications'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/charset-collation.html
+
+- id: mysql-show-status
+  name: SHOW STATUS
+  description: Show server status variables
+  syntax: SHOW STATUS [GLOBAL | SESSION] [LIKE 'pattern'];
+  category: status
+  risk: Low
+  example: SHOW GLOBAL STATUS LIKE 'Connections';
+  note: 'GLOBAL shows cumulative counters; SESSION shows current session'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-status.html
+
+- id: mysql-show-variables
+  name: SHOW VARIABLES
+  description: Show server system variables
+  syntax: SHOW VARIABLES [GLOBAL | SESSION] [LIKE 'pattern'];
+  category: status
+  risk: Low
+  example: SHOW GLOBAL VARIABLES LIKE 'innodb_buffer_pool_size';
+  note: 'SESSION shows session-specific overrides; GLOBAL shows server-wide defaults'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-variables.html
+
+- id: mysql-show-processlist
+  name: SHOW PROCESSLIST
+  description: List active threads and queries
+  syntax: SHOW FULL PROCESSLIST;
+  category: status
+  risk: Low
+  example: SHOW FULL PROCESSLIST;
+  note: 'Use with LIMIT to focus on top queries; check State column for slow queries'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-processlist.html
+
+- id: mysql-show-engines
+  name: SHOW ENGINES
+  description: Show available storage engines and their status
+  syntax: SHOW ENGINES;
+  category: status
+  risk: Low
+  example: SHOW ENGINES\G
+  note: 'InnoDB should be DEFAULT and YES for Supports transactions'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-engines.html
+
+- id: mysql-show-grants
+  name: SHOW GRANTS
+  description: Show privileges for the current user or another user
+  syntax: SHOW GRANTS; | SHOW GRANTS FOR 'user'@'host';
+  category: security
+  risk: Low
+  example: SHOW GRANTS FOR CURRENT_USER();
+  note: 'Shows all privileges including those inherited through roles'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-grants.html
+
+- id: mysql-show-slave-status
+  name: SHOW SLAVE STATUS / SHOW REPLICA STATUS
+  description: Show replication status of a replica server
+  syntax: SHOW REPLICA STATUS\G
+  category: replication
+  risk: Low
+  example: SHOW REPLICA STATUS\G
+  note: 'SHOW REPLICA STATUS is the 8.0+ replacement for SHOW SLAVE STATUS'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
+
+- id: mysql-show-binary-logs
+  name: SHOW BINARY LOGS
+  description: List all binary log files on the server
+  syntax: SHOW BINARY LOGS;
+  category: backup
+  risk: Low
+  example: SHOW BINARY LOGS;
+  note: 'Used for determining binary log rotation points'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-binary-logs.html
+
+- id: mysql-show-binlog-events
+  name: SHOW BINLOG EVENTS
+  description: Show events in a binary log file
+  syntax: SHOW BINLOG EVENTS IN '<binlog_file>' [LIMIT [offset,] count];
+  category: backup
+  risk: Low
+  example: SHOW BINLOG EVENTS IN 'mysql-bin.000010';
+  note: 'Useful for auditing what happened in a specific binary log'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-binlog-events.html
+
+- id: mysql-show-create-db
+  name: SHOW CREATE DATABASE
+  description: Show the CREATE DATABASE statement
+  syntax: SHOW CREATE DATABASE database_name;
+  category: schema-management
+  risk: Low
+  example: SHOW CREATE DATABASE production_db\G
+  note: 'Shows charset and collation settings for the database'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-create-db.html
+
+- id: mysql-show-global-status
+  name: SHOW GLOBAL STATUS
+  description: Show all global status variables
+  syntax: SHOW GLOBAL STATUS;
+  category: status
+  risk: Low
+  example: SHOW GLOBAL STATUS LIKE 'Innodb_%';
+  note: 'Use LIKE to filter for specific subsystems'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-status.html
+
+- id: mysql-show-global-variables
+  name: SHOW GLOBAL VARIABLES
+  description: Show all global system variables
+  syntax: SHOW GLOBAL VARIABLES;
+  category: status
+  risk: Low
+  example: SHOW GLOBAL VARIABLES LIKE 'innodb_%';
+  note: 'Used for configuration audits and optimization'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-variables.html
+
+- id: mysql-show-open-tables
+  name: SHOW OPEN TABLES
+  description: Show tables currently open in the table cache
+  syntax: SHOW OPEN TABLES [FROM db_name] [LIKE 'pattern'];
+  category: status
+  risk: Low
+  example: SHOW OPEN TABLES WHERE In_use > 0;
+  note: 'Helps diagnose table lock contention'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-open-tables.html
+
+- id: mysql-show-table-status
+  name: SHOW TABLE STATUS
+  description: Show status information for tables in the current database
+  syntax: SHOW TABLE STATUS [FROM db_name] [LIKE 'pattern'];
+  category: status
+  risk: Low
+  example: SHOW TABLE STATUS LIKE 'orders%';
+  note: 'Shows Row_format, Row_count, Data_length, Index_length, and Engine'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-table-status.html
+
+- id: mysql-show-warnings
+  name: SHOW WARNINGS
+  description: Show warnings for the most recent statement
+  syntax: SHOW WARNINGS [LIMIT [offset,] count];
+  category: status
+  risk: Low
+  example: SHOW WARNINGS;
+  note: 'Run immediately after the statement that may have generated warnings'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-warnings.html
+
+- id: mysql-show-errors
+  name: SHOW ERRORS
+  description: Show errors for the most recent statement
+  syntax: SHOW ERRORS [LIMIT [offset,] count];
+  category: status
+  risk: Low
+  example: SHOW ERRORS;
+  note: 'Only shows errors, not warnings. Run after the statement.'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-errors.html
+
+- id: mysql-show-create-view
+  name: SHOW CREATE VIEW
+  description: Show the CREATE VIEW statement for a view
+  syntax: SHOW CREATE VIEW view_name;
+  category: schema-management
+  risk: Low
+  example: SHOW CREATE VIEW active_users\G
+  note: 'Shows view definition and algorithm information'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-create-view.html
+
+- id: mysql-show-create-procedure
+  name: SHOW CREATE PROCEDURE
+  description: Show the CREATE statement for a stored procedure or function
+  syntax: SHOW CREATE PROCEDURE proc_name;
+  category: schema-management
+  risk: Low
+  example: SHOW CREATE PROCEDURE sp_update_order\G
+  note: 'Shows the full definition including definer, security type, and parameters'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-create-procedure.html
+
+- id: mysql-show-create-trigger
+  name: SHOW CREATE TRIGGER
+  description: Show the CREATE TRIGGER statement for a trigger
+  syntax: SHOW CREATE TRIGGER trigger_name;
+  category: schema-management
+  risk: Low
+  example: SHOW CREATE TRIGGER trg_order_insert\G
+  note: 'Shows trigger timing, event, and definition'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-create-trigger.html
+
+- id: mysql-show-duplicate-keys
+  name: SHOW COUNT(*) DUPLICATE KEYS
+  description: Count rows with duplicate values in a table
+  syntax: SELECT id, COUNT(*) as cnt FROM table GROUP BY id HAVING cnt > 1;
+  category: schema-management
+  risk: Low
+  example: SELECT email, COUNT(*) FROM users GROUP BY email HAVING COUNT(*) > 1;
+  note: 'Useful for finding duplicates before adding UNIQUE constraints'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/group-by-functions.html
+
+- id: mysql-show-tables-used
+  name: INFORMATION_SCHEMA.TABLES
+  description: Query metadata about all tables
+  syntax: SELECT * FROM information_schema.TABLES [WHERE ...];
+  category: status
+  risk: Low
+  example: SELECT TABLE_NAME, ENGINE, TABLE_ROWS, DATA_LENGTH FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'production_db';
+  note: 'More flexible than SHOW TABLE STATUS for programmatic queries'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/information-schema-tables.html
+
+- id: mysql-show-indexes-info-schema
+  name: INFORMATION_SCHEMA.STATISTICS
+  description: Query detailed index information
+  syntax: SELECT * FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = 'db';
+  category: status
+  risk: Low
+  example: SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE, SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_NAME = 'orders';
+  note: 'Shows column ordering within composite indexes'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/information-schema-statistics.html
+
+- id: mysql-select
+  name: SELECT
+  description: Query data from one or more tables
+  syntax: SELECT columns FROM table [WHERE condition] [ORDER BY] [LIMIT];
+  category: query-execution
+  risk: Medium
+  example: SELECT id, name FROM users WHERE status = 'active' ORDER BY created_at DESC LIMIT 100;
+  note: 'Always use LIMIT in ad-hoc queries to avoid returning massive result sets'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/select.html
+
+- id: mysql-insert
+  name: INSERT
+  description: Insert new rows into a table
+  syntax: INSERT INTO table (cols) VALUES (vals);
+  category: query-execution
+  risk: Medium
+  example: INSERT INTO orders (customer_id, total, status) VALUES (1042, 99.99, 'pending');
+  note: 'Use ON DUPLICATE KEY UPDATE for upserts'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/insert.html
+
+- id: mysql-update
+  name: UPDATE
+  description: Modify existing rows in a table
+  syntax: UPDATE table SET col=val [WHERE condition];
+  category: query-execution
+  risk: High
+  example: UPDATE orders SET status='shipped' WHERE id=12345;
+  note: 'Always include WHERE clause; use LIMIT as a safety measure'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/update.html
+
+- id: mysql-delete
+  name: DELETE
+  description: Remove rows from a table
+  syntax: DELETE FROM table [WHERE condition] [LIMIT ...];
+  category: query-execution
+  risk: High
+  example: DELETE FROM audit_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
+  note: 'Use TRUNCATE for full table wipe; always include WHERE'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/delete.html
+
+- id: mysql-truncate
+  name: TRUNCATE TABLE
+  description: Remove all rows from a table (DDL)
+  syntax: TRUNCATE TABLE table_name;
+  category: query-execution
+  risk: High
+  example: TRUNCATE TABLE staging_data;
+  note: 'Much faster than DELETE; cannot use WHERE clause; resets auto-increment'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/truncate.html
+
+- id: mysql-alter-table-add
+  name: ALTER TABLE ADD COLUMN
+  description: Add a new column to an existing table
+  syntax: ALTER TABLE table ADD COLUMN col_name type;
+  category: schema-management
+  risk: High
+  example: ALTER TABLE users ADD COLUMN phone VARCHAR(20) AFTER email;
+  note: 'Use online DDL for MySQL 5.6+; test in staging first'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/alter-table.html
+
+- id: mysql-alter-table-drop
+  name: ALTER TABLE DROP COLUMN
+  description: Remove a column from an existing table
+  syntax: ALTER TABLE table DROP COLUMN col_name;
+  category: schema-management
+  risk: High
+  example: ALTER TABLE users DROP COLUMN temporary_field;
+  note: 'Verify application code no longer references the column before dropping'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/alter-table.html
+
+- id: mysql-alter-table-modify
+  name: ALTER TABLE MODIFY COLUMN
+  description: Modify a column type or attributes
+  syntax: ALTER TABLE table MODIFY COLUMN col_name new_type;
+  category: schema-management
+  risk: High
+  example: ALTER TABLE users MODIFY COLUMN email VARCHAR(255) NOT NULL;
+  note: 'Large type changes may cause full table rebuilds'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/alter-table.html
+
+- id: mysql-alter-table-add-index
+  name: ALTER TABLE ADD INDEX
+  description: Add an index to a table
+  syntax: ALTER TABLE table ADD INDEX name (columns);
+  category: schema-management
+  risk: Medium
+  example: ALTER TABLE orders ADD INDEX idx_customer (customer_id);
+  note: 'Consider concurrent DDL (INPLACE) for MySQL 5.6+'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/alter-table.html
+
+- id: mysql-alter-table-drop-index
+  name: ALTER TABLE DROP INDEX
+  description: Remove an index from a table
+  syntax: ALTER TABLE table DROP INDEX index_name;
+  category: schema-management
+  risk: Medium
+  example: ALTER TABLE orders DROP INDEX idx_customer;
+  note: 'Drop only indexes verified as unused via Performance Schema'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/alter-table.html
+
+- id: mysql-alter-table-add-constraint
+  name: ALTER TABLE ADD CONSTRAINT
+  description: Add a foreign key or other constraint
+  syntax: ALTER TABLE table ADD CONSTRAINT name FOREIGN KEY (col) REFERENCES ref_table(ref_col);
+  category: schema-management
+  risk: High
+  example: ALTER TABLE orders ADD CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(id);
+  note: 'Foreign keys add write overhead but maintain referential integrity'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/alter-table.html
+
+- id: mysql-create-database
+  name: CREATE DATABASE
+  description: Create a new database
+  syntax: CREATE DATABASE db_name [CHARACTER SET charset] [COLLATE collation];
+  category: schema-management
+  risk: Low
+  example: CREATE DATABASE prod_app CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  note: 'Use utf8mb4 for full Unicode; add IF NOT EXISTS for idempotency'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-database.html
+
+- id: mysql-drop-database
+  name: DROP DATABASE
+  description: Delete a database and all its tables
+  syntax: DROP DATABASE [IF EXISTS] db_name;
+  category: schema-management
+  risk: High
+  example: DROP DATABASE IF EXISTS staging_db;
+  note: 'Always backup before dropping; verify the database name carefully'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/drop-database.html
+
+- id: mysql-create-table
+  name: CREATE TABLE
+  description: Create a new table
+  syntax: CREATE TABLE name (columns, constraints, ENGINE, charset);
+  category: schema-management
+  risk: Medium
+  example: CREATE TABLE orders (id BIGINT AUTO_INCREMENT PRIMARY KEY, customer_id BIGINT NOT NULL, INDEX idx_cust (customer_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  note: 'Always specify ENGINE=InnoDB explicitly; set charset and collation'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-table.html
+
+- id: mysql-drop-table
+  name: DROP TABLE
+  description: Delete a table and all its data
+  syntax: DROP TABLE [IF EXISTS] table_name;
+  category: schema-management
+  risk: High
+  example: DROP TABLE IF EXISTS temporary_export;
+  note: 'Always double-check table name before dropping'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/drop-table.html
+
+- id: mysql-create-table-as
+  name: CREATE TABLE AS SELECT (CTAS)
+  description: Create a table from the result of a SELECT query
+  syntax: CREATE TABLE new_name AS SELECT ...;
+  category: schema-management
+  risk: Medium
+  example: CREATE TABLE active_customers AS SELECT * FROM customers WHERE status='active';
+  note: 'Copies data but not indexes, keys, or auto_increment settings'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-table.html
+
+- id: mysql-create-view
+  name: CREATE VIEW
+  description: Create a virtual table based on a SELECT query
+  syntax: CREATE [OR REPLACE] [ALGORITHM=MERGE] VIEW name AS SELECT ...;
+  category: schema-management
+  risk: Medium
+  example: CREATE VIEW v_active_users AS SELECT id, name FROM users WHERE status='active';
+  note: 'Views are virtual rows; no data is stored'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-view.html
+
+- id: mysql-drop-view
+  name: DROP VIEW
+  description: Remove a view definition
+  syntax: DROP VIEW [IF EXISTS] view_name;
+  category: schema-management
+  risk: Medium
+  example: DROP VIEW IF EXISTS v_old_report;
+  note: 'Check for dependent views before dropping'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/drop-view.html
+
+- id: mysql-explain
+  name: EXPLAIN
+  description: Show the execution plan for a SELECT statement
+  syntax: EXPLAIN SELECT ...;
+  category: performance
+  risk: Low
+  example: EXPLAIN SELECT * FROM orders WHERE customer_id = 100 AND status = 'pending'\G
+  note: 'Look for type=ALL (full scan), Extra=Using filesort, Using temporary'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/explain.html
+
+- id: mysql-explain-analyze
+  name: EXPLAIN ANALYZE
+  description: Show actual execution plan with runtime metrics
+  syntax: EXPLAIN ANALYZE SELECT ...;
+  category: performance
+  risk: Low
+  example: EXPLAIN ANALYZE SELECT o.id, c.name FROM orders o JOIN customers c ON o.customer_id=c.id;
+  note: 'MySQL 8.0.18+ provides actual row counts and timing'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/explain.html
+
+- id: mysql-analyze-table
+  name: ANALYZE TABLE
+  description: Update table and index statistics
+  syntax: ANALYZE TABLE table_name;
+  category: performance
+  risk: Low
+  example: ANALYZE TABLE orders;
+  note: 'Update optimizer statistics; run after large data loads'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/analyze-table.html
+
+- id: mysql-check-table
+  name: CHECK TABLE
+  description: Check a table for corruption
+  syntax: CHECK TABLE table_name [EXTENDED];
+  category: maintenance
+  risk: Low
+  example: CHECK TABLE orders EXTENDED;
+  note: 'Use for MyISAM primarily; InnoDB uses crash recovery'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/check-table.html
+
+- id: mysql-optimize-table
+  name: OPTIMIZE TABLE
+  description: Reclaim unused space and defragment a table
+  syntax: OPTIMIZE TABLE table_name;
+  category: maintenance
+  risk: Medium
+  example: OPTIMIZE TABLE orders;
+  note: 'InnoDB: rebuilds table and updates indexes'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/optimize-table.html
+
+- id: mysql-kill-process
+  name: KILL
+  description: Terminate a running thread/process
+  syntax: KILL process_id;
+  category: status
+  risk: High
+  example: KILL 12345;
+  note: 'Identify the correct process via SHOW FULL PROCESSLIST first'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/kill.html
+
+- id: mysql-ping
+  name: mysqladmin ping
+  description: Check if mysqld is alive
+  syntax: mysqladmin ping [-u user] [-p]
+  category: status
+  risk: Low
+  example: mysqladmin -u monitor -p ping
+  note: 'Returns "mysqld is alive" or exits with error'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/ping.html
+
+- id: mysqladmin-status
+  name: mysqladmin status
+  description: Show brief server status
+  syntax: mysqladmin status [-u user] [-p]
+  category: status
+  risk: Low
+  example: mysqladmin -u root -p status
+  note: 'Shows uptime, threads, queries, slow queries, open tables'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/status.html
+
+- id: mysqladmin-variables
+  name: mysqladmin variables
+  description: Display server system variables
+  syntax: mysqladmin variables [-u user] [-p]
+  category: status
+  risk: Low
+  example: mysqladmin -u root -p variables
+  note: 'Alternative to SHOW GLOBAL VARIABLES; good for scripting'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/variables.html
+
+- id: mysqladmin-processlist
+  name: mysqladmin processlist
+  description: Display server processes
+  syntax: mysqladmin processlist [-u user] [-p]
+  category: status
+  risk: Low
+  example: mysqladmin -u root -p processlist
+  note: 'Same as SHOW FULL PROCESSLIST; good for scripting'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/processlist.html
+
+- id: mysqladmin-shutdown
+  name: mysqladmin shutdown
+  description: Shut down the MySQL server gracefully
+  syntax: mysqladmin shutdown [-u user] [-p]
+  category: administration
+  risk: High
+  example: mysqladmin -u root -p shutdown
+  note: 'Requires SUPER or SHUTDOWN privilege; server must be stopped cleanly'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/shutdown.html
+
+- id: mysqladmin-flush-logs
+  name: mysqladmin flush-logs
+  description: Flush/rotate logs
+  syntax: mysqladmin flush-logs [-u user] [-p]
+  category: maintenance
+  risk: Low
+  example: mysqladmin -u root -p flush-logs
+  note: 'Rotates binary logs, error log, general log, and slow query log'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/flush.html
+
+- id: mysqladmin-ext-status
+  name: mysqladmin extended-status
+  description: Show extended status variables
+  syntax: mysqladmin extended-status [-u user] [-p]
+  category: status
+  risk: Low
+  example: mysqladmin -u root -p extended-status
+  note: 'Shows cumulative counters and rate information'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/extended-status.html
+
+- id: mysqladmin-kill
+  name: mysqladmin kill
+  description: Kill a client connection
+  syntax: mysqladmin kill process_id [-u user] [-p]
+  category: status
+  risk: High
+  example: mysqladmin -u root -p kill 12345
+  note: 'Equivalent to KILL command; good for scripts'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/kill.html
+
+- id: mysqladmin-flush-hosts
+  name: mysqladmin flush-hosts
+  description: Flush host cache
+  syntax: mysqladmin flush-hosts [-u user] [-p]
+  category: administration
+  risk: Low
+  example: mysqladmin -u root -p flush-hosts
+  note: 'Clears DNS cache for client connections'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/flush.html
+
+- id: mysqladmin-refresh
+  name: mysqladmin refresh
+  description: Flush all tables and reopen log files
+  syntax: mysqladmin refresh [-u user] [-p]
+  category: administration
+  risk: Low
+  example: mysqladmin -u root -p refresh
+  note: 'Equivalent to FLUSH TABLES with read lock'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/refresh.html
+
+- id: mysqladmin-version
+  name: mysqladmin version
+  description: Display MySQL server version and options
+  syntax: mysqladmin version [-u user] [-p]
+  category: status
+  risk: Low
+  example: mysqladmin -u root -p version
+  note: 'Shows server version, protocol version, and connection info'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/version.html
+
+- id: mysqladmin-debug
+  name: mysqladmin debug
+  description: Print debug information
+  syntax: mysqladmin debug [-u user] [-p]
+  category: diagnostics
+  risk: Low
+  example: mysqladmin -u root -p debug
+  note: 'Writes debug info to the error log'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/debug.html
+
+- id: mysql-admin-show-engine
+  name: SHOW ENGINE INNODB STATUS
+  description: Display detailed InnoDB internal status
+  syntax: SHOW ENGINE INNODB STATUS\G
+  category: diagnostics
+  risk: Low
+  example: SHOW ENGINE INNODB STATUS\G
+  note: 'Shows transactions, mutexes, buffer pool, insert buffer, log system, row operations'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-engine-innodb-status.html
+
+- id: mysql-admin-show-slave-hosts
+  name: SHOW SLAVE HOSTS
+  description: Show registered replicas in a group replication cluster
+  syntax: SHOW SLAVE HOSTS;
+  category: replication
+  risk: Low
+  example: SHOW SLAVE HOSTS;
+  note: 'Requires super_read_only=ON'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-slave-hosts.html
+
+- id: mysql-admin-show-binary-log-pos
+  name: SHOW MASTER STATUS / SHOW BINARY LOG STATUS
+  description: Show the current binary log file and position
+  syntax: SHOW MASTER STATUS;
+  category: replication
+  risk: Low
+  example: SHOW MASTER STATUS\G
+  note: 'Used for replication setup'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-master-status.html
+
+- id: mysql-admin-reset-slave
+  name: RESET SLAVE / RESET REPLICA
+  description: Reset replication parameters
+  syntax: RESET REPLICA ALL;
+  category: replication
+  risk: High
+  example: RESET REPLICA ALL;
+  note: 'Stops replication and removes replication metadata'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/reset-replica.html
+
+- id: mysql-admin-start-replica
+  name: START REPLICA
+  description: Start replica threads
+  syntax: START REPLICA;
+  category: replication
+  risk: Medium
+  example: START REPLICA;
+  note: '8.0 uses REPLICA instead of SLAVE'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/start-replica.html
+
+- id: mysql-admin-stop-replica
+  name: STOP REPLICA
+  description: Stop replica threads
+  syntax: STOP REPLICA;
+  category: replication
+  risk: Medium
+  example: STOP REPLICA SQL_THREAD;
+  note: 'Stop SQL_THREAD to pause replication while keeping IO_THREAD active'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/stop-replica.html
+
+- id: mysql-admin-reset-master
+  name: RESET MASTER / RESET BINARY LOGS
+  description: Delete all binary logs and reset binary log index
+  syntax: RESET BINARY LOGS;
+  category: replication
+  risk: High
+  example: RESET BINARY LOGS TO 'mysql-bin.000005';
+  note: 'Prefer RESET BINARY LOGS TO for safer log cleanup'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/reset-master.html
+
+- id: mysql-admin-purge-binary-logs
+  name: PURGE BINARY LOGS
+  description: Delete binary logs before a given time or file
+  syntax: PURGE BINARY LOGS TO '<binlog_file>';
+  category: replication
+  risk: High
+  example: PURGE BINARY LOGS BEFORE DATE_SUB(NOW(), INTERVAL 7 DAY);
+  note: 'Ensure all replicas have processed logs before purging'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/purge-binary-logs.html
+
+- id: mysql-admin-change-master
+  name: CHANGE REPLICATION SOURCE TO
+  description: Configure replication connection parameters
+  syntax: CHANGE REPLICATION SOURCE TO SOURCE_HOST='host', SOURCE_USER='user', ...;
+  category: replication
+  risk: Medium
+  example: CHANGE REPLICATION SOURCE TO SOURCE_HOST='master', SOURCE_PORT=3306, SOURCE_USER='repl', SOURCE_LOG_FILE='mysql-bin.000001', SOURCE_LOG_POS=155;
+  note: '8.0 uses CHANGE REPLICATION SOURCE TO'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/change-replication-source.html
+
+- id: mysql-admin-set-global
+  name: SET GLOBAL
+  description: Change a global system variable
+  syntax: SET GLOBAL variable_name = value;
+  category: administration
+  risk: Medium
+  example: SET GLOBAL max_connections = 500;
+  note: 'Some variables require my.cnf changes to persist across restarts'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/set-global.html
+
+- id: mysql-admin-set-session
+  name: SET SESSION
+  description: Change a session-specific system variable
+  syntax: SET SESSION variable_name = value;
+  category: administration
+  risk: Low
+  example: SET SESSION sql_mode = 'STRICT_TRANS_TABLES';
+  note: 'SESSION settings are lost when the connection closes'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/set-session.html
+
+- id: mysql-admin-show-triggers
+  name: SHOW TRIGGERS
+  description: Show all triggers in the current database
+  syntax: SHOW TRIGGERS;
+  category: schema-management
+  risk: Low
+  example: SHOW TRIGGERS\G
+  note: 'Shows trigger timing, event, definer, and action_statement'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-triggers.html
+
+- id: mysql-admin-show-events
+  name: SHOW EVENTS
+  description: Show all events in the current database
+  syntax: SHOW EVENTS [FROM db_name];
+  category: schema-management
+  risk: Low
+  example: SHOW EVENTS;
+  note: 'Requires EVENT scheduler to be enabled'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-events.html
+
+- id: mysql-admin-show-procedures
+  name: SHOW PROCEDURE STATUS
+  description: Show stored procedures in the current database
+  syntax: SHOW PROCEDURE STATUS [LIKE 'pattern'];
+  category: schema-management
+  risk: Low
+  example: SHOW PROCEDURE STATUS WHERE Db = 'production_db';
+  note: 'Shows Name, Db, Type, Definer, Modified, and Create_time'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-procedure-status.html
+
+- id: mysql-sys-schema
+  name: SYS Schema Queries
+  description: Use the sys schema for performance insights
+  syntax: SELECT * FROM sys.xxxxx;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.schema_unused_indexes;
+  note: 'sys schema provides curated views on Performance Schema data'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-schema.html
+
+- id: mysql-sys-schema-waits
+  name: schema_table_lock_waits
+  description: Show tables with wait locks in sys schema
+  syntax: SELECT * FROM sys.schema_table_lock_waits;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.schema_table_lock_waits\G
+  note: 'Shows blocking_pid, object_name, and blocking query info'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-schema-table-lock-waits.html
+
+- id: mysql-sys-schema-io
+  name: schema_io_global_by_file
+  description: Show I/O statistics by file in sys schema
+  syntax: SELECT * FROM sys.schema_io_global_by_file ORDER BY total_latency DESC;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.schema_io_global_by_file LIMIT 20;
+  note: 'Helps identify I/O bottlenecks at the file level'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-schema-io-global.html
+
+- id: mysql-sys-schema-top-statements
+  name: statement_analysis
+  description: Show top statements by various metrics
+  syntax: SELECT * FROM sys.statements_with_runtimes_in_95th_percentile;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.statements_with_full_table_scans\G
+  note: 'Statements with full table scans are prime optimization targets'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-statements-with-full-table-scans.html
+
+- id: mysql-sys-schema-unused-indexes
+  name: schema_unused_indexes
+  description: Show indexes that have not been used for lookups
+  syntax: SELECT * FROM sys.schema_unused_indexes;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.schema_unused_indexes\G
+  note: 'Unused indexes waste disk space and slow down writes'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-schema-unused-indexes.html
+
+- id: mysql-sys-schema-memory
+  name: memory_global_total
+  description: Show memory usage by subsystem
+  syntax: SELECT * FROM sys.memory_global_total;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.memory_by_thread WHERE thread LIKE '%worker%' LIMIT 10;
+  note: 'Monitor InnoDB buffer pool hit ratio and memory allocation'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-memory.html
+
+- id: mysql-sys-schema-hosts
+  name: host_summary
+  description: Show host summary statistics
+  syntax: SELECT * FROM sys.host_summary;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.host_summary ORDER BY connections DESC;
+  note: 'Shows connection counts and statement execution counts by host'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-host-summary.html
+
+- id: mysql-sys-schema-stages
+  name: stages
+  description: Show execution stages of current statements
+  syntax: SELECT * FROM sys.stages;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.stages;
+  note: 'Shows current stages of long-running statements'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-stages.html
+
+- id: mysql-sys-schema-host-latency
+  name: host_summary_by_stages
+  description: Show global wait event summaries
+  syntax: SELECT * FROM sys.host_summary_by_statement_latency;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.host_summary_by_statement_latency LIMIT 10;
+  note: 'Shows which hosts consume the most statement latency'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-host-summary-by-statement-latency.html
+
+- id: mysql-sys-schema-user-summary
+  name: user_summary
+  description: Show user summary statistics
+  syntax: SELECT * FROM sys.user_summary;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.user_summary ORDER BY statement_executions DESC LIMIT 10;
+  note: 'Shows which users are the most active query consumers'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-user-summary.html
+
+- id: mysql-sys-schema-processlist
+  name: processlist
+  description: Show enhanced processlist from sys schema
+  syntax: SELECT * FROM sys.processlist;
+  category: performance
+  risk: Low
+  example: SELECT * FROM sys.processlist WHERE command = 'Query' ORDER BY time DESC;
+  note: 'Shows more context than SHOW PROCESSLIST including full query text'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/sys-processlist.html
+
+- id: mysql-create-user
+  name: CREATE USER
+  description: Create a new MySQL user
+  syntax: CREATE USER 'user'@'host' IDENTIFIED BY 'password';
+  category: security
+  risk: Low
+  example: CREATE USER 'app_reader'@'10.0.0.%' IDENTIFIED BY 'secure_pass_123';
+  note: 'Use specific hosts; avoid wildcards like % in production'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-user.html
+
+- id: mysql-drop-user
+  name: DROP USER
+  description: Remove a MySQL user
+  syntax: DROP USER 'user'@'host';
+  category: security
+  risk: Medium
+  example: DROP USER 'old_service'@'%';
+  note: 'Drops all grants for the user automatically'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/drop-user.html
+
+- id: mysql-alter-user-rename
+  name: ALTER USER RENAME
+  description: Rename a user account
+  syntax: ALTER USER 'old_user'@'old_host' RENAME TO 'new_user'@'new_host';
+  category: security
+  risk: Medium
+  example: ALTER USER 'legacy_user'@'10.0.0.%' RENAME TO 'app_user'@'10.0.0.%';
+  note: 'All existing grants are preserved during rename'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/alter-user.html
+
+- id: mysql-alter-user-password
+  name: ALTER USER PASSWORD
+  description: Change a user password
+  syntax: ALTER USER 'user'@'host' IDENTIFIED BY 'new_password';
+  category: security
+  risk: Medium
+  example: ALTER USER 'app_user'@'%' IDENTIFIED BY 'new_secure_pass';
+  note: 'Use strong passwords; consider authentication plugins for key-based auth'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/alter-user.html
+
+- id: mysql-create-role
+  name: CREATE ROLE
+  description: Create a new role (MySQL 8.0+)
+  syntax: CREATE ROLE 'role_name';
+  category: security
+  risk: Low
+  example: CREATE ROLE 'app_admin';
+  note: 'Roles are containers for privileges; assign to users via GRANT role TO user'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-role.html
+
+- id: mysql-drop-role
+  name: DROP ROLE
+  description: Remove a role
+  syntax: DROP ROLE 'role_name';
+  category: security
+  risk: Medium
+  example: DROP ROLE 'old_role';
+  note: 'Revokes all grants of the role automatically'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/drop-role.html
+
+- id: mysql-grant
+  name: GRANT
+  description: Grant privileges to a user or role
+  syntax: GRANT privilege ON object TO 'user'@'host';
+  category: security
+  risk: Medium
+  example: GRANT SELECT, INSERT ON production_db.* TO 'app_user'@'10.0.0.%';
+  note: 'Principle of least privilege; use roles in 8.0+'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/grant.html
+
+- id: mysql-revoke
+  name: REVOKE
+  description: Revoke privileges from a user or role
+  syntax: REVOKE privilege ON object FROM 'user'@'host';
+  category: security
+  risk: Medium
+  example: REVOKE DELETE ON production_db.* FROM 'app_user'@'10.0.0.%';
+  note: 'Changes access immediately'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/revoke.html
+
+- id: mysql-flush-privileges
+  name: FLUSH PRIVILEGES
+  description: Reload grant tables from the mysql.user table
+  syntax: FLUSH PRIVILEGES;
+  category: security
+  risk: Low
+  example: FLUSH PRIVILEGES;
+  note: 'Required after direct mysql.user changes; not needed with GRANT/CREATE USER'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/flush.html
+
+- id: mysql-rename-user
+  name: RENAME USER
+  description: Rename a user account
+  syntax: RENAME USER 'old_user'@'old_host' TO 'new_user'@'new_host';
+  category: security
+  risk: Medium
+  example: RENAME USER 'legacy_user'@'%' TO 'app_user'@'10.0.0.%';
+  note: 'Similar to ALTER USER RENAME TO but for multiple users'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/rename-user.html
+
+- id: mysql-create-user-ssl
+  name: CREATE USER WITH SSL
+  description: Create a user that requires SSL connection
+  syntax: CREATE USER 'user'@'host' REQUIRE SSL IDENTIFIED BY 'pass';
+  category: security
+  risk: Low
+  example: CREATE USER 'secure_user'@'10.0.0.%' REQUIRE SSL IDENTIFIED BY 'secure_pass';
+  note: 'REQUIRE X509 for certificate-based auth'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/account-management-sql.html
+
+- id: mysql-backup-mysqldump
+  name: mysqldump
+  description: Logical backup — exports databases as SQL statements
+  syntax: mysqldump [options] database > backup.sql
+  category: backup
+  risk: Low
+  example: mysqldump --single-transaction --routines --triggers --databases production_db > backup.sql
+  note: 'Use --single-transaction for InnoDB to get a consistent backup without locking'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html
+
+- id: mysql-backup-mysqldump-all
+  name: mysqldump --all-databases
+  description: Dump all databases
+  syntax: mysqldump --all-databases --single-transaction > all_backup.sql
+  category: backup
+  risk: Medium
+  example: mysqldump --all-databases --single-transaction --routines > all_dbs.sql
+  note: 'Ensure enough disk space; consider per-database dumps for large deployments'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html
+
+- id: mysql-backup-mysqldump-tables
+  name: mysqldump --tables
+  description: Dump specific tables from a database
+  syntax: mysqldump --single-transaction db_name table1 table2 > backup.sql
+  category: backup
+  risk: Low
+  example: mysqldump --single-transaction production_db orders users > partial_backup.sql
+  note: 'Good for targeted backups of large tables'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html
+
+- id: mysql-backup-mysqldump-master-data
+  name: mysqldump --master-data
+  description: Dump with binary log position for point-in-time recovery
+  syntax: mysqldump --master-data=2 --single-transaction > backup.sql
+  category: backup
+  risk: Low
+  example: mysqldump --master-data=2 --single-transaction production_db > backup.sql
+  note: '--master-data=2 adds it as comment; =1 adds CHANGE MASTER statement'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html
+
+- id: mysql-backup-mysqlpump
+  name: mysqlpump
+  description: Logical backup with multi-threaded parallelism
+  syntax: mysqlpump [options] > backup.sql
+  category: backup
+  risk: Low
+  example: mysqlpump --default-parallelism=4 --exclude-database=test > backup.sql
+  note: 'MySQL 5.7+ tool; supports parallel dump and restore'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysqlpump.html
+
+- id: mysql-backup-restore
+  name: mysql (restore from dump)
+  description: Restore a database from a mysqldump file
+  syntax: mysql database < backup.sql
+  category: backup
+  risk: Medium
+  example: mysql production_db < backup.sql
+  note: 'Ensure the target database exists and is ready for restore'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysql.html
+
+- id: mysql-backup-mysqlbinlog
+  name: mysqlbinlog
+  description: Decode and display binary log events
+  syntax: mysqlbinlog [options] binlog_file
+  category: backup
+  risk: Low
+  example: mysqlbinlog --start-datetime='2024-01-01 00:00:00' mysql-bin.000010 > events.sql
+  note: 'Use --start-position/--stop-position for precise extraction'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/mysqlbinlog.html
+
+- id: mysql-backup-flush-logs
+  name: mysqladmin flush-logs
+  description: Rotate binary logs to create a new binlog file
+  syntax: mysqladmin flush-logs
+  category: backup
+  risk: Low
+  example: mysqladmin -u root -p flush-logs
+  note: 'Creates a new binary log file; used before mysqldump for consistent backups'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/flush.html
+
+- id: mysql-backup-gtid
+  name: GTID-based backup tracking
+  description: Track GTID sets for replication-based backups
+  syntax: SELECT @@global.gtid_executed;
+  category: backup
+  risk: Low
+  example: SELECT @@global.gtid_executed\G
+  note: 'GTID sets provide simpler tracking than binlog file/position'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/replication-gtids.html
+
+- id: mysql-backup-xtrabackup-backup
+  name: Percona XtraBackup backup
+  description: Physical backup for InnoDB without stopping the server
+  syntax: xtrabackup --backup --target-dir=/backup/path
+  category: backup
+  risk: Low
+  example: xtrabackup --backup --target-dir=/backups/full --user=backup_user
+  note: 'Much faster than mysqldump for large databases'
+  documentation: https://www.percona.com/doc/percona-xtrabackup/LATEST/index.html
+
+- id: mysql-backup-xtrabackup-prepare
+  name: xtrabackup --prepare
+  description: Prepare a physical backup for restore
+  syntax: xtrabackup --prepare --target-dir=/backup/path
+  category: backup
+  risk: Medium
+  example: xtrabackup --prepare --target-dir=/backups/full
+  note: 'Must prepare before copying to server; applies redo logs'
+  documentation: https://www.percona.com/doc/percona-xtrabackup/LATEST/index.html
+
+- id: mysql-backup-xtrabackup-copy
+  name: xtrabackup --copy-back
+  description: Copy backup files back to MySQL data directory
+  syntax: xtrabackup --copy-back --target-dir=/backup/path
+  category: backup
+  risk: High
+  example: xtrabackup --copy-back --target-dir=/backups/full
+  note: 'MySQL must be stopped before copy-back; ensure correct datadir'
+  documentation: https://www.percona.com/doc/percona-xtrabackup/LATEST/index.html
+
+- id: mysql-backup-xtrabackup-incremental
+  name: xtrabackup incremental backup
+  description: Create incremental backup based on a previous backup
+  syntax: xtrabackup --backup --target-dir=/backup/inc --incremental-basedir=/backup/base
+  category: backup
+  risk: Low
+  example: xtrabackup --backup --target-dir=/backups/inc1 --incremental-basedir=/backups/full
+  note: 'Faster and smaller than full backups; prepare each incremental in sequence'
+  documentation: https://www.percona.com/doc/percona-xtrabackup/LATEST/index.html
+
+- id: mysql-perf-show-profile
+  name: SHOW PROFILE
+  description: Show execution profile for recent statements
+  syntax: SHOW PROFILE [FOR QUERY n];
+  category: performance
+  risk: Low
+  example: SHOW PROFILE ALL FOR QUERY 5;
+  note: 'Deprecated in 8.0.17+; use Performance Schema instead'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/show-profile.html
+
+- id: mysql-perf-optimizer-trace
+  name: OPTIMIZER_TRACE
+  description: Trace the optimizer decisions for a query
+  syntax: SET optimizer_trace="max_mem_size=1M"; SELECT ...; SELECT * FROM information_schema.optimizer_trace;
+  category: performance
+  risk: Low
+  example: SET optimizer_trace="max_mem_size=2M"; SELECT * FROM orders WHERE customer_id=100;
+  note: 'Reveals why the optimizer chose a particular plan'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/optimizer-trace.html
+
+- id: mysql-perf-slow-log
+  name: Slow Query Log
+  description: Log queries that exceed a specified execution time
+  syntax: SET GLOBAL slow_query_log = 'ON'; SET GLOBAL long_query_time = 1.0;
+  category: performance
+  risk: Low
+  example: SET GLOBAL slow_query_log = 'ON'; SET GLOBAL long_query_time = 2;
+  note: 'Log format: Query_time, Lock_time, Rows_sent, Rows_examined'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/slow-query-log.html
+
+- id: mysql-perf-analyze
+  name: ANALYZE TABLE
+  description: Update table statistics for the optimizer
+  syntax: ANALYZE TABLE table_name;
+  category: performance
+  risk: Low
+  example: ANALYZE TABLE users, orders;
+  note: 'Run after large bulk inserts/updates'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/analyze-table.html
+
+- id: mysql-schema-create-index
+  name: CREATE INDEX
+  description: Create an index on a table
+  syntax: CREATE INDEX index_name ON table (columns);
+  category: schema-management
+  risk: Medium
+  example: CREATE INDEX idx_customer_status ON orders (customer_id, status);
+  note: 'MySQL 8.0.1+ supports DESC for descending indexes'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-index.html
+
+- id: mysql-schema-drop-index
+  name: DROP INDEX
+  description: Remove an index
+  syntax: DROP INDEX index_name ON table_name;
+  category: schema-management
+  risk: Medium
+  example: DROP INDEX idx_customer_status ON orders;
+  note: 'Only drop indexes verified as unused'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/drop-index.html
+
+- id: mysql-schema-fulltext-index
+  name: CREATE FULLTEXT INDEX
+  description: Create a FULLTEXT index for text search
+  syntax: CREATE FULLTEXT INDEX index_name ON table (column);
+  category: schema-management
+  risk: Medium
+  example: CREATE FULLTEXT INDEX ft_search ON products (name, description);
+  note: 'Supports MATCH...AGAINST queries'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/fulltext-natural-language.html
+
+- id: mysql-schema-create-trigger
+  name: CREATE TRIGGER
+  description: Create a trigger on a table
+  syntax: CREATE TRIGGER name timing event ON table FOR EACH ROW ...;
+  category: schema-management
+  risk: Medium
+  example: CREATE TRIGGER trg_before_insert BEFORE INSERT ON orders FOR EACH ROW SET NEW.created_at = NOW();
+  note: 'Triggers add implicit transaction overhead; use sparingly'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-trigger.html
+
+- id: mysql-schema-drop-trigger
+  name: DROP TRIGGER
+  description: Remove a trigger
+  syntax: DROP TRIGGER [schema.]trigger_name;
+  category: schema-management
+  risk: Medium
+  example: DROP TRIGGER trg_old_audit;
+  note: 'Verify no critical business logic is hidden in the trigger'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/drop-trigger.html
+
+- id: mysql-schema-create-event
+  name: CREATE EVENT
+  description: Create a scheduled event
+  syntax: CREATE EVENT name ON SCHEDULE EVERY interval DO statement;
+  category: schema-management
+  risk: Medium
+  example: CREATE EVENT evt_cleanup ARCHIVE ON SCHEDULE EVERY 1 DAY DO DELETE FROM logs WHERE created_at < NOW() - INTERVAL 90 DAY;
+  note: 'Monitor event execution via sys.events or INFORMATION_SCHEMA.EVENTS'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-event.html
+
+- id: mysql-schema-drop-event
+  name: DROP EVENT
+  description: Remove a scheduled event
+  syntax: DROP EVENT [schema.]event_name;
+  category: schema-management
+  risk: Low
+  example: DROP EVENT evt_old_report;
+  note: 'DISABLE EVENT pauses execution instead of removing'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/drop-event.html
+
+- id: mysql-schema-create-procedure
+  name: CREATE PROCEDURE
+  description: Create a stored procedure
+  syntax: CREATE PROCEDURE name([params]) BEGIN ... END;
+  category: schema-management
+  risk: Medium
+  example: CREATE PROCEDURE sp_get_orders(IN p_id BIGINT) BEGIN SELECT * FROM orders WHERE customer_id=p_id; END;
+  note: 'Audit stored procedure code periodically'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/stored-procedures.html
+
+- id: mysql-schema-create-function
+  name: CREATE FUNCTION
+  description: Create a stored function
+  syntax: CREATE FUNCTION name(params) RETURNS type RETURN value;
+  category: schema-management
+  risk: Medium
+  example: CREATE FUNCTION fn_count_orders(p_id BIGINT) RETURNS INT READS SQL DATA RETURN (SELECT COUNT(*) FROM orders WHERE customer_id=p_id);
+  note: 'Functions return a value; procedures do not'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/create-procedure.html
+
+- id: mysql-schema-partition
+  name: CREATE TABLE PARTITIONED
+  description: Create a table with RANGE/LIST/HASH/KEY partitioning
+  syntax: CREATE TABLE t (...) PARTITION BY RANGE (col) (PARTITION p1 VALUES LESS THAN (...));
+  category: schema-management
+  risk: Medium
+  example: CREATE TABLE logs (id INT, created_at DATE) PARTITION BY RANGE (YEAR(created_at)) (PARTITION p2023 VALUES LESS THAN (2024));
+  note: 'Partitioning helps with large table management and pruning'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/partitioning.html
+
+- id: mysql-replication-gtid-variables
+  name: SHOW GLOBAL VARIABLES LIKE 'gtid%'
+  description: Check GTID configuration
+  syntax: SHOW GLOBAL VARIABLES LIKE 'gtid%';
+  category: replication
+  risk: Low
+  example: SHOW GLOBAL VARIABLES LIKE 'gtid%'\G
+  note: 'gtid_mode=ON, enforce_gtid_consistency=ON recommended'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/replication-gtids.html
+
+- id: mysql-replication-source-set
+  name: SET REPLICATION SOURCE TO
+  description: Configure replication source parameters for a replica
+  syntax: SET REPLICATION SOURCE TO SOURCE_HOST='host', SOURCE_AUTO_POSITION=1;
+  category: replication
+  risk: Medium
+  example: SET REPLICATION SOURCE TO SOURCE_HOST='10.0.0.10', SOURCE_USER='repl', SOURCE_AUTO_POSITION=1;
+  note: 'SOURCE_AUTO_POSITION=1 enables GTID-based replication'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/set-replication-source.html
+
+- id: mysql-replication-filter
+  name: CHANGE REPLICATION FILTER
+  description: Configure replication filters
+  syntax: CHANGE REPLICATION FILTER REPLICATE_WILD_IGNORE_TABLE = ('test.%');
+  category: replication
+  risk: Medium
+  example: CHANGE REPLICATION FILTER REPLICATE_DO_DB = (db1, db2);
+  note: '8.0+ FILTER-based syntax'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/change-replication-filter.html
+
+- id: mysql-replication-group
+  name: MySQL Group Replication
+  description: Manage MySQL Group Replication using MySQL Shell
+  syntax: mysqlsh root@host --cluster name
+  category: replication
+  risk: High
+  example: mysqlsh root@mgr-host --cluster=mycluster --dba.configureGroupReplication
+  note: 'MGR provides multi-master replication with conflict detection'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/group-replication.html
+
+- id: mysql-maintenance-binlog-expire
+  name: binlog_expire_logs_seconds
+  description: Control binary log expiration
+  syntax: SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';
+  category: maintenance
+  risk: Low
+  example: SHOW VARIABLES LIKE 'binlog_expire_logs_seconds'\G
+  note: '604800 = 7 days; replaces expire_logs_days'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html
+
+- id: mysql-maintenance-table-cache
+  name: table_open_cache
+  description: Monitor and tune table open cache
+  syntax: SHOW VARIABLES LIKE 'table_open_cache';
+  category: maintenance
+  risk: Low
+  example: SHOW VARIABLES LIKE 'table_open_cache%'\G
+  note: 'Opened_tables should be low relative to Table_open_cache_hits'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
+
+- id: mysql-maintenance-log-size
+  name: innodb_log_file_size
+  description: Monitor and tune InnoDB redo log size
+  syntax: SHOW VARIABLES LIKE 'innodb_log_file_size';
+  category: maintenance
+  risk: Low
+  example: SHOW VARIABLES LIKE 'innodb_log_file_size'\G
+  note: 'Larger redo logs improve write performance'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
+
+- id: mysql-maintenance-dd
+  name: INFORMATION_SCHEMA.DATA_DICTIONARY
+  description: Query data dictionary metadata
+  syntax: SELECT * FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'prod_db';
+  category: maintenance
+  risk: Low
+  example: SELECT TABLE_NAME, TABLE_ROWS, DATA_LENGTH FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'prod_db' ORDER BY TABLE_ROWS DESC;
+  note: 'InnoDB data dictionary in 8.0+ is internal'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/information-schema-tables.html
+
+- id: mysql-admin-persist
+  name: SET PERSIST / SHOW PERSISTED VARIABLES
+  description: Set variables that persist across restarts
+  syntax: SET PERSIST variable_name = value; | SHOW PERSISTED VARIABLES;
+  category: administration
+  risk: Medium
+  example: SET PERSIST max_connections = 500;
+  note: 'Stored in mysqld-auto.cnf'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/set-persist.html
+
+- id: mysql-admin-reset-persist
+  name: RESET PERSIST
+  description: Remove all persisted variables
+  syntax: RESET PERSIST;
+  category: administration
+  risk: Low
+  example: RESET PERSIST;
+  note: 'Removes mysqld-auto.cnf'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/reset-persist.html
+
+- id: mysql-admin-secure-file
+  name: --secure-file-priv
+  description: Check secure file privilege setting
+  syntax: SHOW VARIABLES LIKE 'secure_file_priv';
+  category: administration
+  risk: Low
+  example: SHOW VARIABLES LIKE 'secure_file_priv'\G
+  note: 'Controls WHERE LOAD DATA, SELECT INTO OUTFILE, and LOAD_FILE()'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
+
+- id: mysql-admin-log-config
+  name: general_log / log_error
+  description: Configure MySQL error and general log
+  syntax: SHOW VARIABLES LIKE '%log%';
+  category: administration
+  risk: Low
+  example: SHOW VARIABLES LIKE 'general_log%'\G; SHOW VARIABLES LIKE 'log_error%'\G
+  note: 'general_log is rarely needed in production'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/server-log-files.html
+
+- id: mysql-admin-optimizer-switch
+  name: optimizer_switch
+  description: Toggle optimizer features
+  syntax: SET GLOBAL optimizer_switch='feature=on|off';
+  category: performance
+  risk: Medium
+  example: SET GLOBAL optimizer_switch='index_merge=off';
+  note: 'Should be tested thoroughly; document changes'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/optimizerswitch-setting.html
+
+- id: mysql-admin-defaults-file
+  name: --defaults-file
+  description: Specify a custom my.cnf location
+  syntax: mysqld --defaults-file=/etc/mysql/custom.cnf
+  category: administration
+  risk: Low
+  example: mysqld --defaults-file=/etc/mysql/my.cnf --user=mysql
+  note: 'Use --defaults-extra-file for additional config without replacing defaults'
+  documentation: https://dev.mysql.com/doc/refman/8.0/en/option-files.html

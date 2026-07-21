@@ -1,0 +1,52 @@
+id: checkmk-skill-pack
+name: Checkmk Engineering
+version: 1.0.0
+description: >
+  Comprehensive Checkmk engineering skill covering monitoring architecture,
+  agent management, service discovery, ruleset configuration, WATO administration,
+  notifications, performance views, and troubleshooting. Provides expert-level
+  guidance for Checkmk administrators and monitoring engineers.
+author: Wiki Labs Team
+technology_domain: Checkmk
+vendor: Checkmk
+category: Monitoring
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - checkmk
+  - cmk
+  - monitoring
+  - microrole
+  - cmc
+  - piggyback
+  - rulesets
+  - service-discovery
+  - wato
+  - notifications
+  - perf-view
+  - snmp
+  - agent
+keywords:
+  - checkmk
+  - cmk
+  - monitoring
+  - host
+  - service
+  - check
+  - agent
+  - ruleset
+  - service-discovery
+  - notification
+  - performance
+  - snmp
+  - piggyback
+  - cmc
+icon: 🟢
+supported_environments:
+  - "2.2"
+  - "2.3"
+  - "2.4"
+  - "2.5"
+  - checkmk-2.x
+documentation_url: https://docs.wikilabs.ai/skills/checkmk-skill-pack

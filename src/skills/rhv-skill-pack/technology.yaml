@@ -1,0 +1,155 @@
+technology:
+  name: Red Hat Virtualization
+  alias: RHV, rhevm
+  based_on: RHEL Virtualization (RHEL-V), KVM/QEMU
+  type: Type 1 Enterprise Virtualization
+versioning:
+  current: "4.6"
+  supported:
+    - "4.4"
+    - "4.5"
+    - "4.6"
+  latest_minor: "4.6.15"
+architecture:
+  model: Manager-Host
+  manager:
+    product: Red Hat Virtualization Manager (ovirt-engine)
+    deployment: Hosted Engine (VM on host) or Bare Metal
+    services:
+      - ovirt-engine
+      - ovirt-engine-websocket-proxy
+      - postgresql
+      - ovirt-hosted-engine-ha
+    config: /etc/ovirt-engine/
+    logs: /var/log/ovirt-engine/
+  host:
+    hypervisor: KVM/QEMU (via libvirt)
+    management_daemon: VDSM (Virtual Machine Manager Daemon)
+    config: /etc/vdsm/
+    logs: /var/log/vdsm/
+  client:
+    ui: Cockpit (web-based)
+    api: REST API (JSON)
+    cli: rhev-* tools, virsh, virt-*
+    protocol: HTTPS, SPICE, VNC
+storage:
+  domains:
+    iso: ISO images
+    data: VM disks
+    export: Templates and exports
+    backup: Backup targets
+  backends:
+    - GlusterFS (recommended)
+    - NFS
+    - FC (Fibre Channel)
+    - iSCSI
+    - POSIX-compatible
+  formats:
+    - qcow2
+    - raw
+virtualization:
+  hypervisor: KVM
+  guest_os:
+    paravirtualized_drivers:
+      - VirtIO (network)
+      - VirtIO (disk)
+      - VirtIO-RNG
+    console: SPICE, VNC
+  management:
+    lifecycle: Create, Start, Stop, Migrate, Snapshot, Clone
+    networking: OVS (Open vSwitch)
+    storage: Gluster, NFS, iSCSI
+high_availability:
+  host:
+    non_responsive: Restart on host not responding
+    down: Restart on host powered off
+    manual: No automatic restart
+  engine:
+    mode: Hosted Engine HA
+    monitors: HA agent per host
+    failover: Automatic to available host
+migration:
+  types:
+    live:
+      description: Migrate running VM between hosts
+      downtime: Zero
+      requirements:
+        - Shared storage
+        - Compatible host versions
+        - Network connectivity
+    storage:
+      description: Move VM disk to different domain
+      downtime: Zero
+      requirements:
+        - Destination domain available
+  protocols:
+    - SPICE (display)
+    - QEMU Guest Agent (quiesce)
+networking:
+  switch:
+    type: Open vSwitch (OVS)
+    management: VDSM-configured
+  virtual_networks:
+    - Isolated (VM-only)
+    - Trusted (physical)
+  features:
+    - VLAN tagging
+    - Bonded interfaces (active-backup, LACP)
+    - SR-IOV passthrough
+    - Network QoS
+security:
+  encryption:
+    management: TLS 1.2+
+    storage: TLS (NFS over TLS)
+    console: SPICE encryption
+  authentication:
+    - LDAP/AD integration
+    - Local users
+    - Kerberos (optional)
+  authorization:
+    - RBAC (Role-Based Access Control)
+    - Custom roles
+    - Role inheritance
+  compliance:
+    - DISA STIG (optional)
+    - PCI DSS (with proper configuration)
+monitoring:
+  metrics:
+    - CPU usage
+    - Memory usage
+    - Disk I/O
+    - Network I/O
+    - Host health
+    - VM health
+  tools:
+    - ovirt-engine (primary)
+    - Cockpit (host-level)
+    - VDSM metrics
+    - Gluster monitoring
+scaling:
+  host_cluster:
+    recommended: "5-20"
+    maximum: "100+"
+  vm_per_host:
+    recommended: "20-50"
+    maximum: "200+"
+  manager:
+    single_cluster: "1 manager"
+    multi_cluster: "Active/standby pair"
+performance:
+  bottlenecks:
+    - Disk I/O latency
+    - CPU overcommit
+    - Memory ballooning
+    - Network bandwidth
+  tuning:
+    - Huge pages for memory-intensive VMs
+    - mq-deadline I/O scheduler
+    - Jumbo frames (MTU 9000) for storage
+    - NUMA alignment for VMs
+documentation:
+  admin_guide: https://access.redhat.com/documentation/en-us/red_hat_virtualization/
+  deploy_guide: https://access.redhat.com/documentation/en-us/red_hat_virtualization/
+  operations: https://access.redhat.com/documentation/en-us/red_hat_virtualization/
+  api_reference: https://access.redhat.com/documentation/en-us/red_hat_virtualization/
+  kb: https://access.redhat.com/solutions

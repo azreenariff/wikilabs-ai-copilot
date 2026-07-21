@@ -1,0 +1,75 @@
+id: edb-postgresql-skill-pack
+name: EDB PostgreSQL Engineering
+version: 1.0.0
+description: >
+  Comprehensive EDB PostgreSQL engineering skill covering database operations,
+  troubleshooting, replication, backup/recovery, performance tuning, indexing,
+  locking, transactions, MVCC, WAL management, and high-availability configurations.
+  Provides expert-level guidance for PostgreSQL administrators and database engineers
+  working with EnterpriseDB distributions.
+author: Wiki Labs Team
+technology_domain: EDB PostgreSQL
+vendor: EnterpriseDB
+category: Database
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - postgresql
+  - edb
+  - enterprise-postgresql
+  - streaming-replication
+  - wal
+  - backups
+  - indexes
+  - locks
+  - transactions
+  - performance
+  - high-availability
+  - pg_basebackup
+  - pg_dump
+  - pg_restore
+  - pg_stat_statements
+  - vacuum
+  - mvcc
+  - pgbouncer
+  - checkpoint
+  - deadlock
+  - failover
+keywords:
+  - psql
+  - postgresql
+  - edb
+  - enterprise-postgresql
+  - replication
+  - streaming-replication
+  - logical-replication
+  - wal
+  - checkpoint
+  - vacuum
+  - pg_dump
+  - pg_restore
+  - pg_basebackup
+  - pg_rewind
+  - pg_stat_statements
+  - pgbouncer
+  - deadlock
+  - mvcc
+  - index
+  - b-tree
+  - gist
+  - gin
+  - brin
+  - lock
+  - transaction
+  - high-availability
+  - failover
+  - PITR
+  - point-in-time-recovery
+icon: 🐘
+supported_environments:
+  - "15"
+  - "16"
+  - "17"
+documentation_url: https://www.postgresql.org/docs/
+edb_documentation_url: https://www.enterprisedb.com/docs/

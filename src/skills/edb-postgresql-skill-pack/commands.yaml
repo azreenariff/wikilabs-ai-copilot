@@ -1,0 +1,1096 @@
+- id: psql
+  name: psql
+  description: PostgreSQL interactive terminal — primary CLI for executing SQL, managing
+    connections, and running meta-commands
+  syntax: psql [OPTIONS] [DBNAME [USERNAME]]
+  category: connection
+  sudo: false
+  example: psql -h localhost -p 5432 -U postgres -d mydb
+  note: Use \q to quit, \l to list databases, \d to list tables, \d tablename for
+    table details
+  risk: Low
+  when_to_use: Interactive SQL execution, database inspection, scripting with meta-commands
+- id: pg_ctl-start
+  name: pg_ctl start
+  description: Start PostgreSQL server
+  syntax: pg_ctl start -D <data_directory> [-l <logfile>] [-o "<options>"]
+  category: status
+  sudo: false
+  example: pg_ctl start -D /var/lib/pgsql/data -l /var/lib/pgsql/logs/pg.log
+  note: Use -w to wait for server startup
+  risk: Low
+  when_to_use: Starting the PostgreSQL server instance
+- id: pg_ctl-stop
+  name: pg_ctl stop
+  description: Stop PostgreSQL server with shutdown mode
+  syntax: pg_ctl stop -D <data_directory> [-m <mode>] [-W]
+  category: status
+  sudo: false
+  example: pg_ctl stop -D /var/lib/pgsql/data -m smart
+  note: Modes are smart (wait for clients to disconnect), fast (immediate), immediate
+    (abort all transactions)
+  risk: Medium — immediate mode can leave data in inconsistent state
+  when_to_use: Gracefully stopping the PostgreSQL server
+- id: pg_ctl-restart
+  name: pg_ctl restart
+  description: Restart PostgreSQL server (stop then start)
+  syntax: pg_ctl restart -D <data_directory> [-m <mode>] [-W]
+  category: status
+  sudo: false
+  example: pg_ctl restart -D /var/lib/pgsql/data -m fast
+  note: Applies configuration changes (postgresql.conf, pg_hba.conf) after restart
+  risk: Medium — brief service interruption
+  when_to_use: Applying configuration changes that require restart
+- id: pg_ctl-reload
+  name: pg_ctl reload
+  description: Reload PostgreSQL configuration without stopping server
+  syntax: pg_ctl reload -D <data_directory>
+  category: status
+  sudo: false
+  example: pg_ctl reload -D /var/lib/pgsql/data
+  note: Reloads postgresql.conf, pg_hba.conf, pg_ident.conf without restarting
+  risk: Low
+  when_to_use: Applying configuration changes that do not require restart
+- id: pg_ctl-status
+  name: pg_ctl status
+  description: Check PostgreSQL server status
+  syntax: pg_ctl status -D <data_directory>
+  category: status
+  sudo: false
+  example: pg_ctl status -D /var/lib/pgsql/data
+  note: Returns exit code 0 if server is running, 1 if not
+  risk: Low
+  when_to_use: Verifying server is running before performing operations
+- id: pg_ctl-promote
+  name: pg_ctl promote
+  description: Promote standby server to primary
+  syntax: pg_ctl promote -D <data_directory>
+  category: replication
+  sudo: false
+  example: pg_ctl promote -D /var/lib/pgsql/data
+  note: Only works on standby servers; triggers end-of-recovery promotion
+  risk: High — changes replication topology
+  when_to_use: Failover procedures, converting standby to primary
+- id: pg_dump
+  name: pg_dump
+  description: Backup a single PostgreSQL database (logical backup)
+  syntax: pg_dump [OPTIONS] [DBNAME]
+  category: backups
+  sudo: false
+  example: pg_dump -h localhost -U postgres -Fc mydb > mydb.backup
+  note: Formats include plain SQL (-F p), custom (-F c), directory (-F d), tar (-F
+    t)
+  risk: Low — read-only operation
+  when_to_use: Logical backup of a single database
+- id: pg_dumpall
+  name: pg_dumpall
+  description: Backup all PostgreSQL databases and cluster-wide objects
+  syntax: pg_dumpall [OPTIONS]
+  category: backups
+  sudo: false
+  example: pg_dumpall -U postgres -f all_databases.sql
+  note: Includes roles, tablespaces, and global objects in addition to databases
+  risk: Low — read-only operation
+  when_to_use: Full cluster backup including all databases and global objects
+- id: pg_restore
+  name: pg_restore
+  description: Restore PostgreSQL backup created by pg_dump (custom or directory format)
+  syntax: pg_restore [OPTIONS] <file>
+  category: backups
+  sudo: false
+  example: pg_restore -h localhost -U postgres -d mydb mydb.backup
+  note: Use --clean to drop objects before recreating; use --if-exists for conditional
+    drops
+  risk: Medium — modifies database content
+  when_to_use: Restoring from a custom or directory-format pg_dump backup
+- id: pg_basebackup
+  name: pg_basebackup
+  description: Create a physical base backup of the PostgreSQL cluster
+  syntax: pg_basebackup [OPTIONS]
+  category: backups
+  sudo: false
+  example: pg_basebackup -h localhost -U postgres -D /backup/pg_base -Fp -z -P -X
+    fetch
+  note: Use -R to create recovery configuration; use --wal-method=fetch or stream
+  risk: Low — read-only operation, but consumes I/O and disk space
+  when_to_use: Physical backup for replication setup or disaster recovery
+- id: vacuum
+  name: VACUUM
+  description: Reclaim storage from dead tuples and update visibility maps
+  syntax: VACUUM [VERBOSE] [FULL] [ANALYZE] [table_name]
+  category: maintenance
+  sudo: false
+  example: VACUUM ANALYZE;
+  note: FULL mode requires exclusive table lock; consider pg_repack for production
+  risk: Medium — FULL locks table, prevents writes during operation
+  when_to_use: Reclaiming disk space, updating table statistics, preventing xid wraparound
+- id: analyze
+  name: ANALYZE
+  description: Collect statistics for the query planner
+  syntax: ANALYZE [VERBOSE] [table_name]
+  category: maintenance
+  sudo: false
+  example: ANALYZE VERBOSE;
+  note: Automatically run by autovacuum; manually run after large data loads
+  risk: Low
+  when_to_use: Updating planner statistics after bulk data operations
+- id: create-database
+  name: CREATE DATABASE
+  description: Create a new PostgreSQL database
+  syntax: CREATE DATABASE dbname [OPTIONS]
+  category: schema-management
+  sudo: false
+  example: CREATE DATABASE myapp OWNER app_user TEMPLATE template0;
+  note: Requires superuser or CREATEDB privilege
+  risk: Low
+  when_to_use: Creating a new database for application use
+- id: drop-database
+  name: DROP DATABASE
+  description: Delete a database and all its objects
+  syntax: DROP DATABASE [IF EXISTS] dbname [FORCE]
+  category: schema-management
+  sudo: false
+  example: DROP DATABASE IF EXISTS old_app;
+  note: Cannot be executed inside a transaction block; FORCE option requires superuser
+  risk: High — irreversible data destruction
+  when_to_use: Removing unused or misconfigured databases
+- id: create-table
+  name: CREATE TABLE
+  description: Create a new table with columns, types, and constraints
+  syntax: CREATE TABLE table_name (column_name TYPE [CONSTRAINT], ...);
+  category: schema-management
+  sudo: false
+  example: CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, created_at
+    TIMESTAMP DEFAULT NOW());
+  note: Use IF NOT EXISTS for idempotent DDL
+  risk: Low
+  when_to_use: Creating application tables
+- id: alter-table
+  name: ALTER TABLE
+  description: 'Modify table structure: add columns, change types, add constraints'
+  syntax: ALTER TABLE table_name ACTION;
+  category: schema-management
+  sudo: false
+  example: ALTER TABLE users ADD COLUMN email TEXT UNIQUE;
+  note: Some alterations require AccessExclusiveLock
+  risk: Medium — may lock table depending on operation
+  when_to_use: Schema evolution, adding columns, modifying constraints
+- id: create-index
+  name: CREATE INDEX
+  description: Create an index on a table for query performance
+  syntax: CREATE [UNIQUE] INDEX [CONCURRENTLY] [name] ON table (columns);
+  category: performance
+  sudo: false
+  example: CREATE INDEX CONCURRENTLY idx_users_email ON users (email);
+  note: CONCURRENTLY avoids blocking writes but takes longer
+  risk: Low — CONCURRENTLY mode does not lock writes
+  when_to_use: Improving query performance on frequently filtered or sorted columns
+- id: drop-index
+  name: DROP INDEX
+  description: Remove an existing index
+  syntax: DROP INDEX [CONCURRENTLY] [IF EXISTS] index_name;
+  category: performance
+  sudo: false
+  example: DROP INDEX CONCURRENTLY idx_users_email;
+  note: CONCURRENTLY avoids exclusive lock on the table
+  risk: Low
+  when_to_use: Removing unused indexes to reduce write overhead
+- id: create-role
+  name: CREATE ROLE
+  description: Create a database role (user or group)
+  syntax: CREATE ROLE name [OPTIONS];
+  category: security
+  sudo: false
+  example: CREATE ROLE app_user WITH LOGIN PASSWORD secret VALID UNTIL 2025-12-31;
+  note: LOGIN role is a user; without LOGIN it is a group
+  risk: Low
+  when_to_use: Creating database users or groups
+- id: alter-role
+  name: ALTER ROLE
+  description: Modify role attributes and permissions
+  syntax: ALTER ROLE name [OPTIONS];
+  category: security
+  sudo: false
+  example: ALTER ROLE app_user WITH SUPERUSER;
+  note: Changing roles requires connection to the database first
+  risk: Medium — privilege escalation can affect security
+  when_to_use: Modifying user privileges, password rotation
+- id: grant-privileges
+  name: GRANT
+  description: Grant privileges to a role on database objects
+  syntax: GRANT privilege ON object TO role;
+  category: security
+  sudo: false
+  example: GRANT SELECT, INSERT, UPDATE ON users TO app_user;
+  note: Use WITH GRANT OPTION to allow role to grant to others
+  risk: Low
+  when_to_use: Managing database access permissions
+- id: revoke-privileges
+  name: REVOKE
+  description: Revoke privileges from a role on database objects
+  syntax: REVOKE privilege ON object FROM role;
+  category: security
+  sudo: false
+  example: REVOKE DELETE ON users FROM app_user;
+  note: REVOKE ALL removes all privileges
+  risk: Medium — can break application access if revoked incorrectly
+  when_to_use: Removing access permissions
+- id: create-extension
+  name: CREATE EXTENSION
+  description: Install a PostgreSQL extension
+  syntax: CREATE EXTENSION [IF NOT EXISTS] extension_name [SCHEMA schema_name] [VERSION
+    version];
+  category: schema-management
+  sudo: false
+  example: CREATE EXTENSION pg_stat_statements;
+  note: Extensions must be listed in shared_preload_libraries for some extensions
+    (e.g., pg_stat_statements)
+  risk: Low
+  when_to_use: Adding functionality like full-text search, UUID generation, statistical
+    monitoring
+- id: drop-extension
+  name: DROP EXTENSION
+  description: Remove a PostgreSQL extension
+  syntax: DROP EXTENSION [IF EXISTS] extension_name;
+  category: schema-management
+  sudo: false
+  example: DROP EXTENSION pg_stat_statements;
+  note: Fails if dependent objects exist; use CASCADE with caution
+  risk: Medium — may remove dependent objects
+  when_to_use: Removing extensions no longer needed
+- id: show
+  name: SHOW
+  description: Display current value of a runtime parameter
+  syntax: SHOW parameter_name;
+  category: performance
+  sudo: false
+  example: SHOW shared_buffers; SHOW max_connections;
+  note: Use SHOW ALL to display all parameters
+  risk: Low
+  when_to_use: Inspecting configuration values
+- id: alter-system-set
+  name: ALTER SYSTEM SET
+  description: Set a PostgreSQL runtime parameter persistently
+  syntax: ALTER SYSTEM SET parameter_name = value;
+  category: performance
+  sudo: false
+  example: ALTER SYSTEM SET shared_buffers = 4GB;
+  note: Writes to postgresql.auto.conf; requires pg_reload_conf() or restart for some
+    parameters
+  risk: Medium — affects server behavior globally
+  when_to_use: Persistent configuration changes without editing postgresql.conf
+- id: explain-analyze
+  name: EXPLAIN ANALYZE
+  description: Show query execution plan with actual execution statistics
+  syntax: EXPLAIN [ANALYZE] [BUFFERS] [VERBOSE] sql_statement;
+  category: performance
+  sudo: false
+  example: EXPLAIN (ANALYZE, BUFFERS, VERBOSE) SELECT * FROM users WHERE email = test_example_com;
+  note: ANALYZE actually runs the query; BUFFERS shows buffer usage
+  risk: Low — but ANALYZE executes the query, so watch for side effects
+  when_to_use: Diagnosing slow queries, verifying index usage
+- id: pg-stat-statements-query
+  name: pg_stat_statements Queries
+  description: Query the pg_stat_statements extension for performance data
+  syntax: SELECT * FROM pg_stat_statements [WHERE clause] ORDER BY ...;
+  category: performance
+  sudo: false
+  example: SELECT query, calls, mean_exec_time, total_exec_time FROM pg_stat_statements
+    ORDER BY mean_exec_time DESC LIMIT 10;
+  note: Extension must be loaded in shared_preload_libraries; reset with pg_stat_statements_reset()
+  risk: Low
+  when_to_use: Identifying top resource-consuming queries, performance trending
+- id: pg-stat-activity-query
+  name: pg_stat_activity Queries
+  description: Query pg_stat_activity for session and query monitoring
+  syntax: SELECT * FROM pg_stat_activity [WHERE ...];
+  category: performance
+  sudo: false
+  example: SELECT pid, usename, datname, state, query FROM pg_stat_activity WHERE
+    state = active;
+  note: Use pg_terminate_backend(pid) to kill sessions; use pg_cancel_backend(pid)
+    to cancel query
+  risk: Medium — terminating connections affects users
+  when_to_use: Monitoring active connections, identifying blocking queries, finding
+    idle sessions
+- id: pg-stat-database-query
+  name: pg_stat_database Queries
+  description: Query pg_stat_database for database-level statistics
+  syntax: SELECT * FROM pg_stat_database [WHERE datname = ...];
+  category: performance
+  sudo: false
+  example: SELECT datname, xact_commit, xact_rollback, blks_hit, tup_fetched FROM
+    pg_stat_database;
+  note: Reset statistics with pg_stat_reset()
+  risk: Low
+  when_to_use: Monitoring database health, hit ratios, transaction counts
+- id: pg-stat-user-tables-query
+  name: pg_stat_user_tables Queries
+  description: Query pg_stat_user_tables for table-level statistics
+  syntax: SELECT * FROM pg_stat_user_tables [WHERE ...];
+  category: performance
+  sudo: false
+  example: SELECT relname, seq_scan, idx_scan, n_tup_ins, n_tup_upd, n_dead_tup FROM
+    pg_stat_user_tables ORDER BY n_dead_tup DESC;
+  note: n_dead_tup indicates dead tuples needing VACUUM
+  risk: Low
+  when_to_use: Monitoring table health, identifying tables needing VACUUM
+- id: pg_isready
+  name: pg_isready
+  description: Check if PostgreSQL server is accepting connections
+  syntax: pg_isready [-h host] [-p port] [-d database]
+  category: status
+  sudo: false
+  example: pg_isready -h localhost -p 5432
+  note: Returns exit code 0 if accepting, 1 if not; useful for health checks
+  risk: Low
+  when_to_use: Health checks, startup verification, monitoring scripts
+- id: pg_is_in_recovery
+  name: pg_is_in_recovery()
+  description: Check if the server is in recovery (standby) mode
+  syntax: SELECT pg_is_in_recovery();
+  category: replication
+  sudo: false
+  example: SELECT pg_is_in_recovery();
+  note: Returns true on standby, false on primary
+  risk: Low
+  when_to_use: Verifying server role in replication setup
+- id: pg_current_wal_insert_lsn
+  name: pg_current_wal_insert_lsn()
+  description: Get current WAL insertion position
+  syntax: SELECT pg_current_wal_insert_lsn();
+  category: wal
+  sudo: false
+  example: SELECT pg_current_wal_insert_lsn();
+  note: Available in PostgreSQL 10+; use pg_current_xlog_insert_location() for pre-10
+  risk: Low
+  when_to_use: Monitoring WAL progress, replication lag calculation
+- id: pg_switch_wal
+  name: pg_switch_wal()
+  description: Force a switch to the next WAL segment
+  syntax: SELECT pg_switch_wal();
+  category: wal
+  sudo: false
+  example: SELECT pg_switch_wal();
+  note: Useful for forcing WAL segment rotation, testing archiving
+  risk: Low
+  when_to_use: Forcing WAL switch for archiving, testing replication
+- id: pg_walfile_name
+  name: pg_walfile_name()
+  description: Get the filename of the current WAL segment
+  syntax: SELECT pg_walfile_name(pg_current_wal_insert_lsn());
+  category: wal
+  sudo: false
+  example: SELECT pg_walfile_name(pg_current_wal_insert_lsn());
+  note: Available in PostgreSQL 10+
+  risk: Low
+  when_to_use: Identifying current WAL segment for debugging
+- id: pg_size_pretty
+  name: pg_size_pretty()
+  description: Format byte values into human-readable sizes
+  syntax: pg_size_pretty(byte_value);
+  category: status
+  sudo: false
+  example: SELECT pg_size_pretty(pg_database_size(mydb));
+  note: Useful for reporting database, table, index sizes
+  risk: Low
+  when_to_use: Displaying sizes of databases, tables, indexes, backups
+- id: pg_database_size
+  name: pg_database_size()
+  description: Get the disk space used by a database
+  syntax: pg_database_size(database_name);
+  category: status
+  sudo: false
+  example: SELECT pg_database_size(mydb);
+  note: Does not include related tablespaces
+  risk: Low
+  when_to_use: Checking database sizes, capacity planning
+- id: pg_table_size
+  name: pg_table_size()
+  description: Get the disk space used by a table (including indexes and TOAST)
+  syntax: pg_table_size(table_name);
+  category: status
+  sudo: false
+  example: SELECT pg_table_size(users);
+  note: Use pg_total_relation_size() for table plus indexes plus TOAST
+  risk: Low
+  when_to_use: Checking individual table sizes
+- id: pg_indexes_size
+  name: pg_indexes_size()
+  description: Get the disk space used by all indexes on a table
+  syntax: pg_indexes_size(table_name);
+  category: status
+  sudo: false
+  example: SELECT pg_indexes_size(users);
+  note: Compare with pg_table_size() to check index-to-data ratio
+  risk: Low
+  when_to_use: Checking index sizes, identifying index-heavy tables
+- id: pg_total_relation_size
+  name: pg_total_relation_size()
+  description: Get total disk space for a table including indexes and TOAST
+  syntax: pg_total_relation_size(table_name);
+  category: status
+  sudo: false
+  example: SELECT pg_total_relation_size(users);
+  note: pg_table_size() plus pg_indexes_size() approximately equals this
+  risk: Low
+  when_to_use: Getting full table footprint
+- id: create-publication
+  name: CREATE PUBLICATION
+  description: Create a logical replication publication
+  syntax: CREATE PUBLICATION name [FOR ALL TABLES | FOR TABLE table_list] [WITH (publish
+    = ...)];
+  category: replication
+  sudo: false
+  example: CREATE PUBLICATION my_pub FOR TABLE users, orders;
+  note: publication_insert, publication_update, publication_delete, publication_truncate
+    control operations published
+  risk: Low
+  when_to_use: Setting up logical replication source
+- id: create-subscription
+  name: CREATE SUBSCRIPTION
+  description: Create a logical replication subscription
+  syntax: CREATE SUBSCRIPTION name CONNECTION conninfo PUBLICATION pub_name [WITH
+    (...)]
+  category: replication
+  sudo: false
+  example: CREATE SUBSCRIPTION my_sub CONNECTION host=pub dbname=mydb PUBLICATION
+    my_pub;
+  note: Connection string uses standard PostgreSQL URI format
+  risk: Medium — creates replication data flow
+  when_to_use: Setting up logical replication target
+- id: drop-publication
+  name: DROP PUBLICATION
+  description: Remove a logical replication publication
+  syntax: DROP PUBLICATION [IF EXISTS] name;
+  category: replication
+  sudo: false
+  example: DROP PUBLICATION IF EXISTS my_pub;
+  risk: Low
+  when_to_use: Removing publication no longer needed
+- id: drop-subscription
+  name: DROP SUBSCRIPTION
+  description: Remove a logical replication subscription
+  syntax: DROP SUBSCRIPTION [IF EXISTS] name;
+  category: replication
+  sudo: false
+  example: DROP SUBSCRIPTION IF EXISTS my_sub;
+  risk: Low — stops replication but keeps data
+  when_to_use: Removing subscription to stop replication
+- id: pg_create_physical_replication_slot
+  name: pg_create_physical_replication_slot()
+  description: Create a physical replication slot
+  syntax: SELECT pg_create_physical_replication_slot(slot_name);
+  category: replication
+  sudo: false
+  example: SELECT pg_create_physical_replication_slot(standby1_slot);
+  note: Prevents WAL segments from being removed while needed by replica
+  risk: Low
+  when_to_use: Setting up streaming replication, preventing WAL deletion
+- id: pg_create_logical_replication_slot
+  name: pg_create_logical_replication_slot()
+  description: Create a logical replication slot
+  syntax: SELECT pg_create_logical_replication_slot(slot_name, plugin);
+  category: replication
+  sudo: false
+  example: SELECT pg_create_logical_replication_slot(logical_slot1, pgoutput);
+  note: Logical slots use pgoutput plugin by default in PostgreSQL 10+
+  risk: Low
+  when_to_use: Setting up logical replication, logical decoding
+- id: pg_drop_replication_slot
+  name: pg_drop_replication_slot()
+  description: Remove a replication slot
+  syntax: SELECT pg_drop_replication_slot(slot_name);
+  category: replication
+  sudo: false
+  example: SELECT pg_drop_replication_slot(standby1_slot);
+  risk: Low
+  when_to_use: Removing unused replication slots to prevent WAL accumulation
+- id: pg_stat_replication-query
+  name: pg_stat_replication Queries
+  description: Query replication status from primary
+  syntax: SELECT * FROM pg_stat_replication;
+  category: replication
+  sudo: false
+  example: SELECT client_addr, state, sent_lsn, write_lsn, flush_lsn, replay_lsn FROM
+    pg_stat_replication;
+  note: sent-write-flush-replay lag indicates replication health
+  risk: Low
+  when_to_use: Monitoring replication status, calculating replication lag
+- id: pg_last_wal_receive_lsn
+  name: pg_last_wal_receive_lsn()
+  description: Get the last WAL received position on standby
+  syntax: SELECT pg_last_wal_receive_lsn();
+  category: replication
+  sudo: false
+  example: SELECT pg_last_wal_receive_lsn();
+  note: Compare with pg_last_wal_replay_lsn() to determine replay lag
+  risk: Low
+  when_to_use: Measuring replication lag on standby
+- id: pg_last_wal_replay_lsn
+  name: pg_last_wal_replay_lsn()
+  description: Get the last WAL replayed position on standby
+  syntax: SELECT pg_last_wal_replay_lsn();
+  category: replication
+  sudo: false
+  example: SELECT pg_last_wal_replay_lsn();
+  note: On primary, returns pg_current_wal_lsn()
+  risk: Low
+  when_to_use: Measuring replication lag on standby
+- id: pg_replication_slots-query
+  name: pg_replication_slots Queries
+  description: Query replication slot status
+  syntax: SELECT * FROM pg_replication_slots;
+  category: replication
+  sudo: false
+  example: SELECT slot_name, slot_type, active, restart_lsn FROM pg_replication_slots;
+  note: Inactive slots consume WAL and may cause disk space issues
+  risk: Low
+  when_to_use: Monitoring replication slot health
+- id: pg_stat_wal-query
+  name: pg_stat_wal Queries
+  description: Query WAL subsystem statistics
+  syntax: SELECT * FROM pg_stat_wal;
+  category: wal
+  sudo: false
+  example: SELECT wal_records, wal_bytes, wal_fpi, wal_buffers_full FROM pg_stat_wal;
+  note: Available in PostgreSQL 14+; use pg_stat_archiver for archive statistics
+  risk: Low
+  when_to_use: Monitoring WAL generation rate
+- id: pg_stat_bgwriter-query
+  name: pg_stat_bgwriter Queries
+  description: Query background writer statistics
+  syntax: SELECT * FROM pg_stat_bgwriter;
+  category: status
+  sudo: false
+  example: SELECT checkpoints_timed, checkpoints_requested, buffers_checkpoint FROM
+    pg_stat_bgwriter;
+  note: checkpoints_requested greater than checkpoints_timed indicates WAL pressure
+  risk: Low
+  when_to_use: Diagnosing checkpoint behavior, WAL sizing
+- id: pg_resetwal
+  name: pg_resetwal
+  description: Reset WAL information on a corrupted cluster (emergency only)
+  syntax: pg_resetwal -D <data_directory> [OPTIONS]
+  category: backups
+  sudo: true
+  example: pg_resetwal -D /var/lib/pgsql/data -x 123456789
+  note: DANGEROUS — only use when server cannot start; can lose data
+  risk: Critical — can cause data loss
+  when_to_use: Emergency recovery when server cannot start due to WAL corruption
+- id: pg_rewind
+  name: pg_rewind
+  description: Synchronize a primary to match another primary after divergence
+  syntax: pg_rewind -D <data_directory> --source-server=conninfo
+  category: replication
+  sudo: false
+  example: pg_rewind -D /var/lib/pgsql/data --source-server=host=primary
+  note: Requires wal_log_hints=on or data_checksums=on; used after failover recovery
+  risk: High — replaces data directory contents
+  when_to_use: Post-failover recovery to make old primary a standby
+- id: pg_archivecleanup
+  name: pg_archivecleanup
+  description: Remove unnecessary archived WAL files
+  syntax: pg_archivecleanup <archive_dir> <oldest_wal_file>
+  category: wal
+  sudo: false
+  example: pg_archivecleanup /archive/wal 000000010000000000000010
+  note: Used by archive_cleanup_command in recovery; automates WAL cleanup
+  risk: Low
+  when_to_use: Managing WAL archive disk space
+- id: pg_test_fsync
+  name: pg_test_fsync
+  description: Test fsync implementation on the current system
+  syntax: pg_test_fsync [-c <count>] [-t <duration>]
+  category: status
+  sudo: false
+  example: pg_test_fsync -t 5
+  note: Run as PostgreSQL user; helps diagnose fsync-related performance issues
+  risk: Low
+  when_to_use: Verifying storage subsystem supports fsync, troubleshooting WAL issues
+- id: pg_test_timing
+  name: pg_test_timing
+  description: Test the overhead of the pg_usleep function and system clock resolution
+  syntax: pg_test_timing [OPTIONS]
+  category: status
+  sudo: false
+  example: pg_test_timing
+  note: Useful for verifying timer precision
+  risk: Low
+  when_to_use: Diagnosing timing-related performance issues
+- id: create-tablespace
+  name: CREATE TABLESPACE
+  description: Create a new tablespace at a specified filesystem location
+  syntax: CREATE TABLESPACE name OWNER owner LOCATION path;
+  category: schema-management
+  sudo: false
+  example: CREATE TABLESPACE fast_data LOCATION /dev/ssd1/pgdata;
+  note: Directory must be owned by the PostgreSQL OS user and empty
+  risk: Low
+  when_to_use: Placing tables and indexes on specific storage devices
+- id: drop-tablespace
+  name: DROP TABLESPACE
+  description: Remove a tablespace (must be empty)
+  syntax: DROP TABLESPACE [IF EXISTS] name;
+  category: schema-management
+  sudo: false
+  example: DROP TABLESPACE IF EXISTS old_tablespace;
+  risk: Medium — removes tablespace reference, objects must be moved first
+  when_to_use: Removing unused tablespaces
+- id: alter-database
+  name: ALTER DATABASE
+  description: Modify database properties (owner, tablespace, settings)
+  syntax: ALTER DATABASE name ACTION;
+  category: schema-management
+  sudo: false
+  example: ALTER DATABASE mydb SET work_mem = 64MB;
+  note: Database-level SET applies to all sessions connecting to this database
+  risk: Medium — changes database behavior
+  when_to_use: Setting database-specific configuration
+- id: alter-tablespace
+  name: ALTER TABLESPACE
+  description: Modify tablespace properties (owner, rename)
+  syntax: ALTER TABLESPACE name OWNER new_owner;
+  category: schema-management
+  sudo: false
+  example: ALTER TABLESPACE fast_data OWNER app_admin;
+  risk: Low
+  when_to_use: Transferring tablespace ownership
+- id: create-schema
+  name: CREATE SCHEMA
+  description: Create a new schema within a database
+  syntax: CREATE SCHEMA schema_name [AUTHORIZATION owner];
+  category: schema-management
+  sudo: false
+  example: CREATE SCHEMA app_data AUTHORIZATION app_user;
+  note: Each database has a public schema by default
+  risk: Low
+  when_to_use: Organizing database objects into namespaces
+- id: drop-schema
+  name: DROP SCHEMA
+  description: Remove a schema and its objects
+  syntax: DROP SCHEMA [IF EXISTS] name [CASCADE | RESTRICT];
+  category: schema-management
+  sudo: false
+  example: DROP SCHEMA IF EXISTS old_app CASCADE;
+  risk: High — CASCADE removes all objects in schema
+  when_to_use: Removing unused schemas
+- id: lock-table
+  name: LOCK TABLE
+  description: Explicitly lock a table to a specific lock mode
+  syntax: LOCK TABLE table_name [IN lock_mode];
+  category: locks
+  sudo: false
+  example: LOCK TABLE users IN EXCLUSIVE MODE;
+  note: Lock modes include AccessShare, RowShare, RowExclusive, Share, ShareRowExclusive,
+    Exclusive, AccessExclusive
+  risk: Medium — can block other transactions
+  when_to_use: Controlling concurrent access, maintenance operations
+- id: pg_locks-query
+  name: pg_locks Queries
+  description: Query active locks and lock status
+  syntax: SELECT * FROM pg_locks [WHERE ...];
+  category: locks
+  sudo: false
+  example: SELECT pid, grantee, locktype, mode, granted FROM pg_locks WHERE NOT granted;
+  note: Use pg_blocking_pids(pid) to find blockers (PostgreSQL 11+)
+  risk: Low
+  when_to_use: Identifying blocking locks, diagnosing deadlocks
+- id: pg_blocking_pids
+  name: pg_blocking_pids()
+  description: Get PIDs of backends blocking a given PID
+  syntax: SELECT pg_blocking_pids(pid);
+  category: locks
+  sudo: false
+  example: SELECT pg_blocking_pids(1234);
+  note: Available in PostgreSQL 11+
+  risk: Low
+  when_to_use: Identifying which sessions are blocking a query
+- id: set-lock-timeout
+  name: SET lock_timeout
+  description: Set a maximum time for a statement to wait for locks
+  syntax: SET lock_timeout = milliseconds;
+  category: locks
+  sudo: false
+  example: SET lock_timeout = 5s;
+  note: Applies to the current session; prevents indefinite lock waits
+  risk: Low
+  when_to_use: Preventing application hangs from lock contention
+- id: set-statement-timeout
+  name: SET statement_timeout
+  description: Set a maximum time for a statement to execute
+  syntax: SET statement_timeout = milliseconds;
+  category: locks
+  sudo: false
+  example: SET statement_timeout = 30s;
+  note: Applies to the current session; cancels long-running queries
+  risk: Low
+  when_to_use: Preventing runaway queries from consuming resources
+- id: cancel-backend
+  name: pg_cancel_backend()
+  description: Cancel a specific backend current query (SIGINT equivalent)
+  syntax: SELECT pg_cancel_backend(pid);
+  category: locks
+  sudo: false
+  example: SELECT pg_cancel_backend(1234);
+  note: Does not terminate the connection, only the current query
+  risk: Medium — affects user session
+  when_to_use: Cancelling long-running or stuck queries
+- id: terminate-backend
+  name: pg_terminate_backend()
+  description: Terminate a specific backend connection (SIGTERM equivalent)
+  syntax: SELECT pg_terminate_backend(pid);
+  category: locks
+  sudo: false
+  example: SELECT pg_terminate_backend(1234);
+  note: Disconnects the client; all open transactions are rolled back
+  risk: High — abrupt disconnection
+  when_to_use: Killing unresponsive sessions, clearing deadlock chains
+- id: pg_current_xlog_location
+  name: pg_current_xlog_location()
+  description: Get current WAL location (pre-10 compatibility)
+  syntax: SELECT pg_current_xlog_location();
+  category: wal
+  sudo: false
+  example: SELECT pg_current_xlog_location();
+  note: Deprecated in PostgreSQL 10+; use pg_current_wal_lsn()
+  risk: Low
+  when_to_use: Compatibility with pre-10 systems
+- id: pg_xlog_location_diff
+  name: pg_xlog_location_diff()
+  description: Calculate difference between two WAL locations (pre-10)
+  syntax: pg_xlog_location_diff(lsn1, lsn2);
+  category: wal
+  sudo: false
+  example: SELECT pg_xlog_location_diff(pg_current_xlog_location(), received_lsn);
+  note: Pre-10 compatibility; use pg_wal_lsn_diff() in 10+
+  risk: Low
+  when_to_use: Calculating replication lag on older versions
+- id: pg_wal_lsn_diff
+  name: pg_wal_lsn_diff()
+  description: Calculate difference between two LSN values
+  syntax: pg_wal_lsn_diff(lsn1, lsn2);
+  category: wal
+  sudo: false
+  example: SELECT pg_wal_lsn_diff(pg_current_wal_lsn(), pg_last_wal_replay_lsn());
+  note: Available in PostgreSQL 10+
+  risk: Low
+  when_to_use: Calculating replication lag, WAL position differences
+- id: pg_current_wal_lsn
+  name: pg_current_wal_lsn()
+  description: Get current WAL insert position (PostgreSQL 10+)
+  syntax: SELECT pg_current_wal_lsn();
+  category: wal
+  sudo: false
+  example: SELECT pg_current_wal_lsn();
+  note: Supersedes pg_current_xlog_lsn() from pre-10
+  risk: Low
+  when_to_use: Monitoring WAL progress, replication lag calculation
+- id: pg_wal_lsn_bytes
+  name: pg_wal_lsn_bytes()
+  description: Convert LSN to byte offset
+  syntax: pg_wal_lsn_bytes(lsn);
+  category: wal
+  sudo: false
+  example: SELECT pg_wal_lsn_bytes(pg_current_wal_lsn());
+  note: Available in PostgreSQL 12+
+  risk: Low
+  when_to_use: Converting LSN values to human-readable byte counts
+- id: pg_stat_archiver-query
+  name: pg_stat_archiver Queries
+  description: Query WAL archiving statistics
+  syntax: SELECT * FROM pg_stat_archiver;
+  category: wal
+  sudo: false
+  example: SELECT archived_count, last_archived_wal, failed_count FROM pg_stat_archiver;
+  note: Use pg_stat_archiver.failed_count to detect archive failures
+  risk: Low
+  when_to_use: Monitoring WAL archiving health
+- id: pg_stat_progress_vacuum-query
+  name: pg_stat_progress_vacuum Queries
+  description: Monitor VACUUM progress in real-time
+  syntax: SELECT * FROM pg_stat_progress_vacuum;
+  category: maintenance
+  sudo: false
+  example: SELECT pid, phase, heap_blks_total, heap_blks_vacuumed FROM pg_stat_progress_vacuum;
+  note: Available in PostgreSQL 10+
+  risk: Low
+  when_to_use: Monitoring long-running VACUUM FULL operations
+- id: pg_stat_progress_create_index-query
+  name: pg_stat_progress_create_index Queries
+  description: Monitor CREATE INDEX CONCURRENTLY progress
+  syntax: SELECT * FROM pg_stat_progress_create_index;
+  category: maintenance
+  sudo: false
+  example: SELECT pid, phase, index_relid, lock_hold_total FROM pg_stat_progress_create_index;
+  note: Available in PostgreSQL 10+
+  risk: Low
+  when_to_use: Monitoring long-running index creation
+- id: pg_stat_progress_cluster-query
+  name: pg_stat_progress_cluster Queries
+  description: Monitor CLUSTER progress
+  syntax: SELECT * FROM pg_stat_progress_cluster;
+  category: maintenance
+  sudo: false
+  example: SELECT pid, phase, relid, blocks_total FROM pg_stat_progress_cluster;
+  note: Available in PostgreSQL 10+
+  risk: Low
+  when_to_use: Monitoring CLUSTER operation on large tables
+- id: pg_stat_progress_basebackup-query
+  name: pg_stat_progress_basebackup Queries
+  description: Monitor pg_basebackup progress
+  syntax: SELECT * FROM pg_stat_progress_basebackup;
+  category: backups
+  sudo: false
+  example: SELECT phase, bytes_total, bytes_processed FROM pg_stat_progress_basebackup;
+  note: Available in PostgreSQL 12+
+  risk: Low
+  when_to_use: Monitoring long-running base backups
+- id: pg-stat-user-functions-query
+  name: pg_stat_user_functions Queries
+  description: Query function call statistics
+  syntax: SELECT * FROM pg_stat_user_functions ORDER BY total_exec_time DESC;
+  category: performance
+  sudo: false
+  example: SELECT schemaname, funcname, calls, total_exec_time FROM pg_stat_user_functions
+    ORDER BY calls DESC;
+  risk: Low
+  when_to_use: Identifying expensive functions
+- id: pg_trigger_size
+  name: pg_trigger_size()
+  description: Get disk space used by triggers and associated objects
+  syntax: pg_trigger_size(trigger_name);
+  category: status
+  sudo: false
+  example: SELECT pg_trigger_size(users_trigger);
+  risk: Low
+  when_to_use: Checking trigger-related storage
+- id: create-trigger
+  name: CREATE TRIGGER
+  description: Create a trigger on a table for automated actions
+  syntax: CREATE TRIGGER name BEFORE OR AFTER EVENT ON table EXECUTE PROCEDURE func();
+  category: schema-management
+  sudo: false
+  example: CREATE TRIGGER audit_trigger AFTER INSERT ON users EXECUTE PROCEDURE audit_log();
+  risk: Low
+  when_to_use: Automated data logging, constraints, cascading actions
+- id: drop-trigger
+  name: DROP TRIGGER
+  description: Remove a trigger from a table
+  syntax: DROP TRIGGER name ON table;
+  category: schema-management
+  sudo: false
+  example: DROP TRIGGER audit_trigger ON users;
+  risk: Low
+  when_to_use: Removing triggers no longer needed
+- id: create-view
+  name: CREATE VIEW
+  description: Create a virtual table based on a query
+  syntax: CREATE OR REPLACE VIEW name AS SELECT ...;
+  category: schema-management
+  sudo: false
+  example: CREATE VIEW active_users AS SELECT * FROM users WHERE active = true;
+  risk: Low
+  when_to_use: Simplifying complex queries, security through data hiding
+- id: drop-view
+  name: DROP VIEW
+  description: Remove a view
+  syntax: DROP VIEW [IF EXISTS] name;
+  category: schema-management
+  sudo: false
+  example: DROP VIEW IF EXISTS active_users;
+  risk: Low
+  when_to_use: Removing unused views
+- id: create-sequence
+  name: CREATE SEQUENCE
+  description: Create a sequence generator for numeric values
+  syntax: CREATE SEQUENCE name START WITH value INCREMENT BY n;
+  category: schema-management
+  sudo: false
+  example: CREATE SEQUENCE users_id_seq START WITH 1000 INCREMENT BY 1;
+  risk: Low
+  when_to_use: Generating unique numeric identifiers
+- id: nextval
+  name: NEXTVAL
+  description: Get the next value from a sequence
+  syntax: NEXTVAL(sequence_name);
+  category: schema-management
+  sudo: false
+  example: SELECT NEXTVAL(users_id_seq);
+  risk: Low
+  when_to_use: Generating unique IDs, manual sequence advancement
+- id: alter-database-set
+  name: ALTER DATABASE SET
+  description: Set database-level configuration
+  syntax: ALTER DATABASE name SET parameter = value;
+  category: performance
+  sudo: false
+  example: ALTER DATABASE mydb SET work_mem = 128MB;
+  note: Only affects sessions connecting to this database
+  risk: Medium — changes default behavior
+  when_to_use: Database-specific tuning
+- id: create-type
+  name: CREATE TYPE
+  description: Create a new data type
+  syntax: CREATE TYPE name AS (field1 TYPE, field2 TYPE);
+  category: schema-management
+  sudo: false
+  example: CREATE TYPE address AS (street TEXT, city TEXT, zip TEXT);
+  risk: Low
+  when_to_use: Creating composite types for structured data
+- id: pg_relation_size
+  name: pg_relation_size()
+  description: Get disk space used by a single relation (table or index)
+  syntax: pg_relation_size(relation_name);
+  category: status
+  sudo: false
+  example: SELECT pg_relation_size(users);
+  note: Does not include TOAST or indexes; use pg_total_relation_size() for full size
+  risk: Low
+  when_to_use: Checking individual relation sizes
+- id: pg_freespace
+  name: pg_freespace()
+  description: Get free space in pages of a relation
+  syntax: pg_freespace(relation_name, fork, first_page, n_pages);
+  category: status
+  sudo: false
+  example: SELECT pg_freespace(users);
+  risk: Low
+  when_to_use: Understanding table free space for capacity planning
+- id: create-index-concurrently
+  name: CREATE INDEX CONCURRENTLY
+  description: Create an index without blocking concurrent reads or writes
+  syntax: CREATE INDEX CONCURRENTLY name ON table (columns);
+  category: maintenance
+  sudo: false
+  example: CREATE INDEX CONCURRENTLY idx_users_name ON users (name);
+  note: Cannot be run inside a transaction block
+  risk: Low — does not block writes
+  when_to_use: Creating indexes on large production tables
+- id: truncate-table
+  name: TRUNCATE
+  description: Quickly remove all rows from a table
+  syntax: TRUNCATE TABLE table_name [CASCADE | RESTRICT];
+  category: schema-management
+  sudo: false
+  example: TRUNCATE TABLE temp_data CASCADE;
+  note: Cannot be rolled back in a transaction; faster than DELETE for large tables
+  risk: High — irreversible row removal
+  when_to_use: Clearing temporary or staging data quickly
+- id: cluster-table
+  name: CLUSTER
+  description: Physically reorder a table based on an index
+  syntax: CLUSTER table_name USING index_name;
+  category: maintenance
+  sudo: false
+  example: CLUSTER users USING idx_users_email;
+  note: Requires AccessExclusiveLock; consider pg_repack for production
+  risk: Medium — locks table, can take long on large tables
+  when_to_use: Physical reorganization for sequential access patterns
+- id: reindex-database
+  name: REINDEX DATABASE
+  description: Rebuild all indexes in a database
+  syntax: REINDEX DATABASE dbname;
+  category: maintenance
+  sudo: false
+  example: REINDEX DATABASE mydb;
+  note: Use REINDEX CONCURRENTLY in PostgreSQL 15+
+  risk: Medium — may lock tables during rebuild
+  when_to_use: After large bulk operations, fixing corrupted indexes
+- id: reindex-table
+  name: REINDEX TABLE
+  description: Rebuild indexes on a specific table
+  syntax: REINDEX CONCURRENTLY TABLE table_name;
+  category: maintenance
+  sudo: false
+  example: REINDEX CONCURRENTLY TABLE users;
+  note: CONCURRENTLY avoids exclusive lock (PostgreSQL 15+)
+  risk: Medium — rebuilds indexes, may use disk space
+  when_to_use: After large bulk operations, fixing corrupted indexes
+- id: pg_wal_size
+  name: pg_wal_size()
+  description: Get total disk space used by WAL
+  syntax: pg_wal_size();
+  category: wal
+  sudo: false
+  example: SELECT pg_size_pretty(pg_wal_size());
+  note: Available in PostgreSQL 13+
+  risk: Low
+  when_to_use: Monitoring WAL disk usage
+- id: pg_checksums
+  name: pg_checksums()
+  description: Enable or disable data checksums
+  syntax: pg_checksums --enable OR --disable -D <data_directory>
+  category: security
+  sudo: true
+  example: pg_checksums --enable -D /var/lib/pgsql/data
+  note: Cannot be changed after cluster initialization; requires cluster restart
+  risk: Medium — enables data integrity detection
+  when_to_use: Adding checksums to existing clusters for data integrity
+- id: initdb
+  name: initdb
+  description: Initialize a new PostgreSQL database cluster
+  syntax: initdb -D <data_directory> [OPTIONS]
+  category: schema-management
+  sudo: true
+  example: initdb -D /var/lib/pgsql/data -U postgres -A scram-sha-256
+  note: Only run during initial setup; must be owned by PostgreSQL OS user
+  risk: Critical — creates new cluster, can destroy existing data
+  when_to_use: Initial cluster setup
+- id: pg_dump-schema
+  name: pg_dump --schema-only
+  description: Dump only schema definitions, no data
+  syntax: pg_dump --schema-only -D <directory> dbname
+  category: backups
+  sudo: false
+  example: pg_dump --schema-only -d mydb -f schema.sql
+  risk: Low
+  when_to_use: Exporting schema for CI/CD, version control, documentation
+- id: pg_dump-tables
+  name: pg_dump --table
+  description: Dump a specific table from a database
+  syntax: pg_dump --table=tablename dbname
+  category: backups
+  sudo: false
+  example: pg_dump --table=users -d mydb -f users.sql
+  risk: Low
+  when_to_use: Selective backup of specific tables
+- id: psql-restore
+  name: psql -f
+  description: Restore SQL dump using psql
+  syntax: psql -d dbname -f dump.sql
+  category: backups
+  sudo: false
+  example: psql -d mydb -U postgres -f mydb_backup.sql
+  risk: Medium — executes SQL that modifies the database
+  when_to_use: Restoring from plain SQL format pg_dump output
+- id: vacuumdb
+  name: vacuumdb
+  description: Vacuum database from command line
+  syntax: vacuumdb [OPTIONS] [dbname]
+  category: maintenance
+  sudo: false
+  example: vacuumdb --all --analyze --jobs=4
+  note: Wrapper around VACUUM for command-line automation
+  risk: Low
+  when_to_use: Automated vacuum scheduling
+- id: pg_upgrade
+  name: pg_upgrade
+  description: Upgrade a PostgreSQL cluster to a new major version
+  syntax: pg_upgrade -b <old_bin_dir> -B <new_bin_dir> -d <old_data_dir> -D <new_data_dir>
+  category: status
+  sudo: true
+  example: pg_upgrade -b /opt/pgsql/15/bin -B /opt/pgsql/17/bin -d /data/15 -D /data/17
+  note: Requires downtime; consider logical upgrade (pg_dumpall) for zero downtime
+  risk: High — replaces data directory content
+  when_to_use: Upgrading from PostgreSQL 15 to 16 or 17
+- id: pg_ctlcluster
+  name: pg_ctlcluster
+  description: Debian/Ubuntu-style PostgreSQL cluster management
+  syntax: pg_ctlcluster <version> <cluster> start OR stop OR restart OR reload
+  category: status
+  sudo: true
+  example: pg_ctlcluster 15 main start
+  note: Used on Debian-based systems instead of pg_ctl directly
+  risk: Low
+  when_to_use: Managing PostgreSQL on Debian/Ubuntu systems

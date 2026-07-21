@@ -1,0 +1,49 @@
+id: nagioslogserver-skill-pack
+name: Nagios Log Server Engineering
+version: 1.0.0
+description: >
+  Comprehensive Nagios Log Server engineering skill covering Elasticsearch core,
+  Logstash pipelines, cluster management, query syntax, alerts, dashboards, log
+  inputs (Syslog, EventLog), troubleshooting, and lifecycle management.
+  Provides expert-level guidance for Nagios Log Server administrators and
+  DevOps engineers responsible for centralized log aggregation and analysis.
+author: Wiki Labs Team
+technology_domain: Nagios Log Server
+vendor: Nagios
+category: Monitoring
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - nagios
+  - log-server
+  - elasticsearch
+  - logstash
+  - lucene
+  - log-aggregation
+  - syslog
+  - eventlog
+  - dashboard
+  - alerting
+  - log-analysis
+  - centralized-logging
+  - elk-stack
+  - cluster-health
+  - pipeline-debug
+keywords:
+  - elasticsearch
+  - logstash
+  - logstash-pipeline
+  - lucene-query
+  - kibana
+  - cluster-health
+  - index-rotation
+  - syslog-input
+  - eventlog-input
+  - search-latency
+  - backpressure
+icon: 📋
+supported_environments:
+  - "2024+"
+  - "2023+"
+documentation_url: https://docs.wikilabs.ai/skills/nagioslogserver-skill-pack

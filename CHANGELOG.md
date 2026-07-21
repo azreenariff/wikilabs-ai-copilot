@@ -5,6 +5,125 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-07-21
+
+### Added
+
+#### Operations Engineering Foundation & Operations Skill Packs (Phase 15) — Enterprise Operations
+
+- **Operations Engineering Foundation** — Reusable operational engineering knowledge base covering: monitoring, alerting, events, incidents, service health, availability, performance, capacity, configuration drift, automation, maintenance, root cause analysis, operational risk, runbooks, escalation, evidence collection, change management awareness, troubleshooting philosophy, best practices, operational safety, and decision trees. All concepts reusable by every Operations Skill Pack.
+
+- **Version-Aware Knowledge System** — Product version awareness supporting version-specific guidance across all skill packs: product versions, documentation versions, command variations, workflow variations, feature availability, deprecation notices, and best practice changes. Automatically selects most appropriate guidance when product version is determined.
+
+- **Cross-Skill Operational Workflows** — Multi-technology troubleshooting workflows demonstrating collaboration between Skill Packs. Patterns: Application unavailable → monitoring alert → review monitoring → review logs → review Linux → review database → probable next investigation. High database latency → monitoring → database investigation → infrastructure → storage → operational recommendation.
+
+- **Confidence & Evidence Framework** — Every recommendation includes: observation, interpretation, recommendation, reason, evidence, confidence, suggested next step, expected outcome. Confidence based only on observable evidence. Never exposes internal reasoning or chain-of-thought.
+
+- **AI Safety Framework** — Copilot never fabricates observations. Clear distinction between: observed facts, likely causes, possible causes, unknowns, assumptions, recommendations. If evidence is insufficient, explicitly requests additional investigation. Never presents assumptions as facts.
+
+- **Operations Quality Standard** — Quality requirements for every Operations Skill Pack: technology overview, architecture, terminology, detection rules, observation patterns, troubleshooting workflows, decision trees, command guidance, operational best practices, common failures, documentation references, version-aware guidance, operational safety, examples, and testing.
+
+##### Nagios XI Skill Pack
+
+- **Complete skill pack** for Nagios XI monitoring
+- 19 files across 13 subdirectories
+- **Architecture & Components** — Monitoring engine, core components, NRPE, NCPA, SNMP, plugins
+- **Monitoring Concepts** — Services, hosts, host groups, service groups, dashboards, notifications, escalations, dependencies, performance data, reporting
+- **Operations** — Capacity planning, availability reporting, backups, upgrade concepts, high availability, operational best practices
+- **Common Failures & Detection** — Detection rules, observation patterns, troubleshooting workflows, decision trees
+- **Command Guidance & Documentation** — Structured command guidance with references, version-aware guidance for Nagios XI 2024/2025
+- **Subdirectories**: architecture/, best-practices/, common-failures/, concepts/, context/, diagnostics/, documentation/, guidance/, knowledge/, reasoning/, references/, tests/, workflows/
+
+##### Nagios Log Server Skill Pack
+
+- **Complete skill pack** for Nagios Log Server
+- 20 files across 13 subdirectories
+- **Architecture & Data Flow** — Log ingestion, parsing, searching, dashboards, alerts
+- **Storage & Performance** — Indices, retention, storage, cluster concepts, performance
+- **Operations** — Common failures, detection rules, observation patterns, troubleshooting workflows, decision trees
+- **Guidance & Documentation** — Structured guidance with references, version-aware knowledge
+- **Subdirectories**: architecture/, best-practices/, common-failures/, concepts/, context/, diagnostics/, documentation/, guidance/, knowledge/, reasoning/, references/, tests/, workflows/
+
+##### Checkmk Skill Pack
+
+- **Complete skill pack** for Checkmk monitoring
+- 21 files across 13 subdirectories (+ CHECKMK_SKILL_PACK.md overview)
+- **Architecture & Sites** — Sites, agents, SNMP, rulesets, discovery
+- **Monitoring Features** — Notifications, dashboards, distributed monitoring, performance, business intelligence, automation
+- **Operations** — Reporting, detection rules, observation patterns, troubleshooting workflows, decision trees
+- **Command Guidance & Documentation** — Structured command guidance, documentation references, version-aware knowledge for Checkmk 2.3/2.4
+- **Subdirectories**: architecture/, best-practices/, common-failures/, concepts/, context/, diagnostics/, documentation/, guidance/, knowledge/, reasoning/, references/, tests/, workflows/
+
+##### Ansible Skill Pack
+
+- **Complete skill pack** for Ansible automation
+- 20 files across 13 subdirectories
+- **Core Concepts** — Architecture, inventories, playbooks, roles, collections, variables, vault, templates, facts, modules, handlers
+- **Execution** — Execution flow, idempotency, error handling
+- **Operations** — Operational guidance, troubleshooting, decision trees, safety considerations
+- **Guidance & Documentation** — Structured guidance with references, version-aware knowledge
+- **Subdirectories**: architecture/, best-practices/, common-failures/, concepts/, context/, diagnostics/, documentation/, guidance/, knowledge/, reasoning/, references/, tests/, workflows/
+
+##### MySQL Skill Pack
+
+- **Complete skill pack** for MySQL database administration
+- 41 files across 14 subdirectories (largest Phase 15 skill pack)
+- **Architecture** — Storage engines, replication, backups, indexes, transactions, locks
+- **Performance** — Performance tuning, slow queries, users, privileges, configuration, logging
+- **High Availability** — HA concepts, backup-recovery strategies
+- **Troubleshooting** — Decision trees, guidance, version-aware knowledge, detection rules
+- **8 Workflow Files** — buffer-pool-pressure, disk-space-exhaustion, high-connection-count, high-cpu-usage, lock-contention, replication-failure, replication-lag, slow-query
+- **Additional Documentation** — MYSQL_BEST_PRACTICES.md, MYSQL_COMMAND_REFERENCE.md, MYSQL_COMMON_FAILURES.md, MYSQL_DETECTION.md, MYSQL_GUIDANCE.md, MYSQL_REASONING_GUIDE.md, MYSQL_SKILL_PACK.md, MYSQL_SKILL_PACK_QUALITY_STANDARD.md, MYSQL_WORKFLOWS.md
+- **Version-aware guidance** for MySQL 8.0
+- **Subdirectories**: architecture/, best-practices/, common-failures/, concepts/, context/, diagnostics/, documentation/, examples/, guidance/, knowledge/, reasoning/, references/, tests/, workflows/
+
+##### EDB PostgreSQL Skill Pack
+
+- **Complete skill pack** for EDB PostgreSQL
+- 34 files across 14 subdirectories
+- **Architecture** — PostgreSQL architecture, streaming replication, WAL
+- **Data Management** — Backups, indexes, locks, transactions
+- **Performance** — Performance optimization, configuration, logging
+- **High Availability** — HA concepts with EDB-specific tooling
+- **Troubleshooting** — Decision trees, guidance, version-aware knowledge
+- **7 Knowledge Files** — architecture, backup-recovery, performance-optimization, replication, security, wal
+- **Additional Documentation** — EDB_POSTGRESQL_BEST_PRACTICES.md, EDB_POSTGRESQL_COMMAND_REFERENCE.md, EDB_POSTGRESQL_COMMON_FAILURES.md, EDB_POSTGRESQL_DETECTION.md, EDB_POSTGRESQL_GUIDANCE.md, EDB_POSTGRESQL_REASONING_GUIDE.md, EDB_POSTGRESQL_SKILL_PACK.md, EDB_POSTGRESQL_SKILL_PACK_QUALITY_STANDARD.md, EDB_POSTGRESQL_WORKFLOWS.md
+- **Version-aware guidance** for PostgreSQL 15/16
+- **Subdirectories**: architecture/, best-practices/, common-failures/, concepts/, context/, diagnostics/, documentation/, examples/, guidance/, knowledge/, reasoning/, references/, tests/, workflows/
+
+##### Microsoft SQL Server Skill Pack
+
+- **Complete skill pack** for Microsoft SQL Server
+- 28 files across 13 subdirectories
+- **Architecture** — SQL Server architecture, availability groups, backups, recovery
+- **Performance** — Indexes, statistics, execution plans, performance, memory, tempdb
+- **Maintenance & Security** — Maintenance plans, security, transactions
+- **Troubleshooting** — Decision trees, guidance, version-aware knowledge
+- **6 Knowledge Files** — architecture, availability-groups, backups-recovery, indexes-statistics, security, tempdb-memory
+- **Additional Documentation** — MSSQL_COMMAND_REFERENCE.md, MSSQL_DETECTION.md, MSSQL_GUIDANCE.md, MSSQL_SKILL_PACK.md
+- **Version-aware guidance** for Microsoft SQL Server 2022
+- **Subdirectories**: architecture/, best-practices/, common-failures/, concepts/, context/, diagnostics/, documentation/, examples/, guidance/, knowledge/, reasoning/, tests/, workflows/
+
+### Changed
+
+- Version bumped from 0.9.0-alpha to 1.3.0-alpha
+
+### New Files
+
+- `docs/operations/OPERATIONS_FOUNDATION.md` — Operations Engineering Foundation
+- `docs/operations/CONFIDENCE_EVIDENCE_ENGINE.md` — Confidence & Evidence Framework
+- `FRAMEWORK_DOCS/AI_SAFETY.md` — AI Safety Framework
+- `FRAMEWORK_DOCS/VERSION_AWARENESS.md` — Vendor Version Awareness system
+- `FRAMEWORK_DOCS/CROSS_SKILL_WORKFLOWS.md` — Cross-Skill Operational Workflows
+- `FRAMEWORK_DOCS/QUALITY_STANDARD.md` — Operations Quality Standard
+- `src/skills/nagiosxi-skill-pack/` — Nagios XI skill pack (19 files)
+- `src/skills/nagioslogserver-skill-pack/` — Nagios Log Server skill pack (20 files)
+- `src/skills/checkmk-skill-pack/` — Checkmk skill pack (21 files)
+- `src/skills/ansible-skill-pack/` — Ansible skill pack (20 files)
+- `src/skills/mysql-skill-pack/` — MySQL skill pack (41 files)
+- `src/skills/edb-postgresql-skill-pack/` — EDB PostgreSQL skill pack (34 files)
+- `src/skills/mssql-skill-pack/` — Microsoft SQL Server skill pack (28 files)
+
 ## [0.9.0] — 2026-07-20
 
 ### Added

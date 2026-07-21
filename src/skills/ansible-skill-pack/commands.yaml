@@ -1,0 +1,439 @@
+- id: ansible-version
+  name: ansible --version
+  description: Display Ansible version information including Python version, module search path, and configuration file location
+  syntax: ansible --version
+  category: discovery
+  sudo: false
+  example: ansible --version
+  note: Shows ansible-core version, python version, and config file paths
+  risk: Low
+  when_to_use: Checking Ansible version, verifying environment, troubleshooting configuration issues
+
+- id: ansible-playbook-basic
+  name: ansible-playbook <playbook>
+  description: Execute an Ansible playbook against target hosts
+  syntax: ansible-playbook <playbook.yaml> [-i <inventory>] [-l <limit>] [--tags <tags>]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml
+  note: This is the primary command for running automation playbooks
+  risk: Medium — changes configuration on target hosts
+  when_to_use: Running playbooks to configure, deploy, or orchestrate systems
+
+- id: ansible-playbook-syntax
+  name: ansible-playbook --syntax-check
+  description: Validate playbook YAML syntax without executing tasks
+  syntax: ansible-playbook <playbook.yaml> --syntax-check [-i <inventory>]
+  category: validation
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --syntax-check
+  note: Catches YAML indentation errors, missing required fields, and structural issues
+  risk: Low
+  when_to_use: Before running a playbook to verify syntax, during development
+
+- id: ansible-playbook-check
+  name: ansible-playbook --check
+  description: Run playbook in check mode (dry-run) to determine what would change without making changes
+  syntax: ansible-playbook <playbook.yaml> --check [-i <inventory>]
+  category: validation
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --check
+  note: Not all modules support check mode; some will still report changed
+  risk: Low
+  when_to_use: Preview changes before applying, CI/CD pipelines, safe testing
+
+- id: ansible-playbook-diff
+  name: ansible-playbook --diff
+  description: Show file and content diffs for tasks that make changes, used with --check or normal run
+  syntax: ansible-playbook <playbook.yaml> --diff [-i <inventory>]
+  category: validation
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --check --diff
+  note: Requires --check for pre-execution preview, or shown during actual run
+  risk: Low
+  when_to_use: Reviewing exact file changes before applying, auditing changes
+
+- id: ansible-playbook-list-tasks
+  name: ansible-playbook --list-tasks
+  description: List all tasks that would be executed by a playbook without running
+  syntax: ansible-playbook <playbook.yaml> --list-tasks [-i <inventory>]
+  category: discovery
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --list-tasks
+  note: Shows task names, order, and target hosts
+  risk: Low
+  when_to_use: Understanding playbook structure, planning execution scope
+
+- id: ansible-playbook-list-tags
+  name: ansible-playbook --list-tags
+  description: List all tags defined in a playbook
+  syntax: ansible-playbook <playbook.yaml> --list-tags [-i <inventory>]
+  category: discovery
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --list-tags
+  note: Tags enable selective task execution via --tags flag
+  risk: Low
+  when_to_use: Understanding playbook tagging structure, planning selective runs
+
+- id: ansible-playbook-list-hosts
+  name: ansible-playbook --list-hosts
+  description: List all hosts targeted by a playbook
+  syntax: ansible-playbook <playbook.yaml> --list-hosts [-i <inventory>]
+  category: discovery
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --list-hosts
+  note: Shows inventory sources and host groups targeted
+  risk: Low
+  when_to_use: Verifying target hosts before running a playbook
+
+- id: ansible-playbook-tags
+  name: ansible-playbook --tags
+  description: Execute only tasks tagged with specified tags
+  syntax: ansible-playbook <playbook.yaml> --tags <tag1,tag2> [-i <inventory>]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --tags "install,config"
+  note: Enables running subsets of a playbook for targeted operations
+  risk: Medium — only runs tagged tasks
+  when_to_use: Running specific tasks, targeted deployments, debugging
+
+- id: ansible-playbook-skip-tags
+  name: ansible-playbook --skip-tags
+  description: Skip tasks tagged with specified tags
+  syntax: ansible-playbook <playbook.yaml> --skip-tags <tag1,tag2> [-i <inventory>]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --skip-tags "testing,debug"
+  note: Complementary to --tags for excluding specific operations
+  risk: Medium — skips tagged tasks
+  when_to_use: Excluding specific tasks, running production without debug tasks
+
+- id: ansible-playbook-limit
+  name: ansible-playbook --limit
+  description: Restrict playbook execution to a subset of hosts
+  syntax: ansible-playbook <playbook.yaml> --limit <host_pattern> [-i <inventory>]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --limit "webserver[0:2]"
+  note: Supports host patterns, group names, and host patterns with ranges
+  risk: Medium — changes on subset of hosts
+  when_to_use: Testing on single hosts, targeted deployments, staged rollouts
+
+- id: ansible-playbook-step
+  name: ansible-playbook --step
+  description: Run playbook in step mode, pausing before each task for manual confirmation
+  syntax: ansible-playbook <playbook.yaml> --step [-i <inventory>]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --step
+  note: Each task asks to continue before executing
+  risk: Medium — executes tasks on target hosts
+  when_to_use: Auditing playbook execution, careful production deployments
+
+- id: ansible-playbook-start-at-task
+  name: ansible-playbook --start-at-task
+  description: Start execution at a specific task name
+  syntax: ansible-playbook <playbook.yaml> --start-at-task=<task-name> [-i <inventory>]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --start-at-task="Configure Firewall"
+  note: Useful for resuming after a failure or running a subset of a long playbook
+  risk: Medium
+  when_to_use: Resuming after failure, running specific sections of a playbook
+
+- id: ansible-playbook-retry
+  name: ansible-playbook retry failed hosts
+  description: Retry a failed playbook run on specific hosts using retry file
+  syntax: ansible-playbook <playbook.yaml> --limit <hosts> [-i <inventory>]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --limit "web01,web02"
+  note: After a failure, a .retry file is created; re-run with --limit to target failed hosts
+  risk: Medium
+  when_to_use: Retrying failed hosts after fixing issues, partial execution recovery
+
+- id: ansible-ad-hoc
+  name: ansible ad-hoc command
+  description: Execute a single module against managed hosts without a playbook
+  syntax: ansible <pattern> -m <module> [-a "module_args"] [-i <inventory>] [--become]
+  category: execution
+  sudo: false
+  example: ansible all -m ping
+  note: Ad-hoc commands are quick one-offs; playbooks are preferred for repeatable automation
+  risk: Medium — changes configuration on target hosts
+  when_to_use: Quick health checks, one-off operations, testing connectivity
+
+- id: ansible-ad-hoc-ping
+  name: ansible all -m ping
+  description: Test SSH connectivity and Python availability on managed hosts
+  syntax: ansible <pattern> -m ping [-i <inventory>]
+  category: diagnostics
+  sudo: false
+  example: ansible all -m ping -i inventory.yaml
+  note: Returns JSON with changed and ping fields on success
+  risk: Low — read-only connectivity test
+  when_to_use: Verifying hosts are reachable and Python is installed
+
+- id: ansible-ad-hoc-setup
+  name: ansible all -m setup
+  description: Gather Ansible facts (system information) from managed hosts
+  syntax: ansible <pattern> -m setup [-i <inventory>] [-a "filter_pattern"]
+  category: diagnostics
+  sudo: false
+  example: ansible web01 -m setup -a "filter=ansible_os_family"
+  note: Facts are variables automatically discovered about the managed host
+  risk: Low — read-only fact gathering
+  when_to_use: Discovering OS details, hardware info, network interfaces for dynamic playbooks
+
+- id: ansible-inventory-list
+  name: ansible-inventory --list
+  description: Display inventory in JSON format showing all hosts, groups, and variables
+  syntax: ansible-inventory --list [-i <inventory>] [--yaml]
+  category: discovery
+  sudo: false
+  example: ansible-inventory -i inventory.yaml --list
+  note: Use --yaml for human-readable output; --list for JSON consumed by scripts
+  risk: Low
+  when_to_use: Verifying inventory structure, debugging inventory issues, scripting
+
+- id: ansible-inventory-graph
+  name: ansible-inventory --graph
+  description: Display inventory in a visual tree or graph format
+  syntax: ansible-inventory --graph [-i <inventory>]
+  category: discovery
+  sudo: false
+  example: ansible-inventory -i inventory.yaml --graph
+  note: Shows host groups and nested group relationships
+  risk: Low
+  when_to_use: Understanding inventory topology, debugging group membership
+
+- id: ansible-inventory-host
+  name: ansible-inventory --host
+  description: Display variables for a specific host from inventory
+  syntax: ansible-inventory --host <hostname> [-i <inventory>]
+  category: discovery
+  sudo: false
+  example: ansible-inventory -i inventory.yaml --host web01.example.com
+  note: Shows host-specific variables, group variables, and inherited variables
+  risk: Low
+  when_to_use: Debugging host variable resolution, verifying inventory variables
+
+- id: ansible-doc
+  name: ansible-doc <module>
+  description: Display documentation for a specific Ansible module
+  syntax: ansible-doc <module_name> [-l] [-F] [-f <module_name>]
+  category: discovery
+  sudo: false
+  example: ansible-doc ansible.builtin.package
+  note: Use ansible-doc -l to list all available modules
+  risk: Low
+  when_to_use: Learning module parameters, checking module support for check mode, writing playbooks
+
+- id: ansible-doc-list
+  name: ansible-doc -l
+  description: List all available Ansible modules
+  syntax: ansible-doc -l [-v]
+  category: discovery
+  sudo: false
+  example: ansible-doc -l | grep service
+  note: Lists modules sorted alphabetically with short descriptions
+  risk: Low
+  when_to_use: Finding modules for specific tasks, discovering available modules
+
+- id: ansible-doc-fqm
+  name: ansible-doc fully qualified module
+  description: Display documentation for a fully qualified module name
+  syntax: ansible-doc <namespace.collection.module>
+  category: discovery
+  sudo: false
+  example: ansible-doc ansible.builtin.yum
+  note: FQMs clarify module source; ansible.builtin. prefix for core modules
+  risk: Low
+  when_to_use: Working with collections, avoiding module name conflicts
+
+- id: ansible-config-dump
+  name: ansible-config dump
+  description: Display all active Ansible configuration settings
+  syntax: ansible-config dump [--only-changed]
+  category: discovery
+  sudo: false
+  example: ansible-config dump --only-changed
+  note: Shows effective config from ansible.cfg, environment variables, and defaults
+  risk: Low
+  when_to_use: Verifying configuration, auditing settings, troubleshooting config issues
+
+- id: ansible-galaxy-init
+  name: ansible-galaxy init
+  description: Initialize a new Ansible role with standard directory structure
+  syntax: ansible-galaxy init <role_name> [--init-path <path>]
+  category: development
+  sudo: false
+  example: ansible-galaxy init roles/my_role
+  note: Creates roles/my_role subdirectories for tasks, handlers, vars, defaults, meta, files, and templates
+  risk: Low
+  when_to_use: Starting new role development, scaffolding reusable automation
+
+- id: ansible-galaxy-collection-install
+  name: ansible-galaxy collection install
+  description: Install an Ansible Collection from Galaxy or custom API endpoint
+  syntax: ansible-galaxy collection install <namespace.collection> [--collection-version <ver>]
+  category: management
+  sudo: false
+  example: ansible-galaxy collection install ansible.builtin
+  note: Collections package modules, plugins, roles, and playbooks together
+  risk: Low
+  when_to_use: Installing community or vendor collections, updating dependencies
+
+- id: ansible-galaxy-role-install
+  name: ansible-galaxy role install
+  description: Install an Ansible Role from Galaxy
+  syntax: ansible-galaxy role install <author.role> [--roles-path <path>]
+  category: management
+  sudo: false
+  example: ansible-galaxy role install geerlingguy.nginx
+  note: Roles are simpler than collections; collections are the modern format
+  risk: Low
+  when_to_use: Installing community roles, expanding automation library
+
+- id: ansible-galaxy-list
+  name: ansible-galaxy list
+  description: List installed Ansible roles and collections
+  syntax: ansible-galaxy list [--collections]
+  category: discovery
+  sudo: false
+  example: ansible-galaxy list --collections
+  note: Shows installed packages, versions, and their source
+  risk: Low
+  when_to_use: Auditing installed roles and collections, checking for updates
+
+- id: ansible-galaxy-remove
+  name: ansible-galaxy remove
+  description: Remove an installed Ansible role or collection
+  syntax: ansible-galaxy remove <author.role or namespace.collection>
+  category: management
+  sudo: false
+  example: ansible-galaxy remove geerlingguy.nginx
+  note: Removes from the default roles_path or collections_path
+  risk: Low
+  when_to_use: Cleaning up unused roles and collections, managing dependencies
+
+- id: ansible-vault-encrypt
+  name: ansible-vault encrypt
+  description: Encrypt an entire file with Ansible Vault
+  syntax: ansible-vault encrypt <filename> [--vault-password-file <file>]
+  category: security
+  sudo: false
+  example: ansible-vault encrypt vars/secrets.yaml
+  note: Creates a backup with .vaultbak extension; use --output to specify output path
+  risk: Low
+  when_to_use: Encrypting sensitive data files like passwords, keys, and tokens
+
+- id: ansible-vault-decrypt
+  name: ansible-vault decrypt
+  description: Decrypt an Ansible Vault-encrypted file
+  syntax: ansible-vault decrypt <filename>
+  category: security
+  sudo: false
+  example: ansible-vault decrypt vars/secrets.yaml
+  note: Restores the file to plaintext; original is moved to .vaultbak
+  risk: Medium — exposes sensitive data
+  when_to_use: Reading encrypted files for debugging, extracting credentials
+
+- id: ansible-vault-view
+  name: ansible-vault view
+  description: Display contents of an encrypted file without decrypting it permanently
+  syntax: ansible-vault view <filename>
+  category: security
+  sudo: false
+  example: ansible-vault view vars/secrets.yaml
+  note: Safest way to inspect encrypted file contents
+  risk: Low
+  when_to_use: Reading encrypted variables, debugging vault issues
+
+- id: ansible-vault-rekey
+  name: ansible-vault rekey
+  description: Change the encryption key of an existing encrypted file
+  syntax: ansible-vault rekey <filename> [--new-vault-password-file <file>]
+  category: security
+  sudo: false
+  example: ansible-vault rekey vars/secrets.yaml
+  note: Use after credential rotation or key compromise
+  risk: Low
+  when_to_use: Rotating vault passwords, changing encryption keys
+
+- id: ansible-vault-create
+  name: ansible-vault create
+  description: Create a new encrypted file and open it in an editor
+  syntax: ansible-vault create <filename>
+  category: security
+  sudo: false
+  example: ansible-vault create vars/secrets.yaml
+  note: Opens in default editor; save to encrypt and write
+  risk: Low
+  when_to_use: Creating new encrypted variable files from scratch
+
+- id: ansible-vault-encrypt-string
+  name: ansible-vault encrypt_string
+  description: Encrypt a single string value for inline use in playbooks
+  syntax: ansible-vault encrypt_string <value> --name <variable_name>
+  category: security
+  sudo: false
+  example: ansible-vault encrypt_string supersecret --name db_password
+  note: Useful for embedding encrypted strings directly in playbooks
+  risk: Low
+  when_to_use: Creating inline encrypted values, generating encrypted strings
+
+- id: ansible-playbook-become
+  name: ansible-playbook --become
+  description: Execute playbooks with privilege escalation using sudo or su
+  syntax: ansible-playbook <playbook.yaml> --become [--become-method=sudo]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --become --ask-become-pass
+  note: Requires become_method configuration, options include sudo, su, doas, pbrun, pfexec
+  risk: High — elevates privileges on target hosts
+  when_to_use: Running tasks requiring root or administrator access
+
+- id: ansible-playbook-ask-pass
+  name: ansible-playbook --ask-pass or --ask-become-pass
+  description: Prompt for SSH or become password interactively
+  syntax: ansible-playbook <playbook.yaml> --ask-pass [--ask-become-pass]
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --ask-pass --ask-become-pass
+  note: Avoid interactive prompts in CI/CD; use --vault-password-file instead
+  risk: Medium
+  when_to_use: Interactive sessions, environments without SSH keys
+
+- id: ansible-playbook-verbosity
+  name: ansible-playbook verbosity levels
+  description: Control verbosity of playbook output
+  syntax: ansible-playbook <playbook.yaml> [-v | -vv | -vvv | -vvvv]
+  category: diagnostics
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml -vvv
+  note: -v shows task results, -vv shows variable values, -vvv shows connection details, -vvvv shows debug
+  risk: Low
+  when_to_use: Debugging playbook execution, investigating failures
+
+- id: ansible-playbook-force-handlers
+  name: ansible-playbook --force-handlers
+  description: Force handler execution even if previous tasks failed
+  syntax: ansible-playbook <playbook.yaml> --force-handlers
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --force-handlers
+  note: By default, handlers do not run if any task fails in the play
+  risk: Medium
+  when_to_use: Ensuring service restarts even after non-critical task failures
+
+- id: ansible-playbook-connection
+  name: ansible-playbook --connection
+  description: Override connection type for playbook execution
+  syntax: ansible-playbook <playbook.yaml> --connection <type>
+  category: execution
+  sudo: false
+  example: ansible-playbook -i inventory.yaml site.yaml --connection ssh
+  note: SSH is default for Linux; winrm for Windows hosts; local for localhost
+  risk: Medium
+  when_to_use: Using alternate connection methods, troubleshooting connection issues

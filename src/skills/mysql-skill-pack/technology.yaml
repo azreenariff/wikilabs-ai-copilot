@@ -1,0 +1,126 @@
+domain: MySQL Server
+version: 1.0.0
+description: >
+  Oracle MySQL — the world's most popular open-source relational database.
+  Covers MySQL 8.0 and 8.4 server architecture, storage engines, replication
+  topologies, performance tuning, security, backup and recovery, and
+  enterprise high-availability patterns.
+features:
+  - name: MySQL Core Server
+    description: mysqld daemon, server architecture, thread pool, query cache removal, optimizer
+    related_commands:
+      - mysqld --help
+      - mysql --version
+      - mysqld --verbose --help
+      - systemctl status mysqld
+  - name: Storage Engines
+    description: InnoDB (default), MyISAM, Memory, Archive, Blackhole engines
+    related_commands:
+      - SHOW ENGINE INNODB STATUS
+      - SHOW TABLE STATUS
+      - SELECT * FROM information_schema.ENGINES
+  - name: Replication
+    description: Master-Slave, Master-Master, Group Replication (MGR), MySQL Shell
+    related_commands:
+      - SHOW SLAVE STATUS
+      - SHOW REPLICA STATUS
+      - START REPLICA
+      - STOP REPLICA
+  - name: Performance Schema
+    description: Performance Schema instrumentation, sys schema, statement analysis
+    related_commands:
+      - SELECT * FROM sys.schema_table_statistics
+      - SELECT * FROM performance_schema.events_statements_summary_by_digest
+      - performance_schema / sys
+  - name: Configuration (my.cnf)
+    description: my.cnf, my.ini, server variables, persistent variables via mysql_config_editor
+    related_commands:
+      - mysqld --verbose --help
+      - SHOW VARIABLES
+      - SHOW GLOBAL VARIABLES
+      - SELECT * FROM mysql.global_variables
+  - name: Security
+    description: Users, privileges, roles, SSL/TLS, authentication plugins, RBAC, password policy
+    related_commands:
+      - SELECT user, host, plugin FROM mysql.user
+      - SHOW GRANTS
+      - CREATE USER
+      - ALTER USER
+      - SET PASSWORD
+  - name: Backup and Recovery
+    description: mysqldump, mysqlpump, binary logs, point-in-time recovery, xtrabackup
+    related_commands:
+      - mysqldump
+      - mysqlbinlog
+      - mysqlpump
+      - mysqladmin flush-logs
+  - name: User and Privilege Management
+    description: User creation, privilege grants, role management, resource limits, connection control
+    related_commands:
+      - CREATE USER
+      - GRANT
+      - REVOKE
+      - SHOW GRANTS
+      - DROP USER
+  - name: Information Schema
+    description: Schema metadata queries, table statistics, index usage, locked tables, session info
+    related_commands:
+      - SELECT * FROM information_schema.tables
+      - SELECT * FROM information_schema.columns
+      - SELECT * FROM information_schema.key_column_usage
+  - name: Data Dictionary
+    description: MySQL 8.0+ data dictionary, hidden columns, JSON schema, virtual/generated columns
+    related_commands:
+      - SELECT * FROM information_schema.columns
+      - SELECT * FROM information_schema.views
+      - SELECT * FROM information_schema.table_constraints
+  - name: Partitioning
+    description: RANGE, LIST, HASH, KEY partitioning; partition pruning; maintenance
+    related_commands:
+      - ALTER TABLE ... PARTITION BY
+      - SHOW CREATE TABLE
+      - SELECT * FROM information_schema.PARTITIONS
+  - name: High Availability
+    description: MySQL Router, InnoDB Cluster, MySQL Shell, ProxySQL, Keepalived
+    related_commands:
+      - MySQL Shell
+      - MySQL Router
+      - mysqlsh
+      - mysqlrouter --configure
+  - name: Monitoring
+    description: Performance Schema, sys schema, slow query log, general log, audit log
+    related_commands:
+      - SET GLOBAL slow_query_log = ON
+      - SHOW PROCESSLIST
+      - SHOW STATUS
+      - SELECT * FROM sys.schema_idle_statements
+  - name: Troubleshooting
+    description: Connection issues, replication lag, deadlocks, lock waits, query optimization
+    related_commands:
+      - SHOW ENGINE INNODB STATUS
+      - SHOW PROCESSLIST
+      - SHOW OPEN TABLES
+      - SELECT * FROM performance_schema.data_lock_waits
+  - name: Administration
+    description: Server startup, shutdown, configuration, upgrade, version checks, character sets
+    related_commands:
+      - mysqladmin shutdown
+      - mysqladmin status
+      - mysqladmin variables
+      - SELECT VERSION()
+  - name: Text Pattern Detection
+    description: ERROR codes, InnoDB warnings, replication status indicators, slow query markers
+    related_commands:
+      - grep ERROR /var/log/mysql/error.log
+      - grep "replication lag" /var/log/mysql/slow.log
+      - grep "InnoDB" /var/log/mysql/error.log
+related_domains:
+  - Database
+  - DevOps
+  - Infrastructure
+  - Data Engineering
+  - Backend Development
+  - Security
+  - High Availability
+  - Replication
+documentation_url: https://docs.wikilabs.ai/technology/mysql

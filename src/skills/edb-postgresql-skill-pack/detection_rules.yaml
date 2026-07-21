@@ -1,0 +1,373 @@
+- id: edb-detect-psql
+  name: psql CLI Detection
+  description: Detect psql interactive SQL client usage
+  detection_type: Command
+  pattern: '^psql(\s+|$)'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-dump
+  name: pg_dump Detection
+  description: Detect pg_dump backup usage in terminal
+  detection_type: Command
+  pattern: '^pg_dump(\s+|$)'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-restore
+  name: pg_restore Detection
+  description: Detect pg_restore restore usage in terminal
+  detection_type: Command
+  pattern: '^pg_restore(\s+|$)'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-basebackup
+  name: pg_basebackup Detection
+  description: Detect pg_basebackup physical backup usage
+  detection_type: Command
+  pattern: '^pg_basebackup(\s+|$)'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-ctl
+  name: pg_ctl Detection
+  description: Detect PostgreSQL server control commands
+  detection_type: Command
+  pattern: '^pg_ctl\s+(start|stop|restart|reload|status|promote)'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: edb-detect-pgbouncer
+  name: PgBouncer Connection Pooler Detection
+  description: Detect PgBouncer connection pooler usage
+  detection_type: Command
+  pattern: '^pgbouncer(\s+|$)|pgbouncer\s+.*\.ini'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-is-in-recovery
+  name: pg_is_in_recovery Detection
+  description: Detect replication/recovery state queries
+  detection_type: Command
+  pattern: 'pg_is_in_recovery\(\)'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-replication-slots
+  name: Replication Slots Detection
+  description: Detect replication slot operations
+  detection_type: Command
+  pattern: 'pg_replication_slots|pg_create_physical_replication_slot|pg_create_logical_replication_slot'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-stat-statements
+  name: pg_stat_statements Detection
+  description: Detect pg_stat_statements queries for performance monitoring
+  detection_type: Command
+  pattern: 'pg_stat_statements|pg_stat_statements_reset'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-vacuum
+  name: VACUUM Detection
+  description: Detect VACUUM and autovacuum operations
+  detection_type: Command
+  pattern: '^\s*VACUUM\s|^\s*autovacuum|vacuum_full|vacuum_freeze'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-explain-analyze
+  name: EXPLAIN ANALYZE Detection
+  description: Detect query plan analysis commands
+  detection_type: Command
+  pattern: '^\s*EXPLAIN\s+(ANALYZE|BUFFERS|VERBOSE)?\s+(ANALYZE|BUFFERS|VERBOSE)?\s+SELECT|INSERT|UPDATE|DELETE'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-create-index-concurrently
+  name: CREATE INDEX CONCURRENTLY Detection
+  description: Detect non-blocking index creation
+  detection_type: Command
+  pattern: 'CREATE\s+INDEX\s+CONCURRENTLY'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-alter-system
+  name: ALTER SYSTEM Detection
+  description: Detect configuration changes via ALTER SYSTEM
+  detection_type: Command
+  pattern: '^\s*ALTER\s+SYSTEM\s+SET'
+  confidence: 0.85
+  technology_domain: EDB PostgreSQL
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-wal
+  name: WAL Operations Detection
+  description: Detect WAL-level operations like pg_switch_wal, pg_switch_xlog
+  detection_type: Command
+  pattern: 'pg_switch_wal|pg_switch_xlog|pg_current_wal_insert_lsn|pg_walfile_name|pg_switch_xlog'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-pg-rewind
+  name: pg_rewind Detection
+  description: Detect pg_rewind operations for post-failover recovery
+  detection_type: Command
+  pattern: '^pg_rewind(\s+|$)'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: edb-detect-pub-sub
+  name: Logical Replication Publication/Subscription Detection
+  description: Detect logical replication pub/sub operations
+  detection_type: Command
+  pattern: 'CREATE\s+PUBLICATION|CREATE\s+SUBSCRIPTION|ALTER\s+PUBLICATION|ALTER\s+SUBSCRIPTION|DROP\s+PUBLICATION|DROP\s+SUBSCRIPTION'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: edb-detect-fatal-error
+  name: FATAL/ERROR Message Detection
+  description: Detect PostgreSQL fatal and error level log messages
+  detection_type: TextPattern
+  pattern: '(?i)\bFATAL\b|\bERROR\b'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-deadlock
+  name: Deadlock Detection
+  description: Detect deadlock errors in PostgreSQL logs
+  detection_type: TextPattern
+  pattern: '(?i)deadlock\s+detected|deadlock\s+timeout|canceling\s+statement\s+due\s+to\s+deadlock'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-replication-lag
+  name: Replication Lag Detection
+  description: Detect replication lag issues
+  detection_type: TextPattern
+  pattern: '(?i)replication\s+lag|replication\s+delay|streaming\s+replication.*lag|pg_last_wal_receive_lsn|pg_last_wal_replay_lsn'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 9
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-wal-archiving
+  name: WAL Archiving Status Detection
+  description: Detect WAL archiving related messages
+  detection_type: TextPattern
+  pattern: '(?i)wal.*archive|archive_command|wal_level|wal_archiver|archiving.*failed|wal.*segment'
+  confidence: 0.85
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-checkpoint
+  name: Checkpoint Detection
+  description: Detect checkpoint-related log messages and events
+  detection_type: TextPattern
+  pattern: '(?i)checkpoint\s+(beginning|complete|starting)|checkpoint.*completed|log_checkpoints'
+  confidence: 0.85
+  technology_domain: EDB PostgreSQL
+  priority: 7
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-vacuum-progress
+  name: Autovacuum Progress Detection
+  description: Detect autovacuum activity and progress
+  detection_type: TextPattern
+  pattern: '(?i)automatic\s+vacuum.*table|autovacuum.*running|vacuum.*table.*"|\bvacuum\b.*table\b|pg_stat_progress_vacuum'
+  confidence: 0.85
+  technology_domain: EDB PostgreSQL
+  priority: 7
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-connection-limit
+  name: Connection Limit Reached Detection
+  description: Detect connection limit errors
+  detection_type: TextPattern
+  pattern: '(?i)too\s+many\s+connections\s+for\s+role|sorry\s+too\s+many\s+connections|connection\s+limit\s+exceeded|pgbouncer.*no\s+more\s+connections'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-disk-space
+  name: Disk Space Detection
+  description: Detect disk space warnings in PostgreSQL
+  detection_type: TextPattern
+  pattern: '(?i)disk\s+full|no\s+space\s+left\s+on\s+device|failing\s+to\s+allocate|disk\s+usage'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-table-bloat
+  name: Table Bloat Detection
+  description: Detect table bloat indicators
+  detection_type: TextPattern
+  pattern: '(?i)table\s+bloat|dead\s+tuples|n_dead_tup|bloat\s+ratio|heap\s+usage'
+  confidence: 0.80
+  technology_domain: EDB PostgreSQL
+  priority: 7
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-xid-wraparound
+  name: Transaction ID Wraparound Detection
+  description: Detect transaction ID wraparound warnings
+  detection_type: TextPattern
+  pattern: '(?i)xid\s+wraparound|transaction\s+id\s+wraparound|freeze.*age|xmin.*must|clog.*truncate'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-lock-timeout
+  name: Lock Timeout Detection
+  description: Detect lock timeout and blocking lock issues
+  detection_type: TextPattern
+  pattern: '(?i)lock\s+timeout|statement\s+timeout|lock\s+not\s+available|canceling\s+statement|\bwaiting\b.*for\s+(lock|exclusive)'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 9
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-data-corruption
+  name: Data Corruption Detection
+  description: Detect data corruption indicators
+  detection_type: TextPattern
+  pattern: '(?i)corrupted\s+block|invalid\s+page|corrupt\s+tuple|failed\s+to\s+fetch\s+tuple|checksum\s+failed|corrupt\s+index'
+  confidence: 0.95
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-pgadmin
+  name: pgAdmin Detection
+  description: Detect pgAdmin web interface usage
+  detection_type: Browser
+  pattern: 'pgadmin|edb-admin|pg-admin|edb-postgres|cloudmanager'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-pgadmin-window
+  name: pgAdmin Window Title Detection
+  description: Detect pgAdmin in window title
+  detection_type: WindowTitle
+  pattern: '(?i)pgAdmin|EDB\s+PostgreSQL|PostgreSQL.*Admin'
+  confidence: 0.85
+  technology_domain: EDB PostgreSQL
+  priority: 7
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-edb-cloudmanager
+  name: EDB Cloud Manager Detection
+  description: Detect EDB Cloud Manager interface
+  detection_type: Browser
+  pattern: 'edb-cloud-manager|enterprise\s+db\s+cloud\s+manager|cloud\.enterprisedb\.com'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-postmaster
+  name: Postmaster Process Detection
+  description: Detect PostgreSQL postmaster/master process references
+  detection_type: TextPattern
+  pattern: '(?i)postmaster|could\s+not\s+create\s+postmaster|postmaster\s+exits|postmaster\s+already'
+  confidence: 0.85
+  technology_domain: EDB PostgreSQL
+  priority: 8
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-ssl-tls
+  name: SSL/TLS Configuration Detection
+  description: Detect SSL/TLS related messages
+  detection_type: TextPattern
+  pattern: '(?i)ssl\s+is\s+not\s+enabled|ssl\s+error|ssl_certificate|ssl_key|ssl_protocol'
+  confidence: 0.80
+  technology_domain: EDB PostgreSQL
+  priority: 7
+  flags: 're.IGNORECASE'
+  extract: null
+
+- id: edb-detect-max-connections
+  name: Max Connections Reached Detection
+  description: Detect PostgreSQL max_connections limit
+  detection_type: TextPattern
+  pattern: '(?i)sorry\s+too\s+many\s+connections\s+already|pg_hba\.conf.*reject|connection\s+request\s+rejected'
+  confidence: 0.90
+  technology_domain: EDB PostgreSQL
+  priority: 10
+  flags: 're.IGNORECASE'
+  extract: null

@@ -1,0 +1,159 @@
+domain: Microsoft SQL Server
+version: 1.0.0
+description: >
+  Microsoft SQL Server — enterprise relational database management system.
+  Covers database engine architecture, T-SQL, Always On Availability Groups,
+  Failover Cluster Instances, backup and recovery, index and statistics management,
+  execution plan analysis, transaction processing, performance tuning, memory
+  management, tempDB optimization, maintenance plans, and security hardening.
+features:
+  - name: SQL Server Core Engine
+    description: >
+      Relational database engine with buffer pool, query processor (parser,
+      algebrizer, optimizer, executor), storage engine (file manager, log manager,
+      transaction manager), and lock manager. Supports relational, JSON, and
+      graph data models.
+    related_commands:
+      - SELECT ... FROM ...
+      - CREATE DATABASE ...
+      - EXEC ...
+      - SELECT * FROM sys.dm_exec_sessions
+      - SELECT * FROM sys.dm_exec_requests
+  - name: T-SQL Language
+    description: >
+      Microsoft's proprietary extension to SQL including procedural programming,
+      error handling (TRY/CATCH), window functions, CTEs, dynamic SQL, JSON
+      operations, and XML processing.
+    related_commands:
+      - BEGIN TRY / BEGIN CATCH
+      - WITH cte AS ...
+      - SELECT ... OVER (PARTITION BY)
+      - OPENJSON
+      - DECLARE, SET, PRINT
+  - name: Availability Groups (Always On)
+    description: >
+      High availability and disaster recovery solution supporting automatic
+      failover of user databases between servers (failover cluster instances)
+      or across network boundaries (Always On availability groups). Supports
+      synchronous-commit and asynchronous-commit replicas.
+    related_commands:
+      - CREATE AVAILABILITY GROUP ...
+      - ALTER AVAILABILITY GROUP ...
+      - SELECT * FROM sys.fn_hadr_backup_is_preferred_replica('')
+      - SELECT * FROM sys.availability_replicas
+  - name: Failover Cluster Instances (FCI)
+    description: >
+      Windows Server failover clustering for SQL Server instances. Provides
+      high availability by moving the entire SQL Server instance (including
+      all databases) to a node that is running when a node fails.
+    related_commands:
+      - Get-ClusterNode
+      - Get-ClusterResource
+      - cluster resgroup
+  - name: Backup and Recovery
+    description: >
+      Full, differential, and transaction log backup strategies. Point-in-time
+      recovery (PITR), page restore, piecemeal restore, backup verification,
+      compressed backups, and encryption during backup.
+    related_commands:
+      - BACKUP DATABASE ...
+      - BACKUP LOG ...
+      - RESTORE DATABASE ...
+      - RESTORE HEADERONLY
+      - RESTORE VERIFYONLY
+  - name: Indexes and Statistics
+    description: >
+      Clustered and nonclustered indexes, columnstore indexes, filtered indexes,
+      include columns, fill factor, statistics update, auto-create/auto-update
+      statistics, and execution plan analysis for index recommendations.
+    related_commands:
+      - CREATE CLUSTERED INDEX
+      - CREATE NONCLUSTERED INDEX
+      - UPDATE STATISTICS
+      - SELECT * FROM sys.dm_db_index_usage_stats
+      - SELECT * FROM sys.dm_db_index_physical_stats
+  - name: Execution Plans
+    description: >
+      Query execution plan analysis including XML plans, estimated vs actual
+      plans, missing index recommendations, expensive operations, spool operators,
+      key lookups, and plan guide management.
+    related_commands:
+      - SET STATISTICS PROFILE ON
+      - SET STATISTICS IO ON
+      - SET STATISTICS TIME ON
+      - SELECT * FROM sys.dm_exec_query_plan
+      - SELECT * FROM sys.dm_exec_text_query_plan
+  - name: Transaction Processing
+    description: >
+      ACID-compliant transaction management, isolation levels (READ COMMITTED,
+      SNAPSHOT, REPEATABLE READ, SERIALIZABLE, READ UNCOMMITTED), transaction
+      log management, distributed transactions, and deadlocking prevention.
+    related_commands:
+      - BEGIN TRAN / COMMIT / ROLLBACK
+      - SET TRANSACTION ISOLATION LEVEL
+      - SELECT * FROM sys.dm_tran_locks
+      - SELECT * FROM sys.dm_tran_session_transactions
+      - SELECT @@TRANCOUNT
+  - name: Performance Monitoring
+    description: >
+      Dynamic management views (DMVs), dynamic management functions (DMFs),
+      performance counters, Extended Events, query store, and wait statistics
+      for performance monitoring and troubleshooting.
+    related_commands:
+      - SELECT * FROM sys.dm_os_wait_stats
+      - SELECT * FROM sys.dm_exec_query_stats
+      - SELECT * FROM sys.dm_db_index_usage_stats
+      - SELECT * FROM sys.dm_os_memory_clerks
+      - EXEC sp_who2
+  - name: Memory Management
+    description: >
+      Buffer pool management, lock memory, large page support, max server
+      memory configuration, memory grants, memory clerks, memory pressure
+      detection, and external memory consumption.
+    related_commands:
+      - EXEC sp_configure 'max server memory'
+      - SELECT * FROM sys.dm_os_memory_clerks
+      - SELECT * FROM sys.dm_os_memory_nodes
+      - SELECT * FROM sys.dm_exec_input_buffer
+      - SELECT * FROM sys.dm_os_performance_counters
+  - name: TempDB Management
+    description: >
+      TempDB configuration, file growth, tempDB contention, version store,
+      internal and internal allocation, tempDB sizing, tempDB monitoring,
+      and tempDB best practices for enterprise environments.
+    related_commands:
+      - DBCC TRACEON (1118, 1117)
+      - SELECT * FROM sys.dm_db_session_space_usage
+      - SELECT * FROM sys.dm_db_task_space_usage
+      - SELECT * FROM sys.dm_db_file_space_usage
+      - SELECT * FROM sys.dm_os_performance_counters
+  - name: Maintenance Plans
+    description: >
+      Index maintenance (rebuild, reorganize, update statistics), database
+      integrity checks, backup jobs, cleanup tasks, and automated maintenance
+      scheduling using SQL Server Agent jobs and Ola Hallengren scripts.
+    related_commands:
+      - ALTER INDEX ... REBUILD
+      - ALTER INDEX ... REORGANIZE
+      - UPDATE STATISTICS
+      - DBCC CHECKDB
+      - EXEC sp_updatestats
+  - name: Security
+    description: >
+      Logins and users, database roles, schema-level permissions, row-level
+      security, column-level security, encryption (TDE, ECP, BCE), audit
+      policies, password policies, certificate management, and auditing.
+    related_commands:
+      - CREATE LOGIN ...
+      - CREATE USER ...
+      - GRANT / DENY / REVOKE
+      - CREATE MASTER KEY
+      - CREATE CERTIFICATE
+related_domains:
+  - Relational Database Management
+  - Data Warehousing
+  - Business Intelligence
+  - Cloud Database (Azure SQL Database, Azure SQL Managed Instance)
+  - High Availability and Disaster Recovery
+  - Data Security and Compliance
+documentation_url: https://docs.wikilabs.ai/technology/sql-server

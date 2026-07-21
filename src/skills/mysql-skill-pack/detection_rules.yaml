@@ -1,0 +1,516 @@
+- id: mysql-detect-cli-client
+  name: MySQL CLI Client Detection
+  description: Detect mysql command-line client usage in terminal
+  detection_type: Command
+  pattern: '^mysql\\s+'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mysqladmin
+  name: MySQL Admin Tool Detection
+  description: Detect mysqladmin utility usage
+  detection_type: Command
+  pattern: '^mysqladmin\\s+'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mysqldump
+  name: MySQL Dump Tool Detection
+  description: Detect mysqldump backup utility
+  detection_type: Command
+  pattern: '^mysqldump\\s+'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mysqlpump
+  name: MySQL Pump Tool Detection
+  description: Detect mysqlpump utility
+  detection_type: Command
+  pattern: '^mysqlpump\\s+'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mysqlcheck
+  name: MySQL Check Tool Detection
+  description: Detect mysqlcheck utility
+  detection_type: Command
+  pattern: '^mysqlcheck\\s+'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mysqlbinlog
+  name: MySQL Binary Log Tool Detection
+  description: Detect mysqlbinlog log analysis tool
+  detection_type: Command
+  pattern: '^mysqlbinlog\\s+'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mycli
+  name: mycli Client Detection
+  description: Detect mycli interactive MySQL client
+  detection_type: Command
+  pattern: '^mycli\\s+'
+  confidence: 0.85
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mariadb-cli
+  name: MariaDB CLI Detection
+  description: Detect mariadb client (MariaDB fork)
+  detection_type: Command
+  pattern: '^mariadb\\s+'
+  confidence: 0.85
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-pt-tools
+  name: Percona Toolkit Detection
+  description: Detect Percona Toolkit utilities (pt-archiver, pt-osc, pt-deadlock-logger, pt-table-sync)
+  detection_type: Command
+  pattern: '^pt-(archiver|osc|deadlock-logger|table-sync|resume-kill|kill|summary|killall|query-digest)\s+'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mysqlsh
+  name: MySQL Shell Detection
+  description: Detect MySQL Shell (mysqlsh) usage
+  detection_type: Command
+  pattern: '^mysqlsh\\s+'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-xtrabackup
+  name: Percona XtraBackup Detection
+  description: Detect Percona XtraBackup tool (xbstream, xtrabackup, innobackupex)
+  detection_type: Command
+  pattern: '(^xtrabackup|^innobackupex|^xbstream)\\s+'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-proxyadmin
+  name: ProxySQL Admin Detection
+  description: Detect ProxySQL administration (mysql -u admin)
+  detection_type: Command
+  pattern: 'mysql\\s+(-u\\s+admin|\\s+-h\\s+localhost\\s+--port\\s+6032)'
+  confidence: 0.85
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-browser-mysql
+  name: MySQL Web Admin Detection
+  description: Detect MySQL admin tools in browser (phpMyAdmin, Adminer, MySQL Workbench web)
+  detection_type: Browser
+  pattern: '(phpmyadmin|adminer|mysql-workbench|mysql-web|mysql-admin)'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-browser-phpmyadmin
+  name: phpMyAdmin Browser Detection
+  description: Detect phpMyAdmin in browser URLs
+  detection_type: Browser
+  pattern: '(phpmyadmin|php-my-admin|pma)/'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-browser-adminer
+  name: Adminer Browser Detection
+  description: Detect Adminer web interface in browser
+  detection_type: Browser
+  pattern: 'adminer\\.(php|sql)'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-window-mysql
+  name: MySQL Window Title Detection
+  description: Detect MySQL-related window titles in desktop
+  detection_type: Window
+  pattern: '(MySQL|phpMyAdmin|MySQL Workbench|MySQL Enterprise|MariaDB)'
+  confidence: 0.85
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-window-mysqlworkbench
+  name: MySQL Workbench Window Detection
+  description: Detect MySQL Workbench application window
+  detection_type: Window
+  pattern: '(MySQL Workbench|MySQL Modeler|MySQL EER)'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-1045
+  name: Authentication Error Detection
+  description: Detect MySQL ERROR 1045 access denied errors
+  detection_type: TextPattern
+  pattern: 'ERROR 1045 \\(28000\\)'
+  confidence: 0.98
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-1040
+  name: Too Many Connections Detection
+  description: Detect ERROR 1040 too many connections
+  detection_type: TextPattern
+  pattern: 'ERROR 1040 \\(08004\\).*too many connections'
+  confidence: 0.98
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-2002
+  name: Server Not Available Detection
+  description: Detect ERROR 2002 server not available
+  detection_type: TextPattern
+  pattern: 'ERROR 2002 \\(HY000\\)'
+  confidence: 0.98
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-1062
+  name: Duplicate Entry Detection
+  description: Detect duplicate entry errors
+  detection_type: TextPattern
+  pattern: 'ERROR 1062 \\(23000\\).*Duplicate entry'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-1205
+  name: Lock Wait Timeout Detection
+  description: Detect lock wait timeout exceeded errors
+  detection_type: TextPattern
+  pattern: 'ERROR 1205 \\(HY000\\)'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-1050
+  name: Table Already Exists Detection
+  description: Detect table already exists errors
+  detection_type: TextPattern
+  pattern: 'ERROR 1050 \\(42S01\\).*Table'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-1064
+  name: Syntax Error Detection
+  description: Detect SQL syntax errors
+  detection_type: TextPattern
+  pattern: 'ERROR 1064 \\(42000\\)'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-1091
+  name: Cannot Drop Column Detection
+  description: Detect column/table drop errors
+  detection_type: TextPattern
+  pattern: 'ERROR 1091 \\(42000\\)'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-1146
+  name: Table Not Found Detection
+  description: Detect unknown table errors
+  detection_type: TextPattern
+  pattern: 'ERROR 1146 \\(42S02\\)'
+  confidence: 0.98
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-2006
+  name: Server Gostraway Detection
+  description: Detect MySQL server gone away errors
+  detection_type: TextPattern
+  pattern: 'ERROR 2006 \\(HY000\\)'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-3159
+  name: Native Password Not Loaded Detection
+  description: Detect native authentication plugin errors
+  detection_type: TextPattern
+  pattern: 'ERROR 3159 \\(HY000\\)'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-error-3546
+  name: Inconsistent Internals Detection
+  description: Detect InnoDB inconsistent internal state errors
+  detection_type: TextPattern
+  pattern: 'ERROR 3546 \\(HY000\\)'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-innodb-corruption
+  name: InnoDB Corruption Detection
+  description: Detect InnoDB corruption indicators
+  detection_type: TextPattern
+  pattern: 'InnoDB.*corrupt|InnoDB.*page checksum|InnoDB.*crash recovery|InnoDB.*data dictionary'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-innodb-oom
+  name: InnoDB Out of Memory Detection
+  description: Detect InnoDB buffer pool out of memory
+  detection_type: TextPattern
+  pattern: 'InnoDB.*out of memory|InnoDB.*cannot allocate|InnoDB.*buffer pool.*full'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-replication-lag
+  name: Replication Lag Detection
+  description: Detect replication lag warnings
+  detection_type: TextPattern
+  pattern: 'replication lag|Slave_SQL_Running.*No|Slave_IO_Running.*No|Seconds_Behind_Master.*NULL|relay log.*corrupt'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-deadlock
+  name: Deadlock Detection
+  description: Detect InnoDB deadlock errors
+  detection_type: TextPattern
+  pattern: 'Deadlock found when trying|InnoDB deadlock|ERROR 1213 \\(40001\\)'
+  confidence: 0.98
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-slow-query
+  name: Slow Query Detection
+  description: Detect slow query log entries
+  detection_type: TextPattern
+  pattern: 'Query_time:.*[0-9]{2,}|SLOW_QUERY|slow query log|Long_query_time'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-full-table-scan
+  name: Full Table Scan Detection
+  description: Detect full table scan warnings
+  detection_type: TextPattern
+  pattern: '(Full table scan|filesort|temporary table|Using where|Using index|Using filesort|Using temporary)'
+  confidence: 0.85
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mysql-connection
+  name: MySQL Connection Detection
+  description: Detect MySQL connection patterns
+  detection_type: TextPattern
+  pattern: '(mysql|mysqli|PDO.*mysql|connector/mysql|mysql2|jdbc:mysql|pymysql|mysql-connector)'
+  confidence: 0.8
+  technology_domain: MySQL
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: mysql-detect-mysql-binlog
+  name: Binary Log Detection
+  description: Detect binary log activity
+  detection_type: TextPattern
+  pattern: 'binlog|binary.*(log|position|format|flush)|MASTER_LOG_FILE|GTID'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-max-connections
+  name: Max Connections Exhaustion Detection
+  description: Detect max_connections exhaustion
+  detection_type: TextPattern
+  pattern: 'max_connections|Aborted_connects|Connection refused|Too many connections'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-innodb-status
+  name: InnoDB Status Output Detection
+  description: Detect InnoDB STATUS output patterns
+  detection_type: TextPattern
+  pattern: '--- INNODB STATUS ---|INSERT BUFFER|BUFFER POOL|ROW OPERATIONS|TRANSACTIONS'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-replica-status
+  name: Replication Status Detection
+  description: Detect replication status output
+  detection_type: TextPattern
+  pattern: 'SHOW REPLICA STATUS|SHOW SLAVE STATUS|Slave_IO_State|Last_SQL_Error|Read_Master_Log_Pos'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-my-cnf
+  name: MySQL Config Detection
+  description: Detect my.cnf or my.ini configuration references
+  detection_type: TextPattern
+  pattern: '(my\\.cnf|my\\.ini|mysqld.*--defaults|datadir=|innodb_buffer_pool_size)'
+  confidence: 0.85
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-ibdata1
+  name: InnoDB System Tablespace Detection
+  description: Detect InnoDB system tablespace references
+  detection_type: TextPattern
+  pattern: 'ibdata1|innodb_data_file|system tablespace|general tablespace'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-tablespace-full
+  name: Tablespace Full Detection
+  description: Detect disk space full errors
+  detection_type: TextPattern
+  pattern: '(No space left on device|disk full|ENOSPC|tablespace is full)'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-gtid-executed
+  name: GTID Execution Detection
+  description: Detect GTID-based replication patterns
+  detection_type: TextPattern
+  pattern: 'gtid_executed|gtid_purged|uuid_set|transaction_write_set_extraction'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mysql-detect-role-creation
+  name: MySQL Role Management Detection
+  description: Detect role management operations
+  detection_type: TextPattern
+  pattern: '(CREATE ROLE|DROP ROLE|GRANT.*TO.*ROLE|REVOKE.*FROM.*ROLE|SHOW ROLES)'
+  confidence: 0.85
+  technology_domain: MySQL
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mysql-detect-innodb-lock-wait
+  name: InnoDB Lock Wait Detection
+  description: Detect lock wait timeout patterns
+  detection_type: TextPattern
+  pattern: 'lock wait|data_lock|data_lock_waits|blocking_pid|lock_mode|lock_table'
+  confidence: 0.95
+  technology_domain: MySQL
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mysql-detect-pid-lock
+  name: Process List Lock Detection
+  description: Detect locks in process list
+  detection_type: TextPattern
+  pattern: 'SHOW PROCESSLIST|processlist.*state.*Locked|state.*Waiting'
+  confidence: 0.9
+  technology_domain: MySQL
+  priority: 9
+  flags: ''
+  extract: null

@@ -1,0 +1,149 @@
+domain: Checkmk / Monitoring
+version: 1.0.0
+description: >
+  Checkmk — enterprise monitoring platform built on Nagios Core with a micro-core
+  architecture (CMC). Covers agent management, service discovery, rulesets, WATO
+  administration, notifications, performance views, SNMP monitoring, piggyback data,
+  and troubleshooting across Checkmk Raw Edition (CRE) and Enterprise Edition (CEE).
+features:
+  - name: Checkmk Agent
+    description: >
+      Multi-platform monitoring agent (check_mk_agent) collecting OS, hardware,
+      application, and custom metrics. Supports Linux, Windows, SNMP, and cloud.
+      Includes plugin API for extensible data collection.
+    related_commands:
+      - check_mk_agent
+      - check_mk_agent --debug
+      - cmk --debug
+      - cmk -v check
+  - name: Micro Core (CMC)
+    description: >
+      High-performance replacement for Nagios Core check engine. Parallelizes
+      checks, supports millions of checks, reduces check latency. Runs as
+      check_mk-cmc process with its own status file and management commands.
+    related_commands:
+      - systemctl status check_mk
+      - cmk -R
+      - cmk --checkman
+      - ls -la /omd/sites/<site>/var/check_mk/
+  - name: Nagios Core
+    description: >
+      Legacy check engine (used as fallback in CMC mode). Full Nagios-compatible
+      config with contacts, contact groups, time periods, hosts, and services.
+      Used by SNMP checks and external check commands.
+    related_commands:
+      - cmk -U
+      - cmk --generate-config
+      - ls -la /omd/sites/<site>/etc/check_mk/
+  - name: Piggyback Data
+    description: >
+      Agent framework for passing data from the agent host to Checkmk for
+      processing. Enables cluster monitoring (Kubernetes, VMWare, SAP HANA),
+      custom data pipelines, and external system integration without separate agents.
+    related_commands:
+      - check_mk_agent piggyback
+      - cmk piggyback remove-all
+      - cmk -R
+  - name: Rulesets
+    description: >
+      Central configuration mechanism for check parameters, thresholds,
+      service rules, notification rules, and agent plugins. Supports
+      hierarchical organization, inventory, and version control integration.
+    related_commands:
+      - cmk ruleset
+      - cmk ruleset inventory
+      - wato ruleset
+  - name: Service Discovery
+    description: >
+      Automatic service enumeration on hosts. Scans for running processes,
+      mounted filesystems, SNMP OIDs, network interfaces, and more. Supports
+      manual, manual-only, fixed, and removal modes with pattern matching.
+    related_commands:
+      - cmk --service-discovery
+      - cmk --service-discovery --fix-all
+      - cmk --service-discovery --remove
+      - cmk --service-discovery --scan
+  - name: WATO/Setup Interface
+    description: >
+      Web-based administration interface for host management, rulesets,
+      notifications, check parameters, and site configuration. Replaces
+      manual file editing for most administrative tasks.
+    related_commands:
+      - cmk -O
+      - cmk --validate-config
+      - cmk -U
+  - name: Notifications
+    description: >
+      Multi-channel notification system supporting email, SMS, webhooks,
+      Slack, Microsoft Teams, and custom scripts. Supports escalation,
+      dampening, and notification rules with contact routing.
+    related_commands:
+      - cmk notify
+      - cmk --notify
+      - wato notification
+  - name: Performance Views
+    description: >
+      Metric visualization and trending across hosts, services, and time
+      ranges. Supports custom metric extraction, threshold comparison,
+      and export to CSV/PNG. Powered by Checkmk's built-in time-series storage.
+    related_commands:
+      - cmk perf
+      - wato perfview
+      - cmk --perfview
+  - name: SNMP Monitoring
+    description: >
+      SNMP v1/v2c/v3 support for network devices, printers, UPS, and
+      IoT. Includes MIB browser, trap reception, and SNMP agent simulation
+      for testing. Supports walk, get, and getnext operations.
+    related_commands:
+      - cmk snmpwalk
+      - cmk snmpget
+      - cmk --snmpcheck
+      - snmpwalk -v2c
+  - name: Remote Site Federation (CEE)
+    description: >
+      Multi-site monitoring architecture. Central site manages distributed
+      monitoring sites with automated agent distribution, configuration
+      synchronization, and consolidated dashboards.
+    related_commands:
+      - cmk site
+      - cmk replicate
+      - cmk agentpack
+  - name: Check Plugin Development
+    description: >
+      Extensible plugin API for custom checks. Supports Python (check
+      API v2), Shell, and SNMP plugins. Includes check_result and
+      check_wato_result output formats with service states.
+    related_commands:
+      - cmk --checkman
+      - check_mk_agent
+      - cmk --debug
+  - name: Cluster Monitoring
+    description: >
+      Built-in cluster support for Kubernetes, VMWare, SAP HANA, and
+      active-active database clusters. Uses piggyback data or dedicated
+      cluster agents for coordinated monitoring.
+    related_commands:
+      - cmk piggyback
+      - check_mk_agent piggyback
+      - cmk --debug
+  - name: Troubleshooting
+    description: >
+      Detection rules, diagnostic workflows, and reasoning guides for
+      common Checkmk issues: stale checks, agent unreachable, high check
+      latency, ruleset misconfiguration, and notification failures.
+    related_commands:
+      - cmk --debug
+      - cmk -v check
+      - cmk -R
+      - cmk -U
+      - cmk -O
+related_domains:
+  - Nagios
+  - Monitoring
+  - Infrastructure
+  - DevOps
+  - Operations
+  - Network
+  - Cloud
+documentation_url: https://docs.wikilabs.ai/technology/checkmk

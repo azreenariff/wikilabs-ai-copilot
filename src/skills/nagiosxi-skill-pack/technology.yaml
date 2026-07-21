@@ -1,0 +1,100 @@
+domain: Nagios XI / Nagios Core
+version: 1.0.0
+description: >
+  Nagios XI — enterprise monitoring platform built on Nagios Core with extended
+  web UI, configuration wizards, NDOUtils database, and comprehensive reporting.
+  Covers XI Engine, Nagios Core, NDOUtils, NRPE, NCPA, SNMP, service/host checks,
+  hostgroups, servicegroups, downtime scheduling, performance graphs, and reporting.
+features:
+  - name: XI Engine
+    description: Core Nagios XI engine that orchestrates all monitoring functions including check scheduling, result processing, notifications, and UI rendering
+    related_commands:
+      - systemctl status nagios
+      - systemctl status ndo2db
+      - /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
+  - name: Nagios Core
+    description: Underlying Nagios Core engine providing the fundamental scheduling, check execution, and state management framework
+    related_commands:
+      - nagios -v /usr/local/nagios/etc/nagios.cfg
+      - /usr/local/nagios/bin/nagios /usr/local/nagios/etc/nagios.cfg
+      - tail -f /usr/local/nagios/var/nagios.log
+  - name: NDOUtils
+    description: Nagios Data Out (NDOUtils) module that exports Nagios state data to a MySQL/MariaDB database for web UI performance, reporting, and historical queries
+    related_commands:
+      - systemctl status ndo2db
+      - mysql -u nagiosxi -p nagiosxi -e "SELECT * FROM nagios_hosts;"
+      - show-nagios-downtime
+  - name: NRPE
+    description: Nagios Remote Plugin Executor — agent-based remote check method for Unix/Linux hosts. Allows the Nagios server to run plugins on remote hosts
+    related_commands:
+      - check_nrpe -H <host> -c <command>
+      - nrpe -n
+      - /usr/local/nagios/etc/nrpe.cfg
+  - name: NCPA
+    description: Nagios Community Plugin Agent — modern agent-based check method for Windows, Linux, and macOS with built-in metrics, API, and low overhead
+    related_commands:
+      - check_ncpa.py -H <host> -t <token> -M <metric>
+      - systemctl status ncpa_listener
+      - /etc/ncpa/listener.cfg
+  - name: SNMP
+    description: Simple Network Management Protocol — agentless check method for network devices, servers, and infrastructure components using MIBs and OIDs
+    related_commands:
+      - check_snmp -H <host> -C <community> -o <oid>
+      - check_snmp_storage -H <host> -C <community> -m <mib>
+      - snmpwalk -v2c <host> -c <community>
+  - name: Service/Host Status
+    description: Real-time and historical service and host status monitoring with state tracking, soft/hard state determination, flapping detection, and performance data
+    related_commands:
+      - show-service-status
+      - show-host-status
+      - show-service-detail
+  - name: Hostgroups
+    description: Logical grouping of hosts for bulk configuration, notification routing, and status display organization
+    related_commands:
+      - show-hostgroup
+      - show-hostgroup-summary
+      - nagiosxi/admin/includes/components/addhostgroup/
+  - name: Servicegroups
+    description: Logical grouping of services for bulk configuration, notification routing, and status display organization
+    related_commands:
+      - showservices
+      - showservicegroup
+      - nagiosxi/admin/includes/components/addservicegroup/
+  - name: Downtime
+    description: Scheduled and flexible downtime management for planned maintenance, avoiding unnecessary alerts and notifications during maintenance windows
+    related_commands:
+      - showdowntime
+      - nagiosxi/admin/includes/components/adddowntime/
+      - add_downtime
+  - name: Performance Graphs
+    description: PNP4Nagios integration providing historical performance data visualization with real-time graphs for service check results
+    related_commands:
+      - showgraph
+      - check_disk -w 80 -c 90 — showing performance data
+      - /usr/local/nagios/share/perfdata/
+  - name: Reporting
+    description: XI report engine providing availability reports, downtime reports, notification reports, service/host performance reports, and audit trails
+    related_commands:
+      - nagiosxi/reports/
+      - nagiosxi/includes/components/reporting/
+      - show-reporting
+  - name: Configuration Wizards
+    description: XI web-based configuration wizards for hosts, services, contacts, and hostgroups — abstracting the underlying config file generation
+    related_commands:
+      - nagiosxi/admin/configure/
+      - nagiosxi/admin/configure/hosts/
+      - nagiosxi/admin/configure/services/
+  - name: Configuration Management
+    description: Centralized configuration management via the XI web UI, CGI interface, and direct config file editing with validation and apply capabilities
+    related_commands:
+      - nagiosxi/admin/includes/components/configmanagement/
+      - /usr/local/nagios/etc/hosts.cfg
+      - /usr/local/nagios/etc/services.cfg
+related_domains:
+  - Monitoring
+  - Infrastructure
+  - Operations
+  - DevOps
+  - Network Operations
+  - IT Service Management
+documentation_url: https://docs.wikilabs.ai/technology/nagiosxi

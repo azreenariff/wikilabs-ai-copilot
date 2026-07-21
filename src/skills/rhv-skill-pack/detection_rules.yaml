@@ -1,0 +1,259 @@
+# Red Hat Virtualization — Context Detection Rules
+# Rules for identifying when to load the RHV engineering skill pack
+
+rules:
+  - id: rhv-engine-not-starting
+    name: RHV Engine Not Starting
+    description: Detects RHV Manager (ovirt-engine) service failures from error reports.
+    triggers:
+      - "ovirt-engine.*fail(ed|ure)"
+      - "engine.*not.*starting"
+      - "engine.*service.*down"
+      - "engine.*cannot.*access"
+      - "engine.*stopped"
+      - "vpxd.*replacement.*engine.*fail"
+      - "hosted-engine.*down"
+    context_keywords:
+      - ovirt-engine
+      - Engine
+      - RHV Manager
+      - hosted-engine
+      - ovirt-hosted-engine-ha
+      - postgresql
+    confidence: 0.92
+    related_workflows:
+      - rhv-engine-not-starting
+
+  - id: rhv-host-unreachable
+    name: RHV Host Unreachable
+    description: Detects RHV host becoming unreachable from the RHV Manager.
+    triggers:
+      - "host.*unreachable"
+      - "host.*not.*responding"
+      - "host.*not.*connected"
+      - "host.*down"
+      - "host.*disconnected"
+      - "host.*vdsm.*down"
+    context_keywords:
+      - vdsm
+      - host
+      - vdsm
+      - libvirtd
+      - KVM
+      - vNetwork
+      - bond
+      - non-responsive
+    confidence: 0.88
+    related_workflows:
+      - rhv-host-unreachable
+
+  - id: rhv-vm-slow
+    name: VM Performance Degraded
+    description: Detects RHV VM performance degradation issues.
+    triggers:
+      - "VM.*slow"
+      - "VM.*performance.*degraded"
+      - "VM.*running.*slow"
+      - "VM.*high.*latency"
+      - "VM.*not.*responding"
+      - "virtio.*slow"
+      - "qemu.*slow"
+      - "qemu.*performance"
+    context_keywords:
+      - virtio
+      - qemu
+      - virsh
+      - KVM
+      - SPICE
+      - libvirt
+    confidence: 0.85
+    related_workflows:
+      - rhv-vm-performance-degraded
+
+  - id: rhv-storage-domain-down
+    name: Storage Domain Down
+    description: Detects RHV storage domain becoming unavailable.
+    triggers:
+      - "storage.*domain.*down"
+      - "storage.*domain.*error"
+      - "gluster.*down"
+      - "gluster.*brick.*down"
+      - "NFS.*mount.*fail"
+      - "iSCSI.*lost"
+      - "domain.*read-only"
+      - "Gluster.*down"
+      - "Gluster.*brick.*down"
+      - "Gluster.*NFS.*iSCSI"
+    context_keywords:
+      - storage
+      - domain
+      - Gluster
+      - NFS
+      - iSCSI
+      - FC
+      - qcow2
+    confidence: 0.90
+    related_workflows:
+      - rhv-storage-domain-down
+
+  - id: rhv-hosted-engine-failover
+    name: Hosted Engine Failover
+    description: Detects RHV Engine VM failover events.
+    triggers:
+      - "hosted-engine.*failover"
+      - "hosted-engine.*migrat"
+      - "engine.*VM.*failed"
+      - "engine.*HA.*failover"
+      - "Hosted Engine.*down"
+      - "ovirt-hosted-engine"
+    context_keywords:
+      - hosted-engine
+      - engine-VM
+      - HA
+      - ovirt-hosted-engine-ha
+      - failover
+      - engine
+    confidence: 0.91
+    related_workflows:
+      - rhv-hosted-engine-failover
+
+  - id: rhv-cluster-compatibility
+    name: Cluster Compatibility Issue
+    description: Detects RHV cluster compatibility version mismatches.
+    triggers:
+      - "cluster.*compatibility.*version"
+      - "host.*version.*mismatch"
+      - "compatibility.*issue"
+      - "cluster.*upgrade.*fail"
+      - "compatibility.*level"
+    context_keywords:
+      - cluster
+      - compatibility
+      - version
+      - cluster
+      - upgrade
+    confidence: 0.84
+    related_workflows:
+      - rhv-cluster-compatibility-issue
+
+  - id: rhv-snapshot-growth
+    name: VM Snapshot Growth
+    description: Detects RHV VM snapshot accumulation causing storage pressure.
+    triggers:
+      - "snapshot.*growth"
+      - "snapshot.*chain"
+      - "snapshot.*full"
+      - "snapshot.*consolidat"
+      - "delta.*file.*large"
+      - "snap.*growth"
+    context_keywords:
+      - snapshot
+      - chain
+      - delta
+      - consolidation
+      - snapshot
+    confidence: 0.86
+    related_workflows:
+      - rhv-vmsnapshot-growth
+
+  - id: rhv-network-isolation
+    name: Virtual Network Isolation
+    description: Detects RHV virtual network connectivity issues.
+    triggers:
+      - "network.*isolat"
+      - "vNetwork.*isolat"
+      - "OVS.*config.*error"
+      - "bond.*failover"
+      - "vNIC.*error"
+      - "OVN.*isolated"
+    context_keywords:
+      - OVS
+      - Open vSwitch
+      - bond
+      - vNIC
+      - vNetwork
+      - VLAN
+    confidence: 0.87
+    related_workflows:
+      - rhv-network-isolation
+
+  - id: rhv-ha-failover
+    name: HA Failover Event
+    description: Detects RHV HA failover events for VMs.
+    triggers:
+      - "HA.*failover"
+      - "HA.*migrat"
+      - "non-responsive.*host"
+      - "HA.*restart.*VM"
+      - "HA.*agent.*down"
+    context_keywords:
+      - HA
+      - failover
+      - restart
+      - non-responsive
+      - HA
+    confidence: 0.90
+    related_workflows:
+      - rhv-ha-failover
+
+  - id: rhv-permission-issue
+    name: Permission and Access Issue
+    description: Detects RHV user permission and access problems.
+    triggers:
+      - "permission.*denied"
+      - "access.*denied"
+      - "RBAC.*error"
+      - "role.*not.*allowed"
+      - "API.*token.*expired"
+      - "RBAC.*denied"
+      - "role.*not.*allowed"
+    context_keywords:
+      - RBAC
+      - role
+      - permission
+      - access
+      - token
+      - RBAC
+    confidence: 0.83
+    related_workflows:
+      - rhv-permission-access-issue
+
+  - id: rhv-gluster-volume
+    name: Gluster Volume Failure
+    description: Detects Gluster storage volume failures in RHV environments.
+    triggers:
+      - "Gluster.*volume.*down"
+      - "Gluster.*brick.*fail"
+      - "Gluster.*peer.*disconnect"
+      - "Gluster.*healing"
+      - "Gluster.*quorum.*loss"
+    context_keywords:
+      - Gluster
+      - volume
+      - brick
+      - peer
+      - healing
+      - quorum
+    confidence: 0.92
+    related_workflows:
+      - rhv-gluster-volume-down
+
+  - id: rhv-vm-not-running
+    name: VM Unexpectedly Stopped
+    description: Detects RHV VM unexpectedly stopped or crashed.
+    triggers:
+      - "VM.*stopped.*unexpectedly"
+      - "VM.*crashed"
+      - "VM.*power.*off"
+      - "guest.*OS.*crash"
+      - "VM.*not.*running"
+      - "VM.*stopped.*unexpectedly"
+    context_keywords:
+      - VM
+      - stopped
+      - crashed
+      - power
+      - virsh
+    confidence: 0.87
+    related_workflows:
+      - rhv-vm-performance-degraded

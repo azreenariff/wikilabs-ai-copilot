@@ -1,0 +1,179 @@
+domain: EDB PostgreSQL
+version: 1.0.0
+description: >
+  EnterpriseDB PostgreSQL — the enterprise distribution of PostgreSQL by EnterpriseDB.
+  Covers PostgreSQL Core Server, EDB-specific features, WAL management, streaming
+  and logical replication, backup/recovery, indexes (B-Tree, GiST, GIN, BRIN),
+  locking, transactions, MVCC, configuration tuning, and performance optimization.
+features:
+  - name: PostgreSQL Core Server
+    description: PostgreSQL database engine, shared memory architecture, background processes (startup, bgwriter, walwriter, autovacuum launcher, stats collector, wal receiver, wal sender)
+    related_commands:
+      - postgres
+      - pg_ctl start
+      - pg_ctl stop
+      - pg_ctl restart
+      - pg_ctl status
+      - SHOW version
+      - SHOW data_directory
+  - name: EDB-Specific Features
+    description: EnterpriseDB extensions including EDB-specific configuration options, EDB Advanced Server compatibility features, Oracle compatibility, and EDB-specific monitoring tools
+    related_commands:
+      - SHOW edb.*
+      - SELECT * FROM pg_extension
+      - CREATE EXTENSION
+  - name: WAL Management
+    description: Write-Ahead Logging configuration, checkpoint management, WAL retention, WAL archiving, WAL segment management, fsync, full_page_writes, wal_level configuration
+    related_commands:
+      - SHOW wal_level
+      - SHOW checkpoint_completion_target
+      - SHOW max_wal_size
+      - SHOW min_wal_size
+      - SHOW wal_keep_size
+      - SELECT pg_current_wal_insert_lsn()
+      - SELECT pg_switch_wal()
+  - name: Streaming Replication
+    description: Physical streaming replication between primary and standby servers, replication slots, WAL shipping, synchronous replication, lag monitoring, failover procedures
+    related_commands:
+      - pg_basebackup
+      - SELECT * FROM pg_stat_replication
+      - SELECT * FROM pg_replication_slots
+      - pg_is_in_recovery
+      - SELECT pg_last_wal_receive_lsn()
+      - SELECT pg_last_wal_replay_lsn()
+  - name: Physical Replication
+    description: Base backup creation, pg_rewind for reverse sync, standby server configuration, recovery.conf (pre-12) or standby.signal (12+), hot standby queries
+    related_commands:
+      - pg_basebackup -R
+      - pg_rewind
+      - SELECT pg_is_in_recovery()
+      - CREATE_RECOVERY_POINT
+  - name: Logical Replication
+    description: Publication/subscription model, logical decoding, table-level replication, multi-source replication, conflict resolution, schema changes during replication
+    related_commands:
+      - CREATE PUBLICATION
+      - CREATE SUBSCRIPTION
+      - ALTER PUBLICATION
+      - ALTER SUBSCRIPTION
+      - SELECT * FROM pg_publication
+      - SELECT * FROM pg_subscription
+  - name: Backup and Recovery
+    description: pg_dump/psql logical backups, pg_basebackup physical backups, point-in-time recovery (PITR), WAL archiving configuration, backup validation, restore procedures, EDB Backup and Recovery tool
+    related_commands:
+      - pg_dump
+      - pg_dumpall
+      - pg_restore
+      - pg_basebackup
+      - psql -f
+      - SELECT pg_backup_start()
+      - SELECT pg_backup_stop()
+  - name: Indexes (B-Tree, GiST, GIN, BRIN)
+    description: Default B-Tree indexes, GiST for range/full-text search, GIN for full-text/array search, BRIN for large tables, index-only scans, partial indexes, unique indexes, expression indexes
+    related_commands:
+      - CREATE INDEX
+      - CREATE UNIQUE INDEX
+      - CREATE INDEX CONCURRENTLY
+      - ALTER INDEX
+      - DROP INDEX
+      - EXPLAIN ANALYZE SELECT ...
+      - SELECT * FROM pg_indexes
+      - SELECT * FROM pg_stat_user_indexes
+  - name: Locks and Concurrency
+    description: Row-level locking, table-level locks, lock modes (AccessShare, RowShare, RowExclusive, ShareUpdateExclusive, Share, ShareRowExclusive, Exclusive, AccessExclusive), lock timeouts, deadlock detection, deadlock_timeout
+    related_commands:
+      - SELECT * FROM pg_locks
+      - SELECT * FROM pg_locks WHERE NOT granted
+      - SELECT pg_blocking_pids(pid)
+      - SHOW deadlock_timeout
+      - SHOW lock_timeout
+      - ALTER SYSTEM SET lock_timeout
+  - name: Transactions and MVCC
+    description: Transaction isolation levels (Read Committed, Repeatable Read, Serializable), snapshot isolation, MVCC visibility, transaction management, prepared transactions, distributed transactions, xid wraparound prevention
+    related_commands:
+      - BEGIN
+      - COMMIT
+      - ROLLBACK
+      - SAVEPOINT
+      - PREPARE TRANSACTION
+      - COMMIT PREPARED
+      - ROLLBACK PREPARED
+      - SHOW transaction_isolation
+      - SHOW default_transaction_isolation
+      - SELECT txid_current()
+      - SELECT txid_snapshot_xmin(txid_snapshot)
+  - name: Configuration (postgresql.conf)
+    description: Server configuration, shared_buffers, work_mem, maintenance_work_mem, effective_cache_size, random_page_cost, effective_io_concurrency, max_connections, superuser_reserved_connections, wal_buffers, synchronous_commit
+    related_commands:
+      - SHOW shared_buffers
+      - SHOW work_mem
+      - SHOW maintenance_work_mem
+      - SHOW effective_cache_size
+      - SHOW max_connections
+      - SHOW random_page_cost
+      - SHOW effective_io_concurrency
+      - ALTER SYSTEM SET
+      - SELECT pg_reload_conf()
+  - name: Performance Tuning
+    description: Query optimization, planner configuration, pg_stat_statements extension, autovacuum tuning, pg_stat_activity monitoring, pg_wait_events, pg_stat_progress, EXPLAIN ANALYZE, resource management
+    related_commands:
+      - EXPLAIN ANALYZE SELECT ...
+      - SHOW pg_stat_statements.track
+      - SELECT * FROM pg_stat_statements ORDER BY total_exec_time DESC
+      - SHOW autovacuum
+      - SHOW autovacuum_max_workers
+      - SHOW autovacuum_naptime
+      - SELECT * FROM pg_stat_activity
+      - SHOW track_activities
+      - SHOW track_counts
+  - name: Autovacuum
+    description: Automatic VACUUM and ANALYZE, autovacuum settings, table-level tuning, vacuum delays, freeze settings, toast handling, bloat management, monitoring autovacuum progress
+    related_commands:
+      - SHOW autovacuum
+      - SHOW autovacuum_vacuum_threshold
+      - SHOW autovacuum_analyze_threshold
+      - SHOW autovacuum_vacuum_scale_factor
+      - SHOW autovacuum_analyze_scale_factor
+      - SHOW autovacuum_vacuum_cost_delay
+      - SELECT * FROM pg_stat_user_tables ORDER BY n_dead_tup DESC
+      - VACUUM ANALYZE
+      - VACUUM FULL
+  - name: Monitoring and Statistics
+    description: pg_stat_activity, pg_stat_database, pg_stat_user_tables, pg_stat_user_indexes, pg_stat_replication, pg_stat_wal, pg_stat_bgwriter, pg_stat_sys_tables, pg_stat_bgwriter, pg_stat_progress_vacuum, pg_stat_progress_create_index, pg_stat_progress_cluster
+    related_commands:
+      - SELECT * FROM pg_stat_activity
+      - SELECT * FROM pg_stat_database
+      - SELECT * FROM pg_stat_user_tables
+      - SELECT * FROM pg_stat_replication
+      - SELECT * FROM pg_stat_bgwriter
+      - SELECT * FROM pg_stat_wal
+      - SELECT * FROM pg_stat_progress_vacuum
+      - SELECT * FROM pg_stat_progress_create_index
+  - name: pg_hba.conf (Authentication)
+    description: Client authentication configuration, md5/scram-sha-256/trust/peer/ident authentication, SSL authentication, CIDR notation, host/hostssl entries, pg_hba.conf reload
+    related_commands:
+      - SELECT * FROM pg_hba_file_rules
+      - ALTER SYSTEM SET password_encryption
+      - CREATE ROLE
+      - ALTER ROLE
+      - RELOAD
+  - name: Extensions
+    description: PostgreSQL extension system, common extensions (pg_stat_statements, pg_trgm, pgcrypto, hstore, postgis, uuid-ossp, tablefunc), extension version management, extension dependencies
+    related_commands:
+      - CREATE EXTENSION
+      - ALTER EXTENSION
+      - ALTER EXTENSION UPDATE
+      - DROP EXTENSION
+      - SELECT * FROM pg_extension
+      - SELECT * FROM pg_available_extensions
+name: EDB PostgreSQL Core
+related_domains:
+  - Database Management
+  - Data Storage
+  - High Availability
+  - Data Replication
+  - Performance Optimization
+  - Data Security
+  - Backup and Recovery
+  - Enterprise Systems
+documentation_url: https://www.postgresql.org/docs/
+edb_documentation_url: https://www.enterprisedb.com/docs/

@@ -1,0 +1,353 @@
+# Ansible Detection Rules
+# Used by the AI Copilot to detect Ansible context, commands, and error patterns.
+
+# --- CLI Commands ---
+
+- id: ansible-detect-cli-ansible
+  name: Ansible CLI Detection
+  description: Detect ansible command usage (ad-hoc execution)
+  detection_type: Command
+  pattern: '^ansible\s+\S+\s+-m\s+\S+'
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: ansible-detect-cli-playbook
+  name: Ansible Playbook Execution Detection
+  description: Detect ansible-playbook command usage
+  detection_type: Command
+  pattern: '^ansible-playbook\s+(--?\w+)*\s+\S+\.ya?ml'
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: ansible-detect-cli-inventory
+  name: Ansible Inventory Command Detection
+  description: Detect ansible-inventory command usage
+  detection_type: Command
+  pattern: '^ansible-inventory\s+--(list|graph|host)'
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: ansible-detect-cli-doc
+  name: Ansible Documentation Command Detection
+  description: Detect ansible-doc command usage
+  detection_type: Command
+  pattern: '^ansible-doc\s+(\S+|-l|-F|-f)'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: ansible-detect-cli-galaxy
+  name: Ansible Galaxy Command Detection
+  description: Detect ansible-galaxy command usage
+  detection_type: Command
+  pattern: '^ansible-galaxy\s+(init|install|remove|list|info|role|collection)'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: ansible-detect-cli-vault
+  name: Ansible Vault Command Detection
+  description: Detect ansible-vault command usage
+  detection_type: Command
+  pattern: '^ansible-vault\s+(encrypt|decrypt|view|create|rekey|decrypt|encrypt_string)'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: ansible-detect-cli-config
+  name: Ansible Config Command Detection
+  description: Detect ansible-config command usage
+  detection_type: Command
+  pattern: '^ansible-config\s+(dump|list|view)'
+  confidence: 0.85
+  technology_domain: Ansible
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: ansible-detect-cli-galaxy-init
+  name: Ansible Galaxy Init Detection
+  description: Detect ansible-galaxy init for role collection
+  detection_type: Command
+  pattern: '^ansible-galaxy\s+init\s+\S+'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 7
+  flags: ''
+  extract: null
+
+# --- Process Detection ---
+
+- id: ansible-detect-process-python
+  name: Ansible Process Detection
+  description: Detect Ansible running as a Python process
+  detection_type: Process
+  pattern: 'python.*ansible|ansible-playbook|ansible-inventory|ansible-vault|ansible-galaxy|ansible-doc'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null
+
+# --- Log Pattern Detection ---
+
+- id: ansible-detect-log-unreachable
+  name: Unreachable Host Detection
+  description: Detect Ansible unreachable host messages in logs or output
+  detection_type: TextPattern
+  pattern: '(?i)unreachable|UNREACHABLE!\s+\['
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-task-failed
+  name: Task Failed Detection
+  description: Detect Ansible task failure messages
+  detection_type: TextPattern
+  pattern: '(?i)task failed|FAILED!\s*\[|failed!\s*\[|fatal:\s*\[|ERROR:\s*\['
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-syntax-error
+  name: Ansible Syntax Error Detection
+  description: Detect Ansible syntax error messages in output or logs
+  detection_type: TextPattern
+  pattern: '(?i)syntax error|YAML error|ERROR!.*yaml|invalid.*playbook|missing.*required'
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-vault-key
+  name: Vault Key Error Detection
+  description: Detect Ansible vault key mismatch or missing key errors
+  detection_type: TextPattern
+  pattern: '(?i)vault.*key.*mismatch|vault.*password|decryption.*failed|ANSIBLE_VAULT_PASSWORD|unable.*decrypt'
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-ansible-marker
+  name: Ansible Log Marker Detection
+  description: Detect ANSIBLE log markers and ansible output headers
+  detection_type: TextPattern
+  pattern: 'ANSIBLE|ansible\.cfg|ansible-playbook|TASK|handler|role|playbook|ok|changed|failed|skipped|unreachable'
+  confidence: 0.80
+  technology_domain: Ansible
+  priority: 6
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-handler
+  name: Handler Notification Detection
+  description: Detect handler-related output in Ansible logs
+  detection_type: TextPattern
+  pattern: '(?i)handler|notify|handlers|notified.*handler'
+  confidence: 0.85
+  technology_domain: Ansible
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-role
+  name: Role Loading Detection
+  description: Detect role-related messages in Ansible output
+  detection_type: TextPattern
+  pattern: '(?i)role\s+\S+.*not\s+found|cannot\s+find\s+role|role\s+loading|import.*role'
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-idempotency
+  name: Idempotency Issue Detection
+  description: Detect idempotency-related warnings or changes in output
+  detection_type: TextPattern
+  pattern: '(?i)changed=\d+\s+failed=\d+|idempotent|changed.*task|task.*changed|module.*changed|not\s+idempotent'
+  confidence: 0.80
+  technology_domain: Ansible
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-python-interpreter
+  name: Python Interpreter Mismatch Detection
+  description: Detect Python interpreter error messages from Ansible
+  detection_type: TextPattern
+  pattern: '(?i)python.*interpreter|ansible_python_interpreter|unsupported.*python|python\s+version|module.*failed.*python'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-connection
+  name: SSH Connection Failure Detection
+  description: Detect SSH connection failures in Ansible output
+  detection_type: TextPattern
+  pattern: '(?i)ssh.*connection|connection.*refused|connection.*timeout|ssh.*error|permission.*denied\s*\[|hostkey.*verify'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-check-mode
+  name: Check Mode / Dry-Run Detection
+  description: Detect check-mode or dry-run output in Ansible
+  detection_type: TextPattern
+  pattern: '(?i)check\s+mode|check-mode|dry.?run|would\s+change|would\s+be|diff\s+mode|diff mode'
+  confidence: 0.85
+  technology_domain: Ansible
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-galaxy
+  name: Galaxy Collection Error Detection
+  description: Detect Galaxy collection installation failures
+  detection_type: TextPattern
+  pattern: '(?i)galaxy.*error|collection.*install.*fail|no\s+matching.*version|galaxy.*network|cannot\s+connect.*galaxy'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-inventory
+  name: Inventory Parsing Error Detection
+  description: Detect inventory parsing errors
+  detection_type: TextPattern
+  pattern: '(?i)inventory.*error|cannot\s+load.*inventory|invalid.*inventory|yaml.*error.*inventory|parsed.*inventory'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: ansible-detect-log-diff
+  name: Diff Output Detection
+  description: Detect Ansible diff mode output (file changes)
+  detection_type: TextPattern
+  pattern: '(?i)---\s+\S+|\+\+\+\s+\S+|@\s+@\s+.+@\s+@|- \s*|\+ \s*|diff.*output|\{\{.*\}\}'
+  confidence: 0.80
+  technology_domain: Ansible
+  priority: 6
+  flags: ''
+  extract: null
+
+# --- Config File Detection ---
+
+- id: ansible-detect-config-ansible-cfg
+  name: ansible.cfg Detection
+  description: Detect ansible.cfg configuration file in project
+  detection_type: ConfigFile
+  pattern: 'ansible\.cfg|\.ansible\.cfg'
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: ansible-detect-config-inventory
+  name: Inventory File Detection
+  description: Detect inventory files (static or dynamic)
+  detection_type: ConfigFile
+  pattern: 'inventory\.yaml|inventory\.yml|inventory\.ini|inventory\.json|hosts\.yaml|hosts\.ini'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: ansible-detect-config-playbook
+  name: Playbook File Detection
+  description: Detect playbook YAML files
+  detection_type: ConfigFile
+  pattern: 'playbook\.yaml|playbook\.yml|site\.yaml|site\.yml|\.playbook\.ya?ml'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: ansible-detect-config-roles
+  name: Roles Directory Detection
+  description: Detect roles directory structure
+  detection_type: ConfigFile
+  pattern: 'roles/|roles/[^/]+/tasks|roles/[^/]+/handlers|roles/[^/]+/defaults|roles/[^/]+/templates|roles/[^/]+/vars'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 8
+  flags: ''
+  extract: null
+
+# --- File Pattern Detection ---
+
+- id: ansible-detect-file-pattern-playbook
+  name: Playbook File Pattern Detection
+  description: Detect YAML/YML files containing Ansible playbook keywords
+  detection_type: FilePattern
+  pattern: '^\s*-?\s*hosts:\s+|^\s*-?\s*name:\s+.*play|^\s*-?\s*tasks:|^\s*-?\s*roles:|^\s*-?\s*gather_facts:'
+  confidence: 0.85
+  technology_domain: Ansible
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: ansible-detect-file-pattern-role
+  name: Role File Pattern Detection
+  description: Detect files matching Ansible role directory conventions
+  detection_type: FilePattern
+  pattern: 'tasks/main\.ya?ml|handlers/main\.ya?ml|defaults/main\.ya?ml|vars/main\.ya?ml|meta/main\.ya?ml|files/|templates/'
+  confidence: 0.90
+  technology_domain: Ansible
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: ansible-detect-file-pattern-module
+  name: Ansible Module Usage Detection
+  description: Detect YAML files importing Ansible modules
+  detection_type: FilePattern
+  pattern: '\bname:\s+\S+.*module:|\bmodule:\s+\S+|\bbecome:\s+true|\bbecome_method:|^\s+-\s+name:\s+.*\n\s+ansible\.\w+\.\w+:'
+  confidence: 0.80
+  technology_domain: Ansible
+  priority: 6
+  flags: ''
+  extract: null
+
+- id: ansible-detect-file-pattern-vault
+  name: Ansible Vault Encrypted File Detection
+  description: Detect Ansible Vault encrypted files
+  detection_type: FilePattern
+  pattern: '\$ANSIBLE_VAULT;'
+  confidence: 0.95
+  technology_domain: Ansible
+  priority: 9
+  flags: ''
+  extract: null

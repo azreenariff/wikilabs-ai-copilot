@@ -1,0 +1,50 @@
+id: ansible-skill-pack
+name: Ansible Engineering
+version: 1.0.0
+description: >
+  Comprehensive Ansible engineering skill covering playbooks, roles, modules,
+  inventory, automation, troubleshooting, security (Vault), and lifecycle
+  management. Provides expert-level guidance for Ansible administrators,
+  automation engineers, and DevOps teams.
+author: Wiki Labs Team
+technology_domain: Ansible
+vendor: Red Hat
+category: Automation
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - ansible
+  - automation
+  - ansible-playbook
+  - ansible-inventory
+  - ansible-doc
+  - ansible-aap
+  - awx
+  - playbooks
+  - roles
+  - modules
+  - inventory
+  - idempotency
+  - vault
+  - check-mode
+  - dry-run
+keywords:
+  - ansible
+  - playbook
+  - role
+  - module
+  - inventory
+  - tower
+  - awx
+  - aap
+  - ad-hoc
+  - vault
+  - galaxy
+  - ansible-core
+icon: ⚙️
+supported_environments:
+  - "Core 2.14+"
+  - "AAP 2.4+"
+  - "AWX 23+"
+documentation_url: https://docs.wikilabs.ai/skills/ansible-skill-pack

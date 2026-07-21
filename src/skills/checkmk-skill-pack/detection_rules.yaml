@@ -1,0 +1,436 @@
+# Checkmk Detection Rules
+# Used to identify Checkmk context, symptoms, and issues across browser, terminal, and logs.
+
+# --- Browser URL Patterns ---
+
+- id: checkmk-detect-browser-url
+  name: Checkmk Web Browser URL Detection
+  description: Detect Checkmk web interface usage in browser
+  detection_type: Browser
+  pattern: 'checkmk|check_mk|checkmk/setup|checkmk/monitoring'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-browser-setup
+  name: Checkmk Setup Interface Detection
+  description: Detect Checkmk WATO setup interface
+  detection_type: Browser
+  pattern: 'checkmk/setup|checkmk/wato|checkmk/monitoring'
+  confidence: 0.92
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-browser-monitoring
+  name: Checkmk Monitoring View Detection
+  description: Detect Checkmk main monitoring view
+  detection_type: Browser
+  pattern: 'checkmk/monitoring|checkmk/view'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-browser-service-discovery
+  name: Checkmk Service Discovery Detection
+  description: Detect service discovery operations in browser
+  detection_type: Browser
+  pattern: 'service.discovery|service-discovery|discovered'
+  confidence: 0.85
+  technology_domain: Checkmk
+  priority: 8
+  flags: ''
+  extract: null
+
+# --- Window Title Patterns ---
+
+- id: checkmk-detect-window-title
+  name: Checkmk Window Title Detection
+  description: Detect Checkmk in browser window title
+  detection_type: WindowTitle
+  pattern: 'Checkmk|Checkmk Setup|check_mk'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+# --- CLI Command Patterns ---
+
+- id: checkmk-detect-cli-cmk
+  name: Checkmk CLI Command Detection
+  description: Detect cmk command usage in terminal
+  detection_type: Command
+  pattern: '^cmk \\w+'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-cli-agent
+  name: Checkmk Agent Command Detection
+  description: Detect check_mk_agent command in terminal
+  detection_type: Command
+  pattern: 'check_mk_agent'
+  confidence: 0.93
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-cli-snmp
+  name: Checkmk SNMP Command Detection
+  description: Detect SNMP-related checkmk commands
+  detection_type: Command
+  pattern: 'cmk\\s+(snmpwalk|snmpget|snmpcheck)'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-cli-service-discovery
+  name: Checkmk Service Discovery CLI Detection
+  description: Detect service discovery operations via CLI
+  detection_type: Command
+  pattern: 'cmk\\s+--service-discovery'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-cli-debug
+  name: Checkmk Debug Mode Detection
+  description: Detect debug mode usage
+  detection_type: Command
+  pattern: 'cmk\\s+--debug|--debug'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-cli-reload
+  name: Checkmk Reload Detection
+  description: Detect config reload operations
+  detection_type: Command
+  pattern: 'cmk\\s+-R'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-cli-validate
+  name: Checkmk Config Validation Detection
+  description: Detect configuration validation
+  detection_type: Command
+  pattern: 'cmk\\s+--validate-config'
+  confidence: 0.92
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-cli-generate-config
+  name: Checkmk Config Generation Detection
+  description: Detect Nagios config generation
+  detection_type: Command
+  pattern: 'cmk\\s+(-U|--generate-config)'
+  confidence: 0.93
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-cli-perfview
+  name: Checkmk Performance View Detection
+  description: Detect performance view operations
+  detection_type: Command
+  pattern: 'cmk\\s+--perfview|wato\\s+perfview'
+  confidence: 0.85
+  technology_domain: Checkmk
+  priority: 7
+  flags: ''
+  extract: null
+
+# --- Process Name Patterns ---
+
+- id: checkmk-detect-process-cmc
+  name: Checkmk Micro Core Process Detection
+  description: Detect CMC check engine process
+  detection_type: Process
+  pattern: 'check_mk-cmc|check_mk\.cmc'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-process-nagios
+  name: Nagios Core Process Detection
+  description: Detect Nagios process (legacy check engine)
+  detection_type: Process
+  pattern: '^nagios\\b'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-process-apache
+  name: Checkmk Web Server Process Detection
+  description: Detect Apache web server running Checkmk
+  detection_type: Process
+  pattern: 'apache.*checkmk|httpd.*checkmk'
+  confidence: 0.85
+  technology_domain: Checkmk
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-process-agent
+  name: Checkmk Agent Process Detection
+  description: Detect checkmk agent processes
+  detection_type: Process
+  pattern: 'check_mk|checkmk.*agent'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+# --- Log Pattern Detection ---
+
+- id: checkmk-detect-log-agent-output
+  name: Checkmk Agent Output Log Pattern
+  description: Detect agent output in logs
+  detection_type: TextPattern
+  pattern: 'check_mk_agent|Checkmk agent|agent check'
+  confidence: 0.92
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-log-cmc
+  name: Checkmk Micro Core Log Pattern
+  description: Detect CMC-related log entries
+  detection_type: TextPattern
+  pattern: 'CMC|check_mk-cmc|micro.core'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-log-service-discovery
+  name: Service Discovery Log Pattern
+  description: Detect service discovery log entries
+  detection_type: TextPattern
+  pattern: 'service.discovery|Service.discovery|discovered.services|discovery.log'
+  confidence: 0.88
+  technology_domain: Checkmk
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-log-notification
+  name: Notification Log Pattern
+  description: Detect notification-related log entries
+  detection_type: TextPattern
+  pattern: 'notification.*sent|notification.*failed|notify.*contact|NOTIFY'
+  confidence: 0.85
+  technology_domain: Checkmk
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-log-piggyback
+  name: Piggyback Data Log Pattern
+  description: Detect piggyback data processing log entries
+  detection_type: TextPattern
+  pattern: 'piggyback|Piggyback|piggyback.data|piggyback.processing'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-log-stale-check
+  name: Stale Check Log Pattern
+  description: Detect stale check warnings
+  detection_type: TextPattern
+  pattern: 'stale.check|stale.checks|check.timed.out|stale'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-log-agent-unreachable
+  name: Agent Unreachable Log Pattern
+  description: Detect agent connectivity failures
+  detection_type: TextPattern
+  pattern: 'agent.*unreachable|agent.*timeout|agent.*error|Agent.error'
+  confidence: 0.92
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-log-high-latency
+  name: High Check Latency Log Pattern
+  description: Detect check latency warnings
+  detection_type: TextPattern
+  pattern: 'check.latency|high.latency|long.check|check.time'
+  confidence: 0.85
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+# --- Configuration File Patterns ---
+
+- id: checkmk-detect-config-main
+  name: Checkmk Main Configuration Detection
+  description: Detect main Checkmk configuration file
+  detection_type: File
+  pattern: 'check_mk_main\\.mk|agents\\.mk|checkmk_main\\.mk'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-config-params
+  name: Checkmk Check Parameters Detection
+  description: Detect check parameter configuration files
+  detection_type: File
+  pattern: 'check_params|check\\.mk\\.conf|local.mk'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-config-ruleset
+  name: Checkmk Ruleset Configuration Detection
+  description: Detect ruleset configuration files
+  detection_type: File
+  pattern: 'rulesets|hosts|mkeventd\\.conf|wato'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-config-notification
+  name: Checkmk Notification Configuration Detection
+  description: Detect notification configuration files
+  detection_type: File
+  pattern: 'notification\\.(mk|conf)|contact\\.(mk|conf)|contacts'
+  confidence: 0.88
+  technology_domain: Checkmk
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-config-perfview
+  name: Checkmk Performance View Detection
+  description: Detect performance view configuration
+  detection_type: File
+  pattern: 'perf.view|performance.view|perfview'
+  confidence: 0.80
+  technology_domain: Checkmk
+  priority: 7
+  flags: ''
+  extract: null
+
+# --- State/Status Patterns ---
+
+- id: checkmk-detect-state-critical
+  name: Checkmk Critical Service Detection
+  description: Detect services in critical state
+  detection_type: TextPattern
+  pattern: 'CRITICAL|critical|state.*critical|State:.*CRITICAL'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-state-warning
+  name: Checkmk Warning Service Detection
+  description: Detect services in warning state
+  detection_type: TextPattern
+  pattern: 'WARNING|warning|state.*warning|State:.*WARNING'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-state-unreachable
+  name: Checkmk Host Unreachable Detection
+  description: Detect hosts reporting unreachable state
+  detection_type: TextPattern
+  pattern: 'UNREACHABLE|unreachable|host.*unreachable|HOST_UNREACHABLE'
+  confidence: 0.95
+  technology_domain: Checkmk
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-state-pending
+  name: Checkmk Pending Check Detection
+  description: Detect checks in pending state
+  detection_type: TextPattern
+  pattern: 'PENDING|pending.check|check.*pending|State:.*PENDING'
+  confidence: 0.90
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-state-flapping
+  name: Checkmk Flapping Detection
+  description: Detect flapping services
+  detection_type: TextPattern
+  pattern: 'flapping|Flapping|state.flapping'
+  confidence: 0.92
+  technology_domain: Checkmk
+  priority: 9
+  flags: ''
+  extract: null
+
+# --- SNMP Detection ---
+
+- id: checkmk-detect-snmp-community
+  name: SNMP Community String Detection
+  description: Detect SNMP community strings in output
+  detection_type: TextPattern
+  pattern: 'community.*public|community.*private|snmp.*community|SNMP.community'
+  confidence: 0.85
+  technology_domain: Checkmk
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: checkmk-detect-snmp-trap
+  name: SNMP Trap Detection
+  description: Detect SNMP trap processing
+  detection_type: TextPattern
+  pattern: 'snmp.trap|SNMP.trap|trap.received|trap.processing'
+  confidence: 0.88
+  technology_domain: Checkmk
+  priority: 8
+  flags: ''
+  extract: null

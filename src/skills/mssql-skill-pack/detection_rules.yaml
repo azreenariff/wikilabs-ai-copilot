@@ -1,0 +1,307 @@
+- id: mssql-detect-browser-ssms
+  name: SSMS Browser Detection
+  description: Detect SQL Server Management Studio web console or remote access
+  detection_type: Browser
+  pattern: 'sql-server|ssms|sqlservermanagementstudio|azure-data-studio|mssql'
+  confidence: 0.85
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-browser-ads
+  name: Azure Data Studio Browser Detection
+  description: Detect Azure Data Studio interface in browser
+  detection_type: Browser
+  pattern: 'azure.data.studio|ads.azure.com|github.com/microsoft/azure-data-studio'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-window-ssms
+  name: SSMS Window Title Detection
+  description: Detect SSMS window titles
+  detection_type: WindowTitle
+  pattern: '(?i)sql server management studio|ssms|microsoft sql server'
+  confidence: 0.95
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mssql-detect-window-ads
+  name: Azure Data Studio Window Title Detection
+  description: Detect Azure Data Studio window titles
+  detection_type: WindowTitle
+  pattern: '(?i)azure data studio|ads - '
+  confidence: 0.95
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-cli-sqlcmd
+  name: sqlcmd CLI Detection
+  description: Detect sqlcmd usage in terminal
+  detection_type: Command
+  pattern: '^sqlcmd\b'
+  confidence: 0.95
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mssql-detect-cli-bcp
+  name: bcp CLI Detection
+  description: Detect bcp bulk copy utility usage
+  detection_type: Command
+  pattern: '^bcp\b'
+  confidence: 0.95
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mssql-detect-cli-sqlpackage
+  name: sqlpackage CLI Detection
+  description: Detect sqlpackage DACPAC deployment usage
+  detection_type: Command
+  pattern: '^sqlpackage\b'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-cli-dbatools
+  name: dbatools PowerShell Detection
+  description: Detect dbatools PowerShell module usage
+  detection_type: Command
+  pattern: 'dbatools|dbatools\.io|Get-Dba|Set-Dba|Test-Dba|Invoke-Dba'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-cli-powershell
+  name: PowerShell SQL Module Detection
+  description: Detect PowerShell SQL module usage
+  detection_type: Command
+  pattern: 'Invoke-Sqlcmd|Sqlcmd|SqlProvider|sqlserver.*powershell'
+  confidence: 0.85
+  technology_domain: Microsoft SQL Server
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mssql-detect-cli-dacfx
+  name: DacFx CLI Detection
+  description: Detect DacFx-based deployment tools
+  detection_type: Command
+  pattern: 'dacpac|dacfx|dbpro|sqlproj'
+  confidence: 0.80
+  technology_domain: Microsoft SQL Server
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: mssql-detect-sqlserver-cli
+  name: sqlserver CLI Detection
+  description: Detect sqlserver interactive CLI usage
+  detection_type: Command
+  pattern: '^sqlserver\b'
+  confidence: 0.95
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-error
+  name: SQL Error Detection
+  description: Detect SQL Server error messages in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)\bERROR\b|Msg \d+|Severity \d+'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: 'Msg (\d+)'
+
+- id: mssql-detect-text-deadlock
+  name: Deadlock Detection
+  description: Detect deadlock events in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)\bdeadlock\b|deadlock-list|victim-process|process-list|resource-list'
+  confidence: 0.95
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-availability-group
+  name: Availability Group Detection
+  description: Detect Always On availability group events
+  detection_type: TextPattern
+  pattern: '(?i)availability\s*group|AG|Always\s*On|hadr|primary\s*replica|secondary\s*replica|failover'
+  confidence: 0.92
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-tempdb
+  name: TempDB Issue Detection
+  description: Detect tempDB-related issues in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)\btempdb\b|tempdb.*full|tempdb.*wait|tempdb.*allocation|Page latch|PageIO_Latch'
+  confidence: 0.92
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-checkpoint
+  name: Checkpoint Detection
+  description: Detect checkpoint activity in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)checkpoint|lazywriter|dirty\s*page|checkpoint.*age'
+  confidence: 0.85
+  technology_domain: Microsoft SQL Server
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-backup
+  name: Backup Operation Detection
+  description: Detect backup operations in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)backup\s*database|backup\s*log|backup\s*completed|backup\s*set|backup\s*device'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-blocking
+  name: Blocking Chain Detection
+  description: Detect blocking chain events
+  detection_type: TextPattern
+  pattern: '(?i)\bblocking\b|blocked\s*process|waittype.*LOCK|latch.*lock|transfer\s*locks'
+  confidence: 0.93
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-restore
+  name: Restore Operation Detection
+  description: Detect restore operations in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)restore\s*database|restore\s*header|restore\s*verify|restore\s*from'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-index
+  name: Index Maintenance Detection
+  description: Detect index-related operations in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)ALTER\s+INDEX|CREATE\s+(CLUSTERED|NONCLUSTERED)\s+INDEX|UPDATE\s+STATISTICS|REORGANIZE|REBUILD'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-memory
+  name: Memory Pressure Detection
+  description: Detect memory pressure events
+  detection_type: TextPattern
+  pattern: '(?i)memory\s*pressure|out\s*of\s*memory|memory\b.*grant|CMEMTHREAD|RESOURCE_SEMAPHORE|buffer\s*pool'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-recovery
+  name: Recovery State Detection
+  description: Detect database recovery state in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)recovery.*in\s*progress|restoring.*state|recovery.*complete|online.*state'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-dmv
+  name: DMV Query Detection
+  description: Detect dynamic management view queries
+  detection_type: TextPattern
+  pattern: 'sys\.dm_(exec|os|tran|db|server|hadr|resource)_\w+'
+  confidence: 0.85
+  technology_domain: Microsoft SQL Server
+  priority: 8
+  flags: ''
+  extract: 'sys\.dm_(exec|os|tran|db|server|hadr|resource)_\w+'
+
+- id: mssql-detect-text-waitstats
+  name: Wait Statistics Detection
+  description: Detect wait statistics analysis queries
+  detection_type: TextPattern
+  pattern: '(?i)wait.*type|wait.*stats|CXPACKET|SOS_SCHEDULER_YIELD|PAGEIOLATCH|LCK_M_|WAITFOR'
+  confidence: 0.88
+  technology_domain: Microsoft SQL Server
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-querystore
+  name: Query Store Detection
+  description: Detect Query Store operations
+  detection_type: TextPattern
+  pattern: '(?i)query\s*store|sys\.query_store|query\s*store.*runtime.*stats|qs_'
+  confidence: 0.85
+  technology_domain: Microsoft SQL Server
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-tde
+  name: TDE Detection
+  description: Detect Transparent Data Encryption operations
+  detection_type: TextPattern
+  pattern: '(?i)transparent\s*data\s*encryption|tde|dmf_db_database_encryption_keys|encryption\s*state'
+  confidence: 0.90
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-extended-events
+  name: Extended Events Detection
+  description: Detect Extended Events session creation or usage
+  detection_type: TextPattern
+  pattern: '(?i)CREATE\s+EVENT\s+SESSION|DROP\s+EVENT\s+SESSION|sys\.dm_xe_sessions|sys\.dm_xe_packages'
+  confidence: 0.85
+  technology_domain: Microsoft SQL Server
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: mssql-detect-text-lsn
+  name: LSN Sequence Detection
+  description: Detect LSN-related operations in terminal output
+  detection_type: TextPattern
+  pattern: '(?i)log\s*sequence\s*number|LSN|vlf|virtual\s*log\s*file|truncation\s*point'
+  confidence: 0.88
+  technology_domain: Microsoft SQL Server
+  priority: 9
+  flags: ''
+  extract: null

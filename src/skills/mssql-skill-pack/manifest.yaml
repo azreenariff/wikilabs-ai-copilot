@@ -1,0 +1,70 @@
+id: mssql-skill-pack
+name: Microsoft SQL Server Engineering
+version: 1.0.0
+description: >
+  Comprehensive Microsoft SQL Server engineering skill covering database engine
+  operations, T-SQL, Availability Groups, Always On, failover clustering, backups,
+  recovery, index management, performance tuning, memory management, tempDB optimization,
+  maintenance planning, and security hardening. Provides expert-level guidance for
+  SQL Server database administrators and enterprise engineers.
+author: Wiki Labs Team
+technology_domain: "Microsoft SQL Server"
+vendor: Microsoft
+category: Database
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - mssql
+  - sql-server
+  - tsql
+  - availability-groups
+  - always-on
+  - backups
+  - recovery
+  - indexes
+  - statistics
+  - execution-plans
+  - transactions
+  - performance
+  - memory
+  - tempdb
+  - maintenance
+  - security
+  - ssms
+  - azure-data-studio
+  - sqlcmd
+  - deadlock
+  - blocking
+  - query-optimization
+  - failover
+keywords:
+  - mssql
+  - sql-server
+  - t-sql
+  - tsql
+  - ssms
+  - azure-data-studio
+  - sqlcmd
+  - bcp
+  - always-on
+  - availability-groups
+  - failover-cluster
+  - backup
+  - restore
+  - index
+  - statistics
+  - execution-plan
+  - deadlock
+  - blocking
+  - tempdb
+  - memory
+  - buffer-pool
+  - transaction-log
+  - recovery-model
+icon: 🏛️
+supported_environments:
+  - "2022"
+  - "2019"
+  - "2017"
+documentation_url: https://docs.wikilabs.ai/skills/mssql-skill-pack

@@ -1,8 +1,8 @@
 # Wiki Labs AI Copilot — Product Roadmap
 
-> **Last Updated:** 2026-07-20  
-> **Version:** 1.1  
-> **Status:** Phase 11 Complete (v0.8.0-alpha)  
+> **Last Updated:** 2026-07-21  
+> **Version:** 1.2  
+> **Status:** Virtualization Skill Packs Complete (v1.2.0-alpha)  
 > **Owner:** Technical Lead
 
 ---

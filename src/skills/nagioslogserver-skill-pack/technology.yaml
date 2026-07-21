@@ -1,0 +1,135 @@
+domain: Nagios Log Server / Elasticsearch / Logstash
+version: 1.0.0
+description: >
+  Nagios Log Server — enterprise centralized log management built on
+  Elasticsearch and Logstash. Covers log ingestion (Syslog, Windows EventLog,
+  HTTP), pipeline configuration, cluster management, Lucene/Kibana query
+  syntax, alerting, dashboards, index lifecycle, and troubleshooting.
+features:
+  - name: Elasticsearch Core
+    description: >
+      Elasticsearch engine powering search, indexing, and storage. Covers
+      cluster health (green/yellow/red), shards, replicas, mapping,
+      index lifecycle management (ILM), and node management.
+    related_commands:
+      - curl -s http://localhost:9200/_cluster/health
+      - curl -s http://localhost:9200/_cat/shards
+      - curl -s http://localhost:9200/_cat/indices
+      - curl -s http://localhost:9200/_nodes/stats
+  - name: Logstash Pipelines
+    description: >
+      Logstash pipeline configuration for log ingestion, parsing,
+      enrichment, and output to Elasticsearch. Covers input, filter, and
+      output plugins, pipeline settings, and backpressure handling.
+    related_commands:
+      - systemctl status logstash
+      - curl -s http://localhost:9600/_node/pipelines
+      - curl -s http://localhost:9600/_node/stats
+      - logstash --configtest
+  - name: Instances and Clusters
+    description: >
+      Nagios Log Server instance management, Elasticsearch cluster
+      configuration, node roles (master, data, ingest), cluster settings,
+      and scaling considerations.
+    related_commands:
+      - curl -s http://localhost:9200/_cluster/settings
+      - curl -s http://localhost:9200/_cat/nodes
+      - curl -s http://localhost:9200/_cluster/allocation/explain
+      - curl -X PUT http://localhost:9200/_cluster/settings
+  - name: Query Syntax
+    description: >
+      Lucene and Kibana query language for searching logs. Covers
+      simple keyword search, field queries, range queries, boolean
+      operators, aggregations, and time-based queries.
+    related_commands:
+      - GET /_search
+      - POST /<index>/_search
+      - curl -s http://localhost:9200/<index>/_search
+      - GET /_search?size=0
+  - name: Alerts and Notifications
+    description: >
+      Nagios Log Server alerting for error patterns, spike detection,
+      threshold breaches, and custom query-based alerts. Covers alert
+      configuration, notification channels, and alert lifecycle.
+    related_commands:
+      - curl -s http://localhost:5601/api/alerts
+      - Nagios Log Server web UI alerts page
+      - curl -s http://localhost:9200/.kibana
+  - name: Dashboards and Visualization
+    description: >
+      Kibana-based dashboards for log visualization, search views,
+      metric aggregation, and real-time monitoring. Covers dashboard
+      creation, saved objects, and dashboard sharing.
+    related_commands:
+      - GET /.kibana/index-pattern/*
+      - GET /.kibana/dashboard/*
+      - curl -s http://localhost:5601/api/saved_objects/_find
+      - curl -s http://localhost:5601/api/kibana/dashboards
+  - name: Log Inputs (Syslog, EventLog, HTTP)
+    description: >
+      Configuring log inputs to receive logs from remote sources.
+      Covers Syslog (UDP/TCP), Windows EventLog, HTTP/HTTPS inputs,
+      file inputs, and input routing through Logstash pipelines.
+    related_commands:
+      - Nagios Log Server web UI → Manage → Log Inputs
+      - systemctl status rsyslog
+      - systemctl status winlogbeat
+      - curl -s http://localhost:9600/_node/pipelines
+  - name: Index Lifecycle and Rotation
+    description: >
+      Managing log index lifecycle: rotation policies, retention
+      settings, ILM policies, shard allocation, and disk space
+      management for high-volume log environments.
+    related_commands:
+      - curl -s http://localhost:9200/_ilm/explain
+      - curl -s http://localhost:9200/_cluster/settings
+      - curl -s http://localhost:9200/_cat/indices?v&s=priority:desc
+      - curl -s http://localhost:9200/_snapshot
+  - name: Security and Access Control
+    description: >
+      Role-based access control in Nagios Log Server and Elasticsearch.
+      Covers user authentication, index-level permissions, audit logging,
+      TLS/SSL configuration, and network security.
+    related_commands:
+      - curl -s -u admin:password http://localhost:9200/_security/user
+      - curl -s http://localhost:9200/_security/role
+      - curl -s http://localhost:5601/api/security_roles
+      - Nagios Log Server user management UI
+  - name: Diagnostic and Maintenance
+    description: >
+      Routine maintenance tasks: index optimization, shard rebalancing,
+      cluster recovery, health checks, and performance tuning.
+    related_commands:
+      - curl -s http://localhost:9200/_cluster/health
+      - curl -s http://localhost:9200/_cat/shards?v
+      - curl -s http://localhost:9200/<index>/_forcemerge
+      - curl -s http://localhost:9200/<index>/_refresh
+  - name: Capacity Planning
+    description: >
+      Planning Elasticsearch cluster capacity: disk sizing, heap sizing,
+      shard count planning, node count, and ingestion rate calculations.
+    related_commands:
+      - df -h /var/log/elasticsearch
+      - curl -s http://localhost:9200/_cat/allocation
+      - curl -s http://localhost:9200/_nodes/jvm
+      - free -g
+  - name: Troubleshooting
+    description: >
+      Common issues and their diagnosis: cluster red/yellow states,
+      pipeline backpressure, search latency, disk exhaustion, index
+      rotation failures, and Logstash configuration errors.
+    related_commands:
+      - curl -s http://localhost:9200/_cluster/health
+      - curl -s http://localhost:9600/_node/stats
+      - journalctl -u elasticsearch
+      - journalctl -u logstash
+related_domains:
+  - Elasticsearch
+  - Logstash
+  - Kibana
+  - Log Aggregation
+  - Centralized Logging
+  - Enterprise Monitoring
+  - DevOps
+  - SRE
+documentation_url: https://docs.wikilabs.ai/technology/nagioslogserver

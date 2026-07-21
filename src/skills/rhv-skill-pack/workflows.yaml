@@ -1,0 +1,567 @@
+# Red Hat Virtualization — Workflow Definitions
+# State machine workflows for RHV troubleshooting
+
+workflows:
+  - id: rhv-engine-not-starting
+    name: RHV Engine Not Starting
+    description: >
+      Diagnose and remediate RHV Manager (ovirt-engine) service failures.
+      Covers ovirt-engine, PostgreSQL database, websocket-proxy, and
+      Hosted Engine HA issues.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather initial evidence about the Engine failure. Check service
+          status, disk space, memory, database connectivity, and logs.
+        initial: true
+        terminal: false
+        commands:
+          - systemctl status ovirt-engine
+          - systemctl status postgresql
+          - df -h
+          - free -m
+          - journalctl -u ovirt-engine --since "1 hour ago" --no-pager
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze evidence to determine the most likely cause. Check disk
+          space, memory, database connectivity, and certificate validity.
+        initial: false
+        terminal: false
+        commands:
+          - df -h | grep -i data
+          - free -m
+          - journalctl -u ovirt-engine --no-pager | grep -i error
+          - systemctl status postgresql
+          - pg_isready -U engine -d engine
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause. Options
+          include freeing disk space, restarting services, or renewing certificates.
+        initial: false
+        terminal: false
+        commands:
+          - systemctl restart ovirt-engine
+          - systemctl restart postgresql
+          - shell: "echo 'Free disk space or expand volume'"
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm engine services are running and RHV Manager is accessible.
+        initial: false
+        terminal: true
+        commands:
+          - systemctl status ovirt-engine
+          - systemctl status postgresql
+          - shell: "curl -k https://localhost/ovirt-engine/api -u admin@internal:password"
+
+  - id: rhv-host-unreachable
+    name: RHV Host Unreachable
+    description: >
+      Diagnose and remediate RHV host becoming unreachable from the RHV Manager.
+      Covers VDSM service failures, network issues, certificate mismatches,
+      and host hung state.
+    risk: low
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather evidence about host disconnection. Check VDSM status, network
+          connectivity, and host logs.
+        initial: true
+        terminal: false
+        commands:
+          - ssh <host> systemctl status vdsm
+          - ssh <host> systemctl status libvirtd
+          - ssh <host> ping <engine-ip>
+          - journalctl -u ovirt-engine --grep "host" -n 50
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze evidence to determine cause: network failure, VDSM stopped,
+          certificate issue, or host hung.
+        initial: false
+        terminal: false
+        commands:
+          - ssh <host> systemctl status vdsm
+          - ssh <host> vdsm-tool collect-info
+          - ssh <host> ip addr show
+          - ssh <host> nmcli device status
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Fix: restart VDSM, restore network, reinstall certificate, or reboot.
+        initial: false
+        terminal: false
+        commands:
+          - ssh <host> systemctl restart vdsm
+          - ssh <host> systemctl restart libvirtd
+          - shell: "echo 'Restart host if hung: reboot'"
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm host is reconnected to Engine and manageable.
+        initial: false
+        terminal: true
+        commands:
+          - ssh <host> systemctl status vdsm
+          - ssh <host> ping <engine-ip>
+          - engine-admin host --info <host-name>
+
+  - id: rhv-storage-domain-down
+    name: Storage Domain Down
+    description: >
+      Diagnose and remediate RHV storage domain becoming unavailable.
+      Covers Gluster volume failures, NFS mount issues, iSCSI connectivity,
+      and domain read-only state.
+    risk: high
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather storage domain status from Engine and host-level diagnostics.
+        initial: true
+        terminal: false
+        commands:
+          - engine-admin storage-domain --list
+          - engine-admin storage-domain --info <domain-name>
+          - lsblk
+          - df -h
+          - cat /var/log/vdsm/storage.log
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine storage domain failure cause: network, storage array,
+          Gluster volume, or mount issue.
+        initial: false
+        terminal: false
+        commands:
+          - gluster peer status
+          - gluster volume status
+          - multipath -ll
+          - mount | grep <storage>
+          - showmount -e <nfs-server>
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Fix storage connectivity: restart services, repair volume, or re-mount.
+        initial: false
+        terminal: false
+        commands:
+          - gluster volume heal <volume-name> full
+          - mount -o remount /mnt/iso
+          - multipath -r
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm storage domain is accessible from all cluster hosts.
+        initial: false
+        terminal: true
+        commands:
+          - engine-admin storage-domain --info <domain-name>
+          - lsblk
+          - df -h
+
+  - id: rhv-vm-performance-degraded
+    name: VM Performance Degraded
+    description: >
+      Diagnose and remediate RHV VM performance degradation. Covers CPU ready,
+      memory ballooning, disk I/O latency, and network performance.
+    risk: low
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather VM performance metrics from Engine and host level.
+        initial: true
+        terminal: false
+        commands:
+          - virsh domstats <vm-name> --all
+          - virsh domblkstat <vm-name> vda
+          - virsh domifstat <vm-name> vnet0
+          - iostat -x 1 5
+          - top
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine performance bottleneck: CPU, memory, disk, or network.
+        initial: false
+        terminal: false
+        commands:
+          - virsh dominfo <vm-name>
+          - virsh domblkstat <vm-name> vda
+          - virsh domifstat <vm-name> vnet0
+          - cat /proc/driver/virtio/virtio0/stats
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply fix: adjust resources, live migrate, consolidate snapshots.
+        initial: false
+        terminal: false
+        commands:
+          - virsh setvcpus <vm-name> 4
+          - virsh domblksetspeed <vm-name> vda 100
+          - virsh migrate --live <vm-name> <destination-host>
+      - id: verification
+        Name: Verify Resolution
+        description: >
+          Confirm VM performance restored to normal levels.
+        initial: false
+        terminal: true
+        commands:
+          - virsh domstats <vm-name> --all
+          - virsh domblkstat <vm-name> vda
+          - iostat -x 1 5
+
+  - id: rhv-hosted-engine-failover
+    name: Hosted Engine Failover
+    description: >
+      Diagnose and remediate RHV Manager (Hosted Engine) failover events.
+      Covers Engine VM migration, HA agent issues, and database health.
+    risk: critical
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather Hosted Engine status and HA agent information.
+        initial: true
+        terminal: false
+        commands:
+          - hosted-engine --vm-status
+          - systemctl status ovirt-hosted-engine-ha
+          - systemctl status ovirt-engine
+          - journalctl -u ovirt-hosted-engine-ha -n 100
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine why Engine VM failed over and current health.
+        initial: false
+        terminal: false
+        commands:
+          - hosted-engine --vm-status
+          - systemctl status ovirt-hosted-engine-ha
+          - journalctl -u ovirt-hosted-engine-ha --grep "failover" -n 50
+          - journalctl -u ovirt-engine -n 100
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Fix: restart HA agent, manually start Engine VM, or investigate root cause.
+        initial: false
+        terminal: false
+        commands:
+          - systemctl restart ovirt-hosted-engine-ha
+          - shell: "hosted-engine --vm-status"
+          - shell: "virsh start hosted-engine-vm"
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm Engine VM is running and RHV Manager is accessible.
+        initial: false
+        terminal: true
+        commands:
+          - hosted-engine --vm-status
+          - systemctl status ovirt-engine
+          - shell: "curl -k https://localhost/ovirt-engine/api"
+
+  - id: rhv-cluster-compatibility-issue
+    name: Cluster Compatibility Issue
+    description: >
+      Diagnose and remediate RHV cluster compatibility version mismatches.
+      Covers host version mismatch, EVC-like compatibility, and upgrade failures.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        Name: Collect Evidence
+        description: >
+          Gather cluster and host compatibility information.
+        initial: true
+        terminal: false
+        commands:
+          - engine-admin cluster --list
+          - engine-admin cluster --info <cluster-name>
+          - engine-admin host --list
+          - engine-admin host --info <host-name>
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine compatibility mismatch and resolution path.
+        initial: false
+        terminal: false
+        commands:
+          - engine-admin cluster --info <cluster-name>
+          - engine-admin host --info <host-name>
+          - rpm -q rhev-host
+          - rpm -q vdsm
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Fix: upgrade host, downgrade cluster, or standardize versions.
+        initial: false
+        terminal: false
+        commands:
+          - shell: "engine-admin host --upgrade <host-name>"
+          - shell: "engine-admin cluster --update-compatibility <cluster-name> <version>"
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm cluster compatibility is aligned and VMs can migrate.
+        initial: false
+        terminal: true
+        commands:
+          - engine-admin cluster --info <cluster-name>
+          - engine-admin host --info <host-name>
+
+  - id: rhv-vmsnapshot-growth
+    name: VM Snapshot Growth and Consolidation
+    description: >
+      Diagnose and remediate RHV VM snapshot accumulation causing storage pressure.
+      Covers snapshot chain cleanup, delta file consolidation, and retention policy.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather snapshot information and storage capacity data.
+        initial: true
+        terminal: false
+        commands:
+          - engine-admin vm --list
+          - engine-admin vm --info <vm-name>
+          - df -h
+          - find / -name "*.snap" -size +1G
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine snapshot accumulation cause and storage impact.
+        initial: false
+        terminal: false
+        commands:
+          - virsh snapshot-list <vm-name>
+          - virsh snapshot-current <vm-name>
+          - du -sh /var/lib/libvirt/images/*
+          - df -h
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Clean up: delete old snapshots, consolidate delta files.
+        initial: false
+        terminal: false
+        commands:
+          - virsh snapshot-delete <vm-name> <snapshot-name>
+          - virsh snapshot-rebase <vm-name> <snapshot-name>
+          - virsh snapshot-delete --parents <vm-name> <snapshot-name>
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm space freed and VM performance restored.
+        initial: false
+        terminal: true
+        commands:
+          - virsh snapshot-list <vm-name>
+          - df -h
+          - du -sh /var/lib/libvirt/images/*
+
+  - id: rhv-network-isolation
+    name: Virtual Network Isolation
+    description: >
+      Diagnose and remediate RHV virtual network connectivity issues.
+      Covers OVS configuration, bond failures, VLAN misconfiguration,
+      and vNIC errors.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather network configuration and connectivity data.
+        initial: true
+        terminal: false
+        commands:
+          - ovs-vsctl show
+          - nmcli device status
+          - ip addr show
+          - cat /etc/ovirt-engine-networking.conf
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine network issue: OVS config, bond, VLAN, or vNIC.
+        initial: false
+        terminal: false
+        commands:
+          - ovs-vsctl list interfaces
+          - nmcli device show <device>
+          - cat /etc/sysconfig/network-scripts/ifcfg-*
+          - ping <gateway>
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Fix: reconfigure OVS, correct bond, fix VLAN, or fix vNIC.
+        initial: false
+        terminal: false
+        commands:
+          - ovs-vsctl add-br <bridge-name>
+          - ovs-vsctl add-port <bridge-name> <interface>
+          - nmcli connection modify <conn> ipv4.method manual ipv4.addresses <ip>/<mask>
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm network connectivity restored for VMs.
+        initial: false
+        terminal: true
+        commands:
+          - ovs-vsctl show
+          - ping <destination>
+          - traceroute <destination>
+
+  - id: rhv-ha-failover
+    name: HA Failover Event
+    description: >
+      Diagnose and remediate RHV HA failover events. Covers VM restart
+      after host failure, admission control issues, and HA policy misconfiguration.
+    risk: high
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather HA event information and cluster status.
+        initial: true
+        terminal: false
+        commands:
+          - journalctl -u ovirt-engine --grep "HA\|Failover" -n 100
+          - hosted-engine --vm-status
+          - engine-admin cluster --info <cluster-name>
+          - engine-admin ha-policy --list
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine HA failover cause and current state.
+        initial: false
+        terminal: false
+        commands:
+          - journalctl -u vdsm --grep "HA\|Failover" -n 100
+          - engine-admin ha-policy --info <policy-name>
+          - engine-admin cluster --info <cluster-name>
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Fix HA: investigate root cause, adjust policy, or manually restart VMs.
+        initial: false
+        terminal: false
+        commands:
+          - virsh start <vm-name>
+          - shell: "engine-admin ha-policy --update <policy-name> --non-responsive true"
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm HA is functioning and VMs are running.
+        initial: false
+        terminal: true
+        commands:
+          - engine-admin ha-policy --list
+          - engine-admin vm --list
+          - hosted-engine --vm-status
+
+  - id: rhv-permission-access-issue
+    name: Permission and Access Issue
+    description: >
+      Diagnose and remediate RHV user permission and access problems.
+      Covers RBAC misconfiguration, API token expiry, and certificate issues.
+    risk: low
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather user and role information from Engine.
+        initial: true
+        terminal: false
+        commands:
+          - engine-admin user --list
+          - engine-admin user --info <user-name>
+          - engine-admin group --list
+          - engine-admin role --list
+          - engine-admin api-token --list
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine permission issue: wrong role, expired token, or misconfigured group.
+        initial: false
+        terminal: false
+        commands:
+          - engine-admin user --info <user-name>
+          - engine-admin group --info <group-name>
+          - engine-admin role --info <role-name>
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Fix: assign role, regenerate token, or update group membership.
+        initial: false
+        terminal: false
+        commands:
+          - shell: "engine-admin user --assign-role <user-name> <role>"
+          - shell: "engine-admin api-token --create <user-name>"
+          - shell: "engine-admin group --add-member <group-name> <user-name>"
+      - id: verification
+        Name: Verify Resolution
+        description: >
+          Confirm user can access resources as expected.
+        initial: false
+        terminal: true
+        commands:
+          - engine-admin user --info <user-name>
+          - shell: "curl -k https://localhost/ovirt-engine/api -u <user>:<token>"
+
+  - id: rhv-gluster-volume-down
+    name: Gluster Volume Failure
+    description: >
+      Diagnose and remediate Gluster storage volume failures in RHV environments.
+      Covers brick failures, peer disconnections, healing status, and quorum loss.
+    risk: critical
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather Gluster volume, peer, and brick status.
+        initial: true
+        terminal: false
+        commands:
+          - gluster peer status
+          - gluster volume status
+          - gluster volume info
+          - gluster volume heal <volume-name> info
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine Gluster failure cause: brick down, peer disconnected,
+          quorum loss, or network issue.
+        initial: false
+        terminal: false
+        commands:
+          - gluster peer status
+          - gluster volume status
+          - gluster volume heal <volume-name> info
+          - gluster peer probe <host>
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Fix Gluster: add back peer, start brick, heal volume, or recover quorum.
+        initial: false
+        terminal: false
+        commands:
+          - gluster peer probe <host>
+          - shell: "gluster volume start <volume-name> force"
+          - gluster volume heal <volume-name> full
+          - gluster volume stop <volume-name>
+          - gluster volume start <volume-name>
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Confirm Gluster volume healthy and storage domain accessible.
+        initial: false
+        terminal: true
+        commands:
+          - gluster peer status
+          - gluster volume status
+          - gluster volume heal <volume-name> info
+          - engine-admin storage-domain --info <domain-name>

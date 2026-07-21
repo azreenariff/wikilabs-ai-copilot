@@ -1,0 +1,4 @@
+id: mssql-commands
+version: 1.0.0
+description: "Microsoft SQL Server command reference with purpose, parameters, usage, and documentation links"
+documentation_url: https://learn.microsoft.com/sql/t-sql/language-reference

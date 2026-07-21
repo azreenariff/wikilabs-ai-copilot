@@ -1,0 +1,417 @@
+- id: nagioslogserver-detect-browser
+  name: Nagios Log Server Browser Detection
+  description: Detect Nagios Log Server web interface in browser
+  detection_type: Browser
+  pattern: 'nagioslogserver|nagios-log-server|nagios.*log.*server'
+  confidence: 0.95
+  technology_domain: Nagios Log Server
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-elasticsearch
+  name: Elasticsearch UI/CLI Detection
+  description: Detect Elasticsearch in browser or terminal
+  detection_type: Browser
+  pattern: 'elasticsearch|elasticsearch-head|cerebro|kibana'
+  confidence: 0.9
+  technology_domain: Elasticsearch
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-kibana
+  name: Kibana Dashboard Detection
+  description: Detect Kibana in browser
+  detection_type: Browser
+  pattern: 'kibana|kibana-app|kibana-dashboard'
+  confidence: 0.9
+  technology_domain: Kibana
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-elasticsearch-api
+  name: Elasticsearch API Detection
+  description: Detect Elasticsearch REST API calls
+  detection_type: Command
+  pattern: 'curl.*:9200|elasticsearch.*api|http://localhost:9200|http://[^:]+:9200'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-logstash-api
+  name: Logstash API Detection
+  description: Detect Logstash REST API calls
+  detection_type: Command
+  pattern: 'curl.*:9600|logstash.*api|http://localhost:9600'
+  confidence: 0.9
+  technology_domain: Logstash
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-syslog-input
+  name: Syslog Input Detection
+  description: Detect syslog input configuration
+  detection_type: Command
+  pattern: 'syslog.*input|rsyslog|imtcp|imudp|:514|:1514|:6514'
+  confidence: 0.85
+  technology_domain: Logstash
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-eventlog-input
+  name: Windows EventLog Input Detection
+  description: Detect Windows EventLog input configuration
+  detection_type: Command
+  pattern: 'eventlog.*input|winlogbeat|windows.*event.*log|event.*log.*input'
+  confidence: 0.85
+  technology_domain: Logstash
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-cluster-health
+  name: Elasticsearch Cluster Health Detection
+  description: Detect cluster health check commands
+  detection_type: Command
+  pattern: '_cluster/health|_cluster/settings|_cluster/state'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-index-ops
+  name: Index Operations Detection
+  description: Detect Elasticsearch index operations
+  detection_type: Command
+  pattern: '_cat/indices|_cat/shards|_ilm|_index_template|_template'
+  confidence: 0.9
+  technology_domain: Elasticsearch
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-search
+  name: Elasticsearch Search Detection
+  description: Detect search API calls
+  detection_type: Command
+  pattern: 'GET.*_search|POST.*_search|_search\?|/\\*?/_search'
+  confidence: 0.9
+  technology_domain: Elasticsearch
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-node-ops
+  name: Node Operations Detection
+  description: Detect node-level operations
+  detection_type: Command
+  pattern: '_cat/nodes|_nodes|_nodes/stats|_nodes/hot_threads'
+  confidence: 0.9
+  technology_domain: Elasticsearch
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-logstash-service
+  name: Logstash Service Detection
+  description: Detect Logstash service management
+  detection_type: Command
+  pattern: 'systemctl.*logstash|service logstash|logstash.*start|logstash.*restart|logstash.*stop'
+  confidence: 0.95
+  technology_domain: Logstash
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-elasticsearch-service
+  name: Elasticsearch Service Detection
+  description: Detect Elasticsearch service management
+  detection_type: Command
+  pattern: 'systemctl.*elasticsearch|service elasticsearch|elasticsearch.*start|elasticsearch.*restart|elasticsearch.*stop|elasticsearch-service'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-logstash-pipeline
+  name: Logstash Pipeline Detection
+  description: Detect Logstash pipeline operations
+  detection_type: Command
+  pattern: 'logstash.*pipeline|logstash.*config|logstash.*path.*config|logstash.*f'
+  confidence: 0.85
+  technology_domain: Logstash
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-pipeline-config-test
+  name: Logstash Config Test Detection
+  description: Detect Logstash configuration validation
+  detection_type: Command
+  pattern: 'logstash.*--configtest|logstash.*-t|logstash.*--config.test_and_exit'
+  confidence: 0.9
+  technology_domain: Logstash
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-es-cluster-red
+  name: Elasticsearch Cluster Red State Detection
+  description: Detect red cluster health in logs or output
+  detection_type: TextPattern
+  pattern: 'cluster.*status.*red|status.*:.*RED|red.*cluster|ClusterHealthResponse.*RED'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-es-cluster-yellow
+  name: Elasticsearch Cluster Yellow State Detection
+  description: Detect yellow cluster health in logs or output
+  detection_type: TextPattern
+  pattern: 'cluster.*status.*yellow|status.*:.*YELLOW|yellow.*cluster|ClusterHealthResponse.*YELLOW'
+  confidence: 0.9
+  technology_domain: Elasticsearch
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-pipeline-backpressure
+  name: Logstash Pipeline Backpressure Detection
+  description: Detect pipeline backpressure in logs or output
+  detection_type: TextPattern
+  pattern: 'backpressure|queue.*full|overwhelming|pipeline.*stalled|bulk.*queue|elasticsearch.*bulk.*rejected|queue.*overflow'
+  confidence: 0.95
+  technology_domain: Logstash
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-input-failure
+  name: Log Input Failure Detection
+  description: Detect log input failures in logs or output
+  detection_type: TextPattern
+  pattern: 'input.*fail|syslog.*reject|eventlog.*fail|connection.*refused|input.*error|received.*0.*events'
+  confidence: 0.9
+  technology_domain: Logstash
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-index-rotation
+  name: Index Rotation Issue Detection
+  description: Detect index rotation failures
+  detection_type: TextPattern
+  pattern: 'index.*rotation|index.*rollover|index.*closed|ilm.*policy|_rollover|index.*lifecycle'
+  confidence: 0.9
+  technology_domain: Elasticsearch
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-search-latency
+  name: Search Latency Detection
+  description: Detect high search latency issues
+  detection_type: TextPattern
+  pattern: 'search.*latency|slow.*query|query.*slow|took.*[0-9]+ms.*search|search.*timeout|took.*:[0-9]+s'
+  confidence: 0.9
+  technology_domain: Elasticsearch
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-cluster-capacity
+  name: Cluster Capacity Issue Detection
+  description: Detect cluster capacity issues
+  detection_type: TextPattern
+  pattern: 'disk.*watermark|flood.*stage|disk.*usage|disk.*threshold|disk.*allocator|indices.*flood*.*stage.*all.*nodes.*marked.*red|high.*disk|disk.*pressure|cluster.*allocation|no.*enough.*shards'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-disk-space
+  name: Disk Space Exhaustion Detection
+  description: Detect disk space issues
+  detection_type: TextPattern
+  pattern: 'disk.*full|disk.*space|out.*of.*disk|no.*disk.*space|disk.*usage.*[0-9]+%|Filesystem.*100%'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-jvm-heap
+  name: JVM Heap Pressure Detection
+  description: Detect JVM heap usage issues
+  detection_type: TextPattern
+  pattern: 'gc.*overhead|heap.*usage|jvm.*heap|old.*gen|long.*gc.*pause|gc.*tooslow|gc.*limit|heap.*dump|OutOfMemoryError'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-es-log-errors
+  name: Elasticsearch Log Errors Detection
+  description: Detect Elasticsearch error patterns in logs
+  detection_type: TextPattern
+  pattern: 'ERROR|WARN.*elasticsearch|exception.*elasticsearch|failed.*index|shard.*failure|primary.*shard|recovery.*failed|transport.*connect'
+  confidence: 0.9
+  technology_domain: Elasticsearch
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-logstash-errors
+  name: Logstash Error Detection
+  description: Detect Logstash error patterns in logs
+  detection_type: TextPattern
+  pattern: 'ERROR.*logstash|logstash.*error|pipeline.*error|filter.*error|output.*error|connection.*refused|elasticsearch.*cluster.*unavailable|elasticsearch.*timeout'
+  confidence: 0.9
+  technology_domain: Logstash
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-lucene-query
+  name: Lucene Query Detection
+  description: Detect Lucene query syntax usage
+  detection_type: TextPattern
+  pattern: '\w+:\w+|AND|OR|NOT|\[.*TO.*\]|".+"|\+\w+|-?\w+'
+  confidence: 0.7
+  technology_domain: Elasticsearch
+  priority: 6
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-kibana
+  name: Kibana Window Title Detection
+  description: Detect Kibana window title
+  detection_type: WindowTitle
+  pattern: 'Kibana|kibana'
+  confidence: 0.85
+  technology_domain: Kibana
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-es-window-title
+  name: Elasticsearch Window Title Detection
+  description: Detect Elasticsearch UI window title
+  detection_type: WindowTitle
+  pattern: 'Elasticsearch'
+  confidence: 0.8
+  technology_domain: Elasticsearch
+  priority: 7
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-nls-window-title
+  name: Nagios Log Server Window Title Detection
+  description: Detect Nagios Log Server window title
+  detection_type: WindowTitle
+  pattern: 'Nagios Log Server|NagiosLogServer'
+  confidence: 0.85
+  technology_domain: Nagios Log Server
+  priority: 8
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-logstash-config-file
+  name: Logstash Pipeline Config File Detection
+  description: Detect Logstash configuration files
+  detection_type: File
+  pattern: '/etc/logstash/conf\.d/|logstash\.conf|pipeline\.conf|conf\.d/.*\.conf'
+  confidence: 0.95
+  technology_domain: Logstash
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-es-config-file
+  name: Elasticsearch Config File Detection
+  description: Detect Elasticsearch configuration file
+  detection_type: File
+  pattern: '/etc/elasticsearch/elasticsearch\.yml|elasticsearch\.yml|elasticsearch\.yaml'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 9
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-java-es
+  name: Java Elasticsearch Process Detection
+  description: Detect Java process running Elasticsearch
+  detection_type: Process
+  pattern: 'java.*elasticsearch|elasticsearch.*process|java.*ES_'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-java-logstash
+  name: Java Logstash Process Detection
+  description: Detect Java process running Logstash
+  detection_type: Process
+  pattern: 'java.*logstash|logstash.*process|logstash.*agent'
+  confidence: 0.95
+  technology_domain: Logstash
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-elasticsearch-binary
+  name: Elasticsearch Binary Detection
+  description: Detect elasticsearch binary or service commands
+  detection_type: Command
+  pattern: '^elasticsearch\\s|^elasticsearch-service|^elasticsearch.*--daemonize|^elasticsearch.*-d'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-logstash-binary
+  name: Logstash Binary Detection
+  description: Detect logstash binary commands
+  detection_type: Command
+  pattern: '^logstash\\s|^logstash.*--configtest|^logstash.*--path'
+  confidence: 0.95
+  technology_domain: Logstash
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-curl-es
+  name: Curl to Elasticsearch Port Detection
+  description: Detect curl commands targeting Elasticsearch port 9200
+  detection_type: Command
+  pattern: 'curl.*9200|curl.*elasticsearch.*api|curl -s http.*9200'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null
+
+- id: nagioslogserver-detect-es-service-command
+  name: elasticsearch-service Command Detection
+  description: Detect Windows elasticsearch-service commands
+  detection_type: Command
+  pattern: 'elasticsearch-service.*start|elasticsearch-service.*stop|elasticsearch-service.*install|elasticsearch-service.*manager'
+  confidence: 0.95
+  technology_domain: Elasticsearch
+  priority: 10
+  flags: ''
+  extract: null

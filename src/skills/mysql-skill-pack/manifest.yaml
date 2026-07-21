@@ -1,0 +1,47 @@
+id: mysql-skill-pack
+name: MySQL Engineering
+version: 1.0.0
+description: >
+  Comprehensive MySQL engineering skill covering server operations, storage
+  engines, replication, performance optimization, security, backups, high
+  availability, and troubleshooting. Provides expert-level guidance for
+  database administrators and backend engineers.
+author: Wiki Labs Team
+technology_domain: MySQL
+vendor: Oracle
+category: Database
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - mysql
+  - database
+  - rdbms
+  - replication
+  - innodb
+  - mysqld
+  - query-optimization
+  - backups
+  - high-availability
+  - mariadb
+  - galera
+  - pt-tools
+  - mysqldump
+  - performance-schema
+keywords:
+  - mysql
+  - mysqld
+  - innodb
+  - replication
+  - query
+  - index
+  - backup
+  - pt-osc
+  - sysbench
+  - phpmyadmin
+  - workbench
+icon: 🐬
+supported_environments:
+  - "8.0"
+  - "8.4"
+documentation_url: https://docs.wikilabs.ai/skills/mysql-skill-pack

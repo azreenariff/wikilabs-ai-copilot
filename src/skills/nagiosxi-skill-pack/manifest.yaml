@@ -1,0 +1,55 @@
+id: nagiosxi-skill-pack
+name: Nagios XI Engineering
+version: 1.0.0
+description: >
+  Comprehensive Nagios XI engineering skill covering monitoring architecture,
+  service/host management, NRPE/NCPA/SNMP check methods, downtime scheduling,
+  performance reporting, NDOUtils database, and enterprise troubleshooting.
+  Provides expert-level guidance for Nagios XI administrators and DevOps engineers.
+author: Wiki Labs Team
+technology_domain: Nagios XI
+vendor: Nagios
+category: Monitoring
+dependencies: []
+enabled: true
+schema_version: 1.0
+tags:
+  - nagios
+  - monitoring
+  - xi
+  - nrpe
+  - snmp
+  - ncpa
+  - service-checks
+  - host-checks
+  - downtime
+  - ndo2db
+  - nagios-log-server
+  - alerting
+  - performance-graphs
+  - hostgroups
+  - servicegroups
+keywords:
+  - nagios
+  - nagiosxi
+  - nrpe
+  - snmp
+  - ncpa
+  - service-check
+  - host-check
+  - downtime
+  - notification
+  - hostgroup
+  - servicegroup
+  - nagios-cgi
+  - performance-graphs
+  - ndo2db
+  - nagios-log-server
+icon: 🟡
+supported_environments:
+  - "2024+"
+  - "2023+"
+  - "5.12"
+  - "6.0"
+  - "6.4"
+documentation_url: https://docs.wikilabs.ai/skills/nagiosxi-skill-pack
