@@ -1,6 +1,6 @@
 [package]
 name = "wikilabs-desktop"
-version = "0.1.0"
+version = "1.0.0"
 description = "Wiki Labs AI Copilot — Desktop Application"
 edition = "2021"
 authors = ["Wiki Labs Team"]
