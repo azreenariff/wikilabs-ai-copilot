@@ -10,10 +10,16 @@ use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 use wikilabs_knowledge::validate::{ValidationReport, ValidationResult, ValidationStatus, validate_pack_comprehensive};
 
 mod config;
+mod error_handling;
 mod guidance_panel;
 mod knowledge_panel;
+mod logging;
+mod security;
 mod skill_management;
 use config::{AiProviderConfig, AppSettings, AppSettingsStore};
+use error_handling::{ErrorEvent, ErrorSeverity, ErrorHandler, GracefulShutdown};
+use logging::redact_sensitive_data;
+use security::EncryptionService;
 use guidance_panel::{
     guidance_add_evidence, guidance_add_timeline_event, guidance_clear_all, guidance_complete_step,
     guidance_dismiss_recommendation, guidance_get_active_recommendations, guidance_get_all_recommendations,
@@ -60,7 +66,7 @@ impl AppState {
 #[tauri::command]
 fn get_settings(app_state: tauri::State<AppState>) -> Result<AppSettings, String> {
     info!("get_settings called");
-    Ok(app_state.settings.load())
+    Ok(app_state.settings.get())
 }
 
 #[tauri::command]
@@ -185,7 +191,7 @@ fn send_message(
     app_state: tauri::State<AppState>,
     request: ChatRequest,
 ) -> Result<ChatResponse, String> {
-    let settings = app_state.settings.load();
+    let settings = app_state.settings.get();
     let ws_id = request
         .workspace_id
         .clone()
