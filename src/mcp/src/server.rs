@@ -8,13 +8,13 @@ impl McpServer {
     }
 
     pub async fn initialize(&self) -> anyhow::Result<()> {
-        // TODO: Implement MCP handshake
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Implement MCP protocol handshake.
+        unimplemented!()
     }
 
     pub async fn list_tools(&self) -> anyhow::Result<Vec<ToolDefinition>> {
-        // TODO: Aggregate tools from all skill modules
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Aggregate tools from all skill modules.
+        unimplemented!()
     }
 
     pub async fn call_tool(
@@ -22,8 +22,8 @@ impl McpServer {
         _name: &str,
         _arguments: serde_json::Value,
     ) -> anyhow::Result<ToolResult> {
-        // TODO: Route to skill module
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Route to skill module.
+        unimplemented!()
     }
 }
 

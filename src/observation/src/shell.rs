@@ -8,7 +8,7 @@ impl ShellObserver {
     }
 
     pub fn register(&self, _shell: &str) -> anyhow::Result<()> {
-        // TODO: Register shell integration hook
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Implement shell integration hook registration.
+        unimplemented!()
     }
 }

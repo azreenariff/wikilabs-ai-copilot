@@ -8,13 +8,13 @@ impl SkillManager {
     }
 
     pub async fn load_module(&mut self, _name: &str) -> anyhow::Result<()> {
-        // TODO: Load skill module
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Load skill module.
+        unimplemented!()
     }
 
     pub async fn unload_module(&mut self, _name: &str) -> anyhow::Result<()> {
-        // TODO: Unload skill module
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Unload skill module.
+        unimplemented!()
     }
 
     pub async fn call_tool(
@@ -22,12 +22,12 @@ impl SkillManager {
         _name: &str,
         _args: serde_json::Value,
     ) -> anyhow::Result<wikilabs_mcp::server::ToolResult> {
-        // TODO: Route to appropriate module
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Route to appropriate module.
+        unimplemented!()
     }
 
     pub async fn list_tools(&self) -> anyhow::Result<Vec<wikilabs_mcp::server::ToolDefinition>> {
-        // TODO: Aggregate all tools
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Aggregate all tools.
+        unimplemented!()
     }
 }

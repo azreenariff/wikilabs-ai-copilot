@@ -8,12 +8,12 @@ impl ToolCatalog {
     }
 
     pub fn register(&mut self, _tool: wikilabs_mcp::server::ToolDefinition) -> anyhow::Result<()> {
-        // TODO: Register tool in global catalog
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Register tool in global catalog.
+        unimplemented!()
     }
 
     pub fn resolve(&self, _name: &str) -> anyhow::Result<&wikilabs_mcp::server::ToolDefinition> {
-        // TODO: Resolve tool by name (namespace format: "skill__tool")
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Resolve tool by name (namespace format: "skill__tool").
+        unimplemented!()
     }
 }

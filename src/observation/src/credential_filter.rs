@@ -8,7 +8,7 @@ impl CredentialFilter {
     }
 
     pub fn filter(&self, _text: &str) -> String {
-        // TODO: Detect and redact passwords, API keys, tokens
+        // Stub: placeholder. Implement credential pattern detection and redaction (passwords, API keys, tokens).
         String::new()
     }
 }

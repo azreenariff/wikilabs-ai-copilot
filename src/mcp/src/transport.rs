@@ -8,7 +8,7 @@ impl TransportLayer {
     }
 
     pub async fn start(&self) -> anyhow::Result<()> {
-        // TODO: Start JSON-RPC server on localhost
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Start JSON-RPC server on localhost.
+        unimplemented!()
     }
 }

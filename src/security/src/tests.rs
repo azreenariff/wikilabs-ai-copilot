@@ -211,7 +211,7 @@ mod injection_defense_tests {
     #[test]
     fn test_normalize_default() {
         let defense = InjectionDefense::new();
-        // TODO implementation returns empty string
+        // Stub implementation returns empty string
         assert!(defense.normalize("test").is_empty());
     }
 

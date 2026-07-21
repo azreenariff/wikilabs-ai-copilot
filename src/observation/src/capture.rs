@@ -14,7 +14,7 @@ impl ScreenCapture {
     }
 
     pub async fn capture(&self) -> anyhow::Result<CaptureResult> {
-        // TODO: Capture screen (DXGI / CG / X11 / Wayland)
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Implement screen capture (DXGI on Windows, CG on macOS, X11/Wayland on Linux).
+        unimplemented!()
     }
 }

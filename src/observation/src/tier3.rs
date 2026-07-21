@@ -9,7 +9,7 @@ impl Tier3Engine {
     }
 
     pub async fn start(&self) -> anyhow::Result<()> {
-        // TODO: Start screen capture loop
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Implement screen capture loop.
+        unimplemented!()
     }
 }

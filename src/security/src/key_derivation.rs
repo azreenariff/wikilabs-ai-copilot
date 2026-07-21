@@ -8,17 +8,17 @@ impl KeyDerivation {
     }
 
     pub fn derive_data_enc_key(&self, _master_key: &[u8]) -> [u8; 32] {
-        // TODO: HKDF-Expand(master_key, "data-enc")
+        // Stub: placeholder returns zero-filled key. Implement HKDF-SHA256 with info="data-enc".
         [0u8; 32]
     }
 
     pub fn derive_memory_auth_key(&self, _master_key: &[u8]) -> [u8; 32] {
-        // TODO: HKDF-Expand(master_key, "memory-auth")
+        // Stub: placeholder returns zero-filled key. Implement HKDF-SHA256 with info="memory-auth".
         [0u8; 32]
     }
 
     pub fn derive_session_key(&self, _master_key: &[u8], _session_id: &str) -> [u8; 32] {
-        // TODO: HKDF-Expand(master_key, "session:")
+        // Stub: placeholder returns zero-filled key. Implement HKDF-SHA256 with info="session:".
         [0u8; 32]
     }
 }

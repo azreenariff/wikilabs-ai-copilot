@@ -9,7 +9,7 @@ impl Tier1Engine {
     }
 
     pub async fn start(&self) -> anyhow::Result<()> {
-        // TODO: Start shell integration hooks
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Implement shell integration hooks (bash, zsh, PowerShell).
+        unimplemented!()
     }
 }

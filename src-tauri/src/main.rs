@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
 use tracing::{error, info};
 use uuid::Uuid;
 use wikilabs_ai::provider::{AiProvider, AiRequest, OpenAICompatibleProvider, ProviderInfo};
+use wikilabs_benchmark::{BenchmarkRegistry, categories};
 use wikilabs_data_types::chat::ChatMessage;
 use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 
@@ -170,6 +172,34 @@ fn get_status() -> Result<serde_json::Value, String> {
     }))
 }
 
+/// Performance metrics from the benchmark registry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceMetrics {
+    #[serde(default)]
+    pub startup: serde_json::Value,
+    #[serde(default)]
+    pub ai_response: serde_json::Value,
+    #[serde(default)]
+    pub knowledge_indexing: serde_json::Value,
+    #[serde(default)]
+    pub skill_loading: serde_json::Value,
+    #[serde(default)]
+    pub screen_capture: serde_json::Value,
+    #[serde(default)]
+    pub ocr_processing: serde_json::Value,
+    #[serde(default)]
+    pub large_conversation: serde_json::Value,
+}
+
+#[tauri::command]
+fn get_performance_metrics(
+    app: tauri::AppHandle,
+) -> Result<serde_json::Value, String> {
+    let registry = app.state::<std::sync::Arc<std::sync::Mutex<wikilabs_benchmark::BenchmarkRegistry>>>();
+    let reg = registry.lock().map_err(|e| format!("Lock poisoned: {e}"))?;
+    Ok(reg.to_diagnostics())
+}
+
 // ── Chat Commands ──────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -233,10 +263,19 @@ fn send_message(
 
     // Call AI
     let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
+    let ai_start = std::time::Instant::now();
     let response = rt.block_on(provider.chat(ai_request)).map_err(|e| {
         error!(error = %e, "AI request failed");
         e.to_string()
     })?;
+    let ai_time = ai_start.elapsed();
+    tracing::info!(
+        "AI response received in {} µs (tokens: prompt={}, completion={}, total={})",
+        ai_time.as_micros(),
+        response.usage.prompt_tokens,
+        response.usage.completion_tokens,
+        response.usage.total_tokens
+    );
 
     // Format assistant response
     let assistant_msg = ChatMessage::assistant(&response.message.content);
@@ -381,19 +420,47 @@ async fn stream_message(
 // ── App Entry Point ────────────────────────────────────────────
 
 fn main() {
+    let startup_start = Instant::now();
+
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
 
     info!("Wiki Labs AI Copilot starting");
 
+    let settings_load_start = Instant::now();
+    let settings = AppSettingsStore::new();
+    let config_load_time = settings_load_start.elapsed();
+    tracing::info!(
+        "Config loaded in {} µs",
+        config_load_time.as_micros()
+    );
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_log::Builder::new().build())
-        .manage(AppSettingsStore::new())
+        .manage(settings)
         .setup(|app| {
+            let state_setup_start = Instant::now();
             let state = AppState::new(app.handle().clone())?;
-            info!("Application state initialized");
+            let state_time = state_setup_start.elapsed();
+            info!(
+                "Application state initialized in {} µs",
+                state_time.as_micros()
+            );
+
+            // Record startup benchmark (startup = total time from process launch to ready)
+            let total_startup = startup_start.elapsed();
+            let mut registry = BenchmarkRegistry::new();
+            registry.record(
+                wikilabs_benchmark::BenchmarkTimer::new(categories::STARTUP)
+                    .with_metadata("state_init_us", &state_time.as_micros().to_string())
+                    .with_metadata("config_load_us", &config_load_time.as_micros().to_string())
+                    .finish(),
+            );
+
+            // Expose registry via Arc for use in commands
+            app.manage(std::sync::Arc::new(std::sync::Mutex::new(registry)));
             app.manage(state);
             Ok(())
         })

@@ -8,11 +8,11 @@ impl ContextBus {
     }
 
     pub fn publish(&self, _event: serde_json::Value) -> anyhow::Result<()> {
-        // TODO: Publish context event to bus
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Publish context event to bus.
+        unimplemented!()
     }
 
     pub fn subscribe(&self, _handler: impl FnMut(serde_json::Value) + Send + 'static) {
-        // TODO: Register handler for context events
+        // Stub: placeholder. Register handler for context events.
     }
 }

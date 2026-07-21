@@ -9,7 +9,7 @@ impl Tier2Engine {
     }
 
     pub async fn start(&self) -> anyhow::Result<()> {
-        // TODO: Start window polling
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Implement window polling for active app detection.
+        unimplemented!()
     }
 }

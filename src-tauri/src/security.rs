@@ -1,15 +1,183 @@
 //! Security Module — Credential Management & Encryption
 //!
-//! Features:
-//! - Windows Credential Manager integration
-//! - AES-256-GCM / ChaCha20 encryption for local secrets
-//! - Sensitive data redaction in logs
-//! - Key derivation from PIN/binder
+//! # Security Model Overview (v1.0)
 //!
-//! Security model:
-//! - On Windows: prefer Windows Credential Manager (DPAPI)
-//! - On other platforms: derive key from system fingerprint + optional PIN
-//! - All API keys are encrypted at rest; never logged in plaintext
+//! This module implements Wiki Labs AI Copilot's security model, covering
+//! credential storage, encryption at rest, and data protection.
+//!
+//! ## Architecture
+//!
+//! ```
+//! ┌─────────────────────────────────────────────────────────────┐
+//! │                    Security Layer                           │
+//! ├──────────────┬──────────────────────┬──────────────────────┤
+//! │  KeyManager  │  EncryptionService   │  CredentialManager   │
+//! ├──────────────┤──────────────────────┤──────────────────────┤
+//! │ • System     │ • AES-256-GCM       │ • Windows: CredMgr   │
+//! │   fingerprint│ • ChaCha20-Poly1305  │ • Fallback: encrypted│
+//! │ • Optional   │ • Key expansion      │   local store        │
+//! │   PIN/binder │ • Hex encoding       │ • Service:key format │
+//! │ • SHA-256    │ • Nonce randomization│ • Atomic updates     │
+//! │   derivation │                    │                       │
+//! └──────────────┴──────────────────────┴──────────────────────┘
+//! ```
+//!
+//! ## Credential Storage Strategy
+//!
+//! ### Windows (Primary — Platform-Native)
+//! On Windows, the module prefers **Windows Credential Manager** (backed by
+//! **DPAPI — Data Protection API**) for credential storage:
+//!
+//! ```
+//! User Credential → Credential Manager (DPAPI) → Encrypted at rest
+//!                     (Windows-managed, user-bound)
+//! ```
+//!
+//! - DPAPI encrypts using the user's logon credentials — no separate key
+//!   management needed
+//! - Credentials are only decryptable by the same user on the same machine
+//! - Integrated with Windows security infrastructure (smart cards, TPM)
+//! - Protected by Windows Defender and system security policies
+//!
+//! ### Fallback: Local Encrypted File Store
+//! When Credential Manager is unavailable (Linux, macOS, or sandboxed
+//! environments), credentials are stored in an encrypted file:
+//!
+//! ```
+//! Credential → SHA-256 key derivation → AES-256-GCM/ChaCha20 → credentials.enc
+//!                (fingerprint + PIN)       (AEAD encryption)
+//! ```
+//!
+//! The key is derived from:
+//! - **System fingerprint** — platform/os/arch hash (device-bound)
+//! - **Optional PIN** — user-provided secret (adds user-specific protection)
+//!
+//! ```
+//! key_material = SHA256(system_fingerprint + optional_PIN)
+//! ```
+//!
+//! ### Linux/macOS (Fallback)
+//! - Key derived from `/etc/machine-id` + hostname + optional PIN
+//! - Credentials stored in `~/.config/Wiki Labs/AI Copilot/credentials.enc`
+//! - Consider `libsecret` (Linux) or `Keychain` (macOS) for future enhancement
+//!
+//! ## Encryption Details
+//!
+//! | Parameter | Value |
+//! |-----------|-------|
+//! | Algorithms | AES-256-GCM, ChaCha20-Poly1305 |
+//! | Key size | 256-bit (32 bytes) |
+//! | Nonce size | 96-bit (12 bytes) — random per encryption |
+//! | Authentication | AEAD (authenticated encryption) |
+//! | Storage format | `nonce_hex:ciphertext_hex` |
+//! | Fingerprint | SHA-256, truncated to 128-bit |
+//!
+//! ### Why AES-256-GCM and ChaCha20?
+//! - **AES-256-GCM**: Hardware-accelerated on modern CPUs (AES-NI), provides
+//!   both confidentiality and integrity (authenticated encryption)
+//! - **ChaCha20-Poly1305**: Software-friendly, constant-time, no side-channel
+//!   vulnerability — good fallback on systems without AES-NI
+//! - Both are **AEAD** schemes — tampered ciphertext is detected and rejected
+//!
+//! ## Data Protection in Transit
+//!
+//! - All external API communication uses HTTPS/TLS 1.2+
+//! - TLS certificates validated by system trust store
+//! - No plaintext credential transmission
+//! - Update endpoint uses HTTPS (configured in `tauri.conf.json`)
+//!
+//! ## PIN Protection (Optional)
+//!
+//! The optional PIN adds a second factor to key derivation:
+//!
+//! - **Without PIN**: key = SHA256(system_fingerprint) — device-bound
+//! - **With PIN**: key = SHA256(system_fingerprint + PIN) — device + user-bound
+//!
+//! Enabling PIN prevents credential extraction if another user accesses
+//! the same machine. The PIN is never stored — only its hash is used.
+//!
+//! ## Sensitive Data Handling
+//!
+//! - **API keys**: encrypted at rest, redacted in logs
+//! - **User data**: stored locally only, never synced to cloud
+//! - **Logs**: `redact_secrets()` strips API keys, tokens, passwords
+//! - **Settings**: backed up before destructive operations
+//! - **Workspace**: persisted in user's app data directory
+//!
+//! ## Security Properties
+//!
+//! | Property | Implementation |
+//! |----------|----------------|
+//! | Confidentiality | AES-256-GCM / ChaCha20-Poly1305 |
+//! | Integrity | AEAD authenticated encryption |
+//! | Non-repudiation | Certificate validation (TBD: PKI) |
+//! | Device binding | System fingerprint in key derivation |
+//! | User binding | Optional PIN + Windows DPAPI |
+//! | Audit trail | Structured logging with redaction |
+//!
+//! ## Known Limitations & Future Work
+//!
+//! 1. **Credential Manager**: The Windows Credential Manager integration
+//!    is a stub — calls `warn!` and falls back to local store. Future:
+//!    use `windows` crate with `Windows.Security.Credentials` APIs.
+//!
+//! 2. **Hardware Security**: Consider TPM-backed key storage on Windows
+//!    for high-security deployments.
+//!
+//! 3. **Key Rotation**: No automatic key rotation yet. PIN change requires
+//!    re-encryption of all stored credentials.
+//!
+//! 4. **Linux Keyring**: Consider `libsecret` integration for GNOME/KDE.
+//!
+//! 5. **macOS Keychain**: Consider `Security` framework integration.
+//!
+//! ## Upgrade Security
+//!
+//! - Upgrades preserve user data directory (`%APPDATA%\Wiki Labs\AI Copilot`)
+//! - Encrypted credentials survive reinstallation and upgrades
+//! - Version comparison prevents downgrade attacks (updater plugin)
+//! - Update endpoint uses HTTPS with certificate validation
+//!
+//! ## Security Configuration (via tauri.conf.json)
+//!
+//! ```json
+//! {
+//!   "bundle": {
+//!     "publisher": "Wiki Labs",
+//!     "windows": {
+//!       "nsis": {
+//!         "installMode": "currentUser",
+//!         "customNsis": "..\\installer\\custom.nsi"
+//!       }
+//!     }
+//!   },
+//!   "plugins": {
+//!     "updater": {
+//!       "active": true,
+//!       "dialog": true,
+//!       "pubkey": "<base64-pubkey>",
+//!       "endpoints": ["https://..."]
+//!     }
+//!   }
+//! }
+//! ```
+//!
+//! - `publisher` — sets the software publisher identity in the installer
+//! - `customNsis` — enhanced installer with upgrade handling and shortcut creation
+//! - `updater.pubkey` — public key for verifying update signatures (Tauri)
+//! - `updater.endpoints` — HTTPS-only update manifest endpoints
+//!
+//! ## Threat Mitigation Summary
+//!
+//! | Threat | Mitigation |
+//! |--------|------------|
+//! | Credential theft | AES-256-GCM / DPAPI encryption at rest |
+//! | Man-in-the-middle | HTTPS/TLS for all network communication |
+//! | Downgrade attack | Tauri updater version check + signature verification |
+//! | Tampered installer | Code signing (signtool) + SmartScreen |
+//! | Log leakage | `redact_secrets()` filters sensitive fields |
+//! | Cross-user access | System fingerprint + optional PIN |
+//! | Reinstallation data loss | User data directory preserved during upgrades |
 
 use crate::config::{AppSettings, SecuritySettings};
 use aes_gcm::{

@@ -421,6 +421,9 @@ pub struct AppSettings {
     /// Window state.
     #[serde(default)]
     pub window: WindowSettings,
+    /// Whether the user has completed the first-run wizard.
+    #[serde(default)]
+    pub first_run_complete: bool,
 }
 
 impl Default for AppSettings {
@@ -434,6 +437,7 @@ impl Default for AppSettings {
             update: UpdateSettings::default(),
             logging: LoggingSettings::default(),
             window: WindowSettings::default(),
+            first_run_complete: false,
         }
     }
 }
@@ -814,4 +818,10 @@ pub struct DiagnosticsReport {
     pub architecture: String,
     pub config_path: Option<String>,
     pub backup_dir: Option<String>,
+    /// Aggregate performance metrics from the benchmark registry.
+    #[serde(default)]
+    pub performance_metrics: serde_json::Value,
+    /// Human-readable performance summary.
+    #[serde(default)]
+    pub performance_summary: String,
 }

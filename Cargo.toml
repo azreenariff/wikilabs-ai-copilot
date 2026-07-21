@@ -26,6 +26,7 @@ members = [
     "src/intelligence_engine",
     "src/copilot",
     "src/guidance",
+    "src/benchmark",
     "src-tauri",
 ]
 

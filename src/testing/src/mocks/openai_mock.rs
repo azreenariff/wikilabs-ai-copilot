@@ -11,15 +11,15 @@ impl OpenAIMock {
         &self,
         _request: wikilabs_ai::provider::AiRequest,
     ) -> anyhow::Result<wikilabs_ai::provider::AiResponse> {
-        // TODO: Return mock response
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Return a mock AI response for testing.
+        unimplemented!()
     }
 
     pub async fn embed(
         &self,
         _request: wikilabs_ai::provider::EmbedRequest,
     ) -> anyhow::Result<wikilabs_ai::provider::EmbedResponse> {
-        // TODO: Return mock embedding
-        anyhow::bail!("Not yet implemented")
+        // Stub: placeholder. Return a mock embedding response for testing.
+        unimplemented!()
     }
 }

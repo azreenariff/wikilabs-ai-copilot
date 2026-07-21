@@ -15,12 +15,10 @@ impl CredentialStore {
     }
 
     pub async fn store(&self, _credential: Credential) -> anyhow::Result<()> {
-        // TODO: Store encrypted credential
-        anyhow::bail!("Not yet implemented")
+        unimplemented!()
     }
 
     pub async fn list(&self, _workspace_id: uuid::Uuid) -> anyhow::Result<Vec<Credential>> {
-        // TODO: List credentials
-        anyhow::bail!("Not yet implemented")
+        unimplemented!()
     }
 }

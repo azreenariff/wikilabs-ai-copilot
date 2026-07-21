@@ -17,7 +17,6 @@ impl AuditLog {
     }
 
     pub async fn append(&self, _entry: AuditEntry) -> anyhow::Result<()> {
-        // TODO: Append with hash chain integrity
-        anyhow::bail!("Not yet implemented")
+        unimplemented!()
     }
 }
