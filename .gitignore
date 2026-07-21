@@ -34,7 +34,7 @@ Thumbs.db
 **/.env.local
 **/.env.*.local
 src-tauri/tauri.conf.json
-src-tauri/build.rs
+# src-tauri/build.rs (remove if build.rs is needed)
 
 # Local certs
 src-tauri/capabilities/
