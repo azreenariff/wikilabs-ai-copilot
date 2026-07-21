@@ -10,6 +10,11 @@ on:
         description: "Tag to release (e.g., v1.0.0)"
         required: true
         type: string
+      skip_release:
+        description: "Skip GitHub release creation (build only)"
+        required: false
+        default: "false"
+        type: boolean
 
 permissions:
   contents: write
@@ -25,12 +30,14 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
+      - name: Install Tauri CLI
+        run: |
+          cargo install tauri-cli --version ^2
+
+      - name: Install Visual Studio C++ build tools
+        uses: mailto/matthiaseisen/visual-studio-audio@v1
         with:
-          node-version: 20
-          cache: "npm"
-          cache-dependency-path: src-tauri/package-lock.json
+          workloads: "vctools"
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -45,14 +52,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-release-
 
-      - name: Install npm dependencies
-        working-directory: src-tauri
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: src-tauri
-        run: npm run build
-
       - name: Determine tag
         id: tag
         run: |
@@ -62,15 +61,12 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri app (MSI + NSIS)
+        run: |
+          cargo tauri build --target x86_64-pc-windows-msvc --verbose
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-        with:
-          args: --target x86_64-pc-windows-msvc
-          tag: ${{ steps.tag.outputs.tag }}
 
       - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
@@ -81,19 +77,21 @@ jobs:
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
           retention-days: 30
 
-      - name: Upload MSBuild logs
+      - name: Upload build logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: msbuild-logs
+          name: tauri-build-logs
           path: |
             src-tauri/target/x86_64-pc-windows-msvc/release/build/**/output
+            src-tauri/target/x86_64-pc-windows-msvc/release/.tauri-build.log
           retention-days: 7
 
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: build
+    if: github.event.inputs.skip_release != 'true'
     permissions:
       contents: write
     steps:
@@ -115,6 +113,14 @@ jobs:
           name: wikilabs-copilot-installer
           path: dist/
 
+      - name: Verify artifacts
+        run: |
+          echo "=== Artifacts in dist/ ==="
+          ls -la dist/
+          echo ""
+          echo "=== File sizes ==="
+          du -sh dist/*
+
       - name: Read changelog for release notes
         id: changelog
         run: |
@@ -123,6 +129,7 @@ jobs:
           # Extract changelog section for this version
           python3 -c "
           import re
+          import sys
           version = '$VERSION'
           with open('CHANGELOG.md', 'r') as f:
               content = f.read()
@@ -133,20 +140,22 @@ jobs:
               notes = match.group(0)
           else:
               notes = 'See CHANGELOG.md for details.'
-          # Write to file to handle multiline
           with open('release_notes.md', 'w') as f:
               f.write(notes)
           "
-          echo "body=$(cat release_notes.md)" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Wiki Labs AI Copilot ${{ steps.tag.outputs.tag }}
-          body_path: release_notes.md
+          body: ${{ steps.changelog.outputs.body }}
           draft: false
           prerelease: ${{ contains(steps.tag.outputs.tag, 'beta') || contains(steps.tag.outputs.tag, 'alpha') || contains(steps.tag.outputs.tag, 'rc') }}
           files: |
             dist/*.msi
             dist/*.exe
+          fail_on_unmatched_files: true
