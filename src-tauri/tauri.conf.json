@@ -36,27 +36,7 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ],
-    "windows": {
-      "nsis": {
-        "displayLanguageSelector": true,
-        "languages": ["English"],
-        "installMode": "currentUser"
-      }
-    }
+    ]
   },
-  "plugins": {
-    "updater": {
-      "active": true,
-      "dialog": true,
-      "pubkey": "dXAqWOJ/dCxjqY2Pn/O1xI8s86M4dVEsD39uMwoCp0IAdS+9wOYah1mUWeDNi1gdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdq=",
-      "endpoints": [
-        "https://github.com/wikilabs/wikilabs-ai-copilot/releases/download/{version}/latest.json",
-        "https://wikilabs.github.io/wikilabs-ai-copilot/updates/{version}/latest.json"
-      ],
-      "windows": {
-        "installMode": "currentUser"
-      }
-    }
-  }
+  "plugins": {}
 }
