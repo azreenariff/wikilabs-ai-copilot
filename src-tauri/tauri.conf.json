@@ -1,0 +1,65 @@
+{
+  "productName": "Wiki Labs AI Copilot",
+  "version": "1.0.0",
+  "identifier": "com.wikilabs.copilot",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Wiki Labs AI Copilot v1.0.0",
+        "width": 1400,
+        "height": 900,
+        "min-width": 1024,
+        "min-height": 768,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "hidden-title": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "publisher": "Wiki Labs",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": true,
+        "languages": ["English"],
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": true,
+      "pubkey": "dXAqWOJ/dCxjqY2Pn/O1xI8s86M4dVEsD39uMwoCp0IAdS+9wOYah1mUWeDNi1gdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdqdq=",
+      "endpoints": [
+        "https://github.com/wikilabs/wikilabs-ai-copilot/releases/download/{version}/latest.json",
+        "https://wikilabs.github.io/wikilabs-ai-copilot/updates/{version}/latest.json"
+      ],
+      "windows": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}
