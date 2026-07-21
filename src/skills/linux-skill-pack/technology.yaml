@@ -1,0 +1,111 @@
+domain: Linux
+version: 1.0.0
+description: >
+  Linux operating system — UNIX-like, open-source kernel with extensive ecosystem.
+  Covers system administration, service management, performance tuning, security,
+  and troubleshooting across all major distributions.
+features:
+  - name: System Architecture
+    description: Kernel, user space, init system, process model, filesystem hierarchy
+    related_commands:
+      - uname -a
+      - uptime
+      - hostnamectl
+      - ps aux
+  - name: Service Management
+    description: Systemd services, unit files, service lifecycle, dependencies
+    related_commands:
+      - systemctl status
+      - systemctl restart
+      - systemctl enable
+      - journalctl -u
+  - name: User and Permissions
+    description: User management, groups, sudo, ACLs, setuid, sticky bit
+    related_commands:
+      - id
+      - groups
+      - sudo -l
+      - getfacl
+  - name: Filesystem and Storage
+    description: Disk management, partitions, LVM, mount points, quotas
+    related_commands:
+      - df -h
+      - lsblk
+      - lvs
+      - mount
+  - name: Networking
+    description: Interface configuration, routing, DNS, firewalls, connectivity
+    related_commands:
+      - ip addr
+      - ip route
+      - ss -tlnp
+      - systemctl status firewalld
+  - name: Package Management
+    description: Software installation, updates, dependency management
+    related_commands:
+      - dnf list
+      - apt list --upgradable
+      - pacman -Syu
+  - name: Performance Monitoring
+    description: CPU, memory, disk I/O, network, process resource usage
+    related_commands:
+      - top
+      - free -m
+      - iostat
+      - vmstat
+  - name: Logging and Monitoring
+    description: System logs, journal, dmesg, log rotation, alerting
+    related_commands:
+      - journalctl
+      - dmesg
+      - ls -la /var/log
+  - name: SSH and Remote Access
+    description: SSH configuration, key management, security hardening
+    related_commands:
+      - ssh
+      - systemctl status sshd
+      - cat /etc/ssh/sshd_config
+  - name: Scheduled Tasks
+    description: Cron jobs, systemd timers, automation
+    related_commands:
+      - crontab -l
+      - systemctl list-timers
+      - systemctl list-timers --all
+  - name: Kernel and Modules
+    description: Kernel parameters, module loading, sysctl, boot configuration
+    related_commands:
+      - sysctl
+      - uname -r
+      - lsmod
+  - name: Security and Auditing
+    description: SELinux, PAM, auditd, fail2ban, patch management
+    related_commands:
+      - sestatus
+      - auditctl
+      - fail2ban-client status
+  - name: Process Management
+    description: Process monitoring, resource limits, nice/renice, cgroups
+    related_commands:
+      - ps aux
+      - top
+      - ulimit
+      - cgroups
+  - name: Boot Process
+    description: Bootloader, initramfs, init system, emergency recovery
+    related_commands:
+      - systemctl isolate emergency.target
+      - systemctl default.target
+      - systemctl list-units
+  - name: Network Services
+    description: Web servers, DNS, DHCP, proxy, monitoring agents
+    related_commands:
+      - systemctl status httpd
+      - systemctl status nginx
+      - systemctl status named
+  - name: Container Runtime
+    description: Docker, Podman, container management, images, volumes
+    related_commands:
+      - podman ps
+      - podman images
+      - docker ps
+      - docker images

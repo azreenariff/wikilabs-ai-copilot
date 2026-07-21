@@ -1,0 +1,166 @@
+# Windows Engineering — Context Detection Rules
+
+# Rules for identifying when to load the Windows skill pack
+
+rules:
+  - id: windows-service-not-starting
+    name: Windows Service Not Starting
+    description: >
+      Diagnose and remediate Windows service failures. Covers Start, Stop,
+      and critical system services on Windows Server.
+    triggers:
+      - "service not starting"
+      - "service failed"
+      - "can't start service"
+      - "service stopped"
+      - "service error"
+      - "windows service down"
+    confidence: high
+    skill_pack: windows-skill-pack
+    workflow: windows-service-not-starting
+
+  - id: windows-event-log-error
+    name: Event Log Error
+    description: >
+      Diagnose and remediate Windows Event Log errors. Covers System,
+      Application, Security, and Application and Services logs.
+    triggers:
+      - "event log error"
+      - "eventviewer"
+      - "error in event log"
+      - "event id"
+      - "application crash"
+      - "event error"
+    confidence: high
+    skill_pack: windows-skill-pack
+    workflow: windows-event-log-error
+
+  - id: windows-powershell-error
+    name: PowerShell Execution Error
+    description: >
+      Diagnose and remediate PowerShell script execution errors. Covers
+      execution policy, syntax errors, and runtime errors.
+    triggers:
+      - "powershell error"
+      - "cannot run script"
+      - "execution policy"
+      - "powershell not running"
+      - "powershell syntax"
+    confidence: medium
+    skill_pack: windows-skill-pack
+    workflow: windows-powershell-error
+
+  - id: windows-dns-resolution-failed
+    name: DNS Resolution Failure
+    description: >
+      Diagnose and remediate DNS name resolution failures. Covers local
+      DNS issues, AD-integrated zones, and forwarding problems.
+    triggers:
+      - "dns not resolving"
+      - "dns failure"
+      - "cannot resolve"
+      - "dns timeout"
+      - "nslookup failed"
+      - "dns error"
+    confidence: high
+    skill_pack: windows-skill-pack
+    workflow: windows-dns-resolution-failed
+
+  - id: windows-network-connectivity
+    name: Network Connectivity Issue
+    description: >
+      Diagnose and remediate Windows network connectivity issues. Covers
+      TCP/IP, adapters, routing, and firewall problems.
+    triggers:
+      - "network disconnected"
+      - "cannot ping"
+      - "network issue"
+      - "adapter error"
+      - "ip conflict"
+      - "network down"
+    confidence: medium
+    skill_pack: windows-skill-pack
+    workflow: windows-network-connectivity
+
+  - id: windows-activedirectory-issue
+    name: Active Directory Issue
+    description: >
+      Diagnose and remediate Active Directory issues. Covers domain join,
+      replication, user login, and group policy problems.
+    triggers:
+      - "ad issue"
+      - "active directory"
+      - "domain join"
+      - "replication"
+      - "group policy"
+      - "user cannot login"
+      - "ad error"
+    confidence: high
+    skill_pack: windows-skill-pack
+    workflow: windows-activedirectory-issue
+
+  - id: windows-disk-full
+    name: Disk Space Critical
+    description: >
+      Diagnose and remediate Windows disk space exhaustion. Covers local
+      volumes, NTFS, and storage expansion.
+    triggers:
+      - "disk full"
+      - "no space left"
+      - "drive full"
+      - "low disk space"
+      - "disk space"
+    confidence: high
+    skill_pack: windows-skill-pack
+    workflow: windows-disk-full
+
+  - id: windows-iis-down
+    name: IIS Web Server Down
+    description: >
+      Diagnose and remediate Internet Information Services failures.
+      Covers IIS service, application pools, and sites.
+    triggers:
+      - "iis not working"
+      - "website down"
+      - "iis error"
+      - "app pool stopped"
+      - "iis not starting"
+      - "503 error"
+      - "iis down"
+    confidence: medium
+    skill_pack: windows-skill-pack
+    workflow: windows-iis-down
+
+  - id: windows-update-failed
+    name: Windows Update Failure
+    description: >
+      Diagnose and remediate Windows Update installation failures. Covers
+      failed patches, stuck updates, and WSUS issues.
+    triggers:
+      - "windows update failed"
+      - "update error"
+      - "patch failed"
+      - "windows update stuck"
+      - "update not installing"
+    confidence: high
+    skill_pack: windows-skill-pack
+    workflow: windows-update-failed
+
+  - id: windows-performance-slow
+    name: Windows Performance Degradation
+    description: >
+      Diagnose and remediate Windows Server performance issues. Covers
+      CPU, memory, disk I/O, and network throughput.
+    triggers:
+      - "windows slow"
+      - "performance issue"
+      - "high cpu"
+      - "high memory"
+      - "system slow"
+      - "server slow"
+    confidence: medium
+    skill_pack: windows-skill-pack
+    workflow: windows-performance-slow
+
+version: 1.0.0
+last_updated: 2026-07-21

@@ -1,0 +1,490 @@
+# Windows Engineering — Workflow Definitions
+
+# State machine workflows for Windows Server troubleshooting
+
+workflows:
+  - id: windows-service-not-starting
+    name: Windows Service Not Starting
+    description: >
+      Diagnose and remediate Windows service failures. Covers service state,
+      dependencies, permissions, and configuration issues.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather initial evidence about the service failure. Check service
+          status, dependencies, event logs, and error messages.
+        initial: true
+        terminal: false
+        commands:
+          - sc query <service-name>
+          - Get-Service <service-name>
+          - Get-EventLog -LogName System -EntryType Error -Source ServiceControlManager
+          - sc qc <service-name>
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze evidence to determine the most likely cause. Check
+          dependency failures, permission issues, and configuration errors.
+        initial: false
+        terminal: false
+        commands:
+          - Get-Service <service-name> | Format-List *
+          - Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Service Control Manager'}
+          - sc queryex <service-name>
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause. Options
+          include restarting service, fixing dependencies, or adjusting permissions.
+        initial: false
+        terminal: false
+        commands:
+          - sc start <service-name>
+          - net start <service-name>
+          - Start-Service <service-name>
+          - sc config <service-name> start= auto
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify the service is running and accessible.
+        initial: false
+        terminal: true
+        commands:
+          - Get-Service <service-name>
+          - sc query <service-name>
+          - Check dependent services
+
+  - id: windows-event-log-error
+    name: Event Log Error Analysis
+    description: >
+      Diagnose and remediate Windows Event Log errors. Covers System,
+      Application, and Security logs.
+    risk: low
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather event log errors relevant to the reported issue.
+        initial: true
+        terminal: false
+        commands:
+          - Get-EventLog -LogName System -EntryType Error -Newest 50
+          - Get-WinEvent -FilterHashtable @{LogName='System'; Level=2}
+          - Get-EventLog -LogName Application -EntryType Error -Newest 50
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze Event IDs and error messages to identify root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Get-WinEvent -FilterHashtable @{LogName='System'; Level=2; StartTime=(Get-Date).AddHours(-1)}
+          - Get-WinEvent -FilterHashtable @{LogName='Application'; Level=2}
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on Event ID analysis.
+        initial: false
+        terminal: false
+        commands:
+          - Search Event ID in Microsoft Knowledge Base
+          - Apply fix based on Event ID
+          - Clear event log if needed
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify no new errors are appearing in event logs.
+        initial: false
+        terminal: true
+        commands:
+          - Get-EventLog -LogName System -EntryType Error -Newest 5
+          - Get-EventLog -LogName Application -EntryType Error -Newest 5
+
+  - id: windows-dns-resolution-failed
+    name: DNS Resolution Failure
+    description: >
+      Diagnose and remediate DNS name resolution failures on Windows.
+      Covers local DNS, AD-integrated DNS, and forwarding issues.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather DNS configuration and resolution test results.
+        initial: true
+        terminal: false
+        commands:
+          - ipconfig /all
+          - nslookup <hostname>
+          - Test-NetConnection <hostname> -TraceRoute
+          - Get-DnsServerResourceRecord
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze DNS configuration and resolution failures.
+        initial: false
+        terminal: false
+        commands:
+          - nslookup <hostname> <dns-server-ip>
+          - Resolve-DnsName <hostname>
+          - Get-DnsServerCache
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - ipconfig /flushdns
+          - Restart DNS Service: net stop dns && net start dns
+          - Fix DNS forwarders
+          - Check AD-integrated DNS zones
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify DNS resolution is working.
+        initial: false
+        terminal: true
+        commands:
+          - nslookup <hostname>
+          - Resolve-DnsName <hostname>
+          - Test-NetConnection <hostname>
+
+  - id: windows-activedirectory-issue
+    name: Active Directory Issue
+    description: >
+      Diagnose and remediate Active Directory issues. Covers domain join,
+      replication, user login, and Group Policy problems.
+    risk: high
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather AD domain status, replication state, and user/login information.
+        initial: true
+        terminal: false
+        commands:
+          - nltest /dsgetdc:<domain-name>
+          - Get-ADDomain
+          - Repadmin /showrepl
+          - Test-ADServiceAccount -Identity <service-account>
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze AD state to determine root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Repadmin /replsummary
+          - Get-ADDomainController
+          - nltest /sc_verify:<domain-name>
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Force replication: repadmin /syncall
+          - Fix DNS: ipconfig /registerdns
+          - Reset computer account: Test-ComputerSecureChannel -Repair
+          - Rejoin domain if needed
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify AD connectivity and functionality.
+        initial: false
+        terminal: true
+        commands:
+          - nltest /dsgetdc:<domain-name>
+          - Repadmin /showrepl
+          - whoami /all
+
+  - id: windows-disk-full
+    name: Disk Space Critical
+    description: >
+      Diagnose and remediate Windows disk space exhaustion. Covers local
+      volumes, NTFS, and storage expansion.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather disk usage information and identify large consumers.
+        initial: true
+        terminal: false
+        commands:
+          - Get-Volume
+          - Get-PSDrive -PSProvider FileSystem
+          - Get-ChildItem -Path C:\ -Recurse -ErrorAction SilentlyContinue | Sort-Object Length -Descending | Select-Object -First 20
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze disk usage to identify space consumption.
+        initial: false
+        terminal: false
+        commands:
+          - Get-Volume | Where-Object {$_.SizeRemaining -lt ($_.Size * 0.1)}
+          - Get-CimInstance -ClassName Win32_LogicalDisk
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Free up space through cleanup or expansion.
+        initial: false
+        terminal: false
+        commands:
+          - Clean temp files: Remove-Item C:\Windows\Temp\* -Recurse
+          - Clean Windows Update cache: Dism /Online /Cleanup-Image /StartComponentCleanup
+          - Empty Recycle Bin
+          - Extend NTFS volume via Disk Management
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify disk has sufficient free space.
+        initial: false
+        terminal: true
+        commands:
+          - Get-Volume
+          - Get-CimInstance -ClassName Win32_LogicalDisk
+
+  - id: windows-powershell-error
+    name: PowerShell Execution Error
+    description: >
+      Diagnose and remediate PowerShell script execution errors.
+    risk: low
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather PowerShell execution errors and configuration.
+        initial: true
+        terminal: false
+        commands:
+          - Get-ExecutionPolicy
+          - $PSVersionTable
+          - Get-Module -ListAvailable
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze PowerShell configuration and errors.
+        initial: false
+        terminal: false
+        commands:
+          - Get-ExecutionPolicy -List
+          - $error[0]
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Set-ExecutionPolicy RemoteSigned -Scope LocalMachine
+          - Fix syntax errors
+          - Update modules
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify PowerShell script runs successfully.
+        initial: false
+        terminal: true
+        commands:
+          - Get-ExecutionPolicy
+          - Test-Path <script-path>
+
+  - id: windows-network-connectivity
+    name: Network Connectivity Issue
+    description: >
+      Diagnose and remediate Windows network connectivity issues.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather network configuration and connectivity test results.
+        initial: true
+        terminal: false
+        commands:
+          - ipconfig /all
+          - Get-NetAdapter
+          - Get-NetIPAddress
+          - Get-NetRoute
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze network configuration and connectivity.
+        initial: false
+        terminal: false
+        commands:
+          - Test-NetConnection <destination>
+          - tracert <destination>
+          - Get-NetAdapterAdvancedProperty
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - ipconfig /release && ipconfig /renew
+          - Get-NetAdapter | Where-Object Status -eq 'Down'
+          - Reset TCP/IP: netsh int ip reset
+          - Check firewall rules
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify network connectivity is restored.
+        initial: false
+        terminal: true
+        commands:
+          - Test-NetConnection <destination>
+          - ipconfig /all
+
+  - id: windows-iis-down
+    name: IIS Web Server Down
+    description: >
+      Diagnose and remediate Internet Information Services failures.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather IIS service status and site configuration.
+        initial: true
+        terminal: false
+        commands:
+          - Get-Service W3SVC
+          - Get-WebApplication
+          - Get-WebSite
+          - Get-ApplicationPool
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze IIS configuration and errors.
+        initial: false
+        terminal: false
+        commands:
+          - Get-WebConfigurationProperty -Filter system.webServer/security/authentication/windowsAuthentication -Name enabled
+          - Event Viewer: Application and Services Logs > Microsoft > Windows > IIS-Configuration
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - net start W3SVC
+          - iisreset
+          - Restart App Pool: Restart-WebAppPool <app-pool-name>
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify IIS is running and sites are accessible.
+        initial: false
+        terminal: true
+        commands:
+          - Get-Service W3SVC
+          - curl http://localhost  # test HTTP access
+          - Get-WebSite
+
+  - id: windows-update-failed
+    name: Windows Update Failure
+    description: >
+      Diagnose and remediate Windows Update installation failures.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather Windows Update history and failure information.
+        initial: true
+        terminal: false
+        commands:
+          - Get-HotFix
+          - Get-WindowsUpdateLog
+          - Get-Service wuauserv
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze update failures and system state.
+        initial: false
+        terminal: false
+        commands:
+          - Get-HotFix | Where-Object {$_.InstalledOn -gt (Get-Date).AddDays(-30)}
+          - Get-EventLog -LogName System -Source WindowsUpdate -Newest 20
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - net stop wuauserv
+          - net stop bits
+          - Remove C:\Windows\SoftwareDistribution\*
+          - net start wuauserv
+          - net start bits
+          - Check DISM: DISM /Online /Cleanup-Image /RestoreHealth
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify Windows Update can install patches.
+        initial: false
+        terminal: true
+        commands:
+          - Get-Service wuauserv
+          - Check for pending reboots
+
+  - id: windows-performance-slow
+    name: Windows Performance Degradation
+    description: >
+      Diagnose and remediate Windows Server performance issues.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather performance metrics and resource usage.
+        initial: true
+        terminal: false
+        commands:
+          - Get-Counter -ListSet * | Select-Object -First 10
+          - Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10
+          - Get-CimInstance -ClassName Win32_Processor | Select-Object LoadPercentage
+          - Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object FreePhysicalMemory, TotalVisibleMemorySize
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze performance metrics to identify bottleneck.
+        initial: false
+        terminal: false
+        commands:
+          - Get-Counter '\Processor(_Total)\% Processor Time'
+          - Get-Counter '\Memory\Available MBytes'
+          - Get-Counter '\PhysicalDisk(_Total)\% Disk Time'
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Kill or restart high-resource processes
+          - Add RAM or CPU if resource-constrained
+          - Move workloads to less-loaded server
+          - Clear DNS cache, flush browser cache
+          - Review and disable unnecessary services
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify performance has improved.
+        initial: false
+        terminal: true
+        commands:
+          - Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 5
+          - Get-CimInstance -ClassName Win32_Processor | Select-Object LoadPercentage
+
+version: 1.0.0
+last_updated: 2026-07-21

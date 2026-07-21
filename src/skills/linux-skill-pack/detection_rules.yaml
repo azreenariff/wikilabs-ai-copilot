@@ -1,0 +1,224 @@
+# Linux Engineering Skill Pack - Detection Rules
+# Context detection rules for identifying when to load this skill pack.
+
+rules:
+  - id: linux-service-failure
+    name: Linux Service Failure
+    description: Detects Linux service failures from error reports, logs, or monitoring alerts.
+    triggers:
+      - "service.*fail(ed|ure)"
+      - "systemctl.*failed"
+      - "unit.*failed"
+      - "start.*failed"
+      - "restart.*failed"
+      - "cannot start"
+      - "exited with error"
+    context_keywords:
+      - systemctl
+      - journalctl
+      - systemd
+      - service
+      - unit
+    confidence: 0.90
+    related_workflows:
+      - service-not-starting
+
+  - id: linux-high-cpu
+    name: High CPU Usage
+    description: Detects unexpected high CPU usage on Linux systems.
+    triggers:
+      - "high.*cpu"
+      - "cpu.*spike"
+      - "load.*average.*high"
+      - "process.*consuming.*cpu"
+      - "top.*cpu"
+      - "load average"
+    context_keywords:
+      - top
+      - ps
+      - vmstat
+      - mpstat
+      - load
+      - cpu
+    confidence: 0.85
+    related_workflows:
+      - high-cpu-usage
+
+  - id: linux-disk-full
+    name: Disk Space Full
+    description: Detects disk space exhaustion on Linux filesystems.
+    triggers:
+      - "disk.*full"
+      - "no.*space"
+      - "disk.*quota"
+      - "cannot.*write"
+      - "filesystem.*full"
+      - "df.*100%"
+      - "inode.*exhaust"
+    context_keywords:
+      - df
+      - du
+      - mount
+      - filesystem
+      - disk
+      - volume
+      - lvm
+    confidence: 0.92
+    related_workflows:
+      - disk-full
+
+  - id: linux-ssh-failure
+    name: SSH Access Denied
+    description: Detects SSH connection/authentication failures.
+    triggers:
+      - "ssh.*denied"
+      - "ssh.*refused"
+      - "authentication.*fail"
+      - "permission.*denied.*ssh"
+      - "publickey.*rejected"
+      - "ssh.*key.*rejected"
+    context_keywords:
+      - ssh
+      - sshd
+      - authorized_keys
+      - ssh_host_key
+      - ssh_config
+    confidence: 0.88
+    related_workflows:
+      - ssh-access-denied
+
+  - id: linux-network-issue
+    name: Network Connectivity Issue
+    description: Detects network connectivity failures on Linux systems.
+    triggers:
+      - "no.*connectivity"
+      - "network.*unreachable"
+      - "cannot.*resolve"
+      - "connection.*timed.*out"
+      - "interface.*down"
+      - "route.*not.*found"
+      - "dns.*fail"
+    context_keywords:
+      - ip
+      - route
+      - ping
+      - nslookup
+      - netstat
+      - ss
+      - firewall
+      - NetworkManager
+    confidence: 0.87
+    related_workflows:
+      - network-connectivity
+
+  - id: linux-memory-issue
+    name: Memory Exhaustion
+    description: Detects OOM killer, memory leaks, or memory exhaustion.
+    triggers:
+      - "out of memory"
+      - "oom.*killer"
+      - "memory.*exhaust"
+      - "cannot.*allocate.*memory"
+      - "swap.*full"
+      - "killed process"
+    context_keywords:
+      - free
+      - memory
+      - swap
+      - oom
+      - dmesg
+      - vmstat
+    confidence: 0.89
+    related_workflows:
+      - memory-exhaustion
+
+  - id: linux-boot-failure
+    name: Boot Failure
+    description: Detects Linux boot failures, kernel panics, or GRUB issues.
+    triggers:
+      - "boot.*fail"
+      - "kernel.*panic"
+      - "grub.*error"
+      - "initramfs.*fail"
+      - "fsck.*fail"
+      - "cannot mount"
+      - "emergency.*mode"
+    context_keywords:
+      - grub
+      - kernel
+      - initramfs
+      - fsck
+      - fstab
+      - journalctl
+      - boot
+    confidence: 0.82
+    related_workflows:
+      - boot-failure
+
+  - id: linux-package-failure
+    name: Package Installation Failure
+    description: Detects package installation or update failures.
+    triggers:
+      - "cannot.*install"
+      - "dependency.*conflict"
+      - "package.*corrupt"
+      - "repo.*sync.*fail"
+      - "transaction.*fail"
+      - "broken.*package"
+    context_keywords:
+      - dnf
+      - apt
+      - rpm
+      - dpkg
+      - yum
+      - pacman
+      - package
+      - repo
+    confidence: 0.86
+    related_workflows:
+      - package-installation
+
+  - id: linux-performance-degraded
+    name: System Performance Degradation
+    description: Detects general performance degradation on Linux systems.
+    triggers:
+      - "system.*slow"
+      - "performance.*degrad"
+      - "unresponsive"
+      - "high.*latency"
+      - "i.*o.*wait"
+      - "system.*unresponsive"
+    context_keywords:
+      - top
+      - iostat
+      - iotop
+      - vmstat
+      - uptime
+      - dstat
+      - perf
+    confidence: 0.75
+    related_workflows:
+      - system-slow
+
+  - id: linux-linux-context
+    name: General Linux Context
+    description: Generic Linux system administration context detection.
+    triggers:
+      - "linux"
+      - "centos"
+      - "ubuntu"
+      - "rhel"
+      - "debian"
+      - "rocky"
+      - "alma"
+      - "amazon linux"
+    context_keywords:
+      - linux
+      - bash
+      - terminal
+      - shell
+      - command
+      - system
+    confidence: 0.60
+    related_workflows: []
+    fallback: true

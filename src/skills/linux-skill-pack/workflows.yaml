@@ -1,0 +1,607 @@
+- id: service-not-starting
+  name: Service Not Starting
+  description: >
+    Diagnose and resolve services that fail to start or restart.
+    Covers configuration errors, dependency issues, port conflicts,
+    and resource constraints.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather initial evidence about the service failure.
+        Check status, logs, and recent changes.
+      initial: true
+      terminal: false
+      commands:
+        - systemctl status <service-name>
+        - journalctl -u <service-name> --since "1 hour ago"
+        - systemctl list-dependencies <service-name>
+        - ss -tlnp | grep <expected-port>
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Analyze evidence to determine the most likely cause.
+        Check configuration syntax, permissions, resource limits.
+      initial: false
+      terminal: false
+      commands:
+        - journalctl -u <service-name> --no-pager | tail -50
+        - grep -i error /var/log/<service-name>/*.log 2>/dev/null
+        - systemctl show <service-name> --property=ExecStart
+        - ls -la /etc/<service-name>/
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply the appropriate fix based on diagnosed root cause.
+      initial: false
+      terminal: false
+      commands:
+        - systemctl daemon-reload
+        - systemctl restart <service-name>
+        - sed -i 's/<old>/<new>/g' /etc/<service-name>/config
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify the service is running correctly after remediation.
+      initial: false
+      terminal: true
+      commands:
+        - systemctl status <service-name>
+        - journalctl -u <service-name> --since "5 min ago"
+        - ss -tlnp | grep <expected-port>
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "service_still_failing"
+  evidence_requirements:
+    - "Service status and exit code"
+    - "Service logs (journalctl)"
+    - "Recent configuration changes"
+    - "Dependency status"
+    - "Resource availability"
+  required: true
+
+- id: high-cpu-usage
+  name: High CPU Usage
+  description: >
+    Diagnose and resolve unexpected high CPU usage on Linux systems.
+    Covers runaway processes, misconfiguration, and resource exhaustion.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather evidence about CPU usage patterns.
+        Identify top consumers and check load averages.
+      initial: true
+      terminal: false
+      commands:
+        - uptime
+        - top -bn1 | head -20
+        - ps aux --sort=-%cpu | head -10
+        - vmstat 1 5
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Analyze CPU consumer to determine if expected or unexpected.
+      initial: false
+      terminal: false
+      commands:
+        - ps aux --sort=-%cpu | head -5
+        - strace -p <pid> -c 2>/dev/null
+        - lsof -p <pid> 2>/dev/null | head -10
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply fix based on diagnosed root cause.
+      initial: false
+      terminal: false
+      commands:
+        - kill -15 <pid>
+        - renice +10 -p <pid>
+        - echo "cpu_quota=50%" | tee /sys/fs/cgroup/cpu/<path>/cpu.cfs_quota_us
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify CPU usage has normalized.
+      initial: false
+      terminal: true
+      commands:
+        - uptime
+        - top -bn1 | head -10
+        - ps aux --sort=-%cpu | head -5
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "cpu_still_high"
+  evidence_requirements:
+    - "Load average"
+    - "Top CPU-consuming processes"
+    - "System uptime"
+    - "Expected vs actual usage"
+  required: true
+
+- id: disk-full
+  name: Disk Space Full
+  description: >
+    Diagnose and resolve disk space exhaustion.
+    Covers log accumulation, temp files, package cache, and inode exhaustion.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Identify which filesystem(s) are full.
+      initial: true
+      terminal: false
+      commands:
+        - df -h
+        - df -i
+        - du -sh /* 2>/dev/null | sort -rh | head -10
+        - du -sh /var/log/* 2>/dev/null | sort -rh | head -10
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine what is consuming disk space.
+      initial: false
+      terminal: false
+      commands:
+        - find / -xdev -type f -size +100M 2>/dev/null | sort -k5 -rn | head -10
+        - find /var/log -type f -name "*.log" -size +50M 2>/dev/null
+        - journalctl --disk-usage
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Free disk space using appropriate cleanup.
+      initial: false
+      terminal: false
+      commands:
+        - journalctl --vacuum-size=1G
+        - rm -f /tmp/*.tmp
+        - yum clean all
+        - apt-get clean
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify disk space has been freed.
+      initial: false
+      terminal: true
+      commands:
+        - df -h
+        - du -sh /var/log
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "disk_still_full"
+  evidence_requirements:
+    - "Filesystem usage (df -h)"
+    - "Inode usage (df -i)"
+    - "Top directories by size (du -sh)"
+    - "Large files (find -size)"
+  required: true
+
+- id: ssh-access-denied
+  name: SSH Access Denied
+  description: >
+    Diagnose and resolve SSH connection failures.
+    Covers authentication, firewall, host keys, and configuration issues.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather evidence about SSH failure.
+      initial: true
+      terminal: false
+      commands:
+        - ssh -v <user>@<host> 2>&1 | tail -20
+        - systemctl status sshd
+        - cat /var/log/secure 2>/dev/null | grep ssh
+        - grep -i "ssh" /var/log/auth.log 2>/dev/null | tail -20
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine the SSH failure cause.
+      initial: false
+      terminal: false
+      commands:
+        - ssh -v <user>@<host> 2>&1 | grep -i "debug1"
+        - cat /etc/ssh/sshd_config | grep -v "^#" | grep -v "^$"
+        - ls -la /etc/ssh/ssh_host_*
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply fix for SSH issue.
+      initial: false
+      terminal: false
+      commands:
+        - chmod 600 ~/.ssh/authorized_keys
+        - ssh-keygen -A
+        - systemctl restart sshd
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify SSH connectivity is restored.
+      initial: false
+      terminal: true
+      commands:
+        - ssh <user>@<host> "echo SSH_OK"
+        - systemctl status sshd
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "ssh_still_failing"
+  evidence_requirements:
+    - "SSH verbose output"
+    - "SSHD service status"
+    - "Authentication logs"
+    - "SSHD configuration"
+  required: true
+
+- id: network-connectivity
+  name: Network Connectivity Issue
+  description: >
+    Diagnose network connectivity problems.
+    Covers interface status, routing, DNS, firewalls, and DHCP.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather network connectivity evidence.
+      initial: true
+      terminal: false
+      commands:
+        - ip addr
+        - ip route
+        - ping -c 3 8.8.8.8
+        - nslookup google.com
+        - ss -tlnp
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine the network issue.
+      initial: false
+      terminal: false
+      commands:
+        - traceroute 8.8.8.8 2>/dev/null || tracepath 8.8.8.8
+        - ip neigh
+        - cat /etc/resolv.conf
+        - systemctl status NetworkManager
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply network fix.
+      initial: false
+      terminal: false
+      commands:
+        - systemctl restart NetworkManager
+        - systemctl restart systemd-resolved
+        - firewall-cmd --add-port=<port>/tcp --permanent
+        - nmcli connection reload && nmcli connection up <profile>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify network connectivity is restored.
+      initial: false
+      terminal: true
+      commands:
+        - ping -c 3 8.8.8.8
+        - nslookup google.com
+        - ip addr show
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "network_still_broken"
+  evidence_requirements:
+    - "Interface status (ip addr)"
+    - "Routing table (ip route)"
+    - "Connectivity test (ping)"
+    - "DNS resolution"
+    - "Firewall status"
+  required: true
+
+- id: memory-exhaustion
+  name: Memory Exhaustion
+  description: >
+    Diagnose memory issues: OOM killer, memory leaks, insufficient RAM.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather memory usage evidence.
+      initial: true
+      terminal: false
+      commands:
+        - free -m
+        - cat /proc/meminfo
+        - dmesg | grep -i "out of memory"
+        - ps aux --sort=-%mem | head -10
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine memory issue cause.
+      initial: false
+      terminal: false
+      commands:
+        - dmesg | grep -i "oom"
+        - cat /proc/meminfo | grep -i "available\|free\|cached"
+        - slabtop -s c
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply memory fix.
+      initial: false
+      terminal: false
+      commands:
+        - kill -15 <pid>
+        - sysctl vm.swappiness=10
+        - echo 3 > /proc/sys/vm/drop_caches
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify memory has stabilized.
+      initial: false
+      terminal: true
+      commands:
+        - free -m
+        - dmesg | grep -i "oom" | tail -5
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "memory_still_high"
+  evidence_requirements:
+    - "Free memory (free -m)"
+    - "OOM logs (dmesg)"
+    - "Top memory consumers (ps)"
+    - "Swap usage"
+  required: true
+
+- id: boot-failure
+  name: Boot Failure
+  description: >
+    Diagnose system boot failures.
+    Covers GRUB, kernel panic, initramfs, and filesystem issues.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather boot failure evidence.
+      initial: true
+      terminal: false
+      commands:
+        - journalctl -b -1 --no-pager | tail -50
+        - lsblk
+        - cat /etc/fstab
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine boot failure cause.
+      initial: false
+      terminal: false
+      commands:
+        - journalctl -b -1 --no-pager | grep -i "error\|fail\|panic"
+        - ls -la /boot/
+        - df -h
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply boot fix.
+      initial: false
+      terminal: false
+      commands:
+        - dracut --force
+        - grub2-mkconfig -o /boot/grub2/grub.cfg
+        - fsck -y /dev/<device>
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify system boots correctly.
+      initial: false
+      terminal: true
+      commands:
+        - systemctl list-units --failed
+        - uptime
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "boot_still_failing"
+  evidence_requirements:
+    - "Previous boot logs (journalctl -b -1)"
+    - "Block devices (lsblk)"
+    - "Mount configuration (/etc/fstab)"
+    - "Filesystem status"
+  required: true
+
+- id: package-installation
+  name: Package Installation Failure
+  description: >
+    Diagnose and resolve package installation/update failures.
+    Covers dependency conflicts, repository issues, and corrupted packages.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather package installation evidence.
+      initial: true
+      terminal: false
+      commands:
+        - dnf install <package> 2>&1 | tail -20
+        - dnf repolist
+        - dnf check-update
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine package failure cause.
+      initial: false
+      terminal: false
+      commands:
+        - dnf repoquery --qf "%{name}-%{version}-%{release}.%{arch}" <package>
+        - rpm -V <package>
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply package fix.
+      initial: false
+      terminal: false
+      commands:
+        - dnf clean all
+        - dnf install <package> --best --allowerasing
+        - rpm --rebuilddb
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify package installed correctly.
+      initial: false
+      terminal: true
+      commands:
+        - rpm -q <package>
+        - dnf list installed <package>
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "install_still_failing"
+  evidence_requirements:
+    - "Installation error output"
+    - "Repository status"
+    - "Package state (rpm)"
+    - "Dependency chain"
+  required: true
+
+- id: system-slow
+  name: System Performance Degradation
+  description: >
+    Diagnose overall system performance issues.
+    Covers CPU, memory, disk I/O, and network bottlenecks.
+  states:
+    - id: evidence_collection
+      name: Collect Evidence
+      description: >
+        Gather system performance evidence.
+      initial: true
+      terminal: false
+      commands:
+        - uptime
+        - top -bn1 | head -15
+        - free -m
+        - iostat -x 1 3
+        - vmstat 1 5
+    - id: diagnosis
+      name: Root Cause Diagnosis
+      description: >
+        Determine performance bottleneck.
+      initial: false
+      terminal: false
+      commands:
+        - ps aux --sort=-%cpu | head -5
+        - ps aux --sort=-%mem | head -5
+        - iotop -o -b -n 1
+        - cat /proc/loadavg
+    - id: remediation
+      name: Apply Remediation
+      description: >
+        Apply performance fix.
+      initial: false
+      terminal: false
+      commands:
+        - renice +10 -p <pid>
+        - ionice -c2 -n4 -p <pid>
+        - echo 1 > /proc/sys/vm/drop_caches
+    - id: verification
+      name: Verify Resolution
+      description: >
+        Verify performance has improved.
+      initial: false
+      terminal: true
+      commands:
+        - uptime
+        - top -bn1 | head -10
+        - iostat -x 1 3
+  transitions:
+    - from: evidence_collection
+      to: diagnosis
+      condition: "evidence_collected"
+    - from: diagnosis
+      to: remediation
+      condition: "root_cause_identified"
+    - from: remediation
+      to: verification
+      condition: "remediation_applied"
+    - from: verification
+      to: evidence_collection
+      condition: "performance_still_poor"
+  evidence_requirements:
+    - "Load average"
+    - "CPU usage (top)"
+    - "Memory usage (free)"
+    - "Disk I/O (iostat)"
+    - "Process breakdown"
+  required: true

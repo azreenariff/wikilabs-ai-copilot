@@ -1,0 +1,199 @@
+# VMware vSphere Technology Definitions
+# Core platforms and infrastructure components
+
+supported_versions:
+  - vcenter:
+      versions:
+        - "7.0 U3"
+        - "8.0"
+      type: management
+  - esxi:
+      versions:
+        - "7.0 U3"
+        - "8.0"
+      type: hypervisor
+  - vsphere_client:
+      type: html5_ui
+      description: Browser-based management interface
+
+infrastructure_components:
+  # ESXi Host Components
+  - name: vmkernel
+    description: VM-specific kernel handling networking, storage, and management traffic
+    ports:
+      - 443
+      - 902
+  - name: ha_agent
+    description: Host HA agent for VM restart on failure
+    service: vmware-fdm
+  - name: drs_agent
+    description: Host DRS agent for resource balancing
+  - name: esxi_shell
+    description: Command-line access via SSH or local console
+    ports:
+      - 22
+  - name: dsa
+    description: Direct Shell Access for maintenance
+
+  # vCenter Server Components
+  - name: vcsa
+    description: VMware vCenter Server Appliance
+    type: appliance
+  - name: vpxd
+    description: Core vCenter management service
+  - name: vpxd_svcs
+    description: vCenter application services
+  - name: vsphere_client
+    description: HTML5 web client
+  - name: sso
+    description: Single Sign-On service
+    ports:
+      - 7444
+  - name: certificate_authority
+    description: VMware Certificate Authority (VMCA) or custom CA
+
+virtual_infrastructure_objects:
+  hierarchy:
+    - Datacenter
+    - Folder
+    - Host Cluster
+    - ESXi Host
+    - Virtual Machine
+    - Resource Pool
+    - Datastore
+    - vSwitch
+    - Distributed Switch
+
+  object_types:
+    - name: Datacenter
+      description: Logical container for infrastructure
+    - name: Folder
+      description: Grouping of hosts, VMs, networks, datastores
+    - name: Host Cluster
+      description: Group of ESXi hosts with HA/DRS
+    - name: ESXi Host
+      description: Physical server running ESXi
+    - name: Virtual Machine
+      description: Guest OS running on ESXi
+    - name: Resource Pool
+      description: Resource allocation hierarchy
+    - name: Datastore
+      description: Storage container for VM files
+    - name: vSwitch
+      description: Virtual switch for VM networking
+    - name: Distributed Switch
+      description: Multi-host virtual switch
+
+vsphere_features:
+  # High Availability
+  - name: HA
+    type: availability
+    components:
+      - name: VM Restart Priority
+        description: HA priority for VM restarts
+      - name: Host Isolation Response
+        description: What HA does when host loses management
+      - name: VM Monitoring
+        description: Automatic restart on heartbeat failure
+      - name: Admission Control
+        description: Resource reservation for HA failover
+
+  # Distributed Resource Scheduler
+  - name: DRS
+    type: resource_management
+    modes:
+      - fully_automated
+      - partially_automated
+      - manual
+
+  # vMotion
+  - name: vMotion
+    type: migration
+    variants:
+      - name: vMotion
+        description: Live migration of running VM
+      - name: Storage vMotion
+        description: Live migration of VM storage
+      - name: Cross-vMotion
+        description: Migration between different host types
+      - name: Enhanced vMotion Compatibility
+        description: CPU compatibility across hosts
+
+storage_technologies:
+  - name: VMFS-6
+    type: vmfs
+    max_size_gb: 65536
+    description: VMware File System v6
+  - name: NFS-3
+    type: nfs
+    max_size_gb: variable
+    description: NFS v3 protocol
+  - name: NFS-41
+    type: nfs
+    max_size_gb: variable
+    description: NFS v4.1 protocol
+  - name: vSAN
+    type: software_defined
+    max_size_gb: 65536
+    description: Software-defined storage
+
+networking_technologies:
+  - name: vSS
+    description: Standard vSwitch per-host virtual switch
+  - name: vDS
+    description: Distributed vSwitch across cluster
+  - name: VLAN
+    description: 802.1Q tagging on vSwitch/VMkernel
+  - name: Teaming
+    description: NIC teaming with load balancing policies
+  - name: Promiscuous Mode
+    description: Network adapter security setting
+  - name: Forged Transmits
+    description: Network adapter security setting
+  - name: MAC Address Changes
+    description: Network adapter security setting
+
+service_ports:
+  - service: vCenter Server
+    port: 443
+    protocol: HTTPS
+    direction: inbound
+  - service: vCenter SSO
+    port: 7444
+    protocol: HTTPS
+    direction: inbound
+  - service: ESXi Host
+    port: 443
+    protocol: HTTPS
+    direction: inbound
+  - service: ESXi HTTP
+    port: 80
+    protocol: HTTP
+    direction: inbound
+  - service: ESXi SSH
+    port: 22
+    protocol: TCP
+    direction: inbound
+  - service: vCenter Database
+    port: 5432
+    protocol: TCP
+    direction: internal
+  - service: vCenter Heartbeat
+    port: 81
+    protocol: TCP
+    direction: intra_cluster
+  - service: vCenter-to-Host
+    port: 902
+    protocol: TCP
+    direction: outbound
+  - service: vMotion
+    port: 8000
+    protocol: TCP
+    direction: intra_cluster
+  - service: NFS
+    port: 2049
+    protocol: TCP/UDP
+    direction: outbound
+
+version: 1.0.0
+last_updated: 2026-07-21

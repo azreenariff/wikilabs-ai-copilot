@@ -1,0 +1,29 @@
+id: windows-engineering-foundations
+name: Windows Engineering Foundations
+version: 1.0.0
+description: >
+  Comprehensive Windows engineering skill pack for Windows Server troubleshooting,
+  service management, Active Directory, PowerShell scripting, and system
+  administration. Covers Windows Server 2016, 2019, 2022.
+
+supported_platforms:
+  - windows-server-2016
+  - windows-server-2019
+  - windows-server-2022
+  - windows-server-2025
+
+skill_pack_type: engineering
+main: ./workflows.yaml
+detection: ./detection_rules.yaml
+commands: ./commands.yaml
+
+categories:
+  - system-administration
+  - active-directory
+  - powershell
+  - networking
+  - storage
+  - security
+  - service-management
+
+last_updated: 2026-07-21

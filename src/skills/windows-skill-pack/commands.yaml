@@ -1,0 +1,439 @@
+id: windows-cli-reference
+name: Windows CLI Reference
+version: 1.0.0
+description: >
+  Reference for Windows CLI tools, PowerShell cmdlets, system administration
+  commands, and diagnostic utilities used in Windows Server engineering
+  troubleshooting.
+
+categories:
+  - id: service-management
+    name: Service Management
+    description: Windows service operations
+    commands:
+      - command: sc query
+        purpose: Query Windows service status
+        risk: low
+        syntax: sc query <service-name>
+        example: sc query W3SVC
+        output:
+          - NAME (service name)
+          - TYPE (service type)
+          - STATE (state: RUNNING, STOPPED, etc.)
+          - WIN32_EXIT_CODE
+          - SERVICE_EXIT_CODE
+          - CHECKPOINT
+          - WAIT_HINT
+      - command: Get-Service
+        purpose: PowerShell service management
+        risk: low
+        syntax: Get-Service -Name <service-name>
+        example: Get-Service -Name W3SVC
+        output:
+          - Status (Running/Stopped/Stopped)
+          - Name
+          - DisplayName
+      - command: sc start
+        purpose: Start a Windows service
+        risk: medium
+        syntax: sc start <service-name>
+        example: sc start W3SVC
+      - command: sc stop
+        purpose: Stop a Windows service
+        risk: medium
+        syntax: sc stop <service-name>
+        example: sc stop W3SVC
+      - command: sc config
+        purpose: Configure a Windows service
+        risk: medium
+        syntax: sc config <service-name> start= <auto|demand|disabled>
+        example: sc config W3SVC start= auto
+        note: Space after = is required
+      - command: net start
+        purpose: Start a service via net command
+        risk: medium
+        syntax: net start <service-name>
+        example: net start W3SVC
+      - command: net stop
+        purpose: Stop a service via net command
+        risk: medium
+        syntax: net stop <service-name>
+        example: net stop W3SVC
+      - command: net services
+        purpose: List all started services
+        risk: low
+        syntax: net start
+        example: net start
+      - command: sc qc
+        purpose: Query configuration of a service
+        risk: low
+        syntax: sc qc <service-name>
+        example: sc qc W3SVC
+        output:
+          - BINARY_PATH_NAME
+          - SERVICE_START_NAME
+          - START_TYPE
+          - ERROR_CONTROL
+
+  - id: event-logging
+    name: Event Logging
+    description: Windows Event Log operations
+    commands:
+      - command: Get-EventLog
+        purpose: Read Windows Event Log entries
+        risk: low
+        syntax: Get-EventLog -LogName <log-name> -EntryType <type>
+        example: Get-EventLog -LogName System -EntryType Error -Newest 20
+        output:
+          - TimeGenerated
+          - EntryType (Error/Warning/Information)
+          - Source
+          - EventID
+          - Message
+      - command: Get-WinEvent
+        purpose: Read modern Event Log entries
+        risk: low
+        syntax: Get-WinEvent -FilterHashtable @{LogName='<log>'; Level=<level>}
+        example: Get-WinEvent -FilterHashtable @{LogName='System'; Level=2}
+      - command: wevtutil
+        purpose: Windows Event Log utility
+        risk: low
+        syntax: wevtutil <operation>
+        example: wevtutil qe System /c:10 /f:text
+      - command: Event Viewer (GUI)
+        purpose: Interactive Event Log browsing
+        risk: low
+        syntax: eventvwr.msc
+        example: eventvwr.msc
+
+  - id: network-management
+    name: Network Management
+    description: Network configuration and diagnostics
+    commands:
+      - command: ipconfig
+        purpose: Display IP configuration
+        risk: low
+        syntax: ipconfig [options]
+        example: ipconfig /all
+        output:
+          - IPv4 Address
+          - Subnet Mask
+          - Default Gateway
+          - DNS Servers
+          - DHCP Enabled
+          - MAC Address
+      - command: ipconfig /flushdns
+        purpose: Clear DNS resolver cache
+        risk: low
+        syntax: ipconfig /flushdns
+        example: ipconfig /flushdns
+      - command: ipconfig /release
+        purpose: Release IP address
+        risk: medium
+        syntax: ipconfig /release
+        example: ipconfig /release
+      - command: ipconfig /renew
+        purpose: Renew IP address
+        risk: medium
+        syntax: ipconfig /renew
+        example: ipconfig /renew
+      - command: Get-NetAdapter
+        purpose: List network adapters
+        risk: low
+        syntax: Get-NetAdapter
+        example: Get-NetAdapter
+        output:
+          - Name
+          - InterfaceDescription
+          - ifIndex
+          - Status
+          - LinkSpeed
+      - command: Get-NetIPAddress
+        purpose: List IP addresses
+        risk: low
+        syntax: Get-NetIPAddress
+        example: Get-NetIPAddress
+        output:
+          - IPAddress
+          - InterfaceIndex
+          - PrefixLength
+          - AddressFamily
+      - command: Test-NetConnection
+        purpose: Test network connectivity
+        risk: low
+        syntax: Test-NetConnection <destination>
+        example: Test-NetConnection 192.168.1.1
+        output:
+          - ComputerName
+          - RemoteAddress
+          - RemotePort
+          - NetworkInterface
+          - TcpTestSucceeded (True/False)
+      - command: nslookup
+        purpose: DNS name resolution test
+        risk: low
+        syntax: nslookup <hostname> [dns-server]
+        example: nslookup example.com 8.8.8.8
+        output:
+          - Server
+          - Address
+          - Name
+          - Address
+      - command: Resolve-DnsName
+        purpose: PowerShell DNS resolution
+        risk: low
+        syntax: Resolve-DnsName <hostname>
+        example: Resolve-DnsName example.com
+        output:
+          - Name
+          - Type
+          - TTL
+          - Section
+          - NameHost
+      - command: tracert
+        purpose: Trace network route
+        risk: low
+        syntax: tracert <destination>
+        example: tracert example.com
+      - command: netsh
+        purpose: Network shell configuration
+        risk: medium
+        syntax: netsh <context> <command>
+        example: netsh int ip reset
+        warning: May reset network configuration
+      - command: Get-NetRoute
+        purpose: List routing table
+        risk: low
+        syntax: Get-NetRoute
+        example: Get-NetRoute
+
+  - id: powershell
+    name: PowerShell
+    description: PowerShell scripting and automation
+    commands:
+      - command: Get-ExecutionPolicy
+        purpose: Check PowerShell execution policy
+        risk: low
+        syntax: Get-ExecutionPolicy [-Scope <scope>]
+        example: Get-ExecutionPolicy -List
+        output:
+          - Scope
+          - ExecutionPolicy
+      - command: Set-ExecutionPolicy
+        purpose: Set PowerShell execution policy
+        risk: medium
+        syntax: Set-ExecutionPolicy <policy> [-Scope <scope>]
+        example: Set-ExecutionPolicy RemoteSigned -Scope LocalMachine
+      - command: $PSVersionTable
+        purpose: Check PowerShell version
+        risk: low
+        syntax: $PSVersionTable
+        example: $PSVersionTable
+        output:
+          - PSVersion
+          - WSManStackVersion
+          - CLRVersion
+          - BuildVersion
+      - command: Get-Command
+        purpose: List available cmdlets
+        risk: low
+        syntax: Get-Command [-Module <module>]
+        example: Get-Command -Module ActiveDirectory
+      - command: Get-Help
+        purpose: Get command help
+        risk: low
+        syntax: Get-Help <command>
+        example: Get-Help Get-Service -Full
+      - command: Get-Module
+        purpose: List loaded modules
+        risk: low
+        syntax: Get-Module [-ListAvailable]
+        example: Get-Module -ListAvailable
+      - command: Import-Module
+        purpose: Import a PowerShell module
+        risk: low
+        syntax: Import-Module <module-name>
+        example: Import-Module ActiveDirectory
+
+  - id: system-information
+    name: System Information
+    description: System configuration and hardware info
+    commands:
+      - command: systeminfo
+        purpose: Comprehensive system information
+        risk: low
+        syntax: systeminfo
+        example: systeminfo
+        output:
+          - Host Name
+          - OS Name
+          - OS Version
+          - System Manufacturer
+          - System Model
+          - Processor(s)
+          - Total Physical Memory
+      - command: Get-CimInstance
+        purpose: Query CIM/WMI classes
+        risk: low
+        syntax: Get-CimInstance -ClassName <class>
+        example: Get-CimInstance -ClassName Win32_OperatingSystem
+      - command: whoami
+        purpose: Display current user identity
+        risk: low
+        syntax: whoami [options]
+        example: whoami /all
+        output:
+          - User name
+          - Group SIDs
+          - Privileges
+      - command: Get-HotFix
+        purpose: List installed updates
+        risk: low
+        syntax: Get-HotFix
+        example: Get-HotFix | Where-Object {$_.InstalledOn -gt (Get-Date).AddDays(-30)}
+
+  - id: disk-storage
+    name: Disk and Storage
+    description: Disk management and storage operations
+    commands:
+      - command: Get-Volume
+        purpose: List volumes and free space
+        risk: low
+        syntax: Get-Volume
+        example: Get-Volume
+        output:
+          - DriveLetter
+          - FileSystemLabel
+          - FileSystemType
+          - SizeRemaining
+          - Size
+      - command: Get-PSDrive
+        purpose: List filesystem drives
+        risk: low
+        syntax: Get-PSDrive -PSProvider FileSystem
+        example: Get-PSDrive -PSProvider FileSystem
+      - command: Get-CimInstance
+        purpose: Query disk information
+        risk: low
+        syntax: Get-CimInstance -ClassName Win32_LogicalDisk
+        example: Get-CimInstance -ClassName Win32_LogicalDisk
+        output:
+          - DeviceID
+          - Size
+          - FreeSpace
+          - FileSystem
+          - VolumeName
+      - command: diskpart
+        purpose: Disk partition utility
+        risk: high
+        syntax: diskpart
+        example: diskpart
+        warning: Can modify disk partitions
+
+  - id: iis-management
+    name: IIS Management
+    description: Internet Information Services operations
+    commands:
+      - command: Get-Service W3SVC
+        purpose: Check IIS service status
+        risk: low
+        syntax: Get-Service W3SVC
+        example: Get-Service W3SVC
+      - command: iisreset
+        purpose: Restart IIS
+        risk: medium
+        syntax: iisreset [options]
+        example: iisreset /noforce
+      - command: Get-WebSite
+        purpose: List IIS sites
+        risk: low
+        syntax: Get-WebSite
+        example: Get-WebSite
+        output:
+          - Name
+          - ID
+          - State
+          - PhysicalPath
+      - command: Restart-WebAppPool
+        purpose: Restart application pool
+        risk: medium
+        syntax: Restart-WebAppPool <pool-name>
+        example: Restart-WebAppPool DefaultAppPool
+
+  - id: active-directory
+    name: Active Directory
+    description: Active Directory operations
+    commands:
+      - command: Get-ADDomain
+        purpose: Get domain information
+        risk: low
+        syntax: Get-ADDomain
+        example: Get-ADDomain
+      - command: Get-ADUser
+        purpose: Query AD users
+        risk: low
+        syntax: Get-ADUser -Identity <user>
+        example: Get-ADUser -Identity jdoe
+      - command: Get-ADComputer
+        purpose: Query AD computers
+        risk: low
+        syntax: Get-ADComputer -Identity <computer>
+        example: Get-ADComputer -Identity SERVER01
+      - command: nltest
+        purpose: Test AD connectivity
+        risk: low
+        syntax: nltest <command>
+        example: nltest /dsgetdc:<domain-name>
+      - command: Repadmin
+        purpose: AD replication diagnostics
+        risk: medium
+        syntax: Repadmin <command>
+        example: Repadmin /showrepl
+
+  - id: windows-update
+    name: Windows Update
+    description: Windows Update operations
+    commands:
+      - command: Get-HotFix
+        purpose: List installed updates
+        risk: low
+        syntax: Get-HotFix
+        example: Get-HotFix
+      - command: Get-WindowsUpdateLog
+        purpose: Get Windows Update log
+        risk: low
+        syntax: Get-WindowsUpdateLog
+        example: Get-WindowsUpdateLog
+      - command: DISM
+        purpose: DISM image repair
+        risk: medium
+        syntax: DISM /Online /Cleanup-Image /RestoreHealth
+        example: DISM /Online /Cleanup-Image /RestoreHealth
+
+  - id: performance-monitoring
+    name: Performance Monitoring
+    description: System performance metrics
+    commands:
+      - command: Get-Counter
+        purpose: Query performance counters
+        risk: low
+        syntax: Get-Counter -ListSet <counter-set>
+        example: Get-Counter -ListSet Processor
+      - command: Get-Process
+        purpose: List running processes
+        risk: low
+        syntax: Get-Process | Sort-Object <field>
+        example: Get-Process | Sort-Object WorkingSet64 -Descending
+      - command: perfmon
+        purpose: Performance Monitor GUI
+        risk: low
+        syntax: perfmon
+        example: perfmon
+      - command: resmon
+        purpose: Resource Monitor GUI
+        risk: low
+        syntax: resmon
+        example: resmon
+
+version: 1.0.0
+last_updated: 2026-07-21

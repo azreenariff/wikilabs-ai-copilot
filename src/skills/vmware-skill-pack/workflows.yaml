@@ -1,0 +1,512 @@
+# VMware vSphere — Workflow Definitions
+# State machine workflows for VMware vSphere troubleshooting
+
+workflows:
+  - id: vmware-vcenter-not-starting
+    name: vCenter Server Not Starting
+    description: >
+      Diagnose and remediate vCenter Server service failures. Covers vpxd,
+      vpxd-svcs, vsphere-client, SSO, and certificate issues.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather initial evidence about the vCenter failure. Check service
+          status, disk space, memory, and logs.
+        initial: true
+        terminal: false
+        commands:
+          - systemctl status vpxd
+          - systemctl status vpxd-svcs
+          - systemctl status vsphere-client
+          - df -h
+          - free -m
+          - journalctl -u vpxd --since "1 hour ago" --no-pager
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze evidence to determine the most likely cause. Check disk
+          space, memory, database connectivity, and certificate validity.
+        initial: false
+        terminal: false
+        commands:
+          - df -h | grep -i data
+          - free -m
+          - journalctl -u vpxd --no-pager | grep -i error
+          - service-control --status
+          - get-pod-info.sh  # if containerized deployment
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause. Options
+          include freeing disk space, restarting services, or renewing certificates.
+        initial: false
+        terminal: false
+        commands:
+          - service-control --stop --all
+          - service-control --start --all
+          - shell: "echo 'Free disk space or expand datastore' "
+          - certificate-manager  # for cert renewal
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify vCenter services are running and accessible.
+        initial: false
+        terminal: true
+        commands:
+          - systemctl status vpxd
+          - systemctl status vsphere-client
+          - curl -k https://localhost  # test web access
+          - Check vSphere Client login
+
+  - id: vmware-host-disconnected
+    name: ESXi Host Disconnected
+    description: >
+      Diagnose and remediate ESXi host disconnection from vCenter Server.
+      Covers network issues, certificate problems, and management service failures.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather initial evidence about host disconnection. Check network
+          connectivity, host services, and vCenter logs.
+        initial: true
+        terminal: false
+        commands:
+          - esxcli network ip interface list
+          - esxcli network ping -d <vcenter-ip>
+          - cat /var/log/vpxa.log 2>/dev/null | tail -20
+          - esxcli system hostname get
+          - esxcli network firewall ruleset list
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze evidence to determine why host lost connection.
+        initial: false
+        terminal: false
+        commands:
+          - esxcli network ping -d <vcenter-ip>
+          - esxcli system syslog config get
+          - esxcli system lockdown mode get
+          - esxcli system vmkernel log list --level error
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - esxcli network ip interface ipv4 set --interface-name vmk0 --ipv4 <ip> --netmask <mask>
+          - esxcli system lockdown mode set --disabled
+          - esxcli network firewall ruleset set --enabled true --ruleset-id vpxClient
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify host is reconnected and VMs are running.
+        initial: false
+        terminal: true
+        commands:
+          - esxcli network ping -d <vcenter-ip>
+          - esxcli system hostname get
+          - esxcli network ip interface list
+
+  - id: vmware-vm-slow
+    name: VM Slow Performance
+    description: >
+      Diagnose and remediate virtual machine performance issues. Covers CPU ready
+      time, memory ballooning/swapping, disk latency, and snapshot overhead.
+    risk: low
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather performance metrics and configuration data.
+        initial: true
+        terminal: false
+        commands:
+          - esxcli vm process list
+          - top -bn1 -o %CPU
+          - cat /proc/meminfo | grep -i swap
+          - iostat -x 1 3
+          - esxcli storage core device list
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze performance metrics to identify bottleneck.
+        initial: false
+        terminal: false
+        commands:
+          - esxtop -b -n 1 | grep -i "CPU READY"
+          - esxtop -b -n 1 | grep -i "SWAP"
+          - esxtop -b -n 1 | grep -i "CONC"
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Delete snapshots via vSphere Client
+          - Increase CPU/RAM allocation
+          - Storage vMotion to different datastore
+          - Update VMtools
+          - Adjust DRS settings
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify performance has improved.
+        initial: false
+        terminal: true
+        commands:
+          - esxtop -b -n 5  # check CPU ready, memory, disk latency
+
+  - id: vmware-datastore-almost-full
+    name: Datastore Almost Full
+    description: >
+      Diagnose and remediate datastore space exhaustion. Covers snapshot cleanup,
+      orphaned files, log rotation, and storage expansion.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather datastore usage information and identify large consumers.
+        initial: true
+        terminal: false
+        commands:
+          - esxcli storage filesystem list
+          - esxcli storage vmfs snapshot list
+          - find /vmfs/volumes -type f -size +1G -exec ls -lh {} \; 2>/dev/null
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze datastore usage to identify space consumption.
+        initial: false
+        terminal: false
+        commands:
+          - esxcli storage filesystem list | sort -k 4
+          - esxcli storage vmfs snapshot list
+          - du -sh /vmfs/volumes/*/ 2>/dev/null
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Free up space through cleanup or expansion.
+        initial: false
+        terminal: false
+        commands:
+          - Delete old snapshots
+          - Clean VM log files
+          - Remove orphaned VM files
+          - Extend VMFS datastore (LUN resize)
+          - Storage vMotion VMs to less-full datastore
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify datastore has sufficient free space.
+        initial: false
+        terminal: true
+        commands:
+          - esxcli storage filesystem list
+          - df -h
+
+  - id: vmware-vm-missing-disk
+    name: Virtual Disk Missing
+    description: >
+      Diagnose and remediate virtual disk removal or corruption. Covers
+      detached disks, missing VMDK files, and snapshot chain issues.
+    risk: high
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather information about the missing disk.
+        initial: true
+        terminal: false
+        commands:
+          - esxcli vm config get --vm-id <vm-id>
+          - find /vmfs/volumes -name "*.vmdk" 2>/dev/null
+          - cat /vmfs/volumes/<datastore>/<vm>/<vm>.vmx
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Determine why the disk is missing.
+        initial: false
+        terminal: false
+        commands:
+          - esxcli vm config get --vm-id <vm-id>
+          - ls -la /vmfs/volumes/<datastore>/<vm>/ 2>/dev/null
+          - cat /vmfs/volumes/<datastore>/<vm>/<vm>.vmx | grep -i disk
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Restore disk access through re-attachment or registration.
+        initial: false
+        terminal: false
+        commands:
+          - esxcli vm config disk add --vm-id <vm-id> --filename "/vmfs/volumes/<datastore>/<vm>/<disk>.vmdk"
+          - Register VM via datastore browser
+          - Consolidate snapshot chain
+          - Restore disk from backup
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify disk is accessible and VM can start.
+        initial: false
+        terminal: true
+        commands:
+          - esxcli vm config get --vm-id <vm-id>
+          - esxcli vm process list
+
+  - id: vmware-cluster-ha-failure
+    name: vSphere HA Failure
+    description: >
+      Diagnose vSphere HA cluster failures. Covers management network issues,
+      HA agent failures, admission control problems, and split-brain scenarios.
+    risk: high
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather HA cluster and host status information.
+        initial: true
+        terminal: false
+        commands:
+          - esxcli system module get --module-name=ha-agent
+          - cat /var/log/vmware/fdm/vmware-fdm.log | tail -50
+          - esxcli network ip interface list
+          - esxcli system settings advanced list --option="/Userdata/HAHeartBeatDatastoreSelection"
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze HA configuration and host status.
+        initial: false
+        terminal: false
+        commands:
+          - esxcli system settings advanced list --option="/Userdata/HAHeartBeatDatastoreSelection"
+          - esxcli network ip interface list
+          - cat /var/log/vmware/fdm/vmware-fdm.log | grep -i error
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Fix management network connectivity
+          - Restart HA agent: service mgmt-vmware restart
+          - Adjust admission control settings
+          - Toggle HA on cluster (disable, then enable)
+          - Manual VM restart if HA won't trigger
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify HA cluster is healthy.
+        initial: false
+        terminal: true
+        commands:
+          - esxcli system module get --module-name=ha-agent
+          - cat /var/log/vmware/fdm/vmware-fdm.log | tail -20
+          - Check vSphere Client HA status
+
+  - id: vmware-vmotion-failed
+    name: vMotion Failure
+    description: >
+      Diagnose and remediate vMotion or Storage vMotion failures. Covers
+      compatibility issues, network problems, and resource constraints.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather vMotion failure information.
+        initial: true
+        terminal: false
+        commands:
+          - esxcli network vmknic list
+          - esxcli system settings advanced list --option="/Network/VMotion/Enabled"
+          - esxcli network firewall ruleset ruleset list
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze vMotion configuration and compatibility.
+        initial: false
+        terminal: false
+        commands:
+          - esxcli network vmknic list
+          - esxcli system settings advanced list --option="/VMotion/Enabled"
+          - Check EVC mode compatibility
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Enable vMotion VMkernel port
+          - Fix EVC compatibility
+          - Adjust resource reservations
+          - Verify storage connectivity
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify vMotion capability is restored.
+        initial: false
+        terminal: true
+        commands:
+          - esxcli network vmknic list
+          - esxcli system settings advanced list --option="/VMotion/Enabled"
+
+  - id: vmware-cluster-drs-issue
+    name: DRS Issue
+    description: >
+      Diagnose DRS configuration or runtime issues. Covers resource balancing,
+      DRS automation levels, and affinity/anti-affinity rules.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather DRS configuration and cluster state.
+        initial: true
+        terminal: false
+        commands:
+          - esxcli system settings advanced list --option="/Drs/EnableDrsVirtualMachine"
+          - Check DRS automation level in vSphere Client
+          - Check resource pool allocation
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze DRS configuration and cluster balance.
+        initial: false
+        terminal: false
+        commands:
+          - Check DRS recommendation history
+          - Review resource pool hierarchy
+          - Check EVC mode compatibility
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Adjust DRS automation level
+          - Modify resource pool allocation
+          - Update VM/VM anti-affinity rules
+          - Enable EVC mode
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify DRS is functioning correctly.
+        initial: false
+        terminal: true
+        commands:
+          - esxcli system settings advanced list --option="/Drs/EnableDrsVirtualMachine"
+          - Check DRS recommendations
+          - Review cluster resource utilization
+
+  - id: vmware-esxi-crash
+    name: ESXi Host Crash (PSOD)
+    description: >
+      Diagnose ESXi host crashes (Purple Screen of Death). Covers kernel panics,
+      driver issues, and hardware failures.
+    risk: high
+    phases:
+      - id: evidence_collection
+        name: Collect Evidence
+        description: >
+          Gather crash dump and system information.
+        initial: true
+        terminal: false
+        commands:
+          - cat /var/log/vmkernel.log | grep -i panic
+          - esxcli system coredump get
+          - esxcli system module get --module-name=net-enp
+          - esxcli hardware platform get
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze crash dump and system state.
+        initial: false
+        terminal: false
+        commands:
+          - cat /var/log/vmkernel.log | grep -i error | tail -50
+          - esxcli system coredump get
+          - esxcli hardware platform get
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Update ESXi/VMkernel modules
+          - Update/rollback drivers
+          - Check hardware health (memory, CPU, disk)
+          - Disable problematic modules
+          - Contact VMware Support
+      - id: verification
+        name: Verify Resolution
+        description: >
+          Verify host stability.
+        initial: false
+        terminal: true
+        commands:
+          - esxcli system uptime get
+          - esxcli system module list
+          - esxcli hardware platform get
+
+  - id: vmware-backup-failure
+    name: VM Backup Failure
+    description: >
+      Diagnose VMware backup or snapshot-related failures. Covers snapshot
+      issues, consolidation problems, and backup integration.
+    risk: medium
+    phases:
+      - id: evidence_collection
+        Name: Collect Evidence
+        description: >
+          Gather backup and snapshot information.
+        initial: true
+        terminal: false
+        commands:
+          - esxcli storage vmfs snapshot list
+          - esxcli vm process list
+          - cat /var/log/vmware/vmfs/vmdk-snapshot.log 2>/dev/null
+      - id: diagnosis
+        name: Root Cause Diagnosis
+        description: >
+          Analyze backup/snapshot state.
+        initial: false
+        terminal: false
+        commands:
+          - esxcli storage vmfs snapshot list
+          - esxcli vm process list
+          - Check VMtools version compatibility
+      - id: remediation
+        name: Apply Remediation
+        description: >
+          Apply the appropriate fix based on diagnosed root cause.
+        initial: false
+        terminal: false
+        commands:
+          - Consolidate snapshots
+          - Delete old snapshots
+          - Update VMtools
+          - Check backup software logs
+          - Verify backup datastore access
+      - id: verification
+        Name: Verify Resolution
+        description: >
+          Verify backup functionality.
+        initial: false
+        terminal: true
+        commands:
+          - esxcli storage vmfs snapshot list
+          - Check backup job status
+          - Verify no snapshot errors
+
+version: 1.0.0
+last_updated: 2026-07-21

@@ -1,0 +1,280 @@
+# VMware vSphere — Context Detection Rules
+# Rules for identifying when to load the VMware vSphere skill pack
+
+rules:
+  - id: vmware-vcenter-not-starting
+    name: vCenter Server Not Starting
+    description: Detects vCenter Server service failures from error reports or monitoring.
+    triggers:
+      - "vcenter.*fail(ed|ure)"
+      - "vpxd.*fail"
+      - "vcsa.*down"
+      - "vsphere.*client.*cannot.*access"
+      - "vcenter.*service.*stopped"
+      - "vpxd-svcs.*failed"
+      - "vpxd.*cannot.*start"
+    context_keywords:
+      - vpxd
+      - vpxd-svcs
+      - vsphere-client
+      - vCenter
+      - VCSA
+      - service-control
+      - sso
+      - saml
+    confidence: 0.92
+    related_workflows:
+      - vmware-vcenter-not-starting
+
+  - id: vmware-host-disconnected
+    name: ESXi Host Disconnected
+    description: Detects ESXi host disconnection from vCenter Server.
+    triggers:
+      - "host.*disconnected"
+      - "esxi.*not.*responding"
+      - "host.*not.*connected"
+      - "cannot.*connect.*host"
+      - "host.*red.*status"
+    context_keywords:
+      - esxi
+      - host
+      - disconnected
+      - management
+      - vmkernel
+      - vpxd
+      - lockdown
+    confidence: 0.88
+    related_workflows:
+      - vmware-host-disconnected
+
+  - id: vmware-vm-slow
+    name: VM Slow Performance
+    description: Detects virtual machine performance issues.
+    triggers:
+      - "vm.*slow"
+      - "virtual.*machine.*slow"
+      - "high.*cpu.*ready"
+      - "memory.*ballooning"
+      - "vm.*swapping"
+      - "vm.*performance.*degraded"
+      - "guest.*OS.*slow"
+    context_keywords:
+      - cpu ready
+      - memory
+      - ballooning
+      - snapshot
+      - vmtools
+      - datastore
+      - latency
+      - iops
+      - vmknic
+    confidence: 0.85
+    related_workflows:
+      - vmware-vm-slow
+
+  - id: vmware-datastore-almost-full
+    name: Datastore Almost Full
+    description: Detects datastore space exhaustion warnings.
+    triggers:
+      - "datastore.*full"
+      - "datastore.*almost.*full"
+      - "no.*space.*left"
+      - "datastore.*capacity"
+      - "disk.*no.*space"
+      - "datastore.*95"
+      - "datastore.*90.*percent"
+    context_keywords:
+      - datastore
+      - vmfs
+      - datastorebrowser
+      - datastore capacity
+      - thin provisioning
+      - snapshot
+      - vmdk
+      - nfs
+      - vsan
+    confidence: 0.90
+    related_workflows:
+      - vmware-datastore-almost-full
+
+  - id: vmware-vm-missing-disk
+    name: Virtual Disk Missing
+    description: Detects virtual disk removal or corruption.
+    triggers:
+      - "disk.*missing"
+      - "vmdk.*not.*found"
+      - "virtual.*disk.*removed"
+      - "cannot.*find.*disk"
+      - "disk.*corrupt"
+    context_keywords:
+      - vmdk
+      - virtual disk
+      - hard disk
+      - vmx
+      - snapshot delta
+      - datastore browser
+      - storage vmotion
+    confidence: 0.83
+    related_workflows:
+      - vmware-vm-missing-disk
+
+  - id: vmware-cluster-ha-failure
+    name: vSphere HA Failure
+    description: Detects vSphere HA cluster failures.
+    triggers:
+      - "ha.*fail"
+      - "high.*availability.*down"
+      - "vmware-fdm.*fail"
+      - "ha.*agent.*stopped"
+      - "admission.*control.*fail"
+      - "split.*brain"
+    context_keywords:
+      - ha
+      - high availability
+      - vmware-fdm
+      - admission control
+      - host isolation
+      - datastore heartbeat
+      - vm restart
+      - cluster
+    confidence: 0.87
+    related_workflows:
+      - vmware-cluster-ha-failure
+
+  - id: vmware-vmotion-failed
+    name: vMotion Failure
+    description: Detects vMotion or Storage vMotion failures.
+    triggers:
+      - "vmotion.*fail"
+      - "storage.*vmotion.*fail"
+      - "cannot.*migrate.*vm"
+      - "vmotion.*error"
+      - "cannot.*live.*migrate"
+    context_keywords:
+      - vmotion
+      - storage vmotion
+      - live migrate
+      - migration
+      - compatibility
+      - evc
+      - network
+      - datastore
+    confidence: 0.86
+    related_workflows:
+      - vmware-vmotion-failed
+
+  - id: vmware-cluster-drs-issue
+    name: DRS Issue
+    description: Detects Distributed Resource Scheduler configuration or runtime issues.
+    triggers:
+      - "drs.*issue"
+      - "resource.*unbalanced"
+      - "dr.*recommendation.*rejected"
+      - "drs.*automation.*level"
+    context_keywords:
+      - drs
+      - resource pool
+      - affinity
+      - anti-affinity
+      - vm-vm rules
+      - host-host rules
+      - evc
+    confidence: 0.80
+    related_workflows:
+      - vmware-cluster-drs-issue
+
+  - id: vmware-esxi-crash
+    name: ESXi Host Crash
+    description: Detects ESXi host crashes (Purple Screen of Death, kernel panic).
+    triggers:
+      - "purple.*screen"
+      - "psod"
+      - "kernel.*panic.*esxi"
+      - "esxi.*crashed"
+      - "esxi.*rebooted"
+      - "esx.*dump"
+    context_keywords:
+      - purple screen
+      - psod
+      - kernel panic
+      - esxi
+      - crash dump
+      - vmkdump
+      - core dump
+      - driver
+      - hardware
+    confidence: 0.84
+    related_workflows:
+      - vmware-esxi-crash
+
+  - id: vmware-cluster-drs-recommendation
+    name: DRS Recommendation Context
+    description: Detects when user is reviewing DRS recommendations or cluster resource planning.
+    triggers:
+      - "dr.*recommend"
+      - "resource.*recommendation"
+      - "cluster.*resource.*plan"
+      - "dr.*recommendation"
+    context_keywords:
+      - drs
+      - recommendation
+      - resource pool
+      - cluster
+      - resource allocation
+      - evc
+      - vm-vm rules
+    confidence: 0.60
+    related_workflows:
+      - vmware-cluster-drs-issue
+
+  - id: vmware-vsphere-context
+    name: VMware vSphere Context
+    description: General VMware vSphere context detection.
+    triggers:
+      - "vSphere"
+      - "vcenter"
+      - "vcsa"
+      - "esxi"
+      - "vmware.*cluster"
+      - "vmware.*datastore"
+      - "vmware.*host"
+      - "vmware.*vm"
+    context_keywords:
+      - vSphere
+      - vCenter
+      - ESXi
+      - VM
+      - datastore
+      - vSwitch
+      - DRS
+      - HA
+      - vMotion
+    confidence: 0.70
+    related_workflows:
+      - vmware-general-diagnosis
+
+  - id: vmware-backup-failure
+    name: VM Backup Failure
+    description: Detects VMware backup or snapshot-related failures.
+    triggers:
+      - "backup.*fail"
+      - "snapshot.*fail"
+      - "backup.*vmware"
+      - "veeam.*fail"
+      - "commvault.*fail"
+      - "backup.*vm.*error"
+    context_keywords:
+      - backup
+      - snapshot
+      - consolidation
+      - veeam
+      - commvault
+      - backup job
+      - restore
+      - vmware tools
+    confidence: 0.82
+    related_workflows:
+      - vmware-backup-failure
+
+version: 1.0.0
+last_updated: 2026-07-21

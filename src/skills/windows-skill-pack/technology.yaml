@@ -1,0 +1,165 @@
+# Windows Engineering Technology Definitions
+
+# Core platforms and infrastructure components
+
+supported_versions:
+  - windows-server:
+      versions:
+        - "2016"
+        - "2019"
+        - "2022"
+        - "2025"
+      type: os
+      role: server-operating-system
+
+  - active-directory:
+      versions:
+        - "2016"
+        - "2019"
+        - "2022"
+      type: directory-service
+      role: identity-and-access
+
+  - iis:
+      versions:
+        - "10.0"
+      type: web-server
+      role: web-and-app-services
+
+  - dns-server:
+      versions:
+        - "10.0"
+      type: dns-server
+      role: name-resolution
+
+  - dhcp-server:
+      versions:
+        - "10.0"
+      type: dhcp-server
+      role: network-configuration
+
+  - hyper-v:
+      versions:
+        - "2016"
+        - "2019"
+        - "2022"
+      type: hypervisor
+      role: virtualization
+
+  - file-server:
+      versions:
+        - "10.0"
+      type: file-sharing
+      role: data-access
+
+components:
+  - service-control:
+      name: Services
+      description: Windows Service Control Manager (SCM)
+      management: sc.exe, Get-Service, services.msc
+      critical: true
+
+  - event-log:
+      name: Event Viewer
+      description: Windows Event Logs (System, Application, Security, etc.)
+      management: Get-EventLog, Get-WinEvent, eventvwr.msc
+      critical: true
+
+  - registry:
+      name: Registry
+      description: Windows Registry for system configuration
+      management: reg.exe, regedit.exe, PowerShell Registry provider
+      critical: true
+
+  - powershell:
+      name: PowerShell
+      description: Windows scripting and automation engine
+      management: PowerShell console, PowerShell ISE, VS Code
+      critical: true
+
+  - task-scheduler:
+      name: Task Scheduler
+      description: Automated task scheduling
+      management: schtasks.exe, Get-ScheduledTask, taskschd.msc
+      critical: false
+
+  - windows-update:
+      name: Windows Update
+      description: Patch and update management
+      management: wusa.exe, Get-HotFix, Windows Update Settings
+      critical: true
+
+  - netsh:
+      name: Network Shell
+      description: Network configuration CLI
+      management: netsh, Get-NetAdapter, Get-NetIPAddress
+      critical: true
+
+  - ipconfig:
+      name: IP Configuration
+      description: IP address and DNS configuration
+      management: ipconfig, Get-NetIPConfiguration
+      critical: true
+
+  - nslookup:
+      name: DNS Lookup
+      description: DNS name resolution testing
+      management: nslookup, Resolve-DnsName, Test-DnsServer
+      critical: true
+
+  - ping:
+      name: ICMP Test
+      description: Network connectivity testing
+      management: ping, Test-NetConnection
+      critical: true
+
+  - tracert:
+      name: Trace Route
+      description: Network path tracing
+      management: tracert, Test-Connection
+      critical: true
+
+  - performance-monitor:
+      name: Performance Monitor
+      description: System performance and resource monitoring
+      management: perfmon, Get-Counter, Performance Monitor GUI
+      critical: true
+
+  - resource-monitor:
+      name: Resource Monitor
+      description: Real-time resource usage monitoring
+      management: resmon, Task Manager
+      critical: true
+
+  - sfc:
+      name: System File Checker
+      description: System file integrity verification
+      management: sfc /scannow
+      critical: true
+
+  - dism:
+      name: Deployment Image Servicing
+      description: Windows image repair and servicing
+      management: DISM /Online /Cleanup-Image /RestoreHealth
+      critical: true
+
+  - systeminfo:
+      name: System Information
+      description: Comprehensive system configuration report
+      management: systeminfo
+      critical: false
+
+  - whoami:
+      name: User Identity
+      description: Current user and group information
+      management: whoami, whoami /all
+      critical: false
+
+  - net:
+      name: Network Commands
+      description: Network management commands
+      management: net start, net stop, net user, net localgroup
+      critical: true
+
+version: 1.0.0
+last_updated: 2026-07-21

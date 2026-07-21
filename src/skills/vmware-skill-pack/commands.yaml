@@ -1,0 +1,321 @@
+id: vmware-vsphere-cli-reference
+name: VMware vSphere CLI Reference
+version: 1.0.0
+description: >
+  Reference for VMware vSphere CLI tools, esxcli commands, PowerCLI cmdlets,
+  and VCSA shell commands used in engineering troubleshooting.
+
+categories:
+  - id: esxcli-system
+    name: ESXi System Management
+    description: Host system operations
+    commands:
+      - command: esxcli system hostname get
+        purpose: Get ESXi host hostname and domain
+        risk: low
+        syntax: esxcli system hostname get
+        example: esxcli system hostname get
+        output:
+          - hostname
+          - domain
+          - fqdn
+      - command: esxcli system syslog config get
+        purpose: Get ESXi syslog configuration
+        risk: low
+        syntax: esxcli system syslog config get
+        example: esxcli system syslog config get
+        output:
+          - logdir
+          - locallogs
+          - firewall
+      - command: esxcli system uptime get
+        purpose: Get ESXi host uptime
+        risk: low
+        syntax: esxcli system uptime get
+        example: esxcli system uptime get
+        output:
+          - days
+          - hours
+          - minutes
+          - seconds
+      - command: esxcli system shutdown abort
+        purpose: Abort an pending ESXi shutdown
+        risk: medium
+        syntax: esxcli system shutdown abort
+        example: esxcli system shutdown abort
+        note: Requires root privileges
+      - command: esxcli system module list
+        purpose: List loaded ESXi kernel modules
+        risk: low
+        syntax: esxcli system module list
+        example: esxcli system module list | grep -i vmx
+      - command: esxcli hardware platform get
+        purpose: Get ESXi host hardware platform info
+        risk: low
+        syntax: esxcli hardware platform get
+        example: esxcli hardware platform get
+        output:
+          - vendor
+          - product
+          - serial_number
+      - command: esxcli system coredump get
+        purpose: Get ESXi coredump configuration
+        risk: low
+        syntax: esxcli system coredump get
+        example: esxcli system coredump get
+
+  - id: esxcli-network
+    name: ESXi Network Management
+    description: Network configuration and diagnostics
+    commands:
+      - command: esxcli network ip interface list
+        purpose: List all VMkernel and physical network interfaces
+        risk: low
+        syntax: esxcli network ip interface list
+        example: esxcli network ip interface list
+        output:
+          - name
+          - type
+          - mac
+          - mtu
+          - ipv4
+          - ipv6
+          - gateway
+      - command: esxcli network ip interface ipv4 get
+        purpose: Get IPv4 configuration for a specific interface
+        risk: low
+        syntax: esxcli network ip interface ipv4 get --interface-name <name>
+        example: esxcli network ip interface ipv4 get --interface-name vmk0
+      - command: esxcli network ip interface ipv4 set
+        purpose: Set IPv4 configuration for a VMkernel interface
+        risk: medium
+        syntax: esxcli network ip interface ipv4 set --interface-name <name> --ipv4 <ip> --netmask <mask> --type <static|dhcp>
+        example: esxcli network ip interface ipv4 set --interface-name vmk0 --ipv4 192.168.1.100 --netmask 255.255.255.0 --type static
+        warning: Modifies network connectivity
+      - command: esxcli network ip route list
+        purpose: List ESXi routing table
+        risk: low
+        syntax: esxcli network ip route list
+        example: esxcli network ip route list
+        output:
+          - network
+          - gateway
+          - device
+      - command: esxcli network vmknic list
+        purpose: List VMkernel NICs with attributes
+        risk: low
+        syntax: esxcli network vmknic list
+        example: esxcli network vmknic list
+        output:
+          - port-group
+          - vmnic
+          - vmknic
+          - ipv4
+      - command: esxcli network ping -d <destination>
+        purpose: Test network connectivity from ESXi host
+        risk: low
+        syntax: esxcli network ping -d <destination>
+        example: esxcli network ping -d 192.168.1.1
+        output: success/failure with packet statistics
+
+  - id: esxcli-storage
+    name: ESXi Storage Management
+    description: Storage devices, file systems, and LUNs
+    commands:
+      - command: esxcli storage filesystem list
+        purpose: List all VMFS datastores and filesystems
+        risk: low
+        syntax: esxcli storage filesystem list
+        example: esxcli storage filesystem list
+        output:
+          - mount-point
+          - volume-name
+          - uuid
+          - type
+          - capacity
+          - free-space
+      - command: esxcli storage device list
+        purpose: List all storage devices attached to ESXi
+        risk: low
+        syntax: esxcli storage device list
+        example: esxcli storage device list
+        output:
+          - device
+          - status
+          - vendor
+          - model
+          - size
+      - command: esxcli storage core device list
+        purpose: List storage devices with detailed info
+        risk: low
+        syntax: esxcli storage core device list
+        example: esxcli storage core device list
+      - command: esxcli storage vmfs snapshot list
+        purpose: List all VMFS snapshots on the host
+        risk: low
+        syntax: esxcli storage vmfs snapshot list
+        example: esxcli storage vmfs snapshot list
+      - command: esxcli storage nmp device list
+        purpose: List storage devices with path and policy info
+        risk: low
+        syntax: esxcli storage nmp device list
+        example: esxcli storage nmp device list
+        output:
+          - device
+          - policy
+          - state
+          - path
+          - plugin
+
+  - id: esxcli-vm
+    name: ESXi VM Management
+    description: Virtual machine operations on ESXi host
+    commands:
+      - command: esxcli vm process list
+        purpose: List all running VMs on the host
+        risk: low
+        syntax: esxcli vm process list
+        example: esxcli vm process list
+        output:
+          - world-id
+          - vm-id
+          - name
+          - uuid
+          - display-name
+      - command: esxcli vm process kill
+        purpose: Forcefully kill a VM process
+        risk: high
+        syntax: esxcli vm process kill --type <soft|hard|force> --world-id <id>
+        example: esxcli vm process kill --type hard --world-id 123456
+        warning: May cause data loss or require power-on of VM
+      - command: esxcli vm config get
+        purpose: Get VM configuration details
+        risk: low
+        syntax: esxcli vm config get --vm-id <id>
+        example: esxcli vm config get --vm-id <vm-id>
+      - command: esxcli vm config disk add
+        purpose: Add a disk to a VM
+        risk: high
+        syntax: esxcli vm config disk add --vm-id <id> --filename "<datastore>/<path>/<disk>.vmdk"
+        example: esxcli vm config disk add --vm-id <vm-id> --filename "/vmfs/volumes/datastore1/vm1/disk.vmdk"
+        warning: Modifies VM configuration
+
+  - id: esxcli-cluster
+    name: ESXi Cluster Management
+    description: Cluster, HA, and DRS operations
+    commands:
+      - command: esxcli system settings advanced list
+        purpose: List advanced ESXi settings
+        risk: medium
+        syntax: esxcli system settings advanced list --option <option-path>
+        example: esxcli system settings advanced list --option="/Userdata/HAHeartBeatDatastoreSelection"
+        warning: Incorrect changes may break cluster functionality
+      - command: esxcli system module get
+        purpose: Get status of a specific ESXi module
+        risk: low
+        syntax: esxcli system module get --module-name <module>
+        example: esxcli system module get --module-name=ha-agent
+      - command: esxcli system settings advanced set
+        purpose: Set an advanced ESXi setting
+        risk: high
+        syntax: esxcli system settings advanced set --option <option> --int-value <value>
+        example: esxcli system settings advanced set --option="/Userdata/HAHeartBeatDatastoreSelection" --int-value 1
+        warning: May affect cluster stability
+
+  - id: vcsa-shell
+    name: VCSA Shell Commands
+    description: vCenter Server Appliance shell operations
+    commands:
+      - command: service-control --status
+        purpose: List all vCenter services and their status
+        risk: low
+        syntax: service-control --status
+        example: service-control --status
+        output:
+          - service-name
+          - state (running/stopped/failed)
+      - command: service-control --stop --all
+        purpose: Stop all vCenter services
+        risk: medium
+        syntax: service-control --stop --all
+        example: service-control --stop --all
+        warning: Will make vSphere Client unavailable
+      - command: service-control --start --all
+        purpose: Start all vCenter services
+        risk: medium
+        syntax: service-control --start --all
+        example: service-control --start --all
+      - command: service-control --restart <service>
+        purpose: Restart a specific vCenter service
+        risk: medium
+        syntax: service-control --restart <service>
+        example: service-control --restart vpxd
+      - command: vcsa-shell
+        purpose: Access the VCSA shell
+        risk: low
+        syntax: shell
+        example: shell
+        note: Enable via VCSA admin UI or console first
+      - command: vmware-service-control --status
+        purpose: Alternative service status check (older VCSA)
+        risk: low
+        syntax: vmware-service-control --status
+        example: vmware-service-control --status
+
+  - id: powercli
+    name: PowerCLI Cmdlets
+    description: VMware PowerCLI PowerShell cmdlets for automation
+    commands:
+      - command: Connect-VIServer
+        purpose: Connect to vCenter Server or ESXi host
+        risk: low
+        syntax: Connect-VIServer -Server <vcenter-host> -User <user> -Password <pass>
+        example: Connect-VIServer -Server vcenter.example.com -User administrator@vsphere.local -Password Password123
+      - command: Get-VM
+        purpose: List all VMs in the inventory
+        risk: low
+        syntax: Get-VM [-Name <name>] [-Datastore <datastore>]
+        example: Get-VM | Where-Object { $_.PowerState -eq 'PoweredOn' }
+      - command: Get-VMHost
+        purpose: List all ESXi hosts in the inventory
+        risk: low
+        syntax: Get-VMHost
+        example: Get-VMHost | Select Name, ConnectionState, PowerState
+      - command: Get-Datastore
+        purpose: List all datastores
+        risk: low
+        syntax: Get-Datastore
+        example: Get-Datastore | Select Name, FreeSpaceGB, CapacityGB
+      - command: Get-Cluster
+        purpose: List all clusters
+        risk: low
+        syntax: Get-Cluster
+        example: Get-Cluster | Select Name, HAEnabled, DRSMode
+      - command: Start-VM
+        purpose: Start (power on) a VM
+        risk: medium
+        syntax: Start-VM -VM <vm>
+        example: Start-VM -VM "webserver01"
+      - command: Stop-VM
+        purpose: Stop (power off) a VM
+        risk: medium
+        syntax: Stop-VM -VM <vm> [-Confirm:$false]
+        example: Stop-VM -VM "webserver01" -Confirm:$false
+      - command: Move-VM
+        purpose: vMotion a VM to another host or cluster
+        risk: high
+        syntax: Move-VM -VM <vm> -Destination <host/cluster>
+        example: Move-VM -VM "webserver01" -Destination "host02.example.com"
+      - command: New-VM
+        purpose: Create a new VM
+        risk: medium
+        syntax: New-VM -Name <name> -Datastore <datastore> -VMHost <host> -DiskGB <size>
+        example: New-VM -Name "newserver" -Datastore "ds01" -VMHost "host01" -DiskGB 50
+      - command: Get-VMHostPatch
+        purpose: Check ESXi host patches
+        risk: low
+        syntax: Get-VMHostPatch -VMHost <host>
+        example: Get-VMHostPatch -VMHost "host01.example.com"
+
+version: 1.0.0
+last_updated: 2026-07-21

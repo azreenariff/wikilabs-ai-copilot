@@ -1,0 +1,71 @@
+id: linux-engineering-skill-pack
+name: Linux Engineering
+version: 1.0.0
+description: >
+  Comprehensive Linux engineering skill for system administration,
+  troubleshooting, performance tuning, security hardening, and service management.
+  Covers RHEL-family, Debian-family, and Alpine Linux distributions.
+author: Wiki Labs Team
+technology_domain: Linux
+vendor: Wiki Labs
+category: Engineering
+dependencies:
+  - id: linux-engineering-foundation
+    version: 1.0.0
+    type: foundation
+  - id: networking-engineering-foundation
+    version: 1.0.0
+    type: foundation
+  - id: storage-engineering-foundation
+    version: 1.0.0
+    type: foundation
+  - id: security-engineering-foundation
+    version: 1.0.0
+    type: foundation
+enabled: true
+schema_version: 1.0
+tags:
+  - linux
+  - unix
+  - system-administration
+  - systemd
+  - bash
+  - performance
+  - security
+  - troubleshooting
+keywords:
+  - systemctl
+  - systemd
+  - journalctl
+  - ssh
+  - firewall
+  - lvm
+  - mount
+  - cron
+  - package-manager
+  - networking
+  - performance
+  - security
+icon: 🐧
+supported_environments:
+  - rhel-8
+  - rhel-9
+  - rocky-8
+  - rocky-9
+  - alma-8
+  - alma-9
+  - centos-stream-8
+  - centos-stream-9
+  - ubuntu-20.04
+  - ubuntu-22.04
+  - ubuntu-24.04
+  - debian-11
+  - debian-12
+  - alpine-3.18
+  - alpine-3.19
+  - amazon-linux-2
+  - amazon-linux-2023
+  - sles-15
+  - oracle-linux-8
+  - oracle-linux-9
+documentation_url: https://docs.wikilabs.ai/skills/linux-skill-pack

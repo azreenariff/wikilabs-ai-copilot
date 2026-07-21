@@ -1,0 +1,256 @@
+# Linux Engineering Skill Pack - Commands Reference
+# Common Linux commands with purpose, risk classification, and examples.
+
+commands:
+  - name: systemctl
+    description: Systemd service manager — start, stop, enable, disable, and monitor services.
+    syntax: systemctl [ACTION] [SERVICE]
+    purpose: Manage systemd services
+    risk: low
+    examples:
+      - "systemctl status nginx"
+      - "systemctl restart nginx"
+      - "systemctl enable nginx"
+      - "systemctl daemon-reload"
+    notes: "Requires root for most operations"
+
+  - name: journalctl
+    description: Query and display systemd journal logs.
+    syntax: journalctl [OPTIONS]
+    purpose: View and filter system and service logs
+    risk: low
+    examples:
+      - "journalctl -u nginx --since '1 hour ago'"
+      - "journalctl --no-pager | tail -50"
+      - "journalctl -b -1 --no-pager | tail -20"
+      - "journalctl --disk-usage"
+
+  - name: ps
+    description: Report process status and information.
+    syntax: ps [OPTIONS]
+    purpose: List running processes and their resource usage
+    risk: low
+    examples:
+      - "ps aux"
+      - "ps aux --sort=-%cpu | head -10"
+      - "ps -ef | grep nginx"
+      - "ps -p <PID> -o pid,ppid,cmd,%cpu,%mem"
+
+  - name: top
+    description: Display real-time process and system resource usage.
+    syntax: top [OPTIONS]
+    purpose: Monitor system resources and running processes
+    risk: low
+    examples:
+      - "top -bn1 | head -20"
+      - "top"
+      - "top -u <user>"
+    notes: "Press q to quit interactive mode"
+
+  - name: free
+    description: Display memory and swap usage information.
+    syntax: free [OPTIONS]
+    purpose: Check memory utilization
+    risk: low
+    examples:
+      - "free -m"
+      - "free -h"
+      - "cat /proc/meminfo"
+
+  - name: df
+    description: Report filesystem disk space usage.
+    syntax: df [OPTIONS]
+    purpose: Check disk space usage on mounted filesystems
+    risk: low
+    examples:
+      - "df -h"
+      - "df -i"
+      - "df -h /"
+
+  - name: du
+    description: Estimate file space usage.
+    syntax: du [OPTIONS] [PATH]
+    purpose: Check directory and file sizes
+    risk: low
+    examples:
+      - "du -sh /* 2>/dev/null | sort -rh | head -10"
+      - "du -sh /var/log/*"
+      - "du -sh /var/log/nginx/"
+
+  - name: iostat
+    description: Report CPU and I/O statistics for devices and partitions.
+    syntax: iostat [OPTIONS]
+    purpose: Monitor disk I/O performance
+    risk: low
+    examples:
+      - "iostat -x 1 3"
+      - "iostat"
+      - "iostat -c 1 5"
+
+  - name: vmstat
+    description: Report virtual memory statistics.
+    syntax: vmstat [OPTIONS] [DELAY] [COUNT]
+    purpose: Monitor system activity including CPU, memory, and I/O
+    risk: low
+    examples:
+      - "vmstat 1 5"
+      - "vmstat"
+      - "vmstat 2 10"
+
+  - name: ip
+    description: Network interface configuration and routing.
+    syntax: ip [SUBCOMMAND] [ARGS]
+    purpose: Configure and display network interfaces, routes, and addresses
+    risk: low
+    examples:
+      - "ip addr"
+      - "ip route"
+      - "ip link set eth0 up"
+      - "ip addr add 192.168.1.100/24 dev eth0"
+
+  - name: ss
+    description: Socket statistics — display network connections.
+    syntax: ss [OPTIONS]
+    purpose: List network connections, routing tables, and interface statistics
+    risk: low
+    examples:
+      - "ss -tlnp"
+      - "ss -anp | grep :80"
+      - "ss -s"
+
+  - name: ping
+    description: Send ICMP echo requests to test connectivity.
+    syntax: ping [OPTIONS] [HOST]
+    purpose: Test network connectivity to a remote host
+    risk: low
+    examples:
+      - "ping -c 3 8.8.8.8"
+      - "ping -c 3 google.com"
+
+  - name: nslookup
+    description: Query DNS to obtain domain name or IP address mapping.
+    syntax: nslookup [OPTIONS] [HOST] [SERVER]
+    purpose: Diagnose DNS resolution issues
+    risk: low
+    examples:
+      - "nslookup google.com"
+      - "nslookup google.com 8.8.8.8"
+
+  - name: cron / crontab
+    description: Schedule recurring tasks using cron jobs.
+    syntax: crontab [OPTIONS]
+    purpose: Manage scheduled tasks
+    risk: medium
+    examples:
+      - "crontab -l"
+      - "crontab -e"
+      - "echo '0 2 * * * /usr/bin/backup.sh' | crontab -"
+
+  - name: find
+    description: Search for files and directories matching criteria.
+    syntax: find [PATH] [OPTIONS]
+    purpose: Locate files and directories by name, size, modification time, etc.
+    risk: low
+    examples:
+      - "find / -xdev -type f -size +100M 2>/dev/null"
+      - "find /var/log -name '*.log' -size +50M"
+      - "find /tmp -type f -mtime +7 -delete"
+
+  - name: kill / killall
+    description: Send signals to processes.
+    syntax: kill [SIGNAL] [PID]
+    purpose: Stop or signal running processes
+    risk: high
+    examples:
+      - "kill -15 <pid>"
+      - "kill -9 <pid>"
+      - "killall nginx"
+
+  - name: strace
+    description: Trace system calls and signals.
+    syntax: strace [OPTIONS] [COMMAND]
+    purpose: Diagnose system-level issues by tracing system calls
+    risk: low
+    examples:
+      - "strace -p <pid>"
+      - "strace -p <pid> -c"
+      - "strace -f -e trace=network command"
+
+  - name: lsof
+    description: List open files and the processes using them.
+    syntax: lsof [OPTIONS]
+    purpose: Identify processes using specific files or ports
+    risk: low
+    examples:
+      - "lsof -i :80"
+      - "lsof -p <pid>"
+      - "lsof /var/log/syslog"
+
+  - name: uname
+    description: Print system information.
+    syntax: uname [OPTIONS]
+    purpose: Display kernel name, version, hostname, and architecture
+    risk: low
+    examples:
+      - "uname -a"
+      - "uname -r"
+      - "uname -m"
+
+  - name: hostnamectl
+    description: Control and query system hostname settings.
+    syntax: hostnamectl [OPTIONS]
+    purpose: View or change the system hostname
+    risk: low
+    examples:
+      - "hostnamectl"
+      - "hostnamectl set-hostname server01"
+
+  - name: sysctl
+    description: Configure kernel parameters at runtime.
+    syntax: sysctl [OPTIONS] [PARAMETER=VALUE]
+    purpose: Tune kernel parameters
+    risk: high
+    examples:
+      - "sysctl vm.swappiness=10"
+      - "sysctl -a | grep net.ipv4"
+      - "sysctl -p"
+
+  - name: mount
+    description: Mount filesystems.
+    syntax: mount [OPTIONS] [DEVICE] [MOUNTPOINT]
+    purpose: Mount or unmount filesystems
+    risk: medium
+    examples:
+      - "mount -a"
+      - "mount /dev/sdb1 /mnt/data"
+      - "umount /mnt/data"
+
+  - name: lsblk
+    description: List block devices.
+    syntax: lsblk [OPTIONS]
+    purpose: Display information about block devices (disks, partitions)
+    risk: low
+    examples:
+      - "lsblk"
+      - "lsblk -f"
+      - "lsblk -o NAME,SIZE,TYPE,MOUNTPOINT"
+
+  - name: dmesg
+    description: Display kernel ring buffer messages.
+    syntax: dmesg [OPTIONS]
+    purpose: View kernel messages, hardware errors, and boot diagnostics
+    risk: low
+    examples:
+      - "dmesg | tail -50"
+      - "dmesg -T | grep -i error"
+      - "dmesg | grep -i 'out of memory'"
+
+  - name: ls -la
+    description: List all files including hidden files with permissions.
+    syntax: ls -la [PATH]
+    purpose: View file permissions, ownership, and sizes
+    risk: low
+    examples:
+      - "ls -la /var/log/nginx/"
+      - "ls -la ~/.ssh/"
+      - "ls -la /etc/ssh/"

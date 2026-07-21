@@ -1,0 +1,44 @@
+id: vmware-vsphere-engineering-skill-pack
+name: VMware vSphere Engineering
+version: 1.0.0
+description: >
+  Comprehensive VMware vSphere engineering skill for ESXi host management,
+  vCenter Server administration, virtual machine troubleshooting, cluster
+  operations, storage, and networking. Covers vSphere 7.0 and 8.0.
+author: Wiki Labs Team
+technology_domain: VMware vSphere
+vendor: Wiki Labs
+category: Engineering
+dependencies:
+  - id: linux-engineering-foundation
+    version: 1.0.0
+    type: foundation
+  - id: networking-engineering-foundation
+    version: 1.0.0
+    type: foundation
+  - id: storage-engineering-foundation
+    version: 1.0.0
+    type: foundation
+enabled: true
+schema_version: 1.0
+tags:
+  - vmware
+  - vsphere
+  - esxi
+  - vcenter
+  - virtualization
+  - vmware-tools
+  - cluster
+  - ha
+  - drs
+keywords:
+  - vSphere Client
+  - vCenter
+  - ESXi
+  - vMotion
+  - DRS
+  - HA
+  - datastore
+  - vSwitch
+  - VMkernel
+  - VCSA
