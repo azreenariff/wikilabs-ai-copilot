@@ -1,625 +1,351 @@
 # Support Guide — Wiki Labs AI Copilot v1.0.0
 
-> How to get help, submit bug reports, collect diagnostic information, and navigate support escalation procedures.
+> How to get help, support channels, and escalation procedures.
 
 ## Table of Contents
 
-1. [Support Overview](#support-overview)
+1. [Getting Help](#getting-help)
 2. [Support Channels](#support-channels)
-3. [Getting Help](#getting-help)
-4. [Self-Help Resources](#self-help-resources)
-5. [Bug Reporting](#bug-reporting)
-6. [Diagnostic Information Collection](#diagnostic-information-collection)
-7. [Creating a Support Ticket](#creating-a-support-ticket)
+3. [Self-Help Resources](#self-help-resources)
+4. [When to Contact Support](#when-to-contact-support)
+5. [Submitting a Support Request](#submitting-a-support-request)
+6. [What to Include in Your Request](#what-to-include-in-your-request)
+7. [Support Response Times](#support-response-times)
 8. [Escalation Procedures](#escalation-procedures)
-9. [Incident Severity Levels](#incident-severity-levels)
-10. [Response Time Expectations](#response-time-expectations)
-11. [Follow-Up Process](#follow-up-process)
-12. [Known Limitations](#known-limitations)
-13. [Security Incident Reporting](#security-incident-reporting)
-14. [Feature Requests](#feature-requests)
-15. [What Information to Provide](#what-information-to-provide)
-
----
-
-## Support Overview
-
-Wiki Labs AI Copilot provides multiple channels for support. This guide walks you through:
-
-- Self-help resources (documentation, FAQs, known issues)
-- How to collect diagnostic information for bug reports
-- The bug reporting process
-- Escalation procedures for critical issues
-- Security incident reporting
-
-**Before reaching out to support**, check the self-help resources below — most common issues are documented.
-
----
-
-## Support Channels
-
-### Documentation
-
-| Resource | Description |
-|----------|-------------|
-| [Quick Start](QUICK_START.md) | 5-minute getting started guide |
-| [User Guide](user-guide/USER_GUIDE.md) | Complete end-user documentation |
-| [Installation Guide](INSTALLATION_GUIDE.md) | Installation and upgrade instructions |
-| [Architecture Guide](ARCHITECTURE_GUIDE.md) | Technical architecture overview |
-| [Security Guide](SECURITY_GUIDE.md) | Security model, encryption, threat model |
-| [Developer Guide](DEVELOPER_GUIDE.md) | Development and contribution guide |
-| [Operations Guide](OPERATIONS_GUIDE.md) | Monitoring, logging, backup/restore |
-| [Skill Pack Dev Guide](SKILL_PACK_DEVELOPMENT_GUIDE.md) | Creating custom skill packs |
-| [Troubleshooting](TROUBLESHOOTING.md) | Common issues and fixes |
-| [Known Limitations](KNOWN_LIMITATIONS.md) | Documented limitations |
-| [Release Notes](RELEASE_NOTES.md) | Version changelog |
-| [FAQ](FAQ.md) | 35+ common questions |
-
-### Community
-
-| Channel | Link |
-|---------|------|
-| GitHub Issues | [github.com/wikilabs/ai-copilot/issues](https://github.com/wikilabs/ai-copilot/issues) |
-| GitHub Discussions | [github.com/wikilabs/ai-copilot/discussions](https://github.com/wikilabs/ai-copilot/discussions) |
-| Discord | Join the Wiki Labs Discord for real-time support |
-| Wiki Labs Blog | [blog.wikilabs.com](https://blog.wikilabs.com) for announcements |
-
-### Enterprise Support
-
-Enterprise customers have access to dedicated support through their contractual SLA. Contact your Wiki Labs account manager for the enterprise support portal URL.
-
----
+9. [Enterprise Support](#enterprise-support)
+10. [Community Resources](#community-resources)
 
 ## Getting Help
 
-### Step 1: Check the Documentation
+Wiki Labs AI Copilot provides multiple support channels to help you get the most out of the application.
 
-Before creating a support ticket, check these resources:
+## Support Channels
 
-1. **Is this a known issue?** → Read [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)
-2. **Is this a setup/configuration question?** → Read [USER_GUIDE.md](user-guide/USER_GUIDE.md) and [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)
-3. **Is this a common problem?** → Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) and [FAQ.md](FAQ.md)
-4. **Is this a security question?** → Read [SECURITY_GUIDE.md](SECURITY_GUIDE.md)
-5. **Is this about skill packs?** → Read [SKILL_PACK_DEVELOPMENT_GUIDE.md](SKILL_PACK_DEVELOPMENT_GUIDE.md)
+### Documentation (First Resource)
 
-### Step 2: Search Existing Issues
+Before contacting support, review the comprehensive documentation:
 
-Search [GitHub Issues](https://github.com/wikilabs/ai-copilot/issues) for your problem. Your issue may already be reported and possibly fixed in a newer version.
+| Document | Description |
+|----------|-------------|
+| [Quick Start Guide](QUICK_START.md) | 5-minute getting started guide |
+| [User Guide](user-guide/USER_GUIDE.md) | Complete user manual with feature documentation |
+| [Installation Guide](INSTALLATION_GUIDE.md) | Installation, upgrade, repair, uninstall |
+| [Troubleshooting Guide](TROUBLESHOOTING.md) | Common issues and recovery procedures |
+| [FAQ](FAQ.md) | Frequently asked questions |
+| [Architecture Guide](ARCHITECTURE_GUIDE.md) | System architecture and design |
+| [Security Guide](SECURITY_GUIDE.md) | Security model and configuration |
+| [Operations Guide](OPERATIONS_GUIDE.md) | Monitoring, logging, maintenance |
+| [Developer Guide](DEVELOPER_GUIDE.md) | Development workflow and contributing |
+| [Skill Pack Development Guide](SKILL_PACK_DEVELOPMENT_GUIDE.md) | Creating and distributing skill packs |
 
-### Step 3: Try Self-Healing Steps
+### GitHub Issues
 
-Many issues have documented self-fix procedures:
+| Channel | URL | Best For |
+|---------|-----|----------|
+| Bug Reports | https://github.com/wikilabs/wikilabs-ai-copilot/issues | Bugs, crashes, unexpected behavior |
+| Feature Requests | https://github.com/wikilabs/wikilabs-ai-copilot/issues | New feature ideas |
+| Security Issues | https://github.com/wikilabs/wikilabs-ai-copilot/security/advisories | Security vulnerabilities (private) |
+| Discussions | https://github.com/wikilabs/wikilabs-ai-copilot/discussions | General questions, tips, community |
 
-| Problem | Self-Fix | See Also |
-|---------|----------|----------|
-| Application won't start | Rename corrupt `settings.json` | [FAQ](FAQ.md) |
-| AI provider not responding | Test connection in Settings | [FAQ](FAQ.md) |
-| Skill not activating | Check detection rules and dependencies | [FAQ](FAQ.md) |
-| Database corrupted | Attempt SQLite repair | [OPERATIONS_GUIDE.md](OPERATIONS_GUIDE.md) |
-| Performance issues | Check disk space and logs | [OPERATIONS_GUIDE.md](OPERATIONS_GUIDE.md) |
+**GitHub Response Time:** 48 hours (standard), 24 hours (security)
 
-### Step 4: Collect Diagnostics
+### Email Support
 
-If the issue persists, collect diagnostic information before contacting support. See [Diagnostic Information Collection](#diagnostic-information-collection) below.
+| Email | Use Case | Response Time |
+|-------|----------|---------------|
+| support@wikilabs.com | General support questions | 24 hours |
+| sales@wikilabs.com | Licensing and purchasing | 48 hours |
+| security@wikilabs.com | Security concerns | 48 hours |
+| feedback@wikilabs.com | General feedback | 72 hours |
 
----
+### In-Application Help
+
+| Feature | Access | Description |
+|---------|--------|-------------|
+| Keyboard Shortcuts | `F1` or `Ctrl + ?` | Shows all keyboard shortcuts |
+| About Dialog | Settings → About | Application version, platform info |
+| Diagnostic Package | Settings → Diagnostics | Auto-generated diagnostic bundle |
+| Crash Reports | `crash/` directory | Previous crash data |
 
 ## Self-Help Resources
 
-### Quick Reference
+### Built-In Help
 
-#### Finding Your Log Files
+1. **Keyboard Shortcuts Reference**
+   - Press `F1` or `Ctrl + ?` to view all shortcuts
+   - Available in Settings → UI Settings → Shortcuts Help
 
-```powershell
-# Windows
-Get-ChildItem "$env:APPDATA\com.wikilabs.copilot\logs\"
+2. **Diagnostic Package Generator**
+   - Access via Settings → Diagnostics
+   - Generates a bundle with redacted settings and log metadata
+   - Share with support for faster troubleshooting
 
-# Linux
-ls -la ~/.config/com.wikilabs.copilot/logs/
-```
+3. **Error Handling UI**
+   - The application displays error messages when issues occur
+   - Error details are saved to `crash/last_crash.json`
+   - Check the Error panel in Settings for recent errors
 
-#### Checking App Data Directory Size
+4. **Log Viewer**
+   - Log files located at `%APPDATA%\com.wikilabs.copilot\logs\`
+   - Main log: `wikilabs-copilot.log`
+   - Use the Troubleshooting Guide to analyze log patterns
 
-```powershell
-# Windows
-$apps = Get-ChildItem "$env:APPDATA\com.wikilabs.copilot" -Recurse -File
-$apps | Group-Object Directory | ForEach-Object {
-    $sizeMB = ($_.Group | Measure-Object Length -Sum).Sum / 1MB
-    Write-Host "$($_.Name): $([math]::Round($sizeMB, 2)) MB"
-}
-```
+### Knowledge Base Search
 
-#### Testing AI Provider Connection
+1. Open the Knowledge panel
+2. Type your question in the search bar
+3. Results from imported documentation appear
+4. Click a result to view the full document
 
-1. Open Settings → AI Provider
-2. Click **Test Connection**
-3. Check the response time (should be < 5 seconds)
-
-#### Restarting the Application
-
-```powershell
-# Stop
-Stop-Process -Name "wikilabs-ai-copilot" -Force -ErrorAction SilentlyContinue
-
-# Start
-Start-Process "wikilabs-ai-copilot"
-```
-
-### Common Error Messages
-
-| Error Message | Likely Cause | Resolution |
-|--------------|-------------|------------|
-| "No encryption available" | Encryption initialization failed | Restart application; check system fingerprint |
-| "Provider connection failed" | AI provider unreachable | Check endpoint URL and network connectivity |
-| "Skill 'X' not found" | Skill pack not installed | Install the missing skill pack |
-| "Invalid YAML" | Malformed skill manifest | Validate YAML syntax in manifest files |
-| "Database lock" | Another instance running | Close other instances or wait |
-
----
-
-## Bug Reporting
-
-### Before You Report
-
-1. **Verify the issue** — Can you reproduce it consistently?
-2. **Check the latest version** — Update to the latest release; the issue may be fixed
-3. **Search existing issues** — Look for duplicate reports on GitHub
-4. **Check Known Limitations** — Some behaviors are documented limitations, not bugs
-
-### Creating a Bug Report
-
-Use the bug report template on [GitHub Issues](https://github.com/wikilabs/ai-copilot/issues). Include:
-
-1. **Title** — Clear, concise description of the issue
-2. **Version** — Your current version (Settings → About)
-3. **Platform** — Windows/Linux, OS version, architecture
-4. **Steps to Reproduce** — Numbered steps that reliably reproduce the issue
-5. **Expected Behavior** — What you expected to happen
-6. **Actual Behavior** — What actually happened
-7. **Severity** — Your assessment (see Severity Levels below)
-8. **Diagnostic Package** — Attach your diagnostic zip file (see below)
-9. **Screenshots/Logs** — Any relevant screenshots or log excerpts
-10. **Additional Context** — Any other relevant information
-
-### Example Bug Report
+### Troubleshooting Flow
 
 ```
-## Summary
-AI Copilot crashes when opening a conversation with more than 100 messages
-
-## Version
-1.0.0 (Build 20260721)
-
-## Platform
-Windows 11 23H2, x86_64
-
-## Steps to Reproduce
-1. Start AI Copilot
-2. Open a conversation with 100+ messages
-3. Scroll to the bottom of the conversation
-4. Application crashes
-
-## Expected Behavior
-Conversation displays and scrolls normally
-
-## Actual Behavior
-Application crashes with error in crash report
-
-## Severity
-P2 — Major feature broken
-
-## Diagnostic Package
-[attach wikilabs-diag-20260721-100000.zip]
+Issue Identified
+       │
+       ├── Is it in the FAQ? → Read FAQ
+       │       │
+       │       └── Yes → Solution found ✓
+       │       └── No → Continue ↓
+       │
+       ├── Is it in the Troubleshooting Guide? → Read Guide
+       │       │
+       │       └── Yes → Try recovery procedures
+       │       └── No → Continue ↓
+       │
+       ├── Can I fix it with logs? → Read logs
+       │       │
+       │       └── Yes → Apply fix
+       │       └── No → Continue ↓
+       │
+       ├── Generate Diagnostic Package → Settings → Diagnostics
+       │       │
+       │       └── Send to support ✓
+       │
+       └── Contact Support → See below
 ```
 
----
+## When to Contact Support
 
-## Diagnostic Information Collection
+### Contact Support When:
 
-### Method 1: Automated Diagnostic Package (Recommended)
+| Situation | Recommended Channel |
+|-----------|-------------------|
+| Application crashes repeatedly | GitHub Issues + diagnostic package |
+| Data corruption (unresolvable) | Email support |
+| AI provider connectivity issues | GitHub Issues + logs |
+| Performance problems | GitHub Issues + diagnostic package |
+| Security concerns | security@wikilabs.com |
+| Licensing or purchasing | sales@wikilabs.com |
+| Feature requests | GitHub Discussions |
+| General questions | GitHub Discussions |
 
-The application provides a built-in diagnostic package generator:
+### Before Contacting Support
 
-1. Open Settings → Diagnostics
-2. Click **Generate Diagnostic Package**
-3. Choose a save location
-4. Attach the `.zip` file to your support request
+Please complete these steps:
 
-**What's included (all data redacted of credentials):**
-- Application version and platform info
-- Redacted settings summary
-- Log files (with secrets redacted)
-- System information (OS, disk, memory)
-- Database info (schema version, table counts, sizes)
-- Validation errors (configuration issues)
-- Last crash details (if any)
-- Benchmark metrics (performance data)
+1. **Check documentation** — Review the [Troubleshooting Guide](TROUBLESHOOTING.md) and [FAQ](FAQ.md)
+2. **Check logs** — Review `%APPDATA%\com.wikilabs.copilot\logs\wikilabs-copilot.log`
+3. **Try recovery** — Follow the recovery procedures in the Troubleshooting Guide
+4. **Generate diagnostics** — Create a diagnostic package (Settings → Diagnostics)
+5. **Note the version** — Check Settings → About for the current version
 
-### Method 2: Manual Log Collection
+## Submitting a Support Request
 
-If the automated generator is unavailable:
+### GitHub Issues
 
-```powershell
-# Create diagnostic directory
-$diagDir = "$env:TEMP\wikilabs-diag-manual-$(Get-Date -Format 'yyyyMMdd')"
-New-Item -ItemType Directory -Force -Path $diagDir
-
-# Version info
-Get-ItemProperty "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" |
-  Where-Object { $_.DisplayName -like "*Wiki Labs*" } |
-  Select-Object DisplayName, DisplayVersion |
-  ConvertTo-Json |
-  Out-File "$diagDir\version.json"
-
-# Log files
-Copy-Item "$env:APPDATA\com.wikilabs.copilot\logs\*" "$diagDir\logs\" -ErrorAction SilentlyContinue
-
-# Settings summary (redacted — do NOT copy settings.json directly)
-Get-Content "$env:APPDATA\com.wikilabs.copilot\settings.json" |
-  ConvertFrom-Json |
-  ForEach-Object {
-    $_ | ConvertTo-Json -Depth 10 |
-    ForEach-Object {
-      $_ -replace '"api_key"\s*:\s*"[^"]*"', '"api_key": "***REDACTED***"' |
-      ForEach-Object { $_ -replace '"token"\s*:\s*"[^"]*"', '"token": "***REDACTED***"' }
-    }
-  } |
-  Out-File "$diagDir\settings_redacted.json"
-
-# Database info
-sqlite3 "$env:APPDATA\com.wikilabs.copilot\wikilabs.db" "PRAGMA integrity_check; SELECT count(*) FROM chat_messages;" > "$diagDir\db_info.txt"
-
-# Crash info
-Copy-Item "$env:APPDATA\com.wikilabs.copilot\crash\*" "$diagDir\crash\" -ErrorAction SilentlyContinue
-
-# Compress
-Compress-Archive -Path "$diagDir\*" -DestinationPath "$env:TEMP\wikilabs-diag-manual.zip"
-
-Write-Host "Diagnostic package: $env:TEMP\wikilabs-diag-manual.zip"
-```
-
-### Method 3: Specific Error Logs
-
-For specific error investigation, extract relevant log lines:
-
-```powershell
-# All errors from the last 24 hours
-$yesterday = (Get-Date).AddDays(-1).ToString("yyyy-MM-dd")
-Select-String -Path "$env:APPDATA\com.wikilabs.copilot\logs\*.log" -Pattern "ERROR\|FATAL" |
-  Where-Object { $_.LineNumber -ge 1 } |  # Filter by date in JSON logs
-  Select-Object -First 100
-
-# Check last crash report
-Get-Content "$env:APPDATA\com.wikilabs.copilot\crash\last_crash.json" | ConvertFrom-Json
-```
-
----
-
-## Creating a Support Ticket
-
-### GitHub Issues (Open Source Users)
-
-1. Go to [github.com/wikilabs/ai-copilot/issues](https://github.com/wikilabs/ai-copilot/issues)
+1. Go to https://github.com/wikilabs/wikilabs-ai-copilot/issues
 2. Click **New Issue**
-3. Select the appropriate template (Bug Report, Feature Request, Question)
-4. Fill in all required fields
-5. Attach your diagnostic package
-6. Submit
+3. Select the appropriate issue type:
+   - **Bug Report** — For crashes, unexpected behavior
+   - **Feature Request** — For new feature ideas
+   - **Question** — For general questions
+4. Fill in the issue template:
+   - Application version
+   - Operating system
+   - Steps to reproduce (for bugs)
+   - Expected vs. actual behavior
+   - Log excerpts (if applicable)
+5. Attach diagnostic package or log files
 
-### Discord (Community Support)
+### Email Support
 
-1. Join the Wiki Labs Discord server
-2. Go to the `#support` channel
-3. Describe your issue with context
-4. Attach your diagnostic package if available
-5. A Wiki Labs team member will respond
+1. Send an email to support@wikilabs.com
+2. Include:
+   - Subject line with brief description
+   - Application version
+   - Operating system
+   - Detailed description of the issue
+   - Steps to reproduce
+   - Attach diagnostic package and logs
 
-### Email (Enterprise Customers)
+### Email Template
 
-Email your enterprise support contact with:
-- Subject: `[Support] [Severity] Brief description`
-- Your organization name
-- Attached diagnostic package
-- Detailed issue description
+```
+Subject: [Wiki Labs AI Copilot] Issue Description
 
-### Website Contact Form
+Application Version: 1.0.0
+Operating System: Windows 11 64-bit
+Issue Type: [Bug / Question / Feature Request]
 
-Use the contact form on [wikilabs.com/support](https://wikilabs.com/support) for general inquiries.
+Description:
+[Describe the issue in detail]
 
----
+Steps to Reproduce:
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+Expected Behavior:
+[What you expected to happen]
+
+Actual Behavior:
+[What actually happened]
+
+Logs/Attachments:
+- Diagnostic package: [attached]
+- Log excerpts: [attached or pasted]
+```
+
+## What to Include in Your Request
+
+To help support resolve your issue quickly, include:
+
+### Required Information
+
+| Item | How to Find |
+|------|-------------|
+| Application version | Settings → About |
+| Operating system | Windows Settings → System → About |
+| Issue description | Your own description |
+| Steps to reproduce | Reproduce the issue and note each step |
+
+### Helpful Information
+
+| Item | How to Find |
+|------|-------------|
+| Log file | `%APPDATA%\com.wikilabs.copilot\logs\wikilabs-copilot.log` |
+| Diagnostic package | Settings → Diagnostics → Generate |
+| Crash report | `%APPDATA%\com.wikilabs.copilot\crash\last_crash.json` |
+| Settings file | `%APPDATA%\com.wikilabs.copilot\settings.json` (redact API keys first) |
+| Screenshots | Describe visual issues or error dialogs |
+
+### Information NOT Needed
+
+| Item | Reason |
+|------|--------|
+| Full database file | Too large, contains sensitive data |
+| Full API key | Already stored securely, not the issue |
+| System hardware specs | Not typically relevant for application issues |
+
+## Support Response Times
+
+| Priority | Description | Response Time | Resolution Target |
+|----------|-------------|---------------|------------------|
+| **Critical** | Application unusable, data loss risk | 4 hours | 24 hours |
+| **High** | Major feature broken, no workaround | 8 hours | 3 business days |
+| **Medium** | Minor feature broken, workaround available | 24 hours | 1 week |
+| **Low** | Cosmetic issue, enhancement request | 48 hours | Next release or backlog |
+
+### Priority Definitions
+
+| Priority | Examples |
+|----------|----------|
+| **Critical** | Crash on startup, data corruption, security vulnerability |
+| **High** | AI provider connection fails, chat not sending, knowledge import broken |
+| **Medium** | UI glitch, guidance panel not showing, export not working |
+| **Low** | Typo in documentation, minor UI alignment issue, color suggestion |
 
 ## Escalation Procedures
 
-### When to Escalate
-
-Escalate a support request when:
-
-1. **No response within expected time** (see Response Time Expectations)
-2. **Issue severity has increased** since initial report
-3. **Workaround is unavailable** for a critical issue
-4. **Multiple users are affected**
-5. **Data loss or security concern** has been identified
-
-### Escalation Path
+### Standard Escalation Path
 
 ```
-Level 1: Community Support (GitHub Issues, Discord)
-    │ (unresolved or urgent)
-    ▼
-Level 2: Wiki Labs Support Team (support@wikilabs.com)
-    │ (unresolved or P1/P2)
-    ▼
-Level 3: Engineering Team (via support team)
-    │ (unresolved or P1)
-    ▼
-Level 4: Leadership / Customer Success (enterprise only)
+User
+  │
+  ├── 1. Self-help (docs, FAQ, troubleshooting)
+  │       └── If unresolved →
+  │
+  ├── 2. Support Team (GitHub / Email)
+  │       └── If unresolved →
+  │
+  ├── 3. Technical Lead Review
+  │       └── If unresolved →
+  │
+  └── 4. Engineering Team Investigation
+          └── If unresolved →
+                  └── 5. Root cause analysis and fix
 ```
+
+### Escalation Criteria
+
+Escalate to the next level when:
+
+| Level | Escalation Trigger |
+|-------|-------------------|
+| → Support Team | Issue not resolved in self-help |
+| → Technical Lead | Issue is critical or has no workaround |
+| → Engineering Team | Issue requires code change or deep investigation |
+| → Product Team | Issue involves design or feature decisions |
 
 ### Enterprise Escalation
 
-Enterprise customers have a direct escalation path through their account manager. For critical issues, the account manager will engage the engineering team directly.
+Enterprise customers have a dedicated support channel:
 
-### Emergency Contact
+| Contact | Details |
+|---------|---------|
+| Dedicated Support Email | enterprise-support@wikilabs.com |
+| Dedicated Support Portal | portal.wikilabs.com/support |
+| Account Manager | Contact your Wiki Labs account manager |
+| SLA | Contract-defined response times |
+| Escalation | Direct access to engineering team |
 
-For P1 (Critical) issues affecting production environments, use the emergency contact channel:
+## Enterprise Support
 
-- **Enterprise customers:** Contact your account manager or use the emergency hotline provided in your contract
-- **Open source users:** Mark your GitHub issue with the `P1-critical` label and mention `@wikilabs-engineering`
+### Enterprise Customer Benefits
 
----
+| Benefit | Description |
+|---------|-------------|
+| Dedicated support team | Assigned support engineer |
+| Priority response | Contract-defined SLAs |
+| Custom skill packs | Development of technology-specific packs |
+| Onboarding assistance | Help with initial deployment |
+| Training | Application training sessions |
+| Regular updates | Early access to new releases |
+| Custom builds | Tailored builds for specific environments |
 
-## Incident Severity Levels
+### Enterprise Support Contact
 
-### P1 — Critical
+| Channel | Contact |
+|---------|---------|
+| Email | enterprise-support@wikilabs.com |
+| Portal | portal.wikilabs.com/support |
+| Phone | Contact your account manager |
+| Account Manager | Direct contact from sales team |
 
-| Attribute | Detail |
-|-----------|--------|
-| **Definition** | Application unusable, data at risk, or security breach |
-| **Examples** | Data corruption affecting multiple workspaces, credential exposure, application won't start for all users |
-| **Impact** | All users affected or data loss risk |
-| **Response** | Immediate acknowledgment, engineering engagement within 1 hour |
+## Community Resources
 
-### P2 — High
+### GitHub Community
 
-| Attribute | Detail |
-|-----------|--------|
-| **Definition** | Major feature broken; workarounds exist or are limited |
-| **Examples** | AI provider not responding, skill pack not loading, crash on specific operation |
-| **Impact** | Significant functionality impaired |
-| **Response** | Acknowledgment within 4 hours, workaround or fix timeline within 24 hours |
+| Resource | URL |
+|----------|-----|
+| Issues | https://github.com/wikilabs/wikilabs-ai-copilot/issues |
+| Discussions | https://github.com/wikilabs/wikilabs-ai-copilot/discussions |
+| Wiki | https://github.com/wikilabs/wikilabs-ai-copilot/wiki |
 
-### P3 — Medium
+### Contributing
 
-| Attribute | Detail |
-|-----------|--------|
-| **Definition** | Minor feature broken; no data impact |
-| **Examples** | UI glitch, incorrect recommendation, missing detection rule |
-| **Impact** | Limited functionality impaired |
-| **Response** | Acknowledgment within 24 hours, fix timeline within next release |
+Want to help improve Wiki Labs AI Copilot? See the [Developer Guide](DEVELOPER_GUIDE.md#contributing) for contribution guidelines.
 
-### P4 — Low
+### Community Best Practices
 
-| Attribute | Detail |
-|-----------|--------|
-| **Definition** | Cosmetic or convenience issue |
-| **Examples** | Typo in UI, inconsistent formatting, minor performance issue |
-| **Impact** | No functionality impaired |
-| **Response** | Added to backlog, fix in future release |
-
----
-
-## Response Time Expectations
-
-### GitHub Issues (Open Source)
-
-| Severity | Acknowledgment | Initial Response |
-|----------|---------------|-----------------|
-| P1 — Critical | Same business day | Within 4 hours |
-| P2 — High | Within 24 hours | Within 48 hours |
-| P3 — Medium | Within 24 hours | Within 1 week |
-| P4 — Low | As time permits | Next release cycle |
-
-### Enterprise Support (Contractual SLA)
-
-| Severity | Acknowledgment | Resolution Target |
-|----------|---------------|------------------|
-| P1 — Critical | 15 minutes | 4 hours |
-| P2 — High | 1 hour | 8 hours |
-| P3 — Medium | 4 hours | 24 hours |
-| P4 — Low | 1 business day | Next release |
+- **Search before posting** — Check existing issues and discussions
+- **Provide context** — Include version, OS, steps to reproduce
+- **Be constructive** — Suggest solutions when possible
+- **Stay respectful** — Follow the code of conduct
+- **Share knowledge** — Help other users in discussions
 
 ---
 
-## Follow-Up Process
-
-### After Submitting a Report
-
-1. **You will receive** an acknowledgment within the expected response time
-2. **Check for follow-up questions** — The support team may request additional information
-3. **Test provided workarounds** — If a workaround is provided, test it and report results
-4. **Update your report** — Add new information to the original issue rather than creating a new one
-5. **Verify resolution** — Confirm the fix works in your environment before closing
-
-### During Investigation
-
-- **Be patient** — Debugging can take time, especially for race conditions
-- **Provide requested info promptly** — Delays in providing diagnostics slow down resolution
-- **Test on the latest version** — Always reproduce on the most recent release
-- **One report per issue** — Duplicate reports fragment attention
-
-### After Resolution
-
-1. **Verify the fix** in your environment
-2. **Update your report** with resolution confirmation
-3. **Optional: Share your experience** — Help others by documenting your resolution in the issue comments
-4. **Consider contributing** — If you found a solution, consider adding it to the documentation
-
----
-
-## Known Limitations
-
-Before reporting an issue, check [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) for documented behaviors that are not bugs but known constraints of the current release.
-
-Common known limitations include:
-
-- Single AI provider configuration (multiple providers supported but only one active at a time)
-- No automatic data synchronization to remote servers (local-first design)
-- Skill pack detection may not cover all technology versions
-- No macOS native build (Windows-first)
-- Local model (Ollama/vLLM) requires pre-deployment on the user's machine
-
----
-
-## Security Incident Reporting
-
-### If You Discover a Security Vulnerability
-
-1. **Do NOT disclose publicly** — Use the private reporting channel
-2. **Enable Privacy Mode** in Settings → Privacy as a precaution
-3. **Collect evidence** — Generate a diagnostic package (Settings → Diagnostics)
-4. **Do NOT modify logs** — Preserve original evidence
-5. **Report through the private channel:**
-   - GitHub: Mark the issue as `private-security`
-   - Email: `security@wikilabs.com`
-   - Discord: Message a Wiki Labs maintainer directly (private DM)
-
-### What to Include in a Security Report
-
-- **Description** — Clear description of the vulnerability
-- **Impact** — What an attacker could achieve
-- **Reproducibility** — Steps to reproduce (or indication if it's intermittent)
-- **Affected versions** — Which versions are impacted
-- **Evidence** — Screenshots, logs, or crash reports (without credentials)
-- **Suggested fix** — If you have one (optional but appreciated)
-
-### Security Response
-
-- **Acknowledgment:** Within 24 hours
-- **Assessment:** Within 3 business days
-- **Fix timeline:** Depending on severity (critical fixes within days)
-- **Disclosure:** Coordinated with the reporter
-
-### Security Advisories
-
-Security advisories are published on GitHub under [github.com/wikilabs/ai-copilot/security/advisories](https://github.com/wikilabs/ai-copilot/security/advisories). Subscribe to these advisories for critical security updates.
-
----
-
-## Feature Requests
-
-### Submitting a Feature Request
-
-1. Go to [GitHub Issues](https://github.com/wikilabs/ai-copilot/issues)
-2. Click **New Issue** → Select "Feature Request" template
-3. Include:
-   - **Summary** — What the feature does
-   - **Motivation** — Why it's needed
-   - **Proposed Solution** — How you think it should work
-   - **Alternatives Considered** — Other approaches you've evaluated
-   - **Use Cases** — Specific scenarios where this feature is needed
-
-### Feature Request Lifecycle
-
-```
-New → Triage → Approved → Planned → In Development → Released
-```
-
-- **Triage** — A maintainer reviews and categorizes the request
-- **Approved** — The feature is accepted for implementation
-- **Planned** — The feature is added to the roadmap
-- **In Development** — Engineering is working on the feature
-- **Released** — The feature is shipped in a release
-
-### Contributing a Feature
-
-If you want to implement a feature yourself:
-
-1. Discuss the approach in the feature request issue
-2. Submit a design proposal (for complex features)
-3. Open a PR with your implementation
-4. The team will review and provide feedback
-
-See the [Developer Guide](DEVELOPER_GUIDE.md) for contribution guidelines.
-
----
-
-## What Information to Provide
-
-### The Checklist
-
-When submitting any support request, provide:
-
-| Item | Required | Where to Find |
-|------|----------|---------------|
-| Application version | Yes | Settings → About |
-| Platform/OS | Yes | System settings |
-| Steps to reproduce | Yes | Your observation |
-| Expected behavior | Yes | Your expectation |
-| Actual behavior | Yes | Your observation |
-| Diagnostic package | Recommended | Settings → Diagnostics |
-| Screenshots | When helpful | Your observation |
-| Log excerpts | When helpful | Logs directory |
-| Severity assessment | Recommended | Based on impact |
-
-### Diagnostic Package Contents
-
-A diagnostic package (`wikilabs-diag-*.zip`) includes:
-
-```
-wikilabs-diag-20260721-100000.zip
-├── version.json              # App version, platform info
-├── settings_report.json      # Redacted settings summary
-├── log_files/                # Log files with redaction
-├── system_info.json          # OS, disk, memory info
-├── database_info.json        # Schema, table counts, sizes
-├── validation_errors.json    # Configuration issues
-└── crash_info.json           # Last crash details (if any)
-```
-
-All sensitive data (API keys, tokens, credentials) is redacted. It is safe to attach the diagnostic package to any support request.
-
----
-
-## Appendix: Quick Reference Cards
-
-### Getting Help — Quick Start
-
-```
-1. Search FAQ: docs/FAQ.md
-2. Search Troubleshooting: docs/TROUBLESHOOTING.md
-3. Check Known Limitations: docs/KNOWN_LIMITATIONS.md
-4. Generate diagnostics: Settings → Diagnostics → Generate
-5. Open issue: github.com/wikilabs/ai-copilot/issues
-6. Join Discord: Real-time community support
-```
-
-### Bug Report — Checklist
-
-```
-□ Version number
-□ Platform and OS
-□ Steps to reproduce
-□ Expected behavior
-□ Actual behavior
-□ Diagnostic package attached
-□ Screenshots (if applicable)
-□ Checked for existing issues
-□ Checked Known Limitations
-```
-
-### Emergency — P1 Critical
-
-```
-□ Enable Privacy Mode
-□ Collect diagnostic package
-□ Preserve log files
-□ Contact via:
-   - Enterprise: Account manager / emergency hotline
-   - Open source: GitHub issue with P1-critical label
-□ Describe impact clearly
-□ Document affected systems
-```
-
----
-
-*For technical details, see the [Architecture Guide](ARCHITECTURE_GUIDE.md), [Security Guide](SECURITY_GUIDE.md), [Developer Guide](DEVELOPER_GUIDE.md), [Operations Guide](OPERATIONS_GUIDE.md), and [Troubleshooting Guide](TROUBLESHOOTING.md).*
+*For self-help, see [Troubleshooting Guide](TROUBLESHOOTING.md) and [FAQ](FAQ.md).*
+*For feature documentation, see [User Guide](user-guide/USER_GUIDE.md).*
+*For administration, see [Administrator Guide](admin-guide/ADMINISTRATOR_GUIDE.md).*

@@ -1,592 +1,275 @@
 # FAQ — Wiki Labs AI Copilot v1.0.0
 
-> Frequently asked questions for end users and administrators.
-
-## Table of Contents
-
-### General
-1. [What is Wiki Labs AI Copilot?](#what-is-wiki-labs-ai-copilot)
-2. [What platforms does it support?](#what-platforms-does-it-support)
-3. [Is it free or commercial?](#is-it-free-or-commercial)
-4. [How is it different from other AI coding assistants?](#how-is-it-different-from-other-ai-coding-assistants)
-5. [Does it store my data in the cloud?](#does-it-store-my-data-in-the-cloud)
-
-### Getting Started
-6. [How do I install Wiki Labs AI Copilot?](#how-do-i-install-wiki-labs-ai-copilot)
-7. [What do I need to configure before first use?](#what-do-i-need-to-configure-before-first-use)
-8. [How do I add an AI provider?](#how-do-i-add-an-ai-provider)
-9. [What AI providers are supported?](#what-ai-providers-are-supported)
-10. [Can I use my own AI provider (self-hosted)?](#can-i-use-my-own-ai-provider-self-hosted)
-
-### Skills and Technology
-11. [What are skill packs?](#what-are-skill-packs)
-12. [What skill packs come pre-installed?](#what-skill-packs-come-pre-installed)
-13. [How do I install a new skill pack?](#how-do-i-install-a-new-skill-pack)
-14. [How do I remove a skill pack?](#how-do-i-remove-a-skill-pack)
-15. [How does the app know which skill pack to use?](#how-does-the-app-know-which-skill-pack-to-use)
-16. [Can I create my own skill pack?](#can-i-create-my-own-skill-pack)
-17. [How does technology auto-detection work?](#how-does-technology-auto-detection-work)
-
-### Using the AI Chat
-18. [How do I chat with the AI assistant?](#how-do-i-chat-with-the-ai-assistant)
-19. [Does the AI know what I'm working on?](#does-the-ai-know-what-im-working-on)
-20. [How can I correct the AI when it's wrong?](#how-can-i-correct-the-ai-when-its-wrong)
-21. [Does the AI execute commands on my behalf?](#does-the-ai-execute-commands-on-my-behalf)
-22. [How do I save or export a conversation?](#how-do-i-save-or-export-a-conversation)
-
-### Proactive Guidance
-23. [What is proactive guidance?](#what-is-proactive-guidance)
-24. [How do I enable or disable proactive guidance?](#how-do-i-enable-or-disable-proactive-guidance)
-25. [What are the recommendation modes?](#what-are-the-recommendation-modes)
-26. [Can I dismiss a recommendation?](#can-i-dismiss-a-recommendation)
-
-### Privacy and Security
-27. [What data does the application collect?](#what-data-does-the-application-collect)
-28. [Can I disable all observation features?](#can-i-disable-all-observation-features)
-29. [What is Privacy Mode?](#what-is-privacy-mode)
-30. [How are my API keys stored?](#how-are-my-api-keys-stored)
-31. [Is the data on my machine encrypted?](#is-the-data-on-my-machine-encrypted)
-
-### Administration
-32. [How do I back up my data?](#how-do-i-back-up-my-data)
-33. [How do I restore from a backup?](#how-do-i-restore-from-a-backup)
-34. [How do I update the application?](#how-do-i-update-the-application)
-35. [How do I generate a diagnostic package?](#how-do-i-generate-a-diagnostic-package)
-36. [Where are the log files located?](#where-are-the-log-files-located)
-37. [How do I change the log level?](#how-do-i-change-the-log-level)
-
-### Troubleshooting
-38. [The AI is not responding. What should I check?](#the-ai-is-not-responding-what-should-i-check)
-39. [The application crashes on startup. What should I do?](#the-application-crashes-on-startup-what-should-i-do)
-40. [A skill pack is not being loaded. What should I check?](#a-skill-pack-is-not-being-loaded-what-should-i-check)
-41. [How do I reset the application to defaults?](#how-do-i-reset-the-application-to-defaults)
-
----
+> Frequently asked questions.
 
 ## General
 
 ### What is Wiki Labs AI Copilot?
 
-Wiki Labs AI Copilot is an enterprise-grade desktop application that provides real-time, context-aware guidance for infrastructure engineers. It combines AI-powered chat, local knowledge management, and skill-based engineering knowledge to help engineers think, diagnose, and solve complex infrastructure problems.
+Wiki Labs AI Copilot is an enterprise engineering copilot — a desktop application that assists infrastructure engineers with real-time, context-aware guidance. It combines AI-powered chat, knowledge management, skill packs, and desktop observation into a unified tool.
 
-The application is designed for infrastructure engineers who work with technologies like Kubernetes, Linux, databases, virtualization, monitoring systems, and automation tools.
+### What platforms are supported?
 
-### What platforms does it support?
+**v1.0.0** supports Windows 10 and Windows 11 (64-bit). macOS and Linux support is planned for future releases.
 
-Currently, Wiki Labs AI Copilot supports:
-- **Windows** — Native desktop application via Tauri v2 with WebView2
+### Is there a free/trial version?
 
-Future platform support (planned for future releases) may include Linux and macOS.
+The application is distributed under a proprietary license. Contact sales@wikilabs.com for licensing options.
 
-### Is it free or commercial?
+### What AI models does it support?
 
-The application is provided by Wiki Labs. Licensing terms are defined in the LICENSE file included with the installation. Refer to the [Release Notes](RELEASE_NOTES.md) for the current licensing status of version 1.0.0.
+The application supports any OpenAI-compatible API provider, including:
+- **OpenAI** (GPT-4o, GPT-4, GPT-3.5-Turbo)
+- **vLLM** (self-hosted OpenAI-compatible API)
+- **Ollama** (local model serving)
+- Any other OpenAI-compatible endpoint
 
-### How is it different from other AI coding assistants?
+### Can I use it offline?
 
-| Feature | Other AI Assistants | Wiki Labs AI Copilot |
-|---------|-------------------|---------------------|
-| Focus | General coding | Infrastructure engineering |
-| Context | Source code only | Observation, terminal, browser, clipboard |
-| Knowledge | Pre-trained models | Custom skill packs per technology |
-| Recommendations | Code suggestions | Evidence-based engineering guidance |
-| Data location | Cloud-based | Local-first (data stays on your machine) |
-| Execution | Some execute code | Advisory-only (never executes) |
-| Reasoning | Black-box AI | Transparent reasoning with confidence scores |
-| Human feedback | Limited | Always overrides AI inference |
+The chat feature requires an AI provider connection. However, knowledge management, skill packs, and settings are fully functional offline. If you host a local provider (vLLM/Ollama), you can use the copilot with local models entirely offline.
 
-### Does it store my data in the cloud?
+## Installation
 
-No. All conversation data, knowledge base content, and settings are stored locally on your machine in SQLite (`wikilabs.db`) and JSON files under `%APPDATA%\com.wikilabs.copilot`. The application does not synchronize data to remote servers.
+### What are the system requirements?
 
-When you send a message to the AI assistant, only that message and the assembled context are sent to your configured AI provider. No other application data leaves your machine.
+| Requirement | Minimum | Recommended |
+|------------|---------|-------------|
+| OS | Windows 10 64-bit | Windows 11 64-bit |
+| RAM | 4 GB | 8 GB |
+| Disk | 2 GB free | 5 GB free |
+| .NET | .NET Desktop Runtime 8.0 | .NET Desktop Runtime 8.0 (latest) |
 
----
+### Can I deploy via Group Policy or SCCM?
 
-## Getting Started
+Yes. The MSI installer supports enterprise deployment via:
+- Group Policy Software Installation
+- Microsoft SCCM/MECM
+- Microsoft Intune
+- Manual silent install
 
-### How do I install Wiki Labs AI Copilot?
+See the [Installation Guide](INSTALLATION_GUIDE.md) for deployment details.
 
-1. Download the installer (MSI or NSIS) from the release page
-2. Run the installer as a standard user (or administrator for per-machine install)
-3. Follow the installation wizard
-4. Launch the application from the Start menu or desktop shortcut
+### Does the installer include WebView2?
 
-For detailed instructions, see the [Installation Guide](INSTALLATION_GUIDE.md).
+Yes. The installer includes a WebView2 Runtime installer that runs automatically if WebView2 is not already installed.
 
-### What do I need to configure before first use?
+## Usage
 
-Before first use, you need to configure:
+### How do I start chatting with the AI?
 
-1. **AI Provider** — Configure the AI provider endpoint, API key, and model (Settings → AI Provider)
-2. **Workspace** — Set up a workspace for organizing your work (optional but recommended)
-3. **Privacy Settings** — Review observation feature toggles (Settings → Privacy)
+1. Install the application
+2. Configure an AI provider in Settings → AI Provider
+3. Create a workspace (or use the default)
+4. Type a question in the chat and press Enter
 
-All other features (skill packs, knowledge base) are pre-configured with the default installation.
+### How do I create a workspace?
 
-### How do I add an AI provider?
+Click the Workspace panel → New Workspace → enter a name → click Create.
 
-1. Open the application
-2. Go to **Settings** → **AI Provider**
-3. Enter the following:
-   - **Endpoint URL** — e.g., `https://api.openai.com/v1` or `http://localhost:8080` for local providers
-   - **API Key** — Your API key (stored encrypted via Windows Credential Manager)
-   - **Model** — The model to use (e.g., `gpt-4`, `my-local-model`)
-   - **Max Tokens** — Maximum tokens per response (e.g., `4096`)
-   - **Context Window** — Context window size (e.g., `32768`)
-4. Click **Test Connection** to verify the configuration
-5. Click **Save**
+### Can I have multiple workspaces?
 
-### What AI providers are supported?
+Yes. Each workspace has its own:
+- Chat history
+- Knowledge base
+- Active skill packs
+- Technology stack
 
-The application supports any AI provider that implements the OpenAI-compatible API:
+### How does the AI get context about my environment?
 
-| Provider | Type | Example Endpoint |
-|----------|------|-----------------|
-| **OpenAI** | Cloud | `https://api.openai.com/v1` |
-| **vLLM** | Self-hosted | `http://localhost:8080/v1` |
-| **Ollama** | Self-hosted | `http://localhost:11434/v1` |
-| **Other OpenAI-compatible** | Any | Your provider's endpoint |
+The AI receives context from multiple sources:
+- **Workspace settings** — Customer name, technology stack
+- **Knowledge documents** — Imported documentation and SOPs
+- **Skill packs** — Active technology-specific expertise
+- **Observation data** — Screen, terminal, and app context (if enabled)
+- **Current conversation** — Previous messages in the chat
 
-The application uses a trait-based provider abstraction, so any provider with an OpenAI-compatible endpoint can be configured.
+### What is a skill pack?
 
-### Can I use my own AI provider (self-hosted)?
+A skill pack is a collection of technology-specific expertise. It includes detection rules, best practices, command references, troubleshooting guides, and knowledge documents. Skill packs enable the AI to provide guidance specific to technologies like Linux, MySQL, OpenShift, etc.
 
-Yes. The application supports self-hosted providers through the OpenAI-compatible interface:
+### How do skill packs get activated?
 
-1. Set the **endpoint URL** to your provider's address (e.g., `http://localhost:8080/v1`)
-2. If your provider doesn't require authentication, leave the **API key** blank
-3. Enter the correct **model** name as defined by your provider
-4. Click **Test Connection** to verify
+The Skill Discovery Engine automatically detects technologies in your environment:
+- Browser URL patterns
+- Terminal commands
+- Active application context
+- Configuration files
 
-Self-hosted providers communicate over HTTP (not HTTPS) since they run on localhost.
+When a technology is detected, the corresponding skill pack activates automatically. You can also manually enable/disable skills in the Skills panel.
 
----
+### What is the Guidance Panel?
 
-## Skills and Technology
+The Guidance Panel provides proactive, context-aware engineering guidance. It shows recommendations, warnings, suggestions, and tips based on:
+- Your current activity
+- Detected technology
+- Active skill packs
+- Conversation context
 
-### What are skill packs?
+You can control the guidance level using the operating mode (Minimal, Balanced, Teaching, Expert, Silent).
 
-Skill packs are bundles of technology-specific knowledge that tell the AI Copilot about a specific technology domain. Each skill pack includes:
+### Can I export my conversations?
 
-- **Detection rules** — Patterns to identify when you're working with that technology
-- **Troubleshooting workflows** — Step-by-step diagnostic procedures
-- **Command knowledge** — CLI commands with explanations and risks
-- **Knowledge base** — Deep technical documentation
-- **Reasoning guides** — How to analyze and diagnose problems
-- **Best practices** — Engineering standards and conventions
-- **Known issues** — Documented problems and workarounds
+Yes. Right-click any conversation and select "Export as JSON." This exports the full conversation history for archival or documentation purposes.
 
-Skill packs are loaded at application startup and can be installed, removed, or updated by managing the files in `src/skills/`.
+### Can I import knowledge from existing documentation?
 
-### What skill packs come pre-installed?
+Yes. Import `.wkl` knowledge archives containing `.txt`, `.md`, or `.json` files. The application automatically chunks, embeds, and indexes the content for search.
 
-Version 1.0.0 ships with 10 pre-installed skill packs:
+### How does search work in the Knowledge panel?
 
-| Skill Pack | Technology | Files |
-|------------|-----------|-------|
-| openshift-skill-pack | Red Hat OpenShift 4.x | 40 |
-| linux-engineering | Linux Administration | 40 |
-| vmware-vsphere-skill-pack | VMware vSphere | 40 |
-| mysql-skill-pack | MySQL DBA 8.0 | 41 |
-| edb-postgresql-skill-pack | EDB PostgreSQL 15/16 | 34 |
-| mssql-skill-pack | Microsoft SQL Server 2022 | 28 |
-| checkmk-skill-pack | Checkmk 2.3/2.4 | 21 |
-| ansible-skill-pack | Ansible | 20 |
-| nagios-logserver-skill-pack | Nagios Log Server | 20 |
-| nagios-xi-skill-pack | Nagios XI | 19 |
+Knowledge search uses a hybrid approach:
+- **Vector search** — Semantic search using 384-dim embeddings (SQLite VSS extension)
+- **Keyword search** — Full-text search using SQLite FTS5
 
-### How do I install a new skill pack?
+Both are combined for best results.
 
-1. Stop the application (close all running instances)
-2. Copy the skill pack directory to `src/skills/`:
-   ```powershell
-   Copy-Item ".\my-new-skill-pack" ".\src\skills\" -Recurse
-   ```
-3. Start the application — skills are loaded on startup only
+## AI & Intelligence
 
-The new skill pack will appear in the Skills panel after restart.
+### How does the AI generate recommendations?
 
-### How do I remove a skill pack?
+The copilot engine follows a structured workflow:
+1. **Observe** — Collect evidence from screen, terminal, clipboard, and conversation
+2. **Recognize** — Detect technology and intent
+3. **Recommend** — Generate advice using skill pack knowledge and AI
+4. **Evaluate** — Apply decision rules to determine visibility
+5. **Present** — Show guidance in the Guidance Panel
+6. **Wait for approval** — User approves or denies recommendations
 
-1. Stop the application
-2. Delete the skill pack directory from `src/skills/`:
-   ```powershell
-   Remove-Item ".\src\skills\my-skill-pack" -Recurse
-   ```
-3. Start the application
+### What is confidence scoring?
 
-### How does the app know which skill pack to use?
+Every AI inference includes a confidence score:
+- **High** (85-100%) — Auto-confirm, no user interaction needed
+- **Medium** (60-84%) — Auto-confirm with confirmation prompt
+- **Low** (30-59%) — Ask user to confirm before proceeding
 
-The application uses a multi-stage detection pipeline:
+Confidence is calculated based on signal count, signal quality, cross-domain correlation, and historical precedent.
 
-1. **Skill Discovery** — At startup, the application scans `src/skills/` for skill directories and loads all manifests
-2. **Observation** — The observation engine monitors your screen, terminal, browser, and clipboard
-3. **Technology Recognition** — The recognition engine matches observation events against detection rules in skill packs
-4. **Context Fusion** — Detected technologies are included in the fused context sent to the AI
-5. **Active Activation** — The activation engine enables skills based on workspace signals (current task, detected technologies)
+### Can the AI execute commands?
 
-When you type a command or open a relevant application, the detection rules in the matching skill pack's `detection_rules.yaml` identify the technology and the AI can provide context-aware guidance.
+No. The copilot provides **advisory recommendations only**. It never executes commands, changes configurations, or performs automation directly. All actions are performed by the human engineer.
 
-### Can I create my own skill pack?
+### How does the AI handle prompt injection?
 
-Yes. The Skill SDK provides tools for creating, validating, and generating skill packs. See the [Skill Pack Development Guide](SKILL_PACK_DEVELOPMENT_GUIDE.md) for a complete walkthrough.
+The application includes prompt injection defense mechanisms:
+- Input validation on all user messages
+- Output validation on AI responses
+- Detection of suspicious patterns in messages
+- Context isolation between user and system prompts
 
-### How does technology auto-detection work?
+## Privacy & Security
 
-Technology auto-detection uses the following pipeline:
+### Is my data sent to the cloud?
 
-1. The **observation engine** captures events from screen, terminal, browser, and clipboard
-2. Each event is published to an **event bus**
-3. The **technology recognition engine** matches events against detection rules from all loaded skill packs
-4. Detection rules specify patterns (command regex, file path, browser URL) with confidence scores and priorities
-5. Multiple detection rules are combined through a multi-pass pipeline
-6. The result is a **technology inference** with composite confidence, included in the fused context
+No. All data (chats, knowledge, settings) is stored locally on your machine. Only AI chat requests are sent to your configured AI provider.
 
-Detection rules are defined in each skill pack's `detection_rules.yaml` file. The engine does not have any hardcoded technology logic — it relies entirely on detection rules in skill packs.
+### Where is my API key stored?
 
----
+API keys are stored securely using one of two methods:
+1. **Windows Credential Manager** (preferred) — Uses Windows DPAPI
+2. **Local encrypted file** (fallback) — Uses AES-256-GCM encryption
 
-## Using the AI Chat
-
-### How do I chat with the AI assistant?
-
-1. Open the application
-2. Go to the **AI Chat** panel
-3. Type your question or description of the problem
-4. Press Enter or click Send
-5. The AI responds with guidance, explanations, and recommendations
-6. You can continue the conversation — the AI maintains context from the full conversation history
-
-### Does the AI know what I'm working on?
-
-Yes, when observation features are enabled. The AI receives:
-
-- **Technology inferences** — What technologies you're working with (detected from terminal commands, file paths, browser URLs)
-- **Intent inferences** — What you might be trying to accomplish (detected from patterns)
-- **Workflow state** — Current troubleshooting workflow and progress
-- **Timeline entries** — Recent engineering activities
-- **Human corrections** — Any corrections you've made to previous AI inferences
-
-This context is assembled by the Context Fusion Engine and included in every AI request to improve relevance.
-
-### How can I correct the AI when it's wrong?
-
-The application has multiple correction mechanisms:
-
-1. **Human Feedback Panel** — When the AI makes an incorrect inference, you can mark it as incorrect in the guidance panel. The correction is stored and applied to future inferences.
-
-2. **Chat correction** — You can explicitly tell the AI in the chat: "Actually, I'm using vSphere, not OpenShift." This correction is added to the context for future responses.
-
-3. **Intent correction** — If the AI misclassifies your intent, you can correct it through the guidance panel. Future inferences about your intent will use your correction.
-
-The principle of **human supremacy** ensures that all human corrections always override AI inferences.
-
-### Does the AI execute commands on my behalf?
-
-**No.** Wiki Labs AI Copilot is advisory-only. The AI assistant:
-- Recommends commands and actions
-- Explains what commands do and their risks
-- Provides reasoning and evidence for recommendations
-- Never executes commands on your behalf
-- Never modifies files or configurations without your explicit action
-
-Every recommendation includes:
-- The command or action
-- An explanation of what it does
-- Risk assessment (low/medium/high)
-- A rollback strategy
-- A confidence score
-
-### How do I save or export a conversation?
-
-Conversations are automatically saved in the local SQLite database. To export:
-
-1. Go to the conversation in the AI Chat panel
-2. Use the export function (available in the conversation menu)
-3. Choose the export format (text or JSON)
-4. The conversation history is saved to a file on your local machine
-
-Conversations are also viewable through the application's conversation history interface (Settings → Conversations).
-
----
-
-## Proactive Guidance
-
-### What is proactive guidance?
-
-Proactive guidance is the application's ability to provide recommendations without being explicitly asked. When enabled, the application:
-
-- Observes your work through the observation engine
-- Detects technologies you're using
-- Analyzes patterns and identifies potential issues
-- Generates recommendations when appropriate
-- Displays them in the guidance panel
-
-Proactive guidance is **advisory only** — it never executes actions, only recommends them.
-
-### How do I enable or disable proactive guidance?
-
-1. Go to **Settings** → **Guidance**
-2. Toggle **Proactive Guidance** on or off
-3. When enabled, also select your preferred **Recommendation Mode**
-
-You can also toggle observation features individually in **Settings** → **Privacy**.
-
-### What are the recommendation modes?
-
-| Mode | Behavior |
-|------|----------|
-| **Minimal** | Only critical warnings shown |
-| **Balanced** | Standard recommendations with moderate detail |
-| **Teaching** | Explanations with reasoning and evidence |
-| **Expert** | Detailed technical guidance for experienced engineers |
-| **Silent** | No proactive recommendations (on-demand only) |
-
-### Can I dismiss a recommendation?
-
-Yes. When a recommendation is displayed in the guidance panel:
-
-1. Click **Dismiss** to hide the recommendation
-2. Optionally select a dismissal reason (not relevant, already known, etc.)
-3. The dismissal is tracked in session memory for personalization
-4. Similar recommendations may be shown less frequently in the future
-
----
-
-## Privacy and Security
+Your API key is never stored in plain text.
 
 ### What data does the application collect?
 
-The application only collects data that it needs to function:
-
-| Data | Stored Locally | Sent to Provider | Purpose |
-|------|-------------|-----------------|---------|
-| Conversations | Yes | Only current message | Chat history |
-| API keys | Yes (encrypted) | Yes (for auth) | AI provider auth |
-| Settings | Yes (encrypted) | No | Application config |
-| Knowledge base | Yes | Only relevant snippets | Context-aware responses |
-| Observation events | Yes (filtered) | Only fused context | Technology detection |
-| Skill packs | Yes (disk) | No | Engineering knowledge |
+| Data | Stored Locally | Sent Remotely |
+|------|---------------|---------------|
+| Chat messages | Yes | To AI provider (current conversation only) |
+| Knowledge documents | Yes | No |
+| Settings | Yes | No |
+| Screen observation | No (in-memory only) | No |
+| Clipboard data | No (in-memory only) | No |
+| Crash reports | Yes | Optional (if diagnostics enabled) |
+| Telemetry | No | Optional (if enabled) |
 
 ### Can I disable all observation features?
 
-Yes. Go to **Settings** → **Privacy** and toggle off:
-- Screen observation
-- OCR processing
-- Clipboard observation
-- Diagnostics collection
-- Telemetry
+Yes. Toggle **Privacy Mode** in Settings → Privacy to disable all observation features with one click. This disables screen observation, OCR, clipboard observation, diagnostics, and telemetry.
 
-Or use **Privacy Mode** for a one-click disable of all observation and collection features.
+### Does the application record my screen?
 
-### What is Privacy Mode?
+No. Screen observation is disabled by default and only captures the screen when:
+1. The user enables screen observation
+2. The feature is actively triggered by the observation engine
+3. The captured data is processed in memory and not stored
 
-Privacy Mode is a one-click toggle in the Settings → Privacy panel that:
+### Is my data encrypted?
 
-- Stops all running observation providers
-- Blocks new observation events from being recorded
-- Prevents screenshots, clipboard data, and terminal commands from being captured
-- Ensures the AI receives no observation context
+- **Credentials:** Yes, AES-256-GCM or ChaCha20-Poly1305 encryption
+- **Network communication:** Yes, TLS 1.2+
+- **Database:** Stored on disk; encrypted credential store within
+- **Logs:** Sensitive fields are redacted
 
-Toggle Privacy Mode on when you need a break from observation, or in environments where observation is not permitted.
+## Configuration
 
-### How are my API keys stored?
+### Can I use multiple AI providers?
 
-API keys are stored using multiple layers of protection:
+Yes. The application supports multiple AI providers through the profile system. Each profile can have its own provider configuration.
 
-1. **Encryption** — Keys are encrypted using AES-256-GCM before storage
-2. **OS Credential Manager** — Keys are also stored in Windows Credential Manager (DPAPI-protected)
-3. **Redaction** — Keys are automatically redacted in all logs and diagnostic output
-4. **Never in plain text** — Keys are never written to settings.json or any log file
+### Can I use a local AI model?
 
-### Is the data on my machine encrypted?
+Yes. Configure vLLM or Ollama as your AI provider:
+- **vLLM:** Set endpoint to `http://localhost:8000/v1`
+- **Ollama:** Set endpoint to `http://localhost:11434/v1`
 
-The application uses a multi-layered encryption model:
-
-| Data Type | Encryption | Storage |
-|-----------|-----------|---------|
-| API keys | AES-256-GCM | SQLite, Windows Credential Manager |
-| Settings (sensitive fields) | AES-256-GCM | settings.json |
-| Conversations | Not encrypted by default | SQLite (confidential data classification supports encryption) |
-| Knowledge base | Not encrypted by default | SQLite |
-| Log files | Not encrypted (credentials redacted) | File system |
-
-Confidential and Restricted data classifications require encryption per the security model.
-
----
-
-## Administration
-
-### How do I back up my data?
-
-The most important data to back up is:
-- **Database** — `%APPDATA%\com.wikilabs.copilot\wikilabs.db` (conversations, workspaces, skills)
-- **Settings** — `%APPDATA%\com.wikilabs.copilot\settings.json` (configuration)
-
-To back up:
-
-```powershell
-# Manual backup
-Copy-Item "$env:APPDATA\com.wikilabs.copilot\wikilabs.db" "C:\Backup\"
-Copy-Item "$env:APPDATA\com.wikilabs.copilot\settings.json" "C:\Backup\"
-```
-
-For automated backups, set up a scheduled task. See the [Operations Guide](OPERATIONS_GUIDE.md) for detailed backup procedures.
-
-### How do I restore from a backup?
-
-1. Stop the application
-2. Copy the backup files over the originals:
-   ```powershell
-   Copy-Item "C:\Backup\wikilabs.db" "$env:APPDATA\com.wikilabs.copilot\" -Force
-   Copy-Item "C:\Backup\settings.json" "$env:APPDATA\com.wikilabs.copilot\" -Force
-   ```
-3. Start the application
-
-See the [Operations Guide](OPERATIONS_GUIDE.md) for full restore procedures.
+No API key is required for local providers.
 
 ### How do I update the application?
 
-1. Open **Settings** → **Update**
-2. Click **Check for Updates**
-3. If a newer version is available, follow the update wizard
-4. Or download the installer from the release page and run it
+Updates are handled automatically through the tauri-plugin-updater:
+1. On startup, the application checks for updates
+2. If an update is available, a notification appears
+3. Click **Download and Install** to proceed
 
-The installer preserves all user data (database, settings, logs) during upgrades.
+You can also manually install by downloading the latest installer and running it (it detects and upgrades existing installations).
 
-### How do I generate a diagnostic package?
+### Where are settings stored?
 
-1. Open **Settings** → **Diagnostics**
-2. Click **Generate Diagnostic Package**
-3. Choose a save location
-4. The package is saved as a `.zip` archive containing:
-   - Version information
-   - Redacted settings report
-   - Log files (with sensitive data redacted)
-   - System information
-   - Database info
-   - Validation errors
-   - Crash info (if applicable)
+Settings are stored at `%APPDATA%\com.wikilabs.copilot\settings.json`. The application manages this file — do not edit it manually while the application is running.
 
-This package is useful for troubleshooting and support requests.
+### Where is the database stored?
 
-### Where are the log files located?
+The SQLite database is stored at `%APPDATA%\com.wikilabs.copilot\wikilabs.db`. It contains all workspaces, chat history, and knowledge data.
 
-Log files are stored at:
-```
-%APPDATA%\com.wikilabs.copilot\logs\
-```
+### How do I back up my data?
 
-Files include:
-- `wikilabs-copilot.log` — Current log file
-- `wikilabs-copilot.log.1`, `.2`, etc. — Rotated log files
-
-The logs use structured JSON format and automatic rotation (3 files, 10 MB each).
-
-### How do I change the log level?
-
-1. Open **Settings** → **Logging**
-2. Select the desired log level:
-   - **DEBUG** — Most verbose, for troubleshooting
-   - **INFO** — Default, normal operational events
-   - **WARN** — Warnings and recoverable failures
-   - **ERROR** — Only errors and failures
-
-Changing the log level takes effect immediately after saving settings.
-
----
+Close the application and copy the `%APPDATA%\com.wikilabs.copilot\` directory to a backup location. To restore, copy it back after reinstalling.
 
 ## Troubleshooting
 
-### The AI is not responding. What should I check?
+### The application won't start
 
-1. **Verify AI Provider configuration**
-   - Go to Settings → AI Provider
-   - Check the endpoint URL is correct
-   - Verify the API key is valid
+1. Check that WebView2 is installed
+2. Check that .NET Desktop Runtime 8.0 is installed
+3. Check log files at `%APPDATA%\com.wikilabs.copilot\logs\`
+4. Try resetting settings (rename `settings.json` to `settings.json.bak`)
 
-2. **Test the connection**
-   - Click **Test Connection** in Settings → AI Provider
-   - Check the response time (should be < 5 seconds)
+### AI responses are slow
 
-3. **Check the provider status**
-   - For cloud providers (OpenAI), check the provider's status page
-   - For local providers (vLLM, Ollama), verify the service is running
+1. Check your network connection
+2. Try a faster model in settings
+3. Reduce the context window size
+4. If using a local provider, check GPU/CPU resources
 
-4. **Check logs**
-   ```powershell
-   Select-String -Path "$env:APPDATA\com.wikilabs.copilot\logs\*.log" -Pattern "provider|error"
-   ```
+### Search returns no results
 
-5. **Check network connectivity**
-   - Ensure your machine can reach the provider endpoint
-   - For local providers, ensure no firewall is blocking the port
+1. Verify documents are imported into the correct workspace
+2. Check that embeddings were generated successfully
+3. Try a different search term
+4. Check logs for embedding errors
 
-6. **Restart the application** — Sometimes a restart resolves temporary issues
+### Skill pack not activating
 
-### The application crashes on startup. What should I do?
+1. Verify the skill pack is installed in `src/skills/`
+2. Check that the detection rules match your environment
+3. Try enabling the skill manually in the Skills panel
 
-1. **Check the crash report**
-   ```powershell
-   Get-Content "$env:APPDATA\com.wikilabs.copilot\crash\last_crash.json"
-   ```
+### Where can I get help?
 
-2. **Check the error log**
-   ```powershell
-   Get-Content "$env:APPDATA\com.wikilabs.copilot\crash\error_log.jsonl" -Tail 50
-   ```
-
-3. **Try a clean start**
-   - Rename the settings file: `ren "%APPDATA%\com.wikilabs.copilot\settings.json" "settings.json.bak"`
-   - Start the application (creates fresh default settings)
-   - If this works, reconfigure your settings
-
-4. **Check disk space**
-   ```powershell
-   Get-PSDrive $env:SystemDrive | Select-Object Used, Free
-   ```
-   Ensure at least 10% free space on the system drive.
-
-5. **Generate a diagnostic package** and contact support.
-
-### A skill pack is not being loaded. What should I check?
-
-1. **Verify the directory exists**
-   ```powershell
-   Test-Path ".\src\skills\my-skill-pack"
-   ```
-
-2. **Verify manifest.yaml exists**
-   ```powershell
-   Test-Path ".\src\skills\my-skill-pack\manifest.yaml"
-   ```
-
-3. **Validate the manifest**
-   - Check that `id`, `name`, and `version` fields are present and non-empty
-   - Verify the YAML is valid
-
-4. **Check for errors in logs**
-   ```powershell
-   Select-String -Path "$env:APPDATA\com.wikilabs.copilot\logs\*.log" -Pattern "skill"
-   ```
-
-5. **Restart the application** — Skills are loaded on startup only
-
-6. **Use the Skills panel** in Settings to verify the skill appears in the loaded skills list
-
-### How do I reset the application to defaults?
-
-1. **Stop the application**
-2. **Rename the settings file**
-   ```powershell
-   ren "%APPDATA%\com.wikilabs.copilot\settings.json" "settings.json.bak"
-   ```
-3. **Start the application** — Creates fresh default settings
-4. **Reconfigure** — Re-enter your AI provider settings and preferences
-
-This does not affect your conversations, knowledge base, or skill packs.
+See the [Support Guide](SUPPORT_GUIDE.md) for support channels and escalation procedures.
 
 ---
 
-*For more detailed troubleshooting procedures, see the [Troubleshooting Guide](TROUBLESHOOTING.md). For support escalation procedures, see the [Support Guide](SUPPORT_GUIDE.md).*
+*For detailed feature documentation, see [User Guide](user-guide/USER_GUIDE.md).*
+*For installation, see [Installation Guide](INSTALLATION_GUIDE.md).*
+*For administration, see [Administrator Guide](admin-guide/ADMINISTRATOR_GUIDE.md).*
