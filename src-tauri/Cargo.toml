@@ -48,3 +48,7 @@ wikilabs-knowledge = { path = "../src/knowledge" }
 wikilabs-benchmark = { path = "../src/benchmark" }
 serde_yaml = "0.9"
 once_cell = "1"
+cfg-if = "1"
+# Windows-specific dependencies (only built on Windows)
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"

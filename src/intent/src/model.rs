@@ -9,7 +9,7 @@ impl IntentModel {
 
     pub async fn predict(&self, _features: Vec<f32>) -> anyhow::Result<crate::engine::Intent> {
         // Stub: placeholder. Load ML model and classify intent from features.
-        unimplemented!()
+        anyhow::bail!("Not yet implemented")
     }
 }
 

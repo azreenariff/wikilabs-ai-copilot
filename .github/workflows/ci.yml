@@ -25,7 +25,11 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: Install Tauri CLI
-        run: curl https://get.tauri.dev --proto '=https' --tlsv1.2 -sSf | sh -s -- --no-modify-path --no-menu
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+          iex ((New-Object System.Net.WebClient).DownloadString('https://get.tauri.dev/tauri.ps1')) --no-modify-path --no-menu
 
       - name: Build Tauri app
         run: cargo tauri build --target x86_64-pc-windows-msvc
@@ -69,6 +73,10 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system deps for docs build
+        run: |
+          sudo apt-get update && sudo apt-get install -y libglib2.0-dev libgtk-3-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev
 
       - name: Build documentation
         run: cargo doc --workspace --no-deps --document-private-items

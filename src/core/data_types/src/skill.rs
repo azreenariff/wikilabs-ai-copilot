@@ -9,7 +9,6 @@
 //! - CommandDefinition — skill-provided CLI commands
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Manifest parsed from manifest.yaml in a skill directory.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
