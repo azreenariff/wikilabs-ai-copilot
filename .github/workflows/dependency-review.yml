@@ -1,0 +1,27 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          # Allow warnings but block on high/critical vulnerabilities
+          deny-libraries: |
+            # No known libraries to deny by default
+            # Add vulnerable packages here when discovered
+          # Comment on PR with dependency changes
+          comment-summary-in-pr: always
