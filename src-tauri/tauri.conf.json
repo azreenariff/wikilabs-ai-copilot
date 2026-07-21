@@ -12,14 +12,13 @@
         "title": "Wiki Labs AI Copilot v1.0.0",
         "width": 1400,
         "height": 900,
-        "min-width": 1024,
-        "min-height": 768,
+        "minWidth": 1024,
+        "minHeight": 768,
         "resizable": true,
         "fullscreen": false,
         "center": true,
         "decorations": true,
-        "transparent": false,
-        "hidden-title": true
+        "transparent": false
       }
     ],
     "security": {
