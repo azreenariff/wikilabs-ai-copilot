@@ -20,13 +20,15 @@ pub enum SessionState {
     Ended,
 }
 
-impl ToString for SessionState {
-    fn to_string(&self) -> String {
+use std::fmt::{Display, Formatter};
+
+impl Display for SessionState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SessionState::Active => "active".to_string(),
-            SessionState::Paused => "paused".to_string(),
-            SessionState::Suspended => "suspended".to_string(),
-            SessionState::Ended => "ended".to_string(),
+            SessionState::Active => write!(f, "active"),
+            SessionState::Paused => write!(f, "paused"),
+            SessionState::Suspended => write!(f, "suspended"),
+            SessionState::Ended => write!(f, "ended"),
         }
     }
 }

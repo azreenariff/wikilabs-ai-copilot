@@ -31,6 +31,12 @@ pub struct RootCauseHypothesis {
 /// Root cause analyzer — generates hypotheses.
 pub struct RootCauseAnalyzer;
 
+impl Default for RootCauseAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RootCauseAnalyzer {
     /// Create a new root cause analyzer.
     pub fn new() -> Self {

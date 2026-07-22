@@ -10,7 +10,6 @@
 /// - OpenShift MCP: get_cluster_status(), get_nodes(), get_pods(), get_events()
 /// - VMware MCP: get_vm_status(), get_host_health()
 /// - Nagios MCP: get_alerts(), get_services()
-
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

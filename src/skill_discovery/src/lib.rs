@@ -153,6 +153,12 @@ pub struct KnownSkill {
     pub optional_signals: Vec<String>,
 }
 
+impl Default for SkillDiscoveryEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SkillDiscoveryEngine {
     /// Create a new discovery engine with default config.
     pub fn new() -> Self {

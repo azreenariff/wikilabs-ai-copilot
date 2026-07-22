@@ -10,7 +10,6 @@
 /// - Dangerous (can modify or destroy data)
 ///
 /// The AI must warn before showing risky commands.
-
 use serde::{Deserialize, Serialize};
 
 /// Risk level for a command or operation.

@@ -100,6 +100,7 @@ impl RecommendationEngine {
     ///
     /// Returns a GenerationResult containing the recommendation,
     /// the reason it was generated, and which context sources were used.
+    #[allow(clippy::too_many_arguments)]
     pub fn generate(
         &mut self,
         title: impl Into<String>,

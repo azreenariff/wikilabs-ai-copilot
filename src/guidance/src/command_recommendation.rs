@@ -12,7 +12,6 @@
 /// Purpose: Check filesystem usage.
 /// Expected output: Filesystem utilization percentage.
 /// Risk: Low.
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

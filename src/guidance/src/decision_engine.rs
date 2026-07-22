@@ -7,7 +7,6 @@
 /// - Whether interruption is appropriate.
 ///
 /// The AI does not interrupt unnecessarily.
-
 use serde::{Deserialize, Serialize};
 
 /// How detailed the guidance should be.

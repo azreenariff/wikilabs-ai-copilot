@@ -5,7 +5,6 @@
 /// - What engineer did in response
 /// - Which recommendations were relevant
 /// - Overall troubleshooting progress
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

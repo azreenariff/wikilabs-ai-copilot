@@ -124,6 +124,12 @@ pub struct SkillDefinition {
     pub dependencies: Vec<String>,
 }
 
+impl Default for SkillActivationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SkillActivationEngine {
     /// Create a new activation engine with default config.
     pub fn new() -> Self {

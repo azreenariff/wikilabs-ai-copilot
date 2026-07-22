@@ -134,6 +134,7 @@ impl FollowUpSuggestion {
 #[derive(Debug, Clone)]
 pub struct ContextualFollowUp {
     /// Track generated follow-ups for deduplication.
+    #[allow(dead_code)]
     generated_ids: Vec<Uuid>,
 }
 
@@ -342,6 +343,7 @@ impl Default for ContextualFollowUp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Confidence, Evidence, Priority};
 
     fn make_recommendation(
         title: impl Into<String>,

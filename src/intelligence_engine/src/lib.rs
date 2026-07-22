@@ -193,6 +193,12 @@ pub struct EngineeringIntelligenceEngine {
     last_report: Option<IntelligenceReport>,
 }
 
+impl Default for EngineeringIntelligenceEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EngineeringIntelligenceEngine {
     /// Create a new intelligence engine with default config.
     pub fn new() -> Self {
@@ -269,7 +275,7 @@ impl EngineeringIntelligenceEngine {
 
     /// Run anomaly detection only.
     pub fn detect_anomalies(&self, context: &FusedContext) -> AnomalyReport {
-        let technologies = context.technologies.iter().cloned().collect();
+        let technologies = context.technologies.to_vec();
         let intents = context.intents.to_vec();
 
         let fused: FusedContext = FusedContext {
@@ -394,6 +400,7 @@ impl EngineeringIntelligenceEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wikilabs_data_types::TechnologyInference;
 
     #[test]
     fn test_engine_creation() {

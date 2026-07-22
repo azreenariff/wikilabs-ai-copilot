@@ -5,7 +5,6 @@
 /// - Title, Technology, Category, Description, Reason
 /// - Confidence, Evidence, Recommended next step
 /// - Reference documentation, Risk warning (if applicable)
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

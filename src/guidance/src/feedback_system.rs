@@ -13,7 +13,6 @@
 /// It does NOT trigger autonomous learning.
 ///
 /// The AI adapts its recommendations based on feedback patterns.
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

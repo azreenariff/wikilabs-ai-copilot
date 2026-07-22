@@ -434,7 +434,7 @@ impl SkillRuntime {
             rules.extend(skill.detection_rules.iter());
         }
         // Sort by priority descending
-        rules.sort_by(|a, b| b.priority.cmp(&a.priority));
+        rules.sort_by_key(|b| std::cmp::Reverse(b.priority));
         rules
     }
 
@@ -445,7 +445,7 @@ impl SkillRuntime {
             intents.extend(skill.intents.iter());
         }
         // Sort by priority descending
-        intents.sort_by(|a, b| b.priority.cmp(&a.priority));
+        intents.sort_by_key(|b| std::cmp::Reverse(b.priority));
         intents
     }
 
@@ -573,6 +573,7 @@ impl SkillRuntime {
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::Path;
 
     fn create_test_skill_dir(base: &Path, skill_id: &str, manifest: &str) {
         let skill_dir = base.join(skill_id);
@@ -926,7 +927,7 @@ dependencies: []
 
     #[test]
     fn test_skill_not_loaded() {
-        let (mut runtime, _temp_dir) = setup_test_runtime();
+        let (runtime, _temp_dir) = setup_test_runtime();
         let skill = runtime.get_skill("nonexistent");
         assert!(skill.is_none());
     }

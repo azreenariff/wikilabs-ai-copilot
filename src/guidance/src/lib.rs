@@ -14,7 +14,6 @@
 ///
 /// Core principle: The AI assists engineers but never replaces them.
 /// The engineer performs all actions. The AI observes, explains, recommends, and guides.
-
 pub mod command_recommendation;
 pub mod context_providers;
 pub mod decision_engine;

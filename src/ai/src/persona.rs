@@ -120,12 +120,14 @@ pub enum ConfidenceLevel {
     Low,
 }
 
-impl ToString for ConfidenceLevel {
-    fn to_string(&self) -> String {
+use std::fmt::{Display, Formatter};
+
+impl Display for ConfidenceLevel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConfidenceLevel::High => "HIGH".to_string(),
-            ConfidenceLevel::Medium => "MEDIUM".to_string(),
-            ConfidenceLevel::Low => "LOW".to_string(),
+            ConfidenceLevel::High => write!(f, "HIGH"),
+            ConfidenceLevel::Medium => write!(f, "MEDIUM"),
+            ConfidenceLevel::Low => write!(f, "LOW"),
         }
     }
 }

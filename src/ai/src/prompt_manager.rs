@@ -18,12 +18,14 @@ pub enum PromptVersion {
     Named(String),
 }
 
-impl ToString for PromptVersion {
-    fn to_string(&self) -> String {
+use std::fmt::{Display, Formatter};
+
+impl Display for PromptVersion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            PromptVersion::Default => "default".to_string(),
-            PromptVersion::Numbered(n) => format!("v{}", n),
-            PromptVersion::Named(n) => n.clone(),
+            PromptVersion::Default => write!(f, "default"),
+            PromptVersion::Numbered(n) => write!(f, "v{}", n),
+            PromptVersion::Named(n) => write!(f, "{}", n),
         }
     }
 }

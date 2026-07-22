@@ -17,8 +17,10 @@ use tracing::info;
 /// Skill Development Kit for creating and validating skills.
 pub struct SkillSDK {
     /// Directory containing template files.
+    #[allow(dead_code)]
     templates_dir: PathBuf,
     /// Directory containing JSON schema files.
+    #[allow(dead_code)]
     schemas_dir: PathBuf,
     /// Registry of schemas indexed by name.
     schema_registry: SchemaRegistry,

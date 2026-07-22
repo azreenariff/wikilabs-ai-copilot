@@ -328,7 +328,7 @@ fn is_valid_transition(from: LifecycleState, to: LifecycleState) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Evidence;
+    use crate::{Confidence, Priority};
 
     fn make_rec(id: &str) -> Recommendation {
         let mut u = uuid::Uuid::nil();

@@ -10,7 +10,6 @@
 /// - Recommended commands
 /// - Warnings
 /// - Documentation references
-
 use serde::{Deserialize, Serialize};
 
 /// Common technology domains for workflows.

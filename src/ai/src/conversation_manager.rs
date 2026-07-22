@@ -15,12 +15,14 @@ pub enum ConversationRole {
     System,
 }
 
-impl ToString for ConversationRole {
-    fn to_string(&self) -> String {
+use std::fmt::{Display, Formatter};
+
+impl Display for ConversationRole {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConversationRole::User => "user".to_string(),
-            ConversationRole::Assistant => "assistant".to_string(),
-            ConversationRole::System => "system".to_string(),
+            ConversationRole::User => write!(f, "user"),
+            ConversationRole::Assistant => write!(f, "assistant"),
+            ConversationRole::System => write!(f, "system"),
         }
     }
 }
@@ -212,7 +214,7 @@ impl Conversation {
         for msg in &self.messages {
             output.push_str(&format!(
                 "[{}] {}:\n{}\n\n",
-                msg.role.to_string(),
+                msg.role,
                 msg.created_at,
                 msg.content
             ));

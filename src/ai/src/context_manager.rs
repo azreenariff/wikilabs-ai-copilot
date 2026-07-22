@@ -103,6 +103,7 @@ pub struct AggregatedContext {
 
 impl AggregatedContext {
     /// Build an aggregated context from its components.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         conversation_messages: Vec<serde_json::Value>,
         system_prompt: String,
@@ -355,7 +356,7 @@ impl ContextManager {
     pub fn aggregate_source_texts(&self) -> String {
         let mut texts = Vec::new();
         let mut sorted = self.sources.clone();
-        sorted.sort_by(|a, b| b.priority.cmp(&a.priority));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.priority));
         for source in &sorted {
             if !source.content.is_empty() {
                 texts.push(format!("## {}\n{}\n", source.name, source.content));

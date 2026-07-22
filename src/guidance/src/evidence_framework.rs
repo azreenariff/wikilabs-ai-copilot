@@ -5,7 +5,6 @@
 ///   Issue: Application unavailable
 ///   Evidence collected: ✓ Pod status, ✓ Recent events, ✓ Application logs
 ///   Missing: ✗ Network connectivity test
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

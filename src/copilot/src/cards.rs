@@ -144,6 +144,7 @@ impl RecommendationCard {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Confidence, Evidence, Priority};
 
     fn make_rec() -> Recommendation {
         Recommendation::new(
