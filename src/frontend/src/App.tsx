@@ -31,7 +31,7 @@ function App() {
 
 function AppLayout() {
   const [status, setStatus] = useState<{ version: string; running: boolean }>({
-    version: '1.1.2',
+    version: '1.1.5',
     running: true,
   });
 
@@ -45,13 +45,13 @@ function AppLayout() {
       .then(data => {
         if (data.success && data.value) {
           setStatus({
-            version: data.value.version || '1.1.1',
+            version: data.value.version || '1.1.5',
             running: data.value.status === 'running',
           });
         }
       })
       .catch(() => {
-        setStatus({ version: '1.1.2', running: false });
+        setStatus({ version: '1.1.5', running: false });
       });
   }, []);
 
