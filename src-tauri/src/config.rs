@@ -14,11 +14,10 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use tauri::Manager;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 // ── Privacy Controls ────────────────────────────────────────────
 
@@ -739,7 +738,7 @@ impl AppSettingsStore {
     }
 
     /// Generate a system diagnostics report.
-    pub fn generate_diagnostics(&self, app_handle: &tauri::AppHandle) -> DiagnosticsReport {
+    pub fn generate_diagnostics(&self, _app_handle: &tauri::AppHandle) -> DiagnosticsReport {
         let settings = self.get();
 
         DiagnosticsReport {

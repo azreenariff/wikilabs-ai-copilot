@@ -6,18 +6,11 @@ use async_trait::async_trait;
 use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider for Microsoft SharePoint sites and documents.
+#[derive(Default)]
 pub struct SharePointProvider {
+    #[allow(dead_code)]
     enabled: bool,
     site_url: String,
-}
-
-impl Default for SharePointProvider {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            site_url: String::new(),
-        }
-    }
 }
 
 impl SharePointProvider {

@@ -241,10 +241,7 @@ impl IngestionPipeline {
                     continue;
                 }
 
-                let needs_update = match incremental.check_incremental(doc, &mtimes) {
-                    Ok(should_process) => should_process,
-                    Err(_) => true, // default: process if check fails
-                };
+                let needs_update = incremental.check_incremental(doc, &mtimes).unwrap_or(true);
 
                 if needs_update {
                     keep.push(doc.clone());

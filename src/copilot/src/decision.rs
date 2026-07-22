@@ -5,7 +5,6 @@
 //! allowing a recommendation to be shown to the engineer.
 
 use crate::{Confidence, Priority};
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 

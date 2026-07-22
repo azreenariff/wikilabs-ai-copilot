@@ -14,10 +14,12 @@ use std::fmt;
 
 /// Copilot mode that influences behaviour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum CopilotMode {
     /// Explains everything, shows all recommendations with detail.
     Teaching,
     /// Balanced suggestions with moderate detail. Default mode.
+    #[default]
     Balanced,
     /// Concise suggestions assuming deep knowledge.
     Expert,
@@ -58,11 +60,6 @@ impl CopilotMode {
     }
 }
 
-impl Default for CopilotMode {
-    fn default() -> Self {
-        CopilotMode::Balanced
-    }
-}
 
 /// Configurable mode settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]

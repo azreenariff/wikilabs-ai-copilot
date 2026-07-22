@@ -11,6 +11,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider that discovers and parses files from Git repositories.
 pub struct GitProvider {
+    #[allow(dead_code)]
     enabled: bool,
     extensions: Vec<String>,
 }

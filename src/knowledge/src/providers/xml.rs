@@ -11,6 +11,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider for XML files.
 pub struct XmlProvider {
+    #[allow(dead_code)]
     enabled: bool,
 }
 

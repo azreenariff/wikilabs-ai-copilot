@@ -13,12 +13,11 @@
 //! - User preferences and history
 
 use crate::{Confidence, Evidence, Priority, Recommendation};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Source of engineering context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct EngineeringContext {
     /// Current workflow state name.
     pub workflow_state: Option<String>,
@@ -36,19 +35,6 @@ pub struct EngineeringContext {
     pub session_id: Option<String>,
 }
 
-impl Default for EngineeringContext {
-    fn default() -> Self {
-        EngineeringContext {
-            workflow_state: None,
-            technologies: Vec::new(),
-            recent_activity: Vec::new(),
-            timeline_events: Vec::new(),
-            knowledge_files: Vec::new(),
-            observations: Vec::new(),
-            session_id: None,
-        }
-    }
-}
 
 impl EngineeringContext {
     /// Check if this context has substantial data.
@@ -206,7 +192,7 @@ impl RecommendationEngine {
     fn classify_observation(
         &self,
         observation: &str,
-        context: &EngineeringContext,
+        _context: &EngineeringContext,
     ) -> (String, String, String, f64, Priority) {
         let obs_lower = observation.to_lowercase();
 

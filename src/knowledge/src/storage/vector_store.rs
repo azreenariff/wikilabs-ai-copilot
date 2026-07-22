@@ -173,6 +173,7 @@ SELECT load_extension('mod_spatialite') WHERE 1=0;
     }
 
     /// Deserialize a vector from a blob.
+    #[allow(dead_code)]
     fn deserialize_vector(bytes: &[u8], dimensions: usize) -> Vec<f32> {
         let mut vector = vec![0.0f32; dimensions];
         let chunk_size = std::mem::size_of::<f32>();

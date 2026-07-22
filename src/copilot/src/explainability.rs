@@ -7,9 +7,7 @@
 //! This is critical for engineer trust — they must understand
 //! the reasoning before deciding to act.
 
-use crate::Evidence;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 /// A single explanation node.
 ///

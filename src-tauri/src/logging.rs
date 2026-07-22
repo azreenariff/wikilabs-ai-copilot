@@ -16,7 +16,6 @@ use chrono::Utc;
 use regex::Regex;
 use serde::Serialize;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 use tracing::{info, warn};
@@ -26,7 +25,6 @@ use tracing_subscriber::{
     EnvFilter,
 };
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_appender::rolling::Rotation;
 
 static INIT: Once = Once::new();
 static mut LOGGER_GUARD: Option<WorkerGuard> = None;
@@ -170,7 +168,7 @@ pub fn generate_diagnostics(
         for entry in fs::read_dir(&log_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "log") {
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "log") {
                 let metadata = fs::metadata(&path)?;
                 let line_count = count_lines(&path)?;
                 let name = path

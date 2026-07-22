@@ -4,7 +4,6 @@
 //! elements, attributes, text content, and code blocks.
 
 use super::{Document, DocumentElement, ParserProvider};
-use regex::Regex;
 
 /// XML parser.
 pub struct XmlParser;
@@ -20,6 +19,8 @@ impl XmlParser {
         // Use regex-based parsing for structure preservation
         // Extract elements with text content (no backreference support in Rust regex)
         let tag_re = regex::Regex::new(r"<([a-zA-Z_][\w.-]*)(\s+[^>]*)?>([^<]*)").unwrap();
+        // Extract href URLs — compiled outside the loop
+        let href_re = regex::Regex::new(r#"href=["']([^"']+)["']"#).unwrap();
 
         for cap in tag_re.captures_iter(content) {
             let tag_name = cap[1].to_string();
@@ -71,13 +72,12 @@ impl XmlParser {
             } else if tag_name == "example" || tag_name == "sample" || tag_name == "demo" {
                 elements.push(DocumentElement::Example(text.to_string()));
             } else if tag_name == "link" || tag_name == "a" {
-                // Try to extract URL from attributes
-                let href_re = regex::Regex::new(r#"href=["']([^"']+)["']"#).unwrap();
-                let url = if let Some(href_cap) = href_re.captures(&cap[2]) {
-                    href_cap[1].to_string()
-                } else {
-                    String::new()
-                };
+                            // Try to extract URL from attributes
+                            let url = if let Some(href_cap) = href_re.captures(&cap[2]) {
+                                href_cap[1].to_string()
+                            } else {
+                                String::new()
+                            };
                 elements.push(DocumentElement::Reference(text.to_string(), url));
             } else if tag_name == "table" {
                 elements.push(DocumentElement::Paragraph(format!(

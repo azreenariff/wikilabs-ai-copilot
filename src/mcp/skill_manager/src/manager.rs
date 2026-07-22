@@ -2,6 +2,12 @@
 
 pub struct SkillManager;
 
+impl Default for SkillManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SkillManager {
     pub fn new() -> Self {
         Self

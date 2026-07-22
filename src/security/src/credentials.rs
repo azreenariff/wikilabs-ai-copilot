@@ -9,6 +9,12 @@ pub struct Credential {
     pub workspace_id: uuid::Uuid,
 }
 
+impl Default for CredentialStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CredentialStore {
     pub fn new() -> Self {
         Self

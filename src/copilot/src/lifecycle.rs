@@ -10,7 +10,7 @@
 //!
 //! The same recommendation should not repeatedly appear.
 
-use crate::{Confidence, Priority, Recommendation};
+use crate::Recommendation;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -113,6 +113,12 @@ pub struct RecommendationLifecycle {
     max_history: usize,
 }
 
+impl Default for RecommendationLifecycle {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecommendationLifecycle {
     pub fn new() -> Self {
         RecommendationLifecycle {
@@ -132,8 +138,8 @@ impl RecommendationLifecycle {
     /// Create a new recommendation in Candidate state.
     pub fn create(&mut self, recommendation: &Recommendation) {
         let id = recommendation.id;
-        if !self.states.contains_key(&id) {
-            self.states.insert(id, LifecycleState::Candidate);
+        if let std::collections::hash_map::Entry::Vacant(e) = self.states.entry(id) {
+            e.insert(LifecycleState::Candidate);
             self.record_transition(id, LifecycleState::Candidate, None);
         }
     }

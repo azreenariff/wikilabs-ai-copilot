@@ -16,12 +16,10 @@
 //! 5. **Monitor** skill health and deactivate on failure
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
-use wikilabs_data_types::*;
 
 /// A detected skill ready for activation.
 #[derive(Debug, Clone, Serialize, Deserialize)]

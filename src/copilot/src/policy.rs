@@ -162,8 +162,8 @@ impl PolicyEngine {
         &self,
         confidence: f64,
         priority: Priority,
-        is_likely_idle: bool,
-        time_since_last: Option<u64>,
+        _is_likely_idle: bool,
+        _time_since_last: Option<u64>,
     ) -> bool {
         // Silent mode never shows proactive recommendations
         if self.config.level == PolicyLevel::Silent {

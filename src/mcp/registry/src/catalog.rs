@@ -2,6 +2,12 @@
 
 pub struct ToolCatalog;
 
+impl Default for ToolCatalog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ToolCatalog {
     pub fn new() -> Self {
         Self

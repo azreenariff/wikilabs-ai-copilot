@@ -11,8 +11,10 @@ use serde::{Deserialize, Serialize};
 
 /// Policy for how to handle budget overflow.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum BudgetPolicy {
     /// Strictly enforce budget — refuse to exceed.
+    #[default]
     Strict,
     /// Allow slight overflow (up to buffer_pct).
     WithBuffer {
@@ -23,11 +25,6 @@ pub enum BudgetPolicy {
     Aggressive,
 }
 
-impl Default for BudgetPolicy {
-    fn default() -> Self {
-        BudgetPolicy::Strict
-    }
-}
 
 /// Action to take when budget check fails.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -141,11 +138,7 @@ impl BudgetBuilder {
         };
 
         let within_budget = total <= effective_budget;
-        let excess_tokens = if total > effective_budget {
-            total - effective_budget
-        } else {
-            0
-        };
+        let excess_tokens = total.saturating_sub(effective_budget);
 
         let recommended_action = if within_budget {
             BudgetAction::NoOp

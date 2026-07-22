@@ -11,6 +11,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider that parses Markdown files, extracting front-matter metadata.
 pub struct MarkdownProvider {
+    #[allow(dead_code)]
     enabled: bool,
 }
 

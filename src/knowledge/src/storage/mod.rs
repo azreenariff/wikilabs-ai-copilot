@@ -49,6 +49,7 @@ impl StorageConfig {
 pub struct VectorStorage {
     store: Arc<Mutex<vector_store::VectorStore>>,
     index_manager: IndexManager,
+    #[allow(dead_code)]
     incremental_indexer: IncrementalIndexer,
     deleter: DocumentDeleter,
     config: StorageConfig,

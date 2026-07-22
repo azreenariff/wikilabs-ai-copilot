@@ -4,7 +4,6 @@
 //! code blocks, and other structure from extracted text.
 
 use super::{Document, DocumentElement, ParserProvider};
-use regex::Regex;
 
 /// PDF parser using text extraction from raw bytes.
 pub struct PdfParser;
@@ -77,8 +76,8 @@ impl PdfParser {
                 || line.starts_with("Example:")
                 || lower.starts_with("sample:")
             {
-                let text = if line.starts_with("> ") {
-                    &line[2..]
+                let text = if let Some(stripped) = line.strip_prefix("> ") {
+                    stripped
                 } else {
                     line
                 };

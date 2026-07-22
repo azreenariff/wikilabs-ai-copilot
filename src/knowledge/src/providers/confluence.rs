@@ -6,18 +6,11 @@ use async_trait::async_trait;
 use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider for Atlassian Confluence pages and attachments.
+#[derive(Default)]
 pub struct ConfluenceProvider {
+    #[allow(dead_code)]
     enabled: bool,
     instance_url: String,
-}
-
-impl Default for ConfluenceProvider {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            instance_url: String::new(),
-        }
-    }
 }
 
 impl ConfluenceProvider {

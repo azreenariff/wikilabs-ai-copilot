@@ -2,6 +2,12 @@
 
 pub struct EncryptionEngine;
 
+impl Default for EncryptionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EncryptionEngine {
     pub fn new() -> Self {
         Self

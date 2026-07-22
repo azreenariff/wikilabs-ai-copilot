@@ -203,11 +203,10 @@ impl FeedbackSystem {
         self.feedback.push(feedback.clone());
 
         // Suppress this specific recommendation ID based on negative feedback
-        if feedback.is_negative() || feedback.is_redundant() {
-            if !self.suppressed_recommendations.contains(&feedback.recommendation_id) {
+        if (feedback.is_negative() || feedback.is_redundant())
+            && !self.suppressed_recommendations.contains(&feedback.recommendation_id) {
                 self.suppressed_recommendations.push(feedback.recommendation_id);
             }
-        }
     }
 
     /// Record feedback for a recommendation by ID.

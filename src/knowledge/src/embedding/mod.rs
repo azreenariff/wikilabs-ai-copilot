@@ -74,6 +74,8 @@ impl EmbeddingPipeline {
     }
 
     /// Embed a single chunk of text.
+    #[allow(dead_code)]
+    #[allow(dead_code)]
     async fn embed(&self, text: &str) -> anyhow::Result<Vec<f32>> {
         let result = self
             .config

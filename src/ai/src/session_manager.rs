@@ -199,6 +199,12 @@ pub struct SessionManager {
     active_id: Option<Uuid>,
 }
 
+impl Default for SessionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionManager {
     pub fn new() -> Self {
         Self {
@@ -362,7 +368,7 @@ impl SessionManager {
         // If we removed the active session, set a new one
         if self
             .active_id
-            .map_or(false, |id| !self.sessions.contains_key(&id))
+            .is_some_and(|id| !self.sessions.contains_key(&id))
         {
             self.active_id = self
                 .sessions

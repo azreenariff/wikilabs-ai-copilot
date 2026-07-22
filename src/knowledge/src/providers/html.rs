@@ -11,6 +11,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider that parses HTML files, extracting visible text content.
 pub struct HtmlProvider {
+    #[allow(dead_code)]
     enabled: bool,
 }
 

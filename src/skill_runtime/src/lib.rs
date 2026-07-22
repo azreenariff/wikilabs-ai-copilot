@@ -20,10 +20,9 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
-use serde_yaml;
 use tracing::{debug, info, warn};
 use wikilabs_data_types::*;
 pub use wikilabs_skill_activation::{ActivationCandidate, ActivationConfig, ActivationState, ActivatedSkill, SkillActivationEngine, SkillDefinition};
@@ -255,7 +254,7 @@ impl SkillRuntime {
                 Ok(list) => loaded.best_practices = list,
                 Err(_) => {
                     if let Ok(map) = serde_yaml::from_str::<HashMap<String, String>>(&content) {
-                        loaded.best_practices = map.into_iter().map(|(_, v)| v).collect();
+                        loaded.best_practices = map.into_values().collect();
                     }
                 }
             }
@@ -270,7 +269,7 @@ impl SkillRuntime {
                 Ok(list) => loaded.known_issues = list,
                 Err(_) => {
                     if let Ok(map) = serde_yaml::from_str::<HashMap<String, String>>(&content) {
-                        loaded.known_issues = map.into_iter().map(|(_, v)| v).collect();
+                        loaded.known_issues = map.into_values().collect();
                     }
                 }
             }

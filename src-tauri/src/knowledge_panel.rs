@@ -197,7 +197,7 @@ impl KnowledgePanel {
                         ("WARNINGS".to_string(), 0usize, *wc)
                     }
                 }
-                wikilabs_knowledge::validate::ValidationResult::Error { message } => {
+                wikilabs_knowledge::validate::ValidationResult::Error { message: _ } => {
                     ("ERROR".to_string(), 1usize, 0usize)
                 }
             };

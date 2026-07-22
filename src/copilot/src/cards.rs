@@ -6,8 +6,7 @@
 //! Display: Title, Technology, Confidence, Priority, Reason,
 //! Supporting documents, and Actions (Explain, Open Docs, Dismiss, Complete).
 
-use crate::{Confidence, Evidence, Priority, Recommendation};
-use chrono::{DateTime, Utc};
+use crate::{Confidence, Priority, Recommendation};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

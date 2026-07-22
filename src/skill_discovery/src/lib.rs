@@ -19,10 +19,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, info, warn};
-use wikilabs_data_types::*;
+use tracing::{debug, info};
 
 /// A single detected technology signature in the workspace.
 #[derive(Debug, Clone, Serialize, Deserialize)]

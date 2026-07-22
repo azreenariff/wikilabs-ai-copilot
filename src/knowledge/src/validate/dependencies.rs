@@ -123,10 +123,7 @@ impl DependenciesResult {
             for cycle in &self.circular_deps {
                 lines.push(format!(
                     "    - {}",
-                    cycle
-                        .iter().cloned()
-                        .collect::<Vec<_>>()
-                        .join(" -> ")
+                    cycle.to_vec().join(" -> ")
                 ));
             }
         }

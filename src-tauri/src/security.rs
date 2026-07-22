@@ -179,9 +179,9 @@
 //! | Cross-user access | System fingerprint + optional PIN |
 //! | Reinstallation data loss | User data directory preserved during upgrades |
 
-use crate::config::{AppSettings, SecuritySettings};
+use crate::config::SecuritySettings;
 use aes_gcm::{
-    aead::{Aead, KeyInit, Nonce, OsRng},
+    aead::{Aead, KeyInit, OsRng},
     Aes256Gcm,
 };
 use chacha20poly1305::ChaCha20Poly1305;
@@ -189,7 +189,7 @@ use rand::RngCore;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 // ── Key Management ────────────────────────────────────────────
 
@@ -219,7 +219,7 @@ impl KeyManager {
     }
 
     /// Derive key using the configured algorithm.
-    fn derive_key(settings: &SecuritySettings, pin: Option<String>) -> Vec<u8> {
+    fn derive_key(_settings: &SecuritySettings, pin: Option<String>) -> Vec<u8> {
         let system_fingerprint = Self::system_fingerprint();
         let mut hasher = Sha256::new();
 
@@ -579,25 +579,25 @@ pub fn redact_secrets(input: &str) -> String {
 
         // JSON format: "key": "value"
         let pat_json = format!("\"{}\"\\s*:\\s*\"[^\"]*\"", esc_search);
-        if let Some(re) = regex::Regex::new(&pat_json).ok() {
+        if let Ok(re) = regex::Regex::new(&pat_json) {
             result = re.replace_all(&result, format!("\"{}\": \"[REDACTED]\"", search)).to_string();
         }
 
         // Key-value format: key = "value" (case insensitive)
         let pat_kv = format!("(?i){}\\s*=\\s*\"[^\"]*\"", esc_pattern);
-        if let Some(re) = regex::Regex::new(&pat_kv).ok() {
+        if let Ok(re) = regex::Regex::new(&pat_kv) {
             result = re.replace_all(&result, format!("{} = \"[REDACTED]\"", pattern)).to_string();
         }
 
         // Colon format: key: value (non-quoted, case insensitive)
         let pat_colon = format!("(?i){}\\s*:\\s*\\S+", esc_pattern);
-        if let Some(re) = regex::Regex::new(&pat_colon).ok() {
+        if let Ok(re) = regex::Regex::new(&pat_colon) {
             result = re.replace_all(&result, format!("{}: [REDACTED]", pattern)).to_string();
         }
 
         // Key-value format: key="value" (no space, case insensitive)
         let pat_eq = format!("(?i){}=\"[^\"]*\"", esc_pattern);
-        if let Some(re) = regex::Regex::new(&pat_eq).ok() {
+        if let Ok(re) = regex::Regex::new(&pat_eq) {
             result = re.replace_all(&result, format!("{}=\"[REDACTED]\"", pattern)).to_string();
         }
     }

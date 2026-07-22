@@ -15,6 +15,12 @@ pub struct IncrementalState {
     pub last_index_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+impl Default for IncrementalState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IncrementalState {
     pub fn new() -> Self {
         Self {

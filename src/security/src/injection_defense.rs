@@ -2,6 +2,12 @@
 
 pub struct InjectionDefense;
 
+impl Default for InjectionDefense {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InjectionDefense {
     pub fn new() -> Self {
         Self

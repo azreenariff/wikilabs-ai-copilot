@@ -3,7 +3,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::Utc;
-use regex::Regex;
 use std::fs;
 use std::path::Path;
 use tracing::debug;

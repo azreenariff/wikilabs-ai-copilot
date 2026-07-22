@@ -32,6 +32,7 @@ pub struct BackgroundIndexer {
     cancellation: CancellationToken,
     task_handle: Option<JoinHandle<()>>,
     progress_reporter: ProgressReporterHandle,
+    #[allow(dead_code)]
     doc_poll_sender: mpsc::Sender<DocChange>,
 }
 

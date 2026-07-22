@@ -25,7 +25,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use wikilabs_context_fusion::FusedContext;
-use wikilabs_data_types::TechnologyInference;
 
 use crate::{
     anomaly::AnomalyReport,
@@ -270,8 +269,8 @@ impl EngineeringIntelligenceEngine {
 
     /// Run anomaly detection only.
     pub fn detect_anomalies(&self, context: &FusedContext) -> AnomalyReport {
-        let technologies = context.technologies.iter().map(|t| t.clone()).collect();
-        let intents = context.intents.iter().cloned().collect();
+        let technologies = context.technologies.iter().cloned().collect();
+        let intents = context.intents.to_vec();
 
         let fused: FusedContext = FusedContext {
             technologies,

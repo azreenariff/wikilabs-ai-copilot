@@ -38,6 +38,12 @@ pub struct PipelineResult {
     pub finished_at: DateTime<Utc>,
 }
 
+impl Default for PipelineResult {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PipelineResult {
     pub fn new() -> Self {
         let now = Utc::now();

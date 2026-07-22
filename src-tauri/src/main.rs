@@ -10,7 +10,6 @@ use wikilabs_benchmark::{BenchmarkRegistry, categories};
 use wikilabs_data_types::chat::ChatMessage;
 use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 
-use wikilabs_knowledge::validate::{ValidationReport, ValidationResult, ValidationStatus, validate_pack_comprehensive};
 
 mod config;
 mod error_handling;
@@ -21,9 +20,6 @@ mod security;
 mod skill_management;
 mod api_server;
 use config::{AiProviderConfig, AppSettings, AppSettingsStore};
-use error_handling::{ErrorEvent, ErrorSeverity, ErrorHandler, GracefulShutdown};
-use logging::redact_sensitive_data;
-use security::EncryptionService;
 use guidance_panel::{
     guidance_add_evidence, guidance_add_timeline_event, guidance_clear_all, guidance_complete_step,
     guidance_dismiss_recommendation, guidance_get_active_recommendations, guidance_get_all_recommendations,
@@ -455,7 +451,7 @@ fn main() {
             let _ = api_server::start_api_server(1420);
 
             // Record startup benchmark (startup = total time from process launch to ready)
-            let total_startup = startup_start.elapsed();
+            let _total_startup = startup_start.elapsed();
             let mut registry = BenchmarkRegistry::new();
             registry.record(
                 wikilabs_benchmark::BenchmarkTimer::new(categories::STARTUP)

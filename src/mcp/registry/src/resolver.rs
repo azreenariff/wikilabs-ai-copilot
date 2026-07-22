@@ -2,6 +2,12 @@
 
 pub struct NamespaceResolver;
 
+impl Default for NamespaceResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NamespaceResolver {
     pub fn new() -> Self {
         Self

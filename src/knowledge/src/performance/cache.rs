@@ -7,6 +7,7 @@ use tracing::debug;
 /// A single cache entry with a time-to-live.
 struct CacheEntry<T> {
     value: T,
+    #[allow(dead_code)]
     created_at: Instant,
     expires_at: Instant,
 }

@@ -14,7 +14,6 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use tokio::runtime::Handle;
 
 // ── Recommendation Card Types ────────────────────────────────────
 
@@ -565,8 +564,8 @@ impl GuidancePanel {
         if matches!(
             feedback_type,
             FeedbackType::NotUseful | FeedbackType::Incorrect | FeedbackType::AlreadyCompleted
-        ) {
-            if !suppressed.contains(&recommendation_id.to_string()) {
+        )
+            && !suppressed.contains(&recommendation_id.to_string()) {
                 suppressed.push(recommendation_id.to_string());
                 // Also update the card status if it exists
                 let mut recs = self.recommendations.lock().await;
@@ -578,7 +577,6 @@ impl GuidancePanel {
                     };
                 }
             }
-        }
 
         Ok(())
     }
@@ -877,7 +875,7 @@ pub fn guidance_get_mode() -> CopilotMode {
 /// Tauri IPC command to get all available copilot modes.
 #[tauri::command]
 pub fn guidance_get_available_modes() -> Vec<CopilotMode> {
-    let panel = GuidancePanel::instance();
+    let _panel = GuidancePanel::instance();
     vec![
         CopilotMode::Teaching,
         CopilotMode::Balanced,

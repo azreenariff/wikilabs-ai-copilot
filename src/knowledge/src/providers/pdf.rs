@@ -12,6 +12,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 /// A provider that extracts text from PDF files.
 #[derive(Default)]
 pub struct PdfProvider {
+    #[allow(dead_code)]
     enabled: bool,
 }
 

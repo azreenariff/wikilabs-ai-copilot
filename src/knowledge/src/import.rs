@@ -228,7 +228,7 @@ impl ImportPipeline {
 
                 // Update namespace metadata
                 if ns_result.is_ok() {
-                    let _ = store_lock.update_metadata(1, chunks_imported, "local", dimensions);
+                    let _ = store_lock.update_metadata(1, chunks_imported, "local", dimensions).await;
                 }
             }
             Err(e) => {
@@ -370,7 +370,7 @@ impl ImportPipeline {
 
                 // Update namespace metadata
                 if ns_result.is_ok() {
-                    let _ = store_lock.update_metadata(1, chunks_imported, "local", dimensions);
+                    let _ = store_lock.update_metadata(1, chunks_imported, "local", dimensions).await;
                 }
             }
             Err(e) => {

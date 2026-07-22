@@ -11,6 +11,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider for YAML files.
 pub struct YamlProvider {
+    #[allow(dead_code)]
     enabled: bool,
 }
 

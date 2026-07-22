@@ -31,8 +31,7 @@
 //! embedded in the diagnostics report produced by `src-tauri/src/config.rs`.
 
 use std::collections::HashMap;
-use std::fmt;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 

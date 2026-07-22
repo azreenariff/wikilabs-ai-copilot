@@ -9,6 +9,12 @@ pub struct Secret {
     pub password: String,
 }
 
+impl Default for Keychain {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Keychain {
     pub fn new() -> Self {
         Self

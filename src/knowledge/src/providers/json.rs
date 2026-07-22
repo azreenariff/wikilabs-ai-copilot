@@ -11,6 +11,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider for JSON files.
 pub struct JsonProvider {
+    #[allow(dead_code)]
     enabled: bool,
 }
 

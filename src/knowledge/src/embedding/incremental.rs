@@ -18,6 +18,12 @@ pub struct IncrementalState {
     pub last_embedding_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+impl Default for IncrementalState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IncrementalState {
     pub fn new() -> Self {
         Self {
@@ -29,15 +35,19 @@ impl IncrementalState {
 
 /// Incremental embedder that tracks which documents have been embedded.
 pub struct IncrementalEmbedder {
+    #[allow(dead_code)]
     provider: Arc<dyn EmbeddingProvider>,
     batch_embedder: BatchEmbedder,
     state: Arc<Mutex<IncrementalState>>,
+    #[allow(clippy::type_complexity)]
     content_hasher: Arc<dyn Fn(&str) -> String + Send + Sync>,
 }
 
+#[allow(clippy::type_complexity)]
 impl IncrementalEmbedder {
     pub fn new(
         provider: Arc<dyn EmbeddingProvider>,
+        #[allow(clippy::type_complexity)]
         content_hasher: Option<Arc<dyn Fn(&str) -> String + Send + Sync>>,
     ) -> Self {
         let batch_embedder = BatchEmbedder::new(Arc::clone(&provider), None);
@@ -121,7 +131,7 @@ impl IncrementalEmbedder {
         for (
             (doc_id, _text, hash),
             result,
-        ) in to_embed.into_iter().zip(results.into_iter()) {
+        ) in to_embed.into_iter().zip(results) {
             state.embedded_hashes.insert(doc_id.clone(), hash);
             output.push((doc_id, result));
         }

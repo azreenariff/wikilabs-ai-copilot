@@ -2,6 +2,12 @@
 
 pub struct KeyDerivation;
 
+impl Default for KeyDerivation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KeyDerivation {
     pub fn new() -> Self {
         Self

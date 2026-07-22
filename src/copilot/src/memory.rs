@@ -13,7 +13,6 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// How the engineer handled a recommendation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

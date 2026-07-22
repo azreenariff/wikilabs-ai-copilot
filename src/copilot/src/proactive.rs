@@ -4,7 +4,7 @@
 //! is idle or working on related tasks. It avoids interrupting
 //! during critical work.
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 /// Signals that trigger proactive suggestions.

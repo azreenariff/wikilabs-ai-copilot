@@ -72,11 +72,9 @@ impl RootCauseAnalyzer {
             if top.confidence - second.confidence < 0.15 {
                 hypotheses.push(RootCauseHypothesis {
                     title: "Conflicting intent signals".to_string(),
-                    description: format!(
-                        "Multiple intents with similar confidence scores make it \
+                    description: "Multiple intents with similar confidence scores make it \
                         unclear which is correct. This may indicate ambiguous input \
-                        from the engineer or an incomplete observation window.",
-                    ),
+                        from the engineer or an incomplete observation window.".to_string(),
                     confidence: 0.5,
                     evidence: vec![
                         format!("Intent '{}' at {:.2}", top.intent, top.confidence),

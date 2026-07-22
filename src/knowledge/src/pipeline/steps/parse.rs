@@ -22,7 +22,7 @@ impl ParseStep {
         let parser = self.select_parser(&doc.extension)?;
         let content = std::fs::read_to_string(&doc.path)?;
 
-        let document = parser.parse(&content, author, &doc.path.to_string_lossy().to_string());
+        let document = parser.parse(&content, author, doc.path.to_string_lossy().as_ref());
 
         debug!(
             path = ?doc.path,

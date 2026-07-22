@@ -60,6 +60,7 @@ pub fn check_duplicate_ids(pack_path: &str) -> Result<DuplicateIdResult> {
             tags: Vec<String>,
             categories: Vec<String>,
             #[serde(default)]
+            #[allow(dead_code)]
             references: Vec<String>,
         }
 

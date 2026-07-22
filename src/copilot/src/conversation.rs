@@ -106,7 +106,7 @@ impl ConversationContext {
     /// Record that a recommendation was corrected.
     pub fn record_corrected(
         &mut self,
-        title: String,
+        _title: String,
         instead: String,
         recommendation_id: uuid::Uuid,
     ) {

@@ -1,5 +1,5 @@
 use wikilabs_data_types::{DetectionRule, DetectionType, EngineeringContext, TechnologyInference};
-use wikilabs_observation::{EventType, ObservationEvent, ProviderType};
+use wikilabs_observation::{ObservationEvent, ProviderType};
 
 /// DetectionEngine — core technology recognition engine.
 ///
@@ -33,7 +33,7 @@ impl DetectionEngine {
                 let path = entry.path();
                 if path
                     .extension()
-                    .map_or(false, |ext| ext == "yaml" || ext == "yml")
+                    .is_some_and(|ext| ext == "yaml" || ext == "yml")
                 {
                     tracing::debug!(file = ?path, "Loading detection rule file");
                     if let Ok(content) = std::fs::read_to_string(&path) {

@@ -244,6 +244,12 @@ pub struct ConversationManager {
     active_id: Option<Uuid>,
 }
 
+impl Default for ConversationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConversationManager {
     pub fn new() -> Self {
         Self {

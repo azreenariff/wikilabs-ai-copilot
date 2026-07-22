@@ -23,8 +23,10 @@ pub enum DetailLevel {
 
 /// How detailed the guidance should be.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum GuidanceMode {
     /// Balanced — default mode.
+    #[default]
     Balanced,
     /// Teaching — provide thorough explanations.
     Teaching,
@@ -34,11 +36,6 @@ pub enum GuidanceMode {
     Silent,
 }
 
-impl Default for GuidanceMode {
-    fn default() -> Self {
-        Self::Balanced
-    }
-}
 
 /// Result of the guidance decision evaluation.
 #[derive(Debug, Clone, Serialize, Deserialize)]

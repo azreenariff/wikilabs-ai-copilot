@@ -11,6 +11,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider for plain text files.
 pub struct TxtProvider {
+    #[allow(dead_code)]
     enabled: bool,
 }
 

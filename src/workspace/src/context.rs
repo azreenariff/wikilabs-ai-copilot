@@ -41,6 +41,7 @@ impl ContextBuilder {
 }
 
 /// Context manager — builds and caches context per workspace.
+#[derive(Default)]
 pub struct ContextManager {
     contexts: std::collections::HashMap<uuid::Uuid, Value>,
 }
@@ -76,13 +77,6 @@ impl ContextManager {
     }
 }
 
-impl Default for ContextManager {
-    fn default() -> Self {
-        Self {
-            contexts: std::collections::HashMap::new(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

@@ -18,14 +18,12 @@ use crate::decision::{DecisionContext, DecisionEngine};
 use crate::explainability::Explainability;
 use crate::lifecycle::RecommendationLifecycle;
 use crate::memory::SessionMemory;
-use crate::modes::{CopilotMode, ModeConfig};
+use crate::modes::CopilotMode;
 use crate::policy::PolicyEngine;
 use crate::proactive::{ProactiveAssistance, ProactiveSignal};
 use crate::recommendation::{EngineeringContext, RecommendationEngine};
-use crate::{Confidence, Evidence, Priority, Recommendation};
-use chrono::Utc;
+use crate::Recommendation;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 /// A result of the Copilot Engine processing a request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -300,12 +298,12 @@ impl CopilotEngine {
     }
 
     /// Get recommended actions based on current context.
-    pub fn get_recommendations(&mut self, context: &EngineeringContext) -> Vec<RecommendationCard> {
+    pub fn get_recommendations(&mut self, _context: &EngineeringContext) -> Vec<RecommendationCard> {
         let mut results = Vec::new();
 
         // Get active recommendations from lifecycle
         let active = self.lifecycle.active_recommendations();
-        for (id, state) in active {
+        for (id, _state) in active {
             if self.lifecycle.is_ready(id) {
                 let rec = self.get_recommendation_by_id(id);
                 if let Some(rec) = rec {
@@ -318,7 +316,7 @@ impl CopilotEngine {
     }
 
     /// Get a recommendation by ID.
-    fn get_recommendation_by_id(&self, id: uuid::Uuid) -> Option<Recommendation> {
+    fn get_recommendation_by_id(&self, _id: uuid::Uuid) -> Option<Recommendation> {
         // This would need access to stored recommendations
         // For now return None
         None

@@ -2,6 +2,12 @@
 
 pub struct OpenAIMock;
 
+impl Default for OpenAIMock {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OpenAIMock {
     pub fn new() -> Self {
         Self

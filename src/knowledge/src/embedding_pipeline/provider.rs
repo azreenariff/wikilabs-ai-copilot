@@ -68,6 +68,7 @@ impl EmbeddingProviderRegistry {
 /// Local embedding provider using the existing embedding engine.
 pub struct LocalEmbeddingProvider {
     /// The underlying embedding pipeline
+    #[allow(dead_code)]
     pipeline: crate::embedding::EmbeddingPipeline,
 }
 

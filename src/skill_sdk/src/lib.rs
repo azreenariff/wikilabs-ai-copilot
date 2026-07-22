@@ -10,10 +10,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use serde_json::Value;
-use tracing::{debug, info};
-use wikilabs_data_types::*;
+use tracing::info;
 
 /// Skill Development Kit for creating and validating skills.
 pub struct SkillSDK {
@@ -398,7 +397,7 @@ impl SkillSDK {
     pub fn generate_manifest(&self, name: &str, domain: &str, version: &str) -> Value {
         serde_json::json!({
             "id": name,
-            "name": name.replace('-', " ").replace('_', " "),
+            "name": name.replace(['-', '_'], " "),
             "version": version,
             "description": "A skill for {} technology".replace("{}", domain),
             "author": "Wiki Labs Team",
@@ -416,7 +415,7 @@ impl SkillSDK {
     pub fn generate_workflows(&self, name: &str) -> Value {
         serde_json::json!({
             "id": format!("{}-workflow", name),
-            "name": format!("{} Workflow", name.replace('-', " ").replace('_', " ")),
+            "name": format!("{} Workflow", name.replace(['-', '_'], " ")),
             "description": format!("Workflow for {} skill", name),
             "states": [
                 {
@@ -487,7 +486,7 @@ impl SkillSDK {
     }
 
     /// Generate a technology definition YAML value from parameters.
-    pub fn generate_tech_definition(&self, name: &str, domain: &str) -> Value {
+    pub fn generate_tech_definition(&self, _name: &str, domain: &str) -> Value {
         serde_json::json!({
             "domain": domain,
             "version": "0.1.0",

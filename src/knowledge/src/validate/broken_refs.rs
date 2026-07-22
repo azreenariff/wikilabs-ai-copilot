@@ -2,8 +2,6 @@
 
 use crate::sdk::schema::Manifest;
 use anyhow::{Context, Result};
-use regex::Regex;
-use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use tracing::debug;
@@ -49,12 +47,11 @@ pub fn check_broken_refs(pack_path: &str) -> Result<BrokenRefsResult> {
 
     // Check for broken links within document content
     if documents_dir.exists() {
+        let link_pattern = regex::Regex::new(r"\[\[(\w[\w-]*)(?:\|[^]]*)?\]\]").ok();
         for doc in &manifest.documents {
             let doc_path = documents_dir.join(&doc.path);
             if let Ok(content) = fs::read_to_string(&doc_path) {
-                // Look for internal reference patterns like [[doc_id]] or [[doc_id|label]]
-                let link_pattern = regex::Regex::new(r"\[\[(\w[\w-]*)(?:\|[^]]*)?\]\]").ok();
-                if let Some(pattern) = link_pattern {
+                if let Some(pattern) = &link_pattern {
                     for capture in pattern.captures_iter(&content) {
                         if let Some(id_match) = capture.get(1) {
                             let ref_id = id_match.as_str();

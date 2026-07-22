@@ -5,7 +5,6 @@
 
 use super::Document;
 use super::{DocumentElement, ParserProvider};
-use regex::Regex;
 use serde_json::Value;
 use tracing::debug;
 

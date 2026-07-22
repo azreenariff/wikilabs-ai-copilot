@@ -2,6 +2,12 @@
 
 pub struct ContextBus;
 
+impl Default for ContextBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextBus {
     pub fn new() -> Self {
         Self

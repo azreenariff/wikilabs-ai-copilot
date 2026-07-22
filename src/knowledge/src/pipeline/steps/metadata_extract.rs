@@ -21,6 +21,12 @@ pub struct DocumentMetadata {
     pub estimated_reading_time: u64,
 }
 
+impl Default for DocumentMetadata {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DocumentMetadata {
     pub fn new() -> Self {
         Self {

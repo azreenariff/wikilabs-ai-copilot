@@ -11,6 +11,12 @@ pub struct AuditEntry {
     pub signature: String, // Ed25519 signature (if applicable)
 }
 
+impl Default for AuditLog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AuditLog {
     pub fn new() -> Self {
         Self

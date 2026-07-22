@@ -73,11 +73,7 @@ impl ContextWindow {
 
     /// Tokens remaining in the context window.
     pub fn remaining_tokens(&self) -> usize {
-        if self.total_tokens >= self.max_tokens {
-            0
-        } else {
-            self.max_tokens - self.total_tokens
-        }
+        self.max_tokens.saturating_sub(self.total_tokens)
     }
 
     /// Check if adding tokens would fit within the context window.

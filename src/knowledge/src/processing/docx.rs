@@ -6,7 +6,6 @@
 
 use super::Document;
 use super::{DocumentElement, ParserProvider};
-use regex::Regex;
 use tracing::debug;
 
 /// DOCX parser.
@@ -80,8 +79,8 @@ impl DocxParser {
             }
 
             if trimmed.starts_with("$ ") || trimmed.starts_with("# ") {
-                let cmd = if trimmed.starts_with("$ ") {
-                    &trimmed[2..]
+                let cmd = if let Some(stripped) = trimmed.strip_prefix("$ ") {
+                    stripped
                 } else {
                     &trimmed[1..]
                 };

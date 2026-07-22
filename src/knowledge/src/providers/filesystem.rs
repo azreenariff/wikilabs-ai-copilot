@@ -11,6 +11,7 @@ use super::{KnowledgeProvider, ProviderDocument};
 
 /// A provider that scans the filesystem for files by extension.
 pub struct FilesystemProvider {
+    #[allow(dead_code)]
     enabled: bool,
     extensions: Vec<String>,
 }
