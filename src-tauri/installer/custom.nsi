@@ -18,7 +18,7 @@
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "..\icons\header.bmp"
 
 !define PRODUCT_NAME "Wiki Labs AI Copilot"
-!define PRODUCT_VERSION "1.1.5"
+!define PRODUCT_VERSION "1.1.6"
 !define PRODUCT_PUBLISHER "Wiki Labs"
 !define PRODUCT_WEB_SITE "https://wikilabs.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\wikilabs-copilot.exe"
