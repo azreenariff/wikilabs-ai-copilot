@@ -78,7 +78,7 @@ impl ApiServerSettings {
                     "api_version": "v1"
                 }),
                 serde_json::json!({
-                    "name": "vLLM",
+                    "name": "Custom Endpoint",
                     "url": "http://localhost:8000/v1",
                     "api_version": "v1"
                 }),
