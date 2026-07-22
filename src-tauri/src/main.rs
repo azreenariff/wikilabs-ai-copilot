@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;
@@ -18,6 +19,7 @@ mod knowledge_panel;
 mod logging;
 mod security;
 mod skill_management;
+mod api_server;
 use config::{AiProviderConfig, AppSettings, AppSettingsStore};
 use error_handling::{ErrorEvent, ErrorSeverity, ErrorHandler, GracefulShutdown};
 use logging::redact_sensitive_data;
@@ -448,6 +450,9 @@ fn main() {
                 "Application state initialized in {} µs",
                 state_time.as_micros()
             );
+
+            // Start the HTTP API server for frontend SPA
+            let _ = api_server::start_api_server(1420);
 
             // Record startup benchmark (startup = total time from process launch to ready)
             let total_startup = startup_start.elapsed();

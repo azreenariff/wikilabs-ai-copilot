@@ -4,6 +4,7 @@
 //! elements, attributes, text content, and code blocks.
 
 use super::{Document, DocumentElement, ParserProvider};
+use regex::Regex;
 
 /// XML parser.
 pub struct XmlParser;
@@ -18,7 +19,7 @@ impl XmlParser {
 
         // Use regex-based parsing for structure preservation
         // Extract elements with text content (no backreference support in Rust regex)
-        let tag_re = regex::Regex::new(r"<([a-zA-Z_][\w.-]*)(\s+[^>]*)?>(.*?)(?=<|$)").unwrap();
+        let tag_re = regex::Regex::new(r"<([a-zA-Z_][\w.-]*)(\s+[^>]*)?>([^<]*)").unwrap();
 
         for cap in tag_re.captures_iter(content) {
             let tag_name = cap[1].to_string();

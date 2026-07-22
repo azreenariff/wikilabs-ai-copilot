@@ -2,6 +2,8 @@
 
 use crate::sdk::schema::Manifest;
 use anyhow::{Context, Result};
+use regex::Regex;
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use tracing::debug;

@@ -4,6 +4,7 @@
 //! code blocks, and other structure from extracted text.
 
 use super::{Document, DocumentElement, ParserProvider};
+use regex::Regex;
 
 /// PDF parser using text extraction from raw bytes.
 pub struct PdfParser;

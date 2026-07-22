@@ -5,6 +5,7 @@
 
 use super::Document;
 use super::{DocumentElement, ParserProvider};
+use regex::Regex;
 use serde_yaml::Value;
 use tracing::debug;
 

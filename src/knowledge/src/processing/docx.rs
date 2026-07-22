@@ -6,6 +6,7 @@
 
 use super::Document;
 use super::{DocumentElement, ParserProvider};
+use regex::Regex;
 use tracing::debug;
 
 /// DOCX parser.

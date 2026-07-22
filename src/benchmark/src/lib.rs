@@ -14,15 +14,15 @@
 //! ## Usage
 //!
 //! ```rust
-//! use wikilabs_benchmark::{Benchmark, BenchmarkMetrics, BenchmarkTimer};
+//! use wikilabs_benchmark::{BenchmarkMetrics, BenchmarkTimer};
 //!
 //! // Create a named benchmark timer
-//! let mut timer = BenchmarkTimer::new("startup");
+//! let timer = BenchmarkTimer::new("startup");
 //!
 //! // ... perform work ...
 //!
 //! // Record the result
-//! let metric = timer.finish();
+//! let result = timer.finish();
 //! ```
 //!
 //! ## Metrics Integration
