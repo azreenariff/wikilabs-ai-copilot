@@ -129,20 +129,17 @@ jobs:
           echo "=== File sizes ==="
           du -sh dist/*
 
-      - name: Read changelog for release notes
+      - name: Extract release notes from changelog
         id: changelog
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           VERSION="${TAG#v}"
-          # Extract changelog section for this version
           python3 -c "
           import re
-          import sys
-          version = '$VERSION'
+          version = '${VERSION}'
           with open('CHANGELOG.md', 'r') as f:
               content = f.read()
-          # Match version header and everything until next version
-          pattern = rf'^## \[{version}\].*?(?=^## \[|\Z)'
+          pattern = rf'^## \[{version}\].*?(?=^## \[|\\Z)'
           match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
           if match:
               notes = match.group(0)
@@ -151,16 +148,13 @@ jobs:
           with open('release_notes.md', 'w') as f:
               f.write(notes)
           "
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          cat release_notes.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Wiki Labs AI Copilot ${{ steps.tag.outputs.tag }}
-          body: ${{ steps.changelog.outputs.body }}
+          body_file: release_notes.md
           draft: false
           prerelease: ${{ contains(steps.tag.outputs.tag, 'beta') || contains(steps.tag.outputs.tag, 'alpha') || contains(steps.tag.outputs.tag, 'rc') }}
           files: |
