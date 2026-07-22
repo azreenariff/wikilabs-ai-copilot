@@ -193,6 +193,7 @@ pub fn create_router(state: ApiServerState) -> Router {
 }
 
 /// Start the HTTP server on the given port (default 1420).
+/// Runs in a dedicated thread to keep the tokio runtime alive.
 pub fn start_api_server(port: u16) -> Result<(), String> {
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
@@ -200,27 +201,34 @@ pub fn start_api_server(port: u16) -> Result<(), String> {
     let router = create_router(state);
     let addr = format!("0.0.0.0:{}", port);
 
-    info!(addr, "Starting API server");
+    info!(addr, "Starting API server in background thread");
 
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| format!("Failed to build tokio runtime: {}", e))?;
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| format!("Failed to create tokio runtime: {}", e));
+        
+        if let Ok(rt) = rt {
+            let result = rt.block_on(async {
+                let listener = tokio::net::TcpListener::bind(&addr)
+                    .await
+                    .map_err(|e| format!("Failed to bind to {}: {}", addr, e))?;
 
-    rt.block_on(async {
-        let listener = tokio::net::TcpListener::bind(&addr)
-            .await
-            .map_err(|e| format!("Failed to bind to {}: {}", addr, e))?;
+                info!(addr, "API server listening");
 
-        tokio::spawn(async move {
-            if let Err(e) = axum::serve(listener, router).await {
-                error!(error = %e, "API server error");
+                if let Err(e) = axum::serve(listener, router).await {
+                    error!(error = %e, "API server error");
+                }
+                
+                Ok::<(), String>(())
+            });
+            
+            if let Err(e) = result {
+                error!(error = %e, "API server failed");
             }
-        });
+        } else {
+            error!("API server runtime creation failed");
+        }
+    });
 
-        Ok::<(), String>(())
-    })?;
-
-    info!(addr, "API server running");
     Ok(())
 }
