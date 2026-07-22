@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import ChatAssistant from './pages/ChatAssistant';
 import Workspaces from './pages/Workspaces';
@@ -14,7 +14,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/*" element={<AppLayout />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<ChatAssistant />} />
+          <Route path="/assistant" element={<ChatAssistant />} />
+          <Route path="/workspaces" element={<Workspaces />} />
+          <Route path="/skills" element={<Skills />} />
+          <Route path="/knowledge" element={<Knowledge />} />
+          <Route path="/activity" element={<Activity />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/about" element={<About />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
@@ -73,17 +82,7 @@ function AppLayout() {
           </div>
         </header>
         <main style={{ flex: 1, overflow: 'auto' }}>
-          <Routes>
-            <Route path="/" element={<ChatAssistant />} />
-            <Route path="/assistant" element={<ChatAssistant />} />
-            <Route path="/workspaces" element={<Workspaces />} />
-            <Route path="/skills" element={<Skills />} />
-            <Route path="/knowledge" element={<Knowledge />} />
-            <Route path="/activity" element={<Activity />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/about" element={<About />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Outlet />
         </main>
         <footer style={{
           padding: '4px 16px',
