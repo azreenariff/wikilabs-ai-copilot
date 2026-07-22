@@ -22,7 +22,7 @@
     "Fixed regex backreferences in wikilabs-knowledge: html.rs (removed </h\\1> backreference, added per-level HEADING_N_RE patterns)",
     "Workspace build succeeds, all 871 tests pass"
   ],
-  "tests_passed": 871,
+  "tests_passed": 902,
   "tests_failed": 0,
   "workspace_crates": 23,
   "guidance_crates": 9,

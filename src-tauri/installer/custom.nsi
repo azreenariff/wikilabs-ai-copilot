@@ -18,7 +18,7 @@
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "..\icons\header.bmp"
 
 !define PRODUCT_NAME "Wiki Labs AI Copilot"
-!define PRODUCT_VERSION "1.0.0"
+!define PRODUCT_VERSION "1.1.2"
 !define PRODUCT_PUBLISHER "Wiki Labs"
 !define PRODUCT_WEB_SITE "https://wikilabs.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\wikilabs-copilot.exe"
@@ -104,9 +104,9 @@ FunctionEnd
 ; ── Install Mode (currentUser vs allUsers) ─────────────────────────────────
 
 !if "${INSTALL_MODE}" == "currentUser"
-  InstallDir "$LOCALAPPDATA\Wiki Labs\AI Copilot"
+  InstallDir "$LOCALAPPDATA\\Wiki Labs Copilot"
 !else
-  InstallDir "$PROGRAMFILES64\Wiki Labs\AI Copilot"
+  InstallDir "$PROGRAMFILES64\\Wiki Labs Copilot"
 !endif
 
 ; ── Shortcuts and File Associations ────────────────────────────────────────
@@ -160,10 +160,10 @@ Section "Main Application" SecMain
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "VersionMinor" ${VER_MINOR}
   
   ; ── Preserve user data during upgrades ───────────────────────────────
-  ; User data lives in %APPDATA%\Wiki Labs\AI Copilot — we DO NOT touch it
+  ; User data lives in %APPDATA%\Wiki Labs Copilot — we DO NOT touch it
   ; This ensures settings, cached credentials, and workspace data survive
   ; upgrades. The installer only overwrites the application files.
-  !define USER_DATA_DIR "$APPDATA\Wiki Labs\AI Copilot"
+  !define USER_DATA_DIR "$APPDATA\Wiki Labs Copilot"
   ; No deletion of USER_DATA_DIR — intentional for upgrade preservation
   
   SetAutoClose true
