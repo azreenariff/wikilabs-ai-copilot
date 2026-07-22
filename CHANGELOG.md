@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] — 2026-07-22 — CI Fix
+
+### Fixed
+
+#### CI Pipeline Repairs
+
+- **Clippy Warnings Resolved** — All `cargo clippy --workspace -- -D warnings` errors fixed across 25 files:
+  - `empty_line_after_doc_comments` — Removed 10 empty lines between doc comments and `use`/`pub mod` declarations in all guidance modules
+  - `unnecessary_sort_by` — Replaced `sort_by()` with `sort_by_key(|b| Reverse(...))` in skill_runtime
+  - `dead_code` — Added `#[allow(dead_code)]` for intentionally unused fields in skill_runtime, skill_sdk, copilot, and added missing `Default` impls for skill_activation and skill_discovery
+  - `too_many_arguments` — Added `#[allow(clippy::too_many_arguments)]` for 9-parameter generate() in recommendation module
+  - `Display` trait — Fixed redundant `&msg.role` formatting after implementing `Display` for `MessageRole`
+- **Test Compilation Errors Fixed** — Resolved missing imports in test modules:
+  - Added `std::path::Path` import in skill_runtime test module
+  - Added `TechnologyInference` import in intelligence_engine test module
+  - Added `std::time::Duration` import in benchmark test module
+- **Unused Variables** — Prefixed unused test variables with underscores
+
 ## [1.0.0] — 2026-07-21 — Production Release
 
 ### Added
