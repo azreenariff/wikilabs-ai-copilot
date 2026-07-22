@@ -158,6 +158,6 @@ jobs:
           draft: false
           prerelease: ${{ contains(steps.tag.outputs.tag, 'beta') || contains(steps.tag.outputs.tag, 'alpha') || contains(steps.tag.outputs.tag, 'rc') }}
           files: |
-            dist/*.msi
-            dist/*.exe
+            dist/**/*.msi
+            dist/**/*.exe
           fail_on_unmatched_files: true
