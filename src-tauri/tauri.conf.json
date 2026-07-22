@@ -1,6 +1,6 @@
 {
   "productName": "Wiki Labs AI Copilot",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "identifier": "com.wikilabs.copilot",
   "build": {
     "frontendDist": "../dist"
@@ -10,7 +10,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Wiki Labs AI Copilot v1.1.6",
+        "title": "Wiki Labs AI Copilot v1.1.7",
         "width": 1400,
         "height": 900,
         "minWidth": 1024,
