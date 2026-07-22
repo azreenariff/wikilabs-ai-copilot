@@ -7,7 +7,7 @@ use axum::{
     extract::{Path, State},
     extract::Json,
     http::StatusCode,
-    routing::post,
+    routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
@@ -188,10 +188,20 @@ fn handle_list_providers(state: &ApiServerState) -> (StatusCode, String) {
 /// Create the router for the API server.
 pub fn create_router(state: ApiServerState) -> Router {
     info!("[API] Creating router with state...");
+    
+    // Debug: list all registered routes
+    info!("[API] Route creation complete — now registering fallback");
+    
     let router = Router::new()
         .route("/api/commands/:method", post(api_handler))
+        .route("/health", get(|| async { "ok" }))
+        .fallback(|method: axum::http::Method, uri: axum::http::Uri| async move {
+            warn!("[API] FALLBACK HIT — method={} uri={}", method, uri);
+            (StatusCode::NOT_FOUND, format!("No route for {} {}", method, uri))
+        })
         .with_state(state);
-    info!("[API] Router created — now starting listener");
+    
+    info!("[API] Router fully configured with fallback");
     router
 }
 
