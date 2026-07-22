@@ -32,8 +32,8 @@
       "msi",
       "nsis"
     ],
-    "windows": {
-      "installMode": "machine"
+    "nsis": {
+      "installMode": "perMachine"
     },
     "icon": [
       "icons/32x32.png",
