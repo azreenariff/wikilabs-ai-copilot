@@ -187,9 +187,12 @@ fn handle_list_providers(state: &ApiServerState) -> (StatusCode, String) {
 
 /// Create the router for the API server.
 pub fn create_router(state: ApiServerState) -> Router {
-    Router::new()
+    eprintln!("[API] Creating router with state...");
+    let router = Router::new()
         .route("/api/commands/:method", post(api_handler))
-        .with_state(state)
+        .with_state(state);
+    eprintln!("[API] Router created — now starting listener");
+    router
 }
 
 /// Start the HTTP server on the given port (default 1420).
