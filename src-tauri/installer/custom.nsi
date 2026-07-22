@@ -18,7 +18,7 @@
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "..\icons\header.bmp"
 
 !define PRODUCT_NAME "Wiki Labs AI Copilot"
-!define PRODUCT_VERSION "1.1.2"
+!define PRODUCT_VERSION "1.1.5"
 !define PRODUCT_PUBLISHER "Wiki Labs"
 !define PRODUCT_WEB_SITE "https://wikilabs.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\wikilabs-copilot.exe"
@@ -118,13 +118,13 @@ Section "Main Application" SecMain
   
   ; ── Desktop Shortcut ─────────────────────────────────────────────────
   !if "${INSTALL_MODE}" == "currentUser"
-    CreateShortCut "$DESKTOP\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe"
-    CreateShortCut "$STARTMENU\Programs\Wiki Labs\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe"
-    CreateShortCut "$STARTMENU\Programs\Wiki Labs\Uninstall Wiki Labs AI Copilot.lnk" "$INSTDIR\uninst.exe"
+    CreateShortCut "$DESKTOP\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe" "$INSTDIR\icons\icon.ico" 0
+    CreateShortCut "$STARTMENU\Programs\Wiki Labs\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe" "$INSTDIR\icons\icon.ico" 0
+    CreateShortCut "$STARTMENU\Programs\Wiki Labs\Uninstall Wiki Labs AI Copilot.lnk" "$INSTDIR\uninst.exe" "$INSTDIR\icons\icon.ico" 0
   !else
-    CreateShortCut "$DESKTOP\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe"
-    CreateShortCut "$PROGRAMDATA\Microsoft\Windows\Start Menu\Programs\Wiki Labs\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe"
-    CreateShortCut "$PROGRAMDATA\Microsoft\Windows\Start Menu\Programs\Wiki Labs\Uninstall Wiki Labs AI Copilot.lnk" "$INSTDIR\uninst.exe"
+    CreateShortCut "$DESKTOP\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe" "$INSTDIR\icons\icon.ico" 0
+    CreateShortCut "$PROGRAMDATA\Microsoft\Windows\Start Menu\Programs\Wiki Labs\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe" "$INSTDIR\icons\icon.ico" 0
+    CreateShortCut "$PROGRAMDATA\Microsoft\Windows\Start Menu\Programs\Wiki Labs\Uninstall Wiki Labs AI Copilot.lnk" "$INSTDIR\uninst.exe" "$INSTDIR\icons\icon.ico" 0
   !endif
   
   ; ── File Associations ────────────────────────────────────────────────
