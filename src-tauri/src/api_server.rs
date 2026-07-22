@@ -187,11 +187,11 @@ fn handle_list_providers(state: &ApiServerState) -> (StatusCode, String) {
 
 /// Create the router for the API server.
 pub fn create_router(state: ApiServerState) -> Router {
-    eprintln!("[API] Creating router with state...");
+    info!("[API] Creating router with state...");
     let router = Router::new()
         .route("/api/commands/:method", post(api_handler))
         .with_state(state);
-    eprintln!("[API] Router created — now starting listener");
+    info!("[API] Router created — now starting listener");
     router
 }
 
