@@ -197,7 +197,7 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Wiki Labs AI Copilot ${{ steps.tag.outputs.tag }}
-          body_file: release_notes.md
+          body_path: release_notes.md
           draft: false
           prerelease: ${{ contains(steps.tag.outputs.tag, 'beta') || contains(steps.tag.outputs.tag, 'alpha') || contains(steps.tag.outputs.tag, 'rc') }}
           files: |
