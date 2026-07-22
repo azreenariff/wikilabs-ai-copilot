@@ -422,11 +422,11 @@ async fn stream_message(
 fn main() {
     let startup_start = Instant::now();
 
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .init();
-
-    info!("Wiki Labs AI Copilot starting");
+    // Do NOT initialize a global logger here — tauri-plugin-log handles console
+    // output and init_logging() (called later during setup) handles file output.
+    // Calling both would cause "attempted to set a logger after the logging
+    // system was already initialized" panics.
+    println!("Wiki Labs AI Copilot starting");
 
     let settings_load_start = Instant::now();
     let settings = AppSettingsStore::new();
