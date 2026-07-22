@@ -70,6 +70,49 @@ jobs:
             echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Update version from tag
+        run: |
+          VERSION="${{ steps.tag.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          echo "Setting version to: $VERSION"
+
+          # Update Cargo.toml package version
+          sed -i "s/^version = \"[^\"]*\"/version = \"${VERSION}\"/" src-tauri/Cargo.toml
+
+          # Update tauri.conf.json version
+          python3 -c "
+          import json
+          with open('src-tauri/tauri.conf.json', 'r') as f:
+              config = json.load(f)
+          config['version'] = '${VERSION}'
+          with open('src-tauri/tauri.conf.json', 'w') as f:
+              json.dump(config, f, indent=2)
+          "
+
+          # Update frontend package.json version
+          python3 -c "
+          import json
+          with open('src/frontend/package.json', 'r') as f:
+              pkg = json.load(f)
+          pkg['version'] = '${VERSION}'
+          with open('src/frontend/package.json', 'w') as f:
+              json.dump(pkg, f, indent=2)
+          "
+
+          echo "=== Updated versions ==="
+          grep '^version' src-tauri/Cargo.toml | head -1
+          grep '"version"' src-tauri/tauri.conf.json | head -1
+          grep '"version"' src/frontend/package.json | head -1
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend
+        run: npm ci && npm run build
+        working-directory: src/frontend
+
       - name: Build Tauri app (MSI + NSIS)
         run: cargo tauri build --verbose
         working-directory: src-tauri
