@@ -22,7 +22,7 @@ function App() {
 
 function AppLayout() {
   const [status, setStatus] = useState<{ version: string; running: boolean }>({
-    version: '1.1.1',
+    version: '1.1.2',
     running: true,
   });
 
@@ -42,7 +42,7 @@ function AppLayout() {
         }
       })
       .catch(() => {
-        setStatus({ version: '1.1.1', running: false });
+        setStatus({ version: '1.1.2', running: false });
       });
   }, []);
 

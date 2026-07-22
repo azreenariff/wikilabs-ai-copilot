@@ -162,7 +162,7 @@ fn create_workspace(
 fn get_status() -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({
         "status": "running",
-        "version": "0.1.0",
+        "version": env!("CARGO_PKG_VERSION"),
         "features": {
             "chat": true,
             "workspace": true,
