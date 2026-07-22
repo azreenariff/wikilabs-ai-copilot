@@ -48,3 +48,5 @@ target/doctor/
 
 # Build scripts output
 scripts/
+# Frontend dependencies
+src/frontend/node_modules/
