@@ -17,6 +17,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
+use wikilabs_ai::AiProvider;
+
+use crate::knowledge_panel::{KnowledgePanel, PackInfo, ValidationReport};
+use crate::skill_management::{SkillCard, SkillManagementPanel};
+use crate::config::AiProviderConfig;
 
 /// Request wrapper sent from the frontend.
 #[derive(Debug, Deserialize)]
@@ -113,6 +118,24 @@ pub async fn api_handler(
         "get_history" => handle_get_history(&state),
         "list_providers" => handle_list_providers(&state),
         "list_models" => handle_list_models(&state, req.params).await,
+        // Skill commands
+        "skill_list" => handle_skill_list(),
+        "skill_get" => handle_skill_get(req.params),
+        "skill_enable" => handle_skill_enable(req.params),
+        "skill_disable" => handle_skill_disable(req.params),
+        "skill_toggle" => handle_skill_toggle(req.params),
+        "skill_validate" => handle_skill_validate(req.params),
+        "skill_mark_validated" => handle_skill_mark_validated(req.params),
+        "skill_set_active" => handle_skill_set_active(req.params),
+        // Knowledge pack commands
+        "knowledge_list_packs" => handle_knowledge_list_packs().await,
+        "knowledge_enable_pack" => handle_knowledge_enable_pack(req.params).await,
+        "knowledge_disable_pack" => handle_knowledge_disable_pack(req.params).await,
+        "knowledge_reindex_pack" => handle_knowledge_reindex_pack(req.params).await,
+        "knowledge_get_validation_report" => handle_knowledge_get_validation_report(req.params).await,
+        "knowledge_get_pack_metadata" => handle_knowledge_get_metadata(req.params).await,
+        "knowledge_export_pack" => handle_knowledge_export_pack(req.params).await,
+        "knowledge_import_pack" => handle_knowledge_import_pack(req.params).await,
         other => {
             warn!(other, "Unknown API method");
             (StatusCode::BAD_REQUEST, api_response(false, None, Some(format!("Unknown method: {}", other))))
@@ -212,12 +235,87 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         msgs.push(ChatMessage { id: id.clone(), role: "user".to_string(), content: message.clone(), created_at: created_at.clone(), workspace_id: Some(workspace_id.to_string()) });
     }
 
-    let assistant_id = uuid::Uuid::new_v4().to_string();
-    let assistant_created = chrono::Utc::now().to_rfc3339();
-    let response = format!(
-        "Message received: \"{}\"\n\nNote: Full AI responses require Tauri IPC integration.\n\nCapabilities:\n- Chat history ✓\n- Settings management ✓\n- Provider configuration ✓\n- AI responses — pending (via Tauri command)",
-        message
-    );
+    // Try to get AI response, fall back to echo if provider not configured
+    let settings = state.settings.lock().unwrap();
+    let config = settings.settings.clone();
+    drop(settings);
+
+    let api_key = config.get("ai_provider")
+        .and_then(|p| p.get("api_key"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    let (assistant_id, assistant_created, response) = if !api_key.is_empty() {
+        let model = config.get("ai_provider")
+            .and_then(|p| p.get("model"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("gpt-4o")
+            .to_string();
+        let endpoint = config.get("ai_provider")
+            .and_then(|p| p.get("endpoint"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let provider_name = config.get("ai_provider")
+            .and_then(|p| p.get("name"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("openai")
+            .to_string();
+        let max_tokens = config.get("ai_provider")
+            .and_then(|p| p.get("max_tokens"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(4096) as u32;
+        let context_window = config.get("ai_provider")
+            .and_then(|p| p.get("context_window"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(128000) as u32;
+
+        let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
+            &provider_name,
+            &endpoint,
+            &api_key,
+            &model,
+            max_tokens as usize,
+            context_window as usize,
+        );
+
+        let ai_request = wikilabs_ai::provider::AiRequest {
+            model: model.clone(),
+            messages: vec![wikilabs_ai::provider::AiMessage {
+                role: "user".to_string(),
+                content: message.clone(),
+            }],
+            tools: vec![],
+            temperature: None,
+            max_tokens: Some(max_tokens as usize),
+            stream: None,
+        };
+
+        match tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(provider.chat(ai_request)) {
+            Ok(response) => {
+                let aid = uuid::Uuid::new_v4().to_string();
+                let acreated = chrono::Utc::now().to_rfc3339();
+                (aid, acreated, response.message.content)
+            }
+            Err(e) => {
+                error!(error = %e, "AI chat failed");
+                let aid = uuid::Uuid::new_v4().to_string();
+                let acreated = chrono::Utc::now().to_rfc3339();
+                (aid, acreated, format!("AI response error: {}\n\nYour message was: \"{}\"", e, message))
+            }
+        }
+    } else {
+        let aid = uuid::Uuid::new_v4().to_string();
+        let acreated = chrono::Utc::now().to_rfc3339();
+        let fallback = format!(
+            "Message received: \"{}\"\n\nNote: Configure an AI provider in Settings to get AI responses.",
+            message
+        );
+        (aid, acreated, fallback)
+    };
 
     {
         let settings_ref = state.settings.lock().unwrap();
@@ -331,6 +429,149 @@ async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCo
             error!("Failed to connect to provider: {}", e);
             (StatusCode::OK, api_response(false, None, Some(format!("Cannot reach endpoint: {}", e))))
         }
+    }
+}
+
+/// Skill management handlers
+fn handle_skill_list() -> (StatusCode, String) {
+    let skills = SkillManagementPanel::instance().list_skills();
+    let value = serde_json::to_value(skills).unwrap_or_default();
+    (StatusCode::OK, api_response(true, Some(value), None))
+}
+
+fn handle_skill_get(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let skill = SkillManagementPanel::instance().get_skill(name);
+    let value = skill.map(|s| serde_json::to_value(s).unwrap_or_default());
+    (StatusCode::OK, api_response(true, value, None))
+}
+
+fn handle_skill_enable(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    match SkillManagementPanel::instance().enable_skill(name) {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+    }
+}
+
+fn handle_skill_disable(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    match SkillManagementPanel::instance().disable_skill(name) {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+    }
+}
+
+fn handle_skill_toggle(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    match SkillManagementPanel::instance().toggle_skill(name) {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+    }
+}
+
+fn handle_skill_validate(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    match SkillManagementPanel::instance().validate_skill(name) {
+        Ok(issues) => {
+            let value = serde_json::to_value(issues).unwrap_or_default();
+            (StatusCode::OK, api_response(true, Some(value), None))
+        }
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+    }
+}
+
+fn handle_skill_mark_validated(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let validated = params.get("validated").and_then(|v| v.as_bool()).unwrap_or(true);
+    match SkillManagementPanel::instance().mark_validated(name, validated) {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+    }
+}
+
+fn handle_skill_set_active(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let active = params.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
+    let confidence = params.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    match SkillManagementPanel::instance().set_active(name, active, confidence) {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+    }
+}
+
+/// Knowledge pack handlers
+async fn handle_knowledge_list_packs() -> (StatusCode, String) {
+    let panel = KnowledgePanel::instance();
+    let packs = panel.list_packs().await;
+    let value = serde_json::to_value(packs).unwrap_or_default();
+    (StatusCode::OK, api_response(true, Some(value), None))
+}
+
+async fn handle_knowledge_enable_pack(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let panel = KnowledgePanel::instance();
+    match panel.enable_pack(name).await {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
+    }
+}
+
+async fn handle_knowledge_disable_pack(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let panel = KnowledgePanel::instance();
+    match panel.disable_pack(name).await {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
+    }
+}
+
+async fn handle_knowledge_reindex_pack(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let panel = KnowledgePanel::instance();
+    match panel.reindex_pack(name).await {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
+    }
+}
+
+async fn handle_knowledge_get_validation_report(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let panel = KnowledgePanel::instance();
+    match panel.get_validation_report(name).await {
+        Ok(report) => {
+            let value = serde_json::to_value(report).unwrap_or_default();
+            (StatusCode::OK, api_response(true, Some(value), None))
+        }
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
+    }
+}
+
+async fn handle_knowledge_get_metadata(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let panel = KnowledgePanel::instance();
+    let pack = panel.get_metadata(name).await;
+    let value = pack.map(|p| serde_json::to_value(p).unwrap_or_default());
+    (StatusCode::OK, api_response(true, value, None))
+}
+
+async fn handle_knowledge_export_pack(params: Value) -> (StatusCode, String) {
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let output = params.get("output_path").and_then(|v| v.as_str()).unwrap_or("");
+    let panel = KnowledgePanel::instance();
+    match panel.export_pack(name, output).await {
+        Ok(_) => (StatusCode::OK, api_response(true, None, None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
+    }
+}
+
+async fn handle_knowledge_import_pack(params: Value) -> (StatusCode, String) {
+    let archive = params.get("archive_path").and_then(|v| v.as_str()).unwrap_or("");
+    let dest = params.get("destination").and_then(|v| v.as_str()).unwrap_or("");
+    let panel = KnowledgePanel::instance();
+    match panel.import_pack(archive, dest).await {
+        Ok(path) => (StatusCode::OK, api_response(true, Some(serde_json::json!(path)), None)),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
     }
 }
 
