@@ -292,8 +292,7 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
             stream: None,
         };
 
-        match tokio::runtime::Runtime::new()
-            .unwrap()
+        match tokio::runtime::Handle::current()
             .block_on(provider.chat(ai_request)) {
             Ok(response) => {
                 let aid = uuid::Uuid::new_v4().to_string();
@@ -606,10 +605,24 @@ pub fn create_router(state: ApiServerState) -> Router {
 pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>) -> Result<(), String> {
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
-        config_path: Arc::new(Mutex::new(config_path)),
+        config_path: Arc::new(Mutex::new(config_path.clone())),
     };
     let router = create_router(state);
-    let addr = format!("0.0.0.0:{}", port);
+
+    // Initialize skill and knowledge panels from data directory
+    if let Some(ref cp) = config_path {
+        if let Some(data_dir) = cp.parent() {
+            let skills_dir = data_dir.join("skills");
+            info!(dir = %skills_dir.display(), "Loading skills from directory");
+            if let Err(e) = SkillManagementPanel::instance().load_from_directory(&skills_dir.to_string_lossy()) {
+                error!(error = %e, "Failed to load skills");
+            }
+            let knowledge_dir = data_dir.join("knowledge");
+            info!(dir = %knowledge_dir.display(), "Loading knowledge packs from directory");
+        }
+    }
+
+    let addr = format!("0.0.0.0:{port}");
 
     info!(addr, "Starting API server in background thread");
 
@@ -618,6 +631,20 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>) -> R
             .map_err(|e| format!("Failed to create tokio runtime: {}", e));
         
         if let Ok(rt) = rt {
+            // Initialize knowledge packs inside the tokio runtime
+            if let Some(ref cp) = config_path {
+                if let Some(data_dir) = cp.parent() {
+                    let knowledge_dir = data_dir.join("knowledge");
+                    info!(dir = %knowledge_dir.display(), "Loading knowledge packs from directory");
+                    let panel = KnowledgePanel::instance();
+                    let kdir = knowledge_dir.to_string_lossy().to_string();
+                    rt.block_on(async {
+                        if let Err(e) = panel.initialize(&kdir).await {
+                            error!(error = %e, "Failed to load knowledge packs");
+                        }
+                    });
+                }
+            }
             let result = rt.block_on(async {
                 let listener = tokio::net::TcpListener::bind(&addr)
                     .await
