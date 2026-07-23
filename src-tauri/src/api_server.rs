@@ -15,6 +15,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 
 /// Request wrapper sent from the frontend.
@@ -253,9 +254,15 @@ pub fn create_router(state: ApiServerState) -> Router {
     // Debug: list all registered routes
     info!("[API] Route creation complete — now registering fallback");
     
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let router = Router::new()
         .route("/api/commands/:method", post(api_handler))
         .route("/health", get(|| async { "ok" }))
+        .layer(cors)
         .fallback(|method: axum::http::Method, uri: axum::http::Uri| async move {
             warn!("[API] FALLBACK HIT — method={} uri={}", method, uri);
             (StatusCode::NOT_FOUND, format!("No route for {} {}", method, uri))

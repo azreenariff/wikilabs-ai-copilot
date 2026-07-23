@@ -39,6 +39,7 @@ regex = "1"
 tracing-appender = "0.2"
 axum = { version = "=0.7.9", features = ["json"] }
 tower = "0.4"
+tower-http = { version = "0.6", features = ["cors"] }
 
 # Existing workspace crates
 wikilabs-ai = { path = "../src/ai" }
