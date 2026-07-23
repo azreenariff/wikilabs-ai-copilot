@@ -19,10 +19,18 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 use wikilabs_ai::AiProvider;
 
+use crate::guidance_panel;
 use crate::knowledge_panel::{KnowledgePanel, PackInfo, ValidationReport};
 use crate::skill_management::{SkillCard, SkillManagementPanel};
-use crate::guidance_panel;
 use crate::config::AiProviderConfig;
+
+use observation::provider::ProviderRegistry;
+use observation::app_monitor::ActiveWindowProvider;
+use observation::browser::BrowserProvider;
+use observation::clipboard::ClipboardProvider;
+use observation::terminal::TerminalProvider;
+use observation::screen_capture::ScreenCaptureProvider;
+use observation::file_observer::FileObserverProvider;
 
 /// Request wrapper sent from the frontend.
 #[derive(Debug, Deserialize)]
@@ -899,6 +907,25 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                     }
                 });
             }
+
+            // Initialize and start observation engine
+            let mut registry = ProviderRegistry::new();
+            registry.register(Box::new(ActiveWindowProvider::new()));
+            registry.register(Box::new(BrowserProvider::new()));
+            registry.register(Box::new(TerminalProvider::new()));
+            registry.register(Box::new(ClipboardProvider::new()));
+            registry.register(Box::new(ScreenCaptureProvider::new()));
+            registry.register(Box::new(FileObserverProvider::new()));
+            info!(count = registry.provider_names().len(), "Observation providers registered");
+            let results = registry.start_all().await;
+            for (name, result) in &results {
+                match result {
+                    Ok(_) => info!(name, "Observation provider started"),
+                    Err(e) => warn!(name, error = %e, "Observation provider failed to start"),
+                }
+            }
+            info!("Observation engine initialized");
+
             let result = rt.block_on(async {
                 let listener = tokio::net::TcpListener::bind(&addr)
                     .await
