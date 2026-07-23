@@ -277,6 +277,7 @@ pub mod categories {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn test_benchmark_timer() {
