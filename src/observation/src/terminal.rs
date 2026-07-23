@@ -95,7 +95,10 @@ impl TerminalProvider {
             // Windows: detect Windows Terminal, PowerShell, CMD windows
             use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS, PROCESSENTRY32W};
             unsafe {
-                let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+                let snapshot = match CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) {
+                    Ok(s) => s,
+                    Err(_) => return Vec::new(),
+                };
                 if snapshot.is_invalid() { return Vec::new(); }
 
                 let mut entry = PROCESSENTRY32W::default();
