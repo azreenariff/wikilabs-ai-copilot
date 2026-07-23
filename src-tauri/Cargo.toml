@@ -49,7 +49,7 @@ wikilabs-security = { path = "../src/security" }
 wikilabs-workspace = { path = "../src/workspace" }
 wikilabs-knowledge = { path = "../src/knowledge" }
 wikilabs-benchmark = { path = "../src/benchmark" }
-observation = { path = "../src/observation" }
+wikilabs-observation = { path = "../src/observation" }
 serde_yaml = "0.9"
 once_cell = "1"
 cfg-if = "1"

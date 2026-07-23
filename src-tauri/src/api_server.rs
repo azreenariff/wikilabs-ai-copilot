@@ -24,13 +24,13 @@ use crate::knowledge_panel::{KnowledgePanel, PackInfo, ValidationReport};
 use crate::skill_management::{SkillCard, SkillManagementPanel};
 use crate::config::AiProviderConfig;
 
-use observation::provider::ProviderRegistry;
-use observation::app_monitor::ActiveWindowProvider;
-use observation::browser::BrowserProvider;
-use observation::clipboard::ClipboardProvider;
-use observation::terminal::TerminalProvider;
-use observation::screen_capture::ScreenCaptureProvider;
-use observation::file_observer::FileObserverProvider;
+use wikilabs_observation::provider::ProviderRegistry;
+use wikilabs_observation::app_monitor::ActiveWindowProvider;
+use wikilabs_observation::browser::BrowserProvider;
+use wikilabs_observation::clipboard::ClipboardProvider;
+use wikilabs_observation::terminal::TerminalProvider;
+use wikilabs_observation::screen_capture::ScreenCaptureProvider;
+use wikilabs_observation::file_observer::FileObserverProvider;
 
 /// Request wrapper sent from the frontend.
 #[derive(Debug, Deserialize)]
