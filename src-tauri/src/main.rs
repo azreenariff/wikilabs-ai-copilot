@@ -28,6 +28,14 @@ use guidance_panel::{
     guidance_mark_missing, guidance_record_feedback, guidance_set_mode, guidance_start_workflow,
     guidance_update_recommendation_status,
 };
+use knowledge_panel::{
+    knowledge_disable_pack, knowledge_enable_pack, knowledge_export_pack, knowledge_get_pack_metadata,
+    knowledge_get_validation_report, knowledge_import_pack, knowledge_list_packs, knowledge_reindex_pack,
+};
+use skill_management::{
+    skill_disable, skill_enable, skill_get, skill_list, skill_mark_validated, skill_set_active,
+    skill_toggle, skill_validate,
+};
 
 /// Shared application state — uses Arc for Clone safety.
 #[derive(Clone)]
@@ -56,7 +64,7 @@ impl AppState {
             app_handle: Arc::new(std::sync::RwLock::new(Some(app_handle))),
             db: Arc::new(db),
             repos: Arc::new(repos),
-            settings: AppSettingsStore::new(),
+            settings: AppSettingsStore::with_path(data_dir)?,
         })
     }
 }
@@ -73,6 +81,10 @@ fn get_settings(app_state: tauri::State<AppState>) -> Result<AppSettings, String
 fn update_settings(app_state: tauri::State<AppState>, settings: AppSettings) -> Result<(), String> {
     info!("update_settings called");
     app_state.settings.save(settings);
+    if let Err(e) = app_state.settings.persist() {
+        error!(error = %e, "Failed to persist settings to disk");
+        return Err(e.to_string());
+    }
     Ok(())
 }
 
@@ -447,8 +459,13 @@ fn main() {
                 state_time.as_micros()
             );
 
+            // Construct config path for API server persistence
+            let data_dir = app.handle().path().app_data_dir()?;
+            let config_path = data_dir.join("settings.json");
+            tracing::info!(path = %config_path.display(), "Wiring config path to API server");
+
             // Start the HTTP API server for frontend SPA
-            let _ = api_server::start_api_server(1420);
+            let _ = api_server::start_api_server(1420, Some(config_path.clone()));
 
             // Record startup benchmark (startup = total time from process launch to ready)
             let _total_startup = startup_start.elapsed();
@@ -507,6 +524,26 @@ fn main() {
             // System commands
             get_status,
             get_logs,
+            // Performance commands
+            get_performance_metrics,
+            // Knowledge panel commands
+            knowledge_list_packs,
+            knowledge_enable_pack,
+            knowledge_disable_pack,
+            knowledge_get_pack_metadata,
+            knowledge_get_validation_report,
+            knowledge_export_pack,
+            knowledge_import_pack,
+            knowledge_reindex_pack,
+            // Skill management commands
+            skill_list,
+            skill_get,
+            skill_enable,
+            skill_disable,
+            skill_toggle,
+            skill_set_active,
+            skill_validate,
+            skill_mark_validated,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

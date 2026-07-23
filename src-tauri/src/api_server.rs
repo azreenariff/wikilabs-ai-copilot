@@ -12,6 +12,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::{error, info, warn};
 
@@ -26,6 +28,7 @@ pub struct ApiRequest {
 #[derive(Clone)]
 pub struct ApiServerState {
     pub settings: Arc<Mutex<ApiServerSettings>>,
+    pub config_path: Arc<Mutex<Option<PathBuf>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -102,9 +105,9 @@ pub async fn api_handler(
     info!(method, "API request received");
 
     let (status, body) = match method.as_str() {
-        "get_settings" => handle_get_settings(&state),
-        "update_settings" => handle_update_settings(&state, req.params),
-        "test_connection" => handle_test_connection(&state, req.params),
+        "get_settings" => handle_get_settings(&state).await,
+        "update_settings" => handle_update_settings(&state, req.params).await,
+        "test_connection" => handle_test_connection(&state, req.params).await,
         "send_message" => handle_send_message(&state, req.params),
         "get_history" => handle_get_history(&state),
         "list_providers" => handle_list_providers(&state),
@@ -118,22 +121,80 @@ pub async fn api_handler(
     (status, body)
 }
 
-fn handle_test_connection(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
+async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
     let api_key = params.get("api_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
     if api_key.is_empty() {
         return (StatusCode::OK, api_response(false, None, Some("API key is required".to_string())));
     }
-    (StatusCode::OK, api_response(true, Some(serde_json::json!(true)), None))
+    let endpoint = params.get("endpoint").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if endpoint.is_empty() {
+        return (StatusCode::OK, api_response(false, None, Some("Endpoint is required".to_string())));
+    }
+    // Actually test the connection by hitting the /models endpoint
+    // Normalize: if endpoint ends with /v1, just append /models; if just a base URL, append /v1/models
+    let url = if endpoint.ends_with("/v1") {
+        format!("{}{}/models", endpoint.trim_end_matches('/'), "")
+    } else if endpoint.contains("/v1/") {
+        format!("{}{}/models", endpoint.trim_end_matches('/'), "")
+    } else {
+        format!("{}/v1/models", endpoint.trim_end_matches('/'))
+    };
+    info!(endpoint, url, "Testing AI provider connection");
+    match reqwest::Client::new()
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+    {
+        Ok(response) if response.status().is_success() => {
+            info!("Provider connection verified");
+            (StatusCode::OK, api_response(true, Some(serde_json::json!(true)), None))
+        }
+        Ok(response) => {
+            let status = response.status();
+            error!("Provider health check failed: {}", status);
+            (StatusCode::OK, api_response(false, None, Some(format!("Connection refused or bad response: {}", status))))
+        }
+        Err(e) => {
+            error!("Provider connection failed: {}", e);
+            (StatusCode::OK, api_response(false, None, Some(format!("Cannot reach endpoint: {}", e))))
+        }
+    }
 }
 
-fn handle_get_settings(state: &ApiServerState) -> (StatusCode, String) {
-    let settings = state.settings.lock().unwrap();
+async fn handle_get_settings(state: &ApiServerState) -> (StatusCode, String) {
+    let mut settings = state.settings.lock().unwrap();
+    
+    // Load from disk on each get to stay in sync
+    if let Ok(config_path) = state.config_path.lock() {
+        if let Some(ref path) = *config_path {
+            if let Ok(content) = fs::read_to_string(path) {
+                if let Ok(parsed) = serde_json::from_str::<Value>(&content) {
+                    settings.settings = parsed;
+                }
+            }
+        }
+    }
+    
     (StatusCode::OK, api_response(true, Some(settings.settings.clone()), None))
 }
 
-fn handle_update_settings(state: &ApiServerState, params: Value) -> (StatusCode, String) {
+async fn handle_update_settings(state: &ApiServerState, params: Value) -> (StatusCode, String) {
     let mut settings = state.settings.lock().unwrap();
-    settings.settings = params;
+    settings.settings = params.clone();
+    
+    // Persist to disk
+    if let Ok(config_path) = state.config_path.lock() {
+        if let Some(ref path) = *config_path {
+            match fs::write(path, serde_json::to_string_pretty(&params).unwrap_or_default()) {
+                Ok(_) => info!("Settings persisted to disk: {}", path.display()),
+                Err(e) => error!(error = %e, "Failed to persist settings to disk"),
+            }
+        }
+    }
+    
     (StatusCode::OK, api_response(true, Some(serde_json::json!({ "status": "updated" })), None))
 }
 
@@ -207,9 +268,10 @@ pub fn create_router(state: ApiServerState) -> Router {
 
 /// Start the HTTP server on the given port (default 1420).
 /// Runs in a dedicated thread to keep the tokio runtime alive.
-pub fn start_api_server(port: u16) -> Result<(), String> {
+pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>) -> Result<(), String> {
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
+        config_path: Arc::new(Mutex::new(config_path)),
     };
     let router = create_router(state);
     let addr = format!("0.0.0.0:{}", port);

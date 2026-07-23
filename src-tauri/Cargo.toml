@@ -37,7 +37,7 @@ aes-gcm = { version = "0.10", features = ["std"] }
 chacha20poly1305 = "0.10"
 regex = "1"
 tracing-appender = "0.2"
-axum = { version = "0.7", features = ["json"] }
+axum = { version = "=0.7.9", features = ["json"] }
 tower = "0.4"
 
 # Existing workspace crates

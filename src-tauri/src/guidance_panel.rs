@@ -11,6 +11,7 @@
 //! Does NOT execute commands — guidance only.
 
 use anyhow::Result;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -337,10 +338,8 @@ impl GuidancePanel {
 
     /// Returns a static instance.
     pub fn instance() -> &'static Self {
-        static mut INSTANCE: Option<GuidancePanel> = None;
-        unsafe {
-            INSTANCE.get_or_insert_with(GuidancePanel::new)
-        }
+        static INSTANCE: Lazy<GuidancePanel> = Lazy::new(GuidancePanel::new);
+        &INSTANCE
     }
 
     // ── Recommendation Card Commands ───────────────────────────
