@@ -107,8 +107,59 @@ impl BrowserProvider {
 
     /// Detect current browser context (platform-specific stub).
     fn detect_browser_context(&self) -> Option<BrowserContext> {
-        // This would use platform-specific browser automation APIs
-        // e.g., Selenium, Playwright, or native window introspection
+        #[cfg(target_os = "windows")]
+        {
+            // Windows: detect browser URL from active window title
+            use windows::Win32::Foundation::{CloseHandle, HWND};
+            use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowTextLengthW};
+            use windows::Win32::System::Threading::{OpenProcess, GetWindowThreadProcessId, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
+            use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
+
+            unsafe {
+                let hwnd: HWND = GetForegroundWindow();
+                if hwnd.is_invalid() || hwnd.0 == 0 { return None; }
+
+                let len = GetWindowTextLengthW(hwnd);
+                if len == 0 { return None; }
+                let mut buf = vec![0u16; (len + 1) as usize];
+                GetWindowTextW(hwnd, &mut buf);
+                let title = String::from_utf16_lossy(&buf[..len as usize]).trim().to_string();
+                if title.is_empty() { return None; }
+
+                let mut pid: u32 = 0;
+                let _ = GetWindowThreadProcessId(hwnd, Some(&mut pid));
+                if pid == 0 { return None; }
+
+                let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
+                if let Ok(handle) = handle {
+                    let mut exe_buf = [0u16; 260];
+                    let exe_len = GetModuleFileNameExW(handle, None, &mut exe_buf);
+                    let _ = CloseHandle(handle);
+                    if exe_len > 0 {
+                        let exe_path = String::from_utf16_lossy(&exe_buf[..exe_len as usize]);
+                        let path = std::path::Path::new(&exe_path);
+                        let process_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+
+                        let is_browser = matches!(process_name.as_str(),
+                            "firefox" | "chrome" | "chromium" | "msedge" | "brave" | "opera" | "vivaldi" | "safari");
+
+                        if is_browser {
+                            // Extract URL from title - browsers show title as "Page Title - Browser"
+                            let url = title.split(" - ").last().map(|s| s.to_string());
+                            return Some(BrowserContext {
+                                url: url.unwrap_or_default(),
+                                title: title.clone(),
+                                browser: process_name,
+                                tab_id: None,
+                            });
+                        }
+                    }
+                }
+                None
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
         None
     }
 }

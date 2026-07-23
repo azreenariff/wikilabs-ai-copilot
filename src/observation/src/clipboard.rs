@@ -112,10 +112,33 @@ impl ClipboardProvider {
         }
     }
 
-    /// Platform-specific clipboard read (stub).
+    /// Platform-specific clipboard read.
     fn read_clipboard(&self) -> Option<String> {
-        // This would use platform-specific clipboard APIs
-        // e.g., X11 xclip/xsel on Linux, Win32 OpenClipboard on Windows
+        #[cfg(target_os = "windows")]
+        {
+            use windows::Win32::UI::Clipboard::{OpenClipboard, GetClipboardData, CloseClipboard, CF_UNICODETEXT};
+            use windows::Win32::Foundation::{CloseHandle, HGLOBAL};
+            unsafe {
+                if OpenClipboard(None).is_ok() {
+                    let data = GetClipboardData(CF_UNICODETEXT.0 as u32);
+                    if let Ok(handle) = data {
+                        let ptr = windows::Win32::System::Memory::GlobalLock(handle);
+                        if !ptr.is_null() {
+                            let slice = std::slice::from_raw_parts(ptr as *const u16, 65536);
+                            let len = slice.iter().position(|&c| c == 0).unwrap_or(0);
+                            let text = String::from_utf16_lossy(&slice[..len]);
+                            let _ = windows::Win32::System::Memory::GlobalUnlock(handle);
+                            let _ = CloseClipboard();
+                            return Some(text);
+                        }
+                    }
+                    let _ = CloseClipboard();
+                }
+                None
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
         None
     }
 }

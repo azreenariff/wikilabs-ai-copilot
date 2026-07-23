@@ -99,14 +99,47 @@ impl ScreenCaptureProvider {
         }
     }
 
-    /// Platform-specific screenshot capture (stub).
+    /// Platform-specific screenshot capture.
     /// Returns metadata only — actual image data would be stored separately.
     fn capture_screen(&self, _screen_index: u32) -> Option<ScreenshotMetadata> {
-        // This would use platform-specific screenshot APIs:
-        // - X11: XGetImage + XGetImage for multi-monitor
-        // - Wayland: xdg-desktop-portal screen-cast
-        // - Windows: BitBlt/DXGI
-        // - macOS: CGWindowListCopyWindowInfo
+        #[cfg(target_os = "windows")]
+        {
+            use windows::Win32::Graphics::Gdi::{CreateDCW, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject, BitBlt, GetDeviceCaps, DeleteDC, DeleteObject, SRCCOPY, HORZRES, VERTRES, SRCCCOPY};
+            use windows::Win32::Foundation::{BOOL, HWND, RECT};
+            unsafe {
+                let dc = CreateDCW(windows::core::w!("DISPLAY"), None, None, None);
+                if dc.is_invalid() { return None; }
+
+                let width = GetDeviceCaps(dc, HORZRES);
+                let height = GetDeviceCaps(dc, VERTRES);
+                if width == 0 || height == 0 { let _ = DeleteDC(dc); return None; }
+
+                let mem_dc = CreateCompatibleDC(dc);
+                if mem_dc.is_invalid() { let _ = DeleteDC(dc); return None; }
+
+                let bitmap = CreateCompatibleBitmap(dc, width, height);
+                if bitmap.is_invalid() { let _ = DeleteDC(mem_dc); let _ = DeleteDC(dc); return None; }
+
+                let _ = SelectObject(mem_dc, bitmap);
+                let _ = BitBlt(mem_dc, 0, 0, width, height, dc, 0, 0, SRCCCOPY);
+
+                let _ = DeleteDC(mem_dc);
+                let _ = DeleteDC(dc);
+                let _ = DeleteObject(bitmap);
+
+                Some(ScreenshotMetadata {
+                    screen_index: _screen_index,
+                    width: width as u32,
+                    height: height as u32,
+                    format: "bitmap".to_string(),
+                    captured_at: chrono::Utc::now().to_rfc3339(),
+                    file_size: 0,
+                    hash: String::new(),
+                })
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
         None
     }
 }

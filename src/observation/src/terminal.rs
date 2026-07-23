@@ -93,7 +93,42 @@ impl TerminalProvider {
         #[cfg(target_os = "windows")]
         {
             // Windows: detect Windows Terminal, PowerShell, CMD windows
-            Vec::new()
+            use windows::Win32::System::Threading::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS, PROCESSENTRY32W};
+            unsafe {
+                let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+                if snapshot.is_invalid() { return Vec::new(); }
+
+                let mut entry = PROCESSENTRY32W::default();
+                entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+                if Process32FirstW(snapshot, &mut entry).is_err() {
+                    let _ = windows::Win32::Foundation::CloseHandle(snapshot);
+                    return Vec::new();
+                }
+
+                let mut sessions = Vec::new();
+                loop {
+                    let name = String::from_utf16_lossy(&entry.szExeFile)
+                        .trim_end_matches('\0')
+                        .to_lowercase();
+                    let is_terminal = matches!(name.as_str(),
+                        "powershell.exe" | "pwsh.exe" | "cmd.exe" | "wsl.exe" | "windowsterminal.exe" | "wt.exe"
+                        | "bash.exe" | "zsh.exe" | "fish.exe" | "alacritty.exe" | "mintty.exe");
+
+                    if is_terminal {
+                        sessions.push(TerminalSession {
+                            process_name: name,
+                            pid: entry.th32ProcessID,
+                            started_at: chrono::Utc::now().to_rfc3339(),
+                            shell_type: "unknown".to_string(),
+                            command_history: Vec::new(),
+                        });
+                    }
+
+                    if Process32NextW(snapshot, &mut entry).is_err() { break; }
+                }
+                let _ = windows::Win32::Foundation::CloseHandle(snapshot);
+                sessions
+            }
         }
 
         #[cfg(target_os = "macos")]
