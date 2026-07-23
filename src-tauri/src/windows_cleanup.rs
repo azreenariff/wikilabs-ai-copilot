@@ -16,17 +16,14 @@ static CLEANUP_ONCE: Once = Once::new();
 // ── WebView2 Process Management ─────────────────────────────────
 
 /// Known WebView2 process names that can become zombies after crashes.
+/// Only targets WebView2 Runtime processes, NOT the user's browser.
 const WEBVIEW2_PROCESSES: &[&str] = &[
-    "MicrosoftEdge",
-    "msedge",
-    "chrome",
-    "msedge.exe",
-    "Microsoft Edge.exe",
+    "msedgewebview2",
+    "msedgewebview2.exe",
     "WebView2Broker",
     "WebView2Broker.exe",
     "WebEngineBridge",
     "WebEngineBridge.exe",
-    "wkhtmltopdf", // WebView2 internal
 ];
 
 /// Kill all processes matching the given names that are related to WebView2.

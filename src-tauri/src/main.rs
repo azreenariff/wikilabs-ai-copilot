@@ -65,7 +65,7 @@ impl AppState {
             app_handle: Arc::new(std::sync::RwLock::new(Some(app_handle))),
             db: Arc::new(db),
             repos: Arc::new(repos),
-            settings: AppSettingsStore::with_path(data_dir)?,
+            settings: AppSettingsStore::with_path(data_dir.join("settings.json"))?,
         })
     }
 }
