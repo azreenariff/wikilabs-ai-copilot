@@ -118,6 +118,9 @@ pub async fn api_handler(
         "get_history" => handle_get_history(&state),
         "list_providers" => handle_list_providers(&state),
         "list_models" => handle_list_models(&state, req.params).await,
+        // Workspace commands
+        "get_workspace_list" => handle_get_workspace_list(&state),
+        "create_workspace" => handle_create_workspace(&state, req.params),
         // Skill commands
         "skill_list" => handle_skill_list(),
         "skill_get" => handle_skill_get(req.params),
@@ -343,6 +346,20 @@ fn handle_list_providers(state: &ApiServerState) -> (StatusCode, String) {
     let providers = settings.providers.clone();
     drop(settings);
     (StatusCode::OK, api_response(true, Some(serde_json::Value::Array(providers)), None))
+}
+
+fn handle_get_workspace_list(_state: &ApiServerState) -> (StatusCode, String) {
+    let workspaces = vec!["default".to_string()];
+    let value = serde_json::to_value(workspaces).unwrap_or_default();
+    (StatusCode::OK, api_response(true, Some(value), None))
+}
+
+fn handle_create_workspace(state: &ApiServerState, params: Value) -> (StatusCode, String) {
+    let _name = params.get("name").and_then(|v| v.as_str()).unwrap_or("New Workspace");
+    let _customer = params.get("customer_name").and_then(|v| v.as_str()).unwrap_or("");
+    let ws_id = uuid::Uuid::new_v4().to_string();
+    info!(id = %ws_id, "Workspace created (in-memory)");
+    (StatusCode::OK, api_response(true, Some(serde_json::json!(ws_id)), None))
 }
 
 async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
