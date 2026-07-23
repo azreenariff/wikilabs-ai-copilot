@@ -629,7 +629,7 @@ pub fn create_router(state: ApiServerState) -> Router {
 
 /// Start the HTTP server on the given port (default 1420).
 /// Runs in a dedicated thread to keep the tokio runtime alive.
-pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skills_path: Option<std::path::PathBuf>) -> Result<(), String> {
+pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skills_path: Option<std::path::PathBuf>, knowledge_path: Option<std::path::PathBuf>) -> Result<(), String> {
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
@@ -656,12 +656,13 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
     }
 
     // Initialize knowledge packs from data directory
-    if let Some(ref cp) = config_path {
-        if let Some(data_dir) = cp.parent() {
-            let knowledge_dir = data_dir.join("knowledge");
-            info!(dir = %knowledge_dir.display(), "Knowledge packs path set");
-        }
-    }
+    let knowledge_dir_to_use = knowledge_path.clone().or_else(|| {
+        config_path.as_ref().and_then(|cp| cp.parent().map(|p| p.join("knowledge")))
+    });
+
+    // Store knowledge path for later async initialization
+    let kdir = knowledge_dir_to_use.clone();
+    let kdir_str = kdir.as_ref().map(|d| d.to_string_lossy().to_string());
 
     let addr = format!("0.0.0.0:{port}");
 
@@ -673,18 +674,15 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
         
         if let Ok(rt) = rt {
             // Initialize knowledge packs inside the tokio runtime
-            if let Some(ref cp) = config_path {
-                if let Some(data_dir) = cp.parent() {
-                    let knowledge_dir = data_dir.join("knowledge");
-                    info!(dir = %knowledge_dir.display(), "Loading knowledge packs from directory");
-                    let panel = KnowledgePanel::instance();
-                    let kdir = knowledge_dir.to_string_lossy().to_string();
-                    rt.block_on(async {
-                        if let Err(e) = panel.initialize(&kdir).await {
-                            error!(error = %e, "Failed to load knowledge packs");
-                        }
-                    });
-                }
+            if let Some(ref kdir_path) = kdir_str {
+                info!(dir = %kdir_path, "Loading knowledge packs");
+                let panel = KnowledgePanel::instance();
+                let kdir = kdir_path.clone();
+                rt.block_on(async {
+                    if let Err(e) = panel.initialize(&kdir).await {
+                        error!(error = %e, "Failed to load knowledge packs");
+                    }
+                });
             }
             let result = rt.block_on(async {
                 let listener = tokio::net::TcpListener::bind(&addr)

@@ -1,0 +1,14 @@
+schema_version: "1.0"
+name: "Storage Engineering Foundations"
+version: "1.0.0"
+description: "Core storage engineering knowledge, architecture, and best practices"
+author: "Wiki Labs Engineering"
+license: "Proprietary"
+format_version: "1.0"
+documents:
+  - id: "foundations-storage"
+    path: "FOUNDATIONS_STORAGE.md"
+    title: "Storage Foundations"
+    language: "en"
+    content_type: "text/markdown"
+dependencies: []

@@ -1,0 +1,7 @@
+name: "Storage Engineering Foundations"
+version: "1.0.0"
+description: "Core storage engineering knowledge"
+embedding_model: "all-MiniLM-L6-v2"
+embedding_dimensions: 384
+tags: ["storage", "engineering", "foundations"]
+categories: ["Engineering Foundations", "Storage"]

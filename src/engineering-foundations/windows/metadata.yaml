@@ -1,0 +1,7 @@
+name: "Windows Engineering Foundations"
+version: "1.0.0"
+description: "Core Windows engineering knowledge"
+embedding_model: "all-MiniLM-L6-v2"
+embedding_dimensions: 384
+tags: ["windows", "engineering", "foundations"]
+categories: ["Engineering Foundations", "Windows"]

@@ -1,0 +1,14 @@
+schema_version: "1.0"
+name: "Networking Engineering Foundations"
+version: "1.0.0"
+description: "Core networking engineering knowledge, architecture, and best practices"
+author: "Wiki Labs Engineering"
+license: "Proprietary"
+format_version: "1.0"
+documents:
+  - id: "foundations-networking"
+    path: "FOUNDATIONS_NETWORKING.md"
+    title: "Networking Foundations"
+    language: "en"
+    content_type: "text/markdown"
+dependencies: []

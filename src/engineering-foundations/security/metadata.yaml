@@ -1,0 +1,7 @@
+name: "Security Engineering Foundations"
+version: "1.0.0"
+description: "Core security engineering knowledge"
+embedding_model: "all-MiniLM-L6-v2"
+embedding_dimensions: 384
+tags: ["security", "engineering", "foundations"]
+categories: ["Engineering Foundations", "Security"]

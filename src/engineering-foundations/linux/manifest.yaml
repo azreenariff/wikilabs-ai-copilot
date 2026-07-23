@@ -1,0 +1,14 @@
+schema_version: "1.0"
+name: "Linux Engineering Foundations"
+version: "1.0.0"
+description: "Core Linux engineering knowledge, architecture, and best practices"
+author: "Wiki Labs Engineering"
+license: "Proprietary"
+format_version: "1.0"
+documents:
+  - id: "foundations-linux"
+    path: "FOUNDATIONS_LINUX.md"
+    title: "Linux Foundations"
+    language: "en"
+    content_type: "text/markdown"
+dependencies: []
