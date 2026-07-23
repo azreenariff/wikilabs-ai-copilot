@@ -45,10 +45,44 @@ pub struct AiRequest {
 pub struct AiResponse {
     pub model: String,
     pub message: AiMessage,
+    #[serde(default)]
     pub tool_calls: Vec<ToolCall>,
     pub usage: TokenUsage,
     #[serde(default)]
     pub finish_reason: String,
+}
+
+/// Raw OpenAI chat completions API response format.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct OpenAiChatResponse {
+    pub model: String,
+    pub choices: Vec<OpenAiChoice>,
+    pub usage: TokenUsage,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct OpenAiChoice {
+    pub message: OpenAiResponseMessage,
+    pub finish_reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct OpenAiResponseMessage {
+    pub role: String,
+    pub content: Option<String>,
+    #[serde(default)]
+    pub tool_calls: Vec<OpenAiToolCall>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct OpenAiToolCall {
+    pub function: OpenAiFunction,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct OpenAiFunction {
+    pub name: String,
+    pub arguments: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -187,10 +221,35 @@ impl AiProvider for OpenAICompatibleProvider {
             return Err(anyhow::anyhow!("API error {}: {}", status, body));
         }
 
-        let ai_response: AiResponse = response
+        let api_resp: OpenAiChatResponse = response
             .json()
             .await
             .map_err(|e| anyhow::anyhow!("Failed to parse response: {}", e))?;
+
+        // Convert from OpenAI API format to internal AiResponse
+        let choice = api_resp.choices.first().ok_or_else(|| {
+            anyhow::anyhow!("API returned no choices")
+        })?;
+
+        let message = AiMessage {
+            role: choice.message.role.clone(),
+            content: choice.message.content.clone().unwrap_or_default(),
+        };
+
+        let tool_calls: Vec<ToolCall> = choice.message.tool_calls.iter().map(|tc| {
+            ToolCall {
+                name: tc.function.name.clone(),
+                arguments: tc.function.arguments.clone(),
+            }
+        }).collect();
+
+        let ai_response = AiResponse {
+            model: api_resp.model,
+            message,
+            tool_calls,
+            usage: api_resp.usage,
+            finish_reason: choice.finish_reason.clone(),
+        };
 
         Ok(ai_response)
     }
