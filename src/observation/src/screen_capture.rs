@@ -130,10 +130,9 @@ impl ScreenCaptureProvider {
                     screen_index: _screen_index,
                     width: width as u32,
                     height: height as u32,
-                    format: "bitmap".to_string(),
-                    captured_at: chrono::Utc::now().to_rfc3339(),
-                    file_size: 0,
-                    hash: String::new(),
+                    timestamp: chrono::Utc::now(),
+                    total_screens: 1,
+                    captured: true,
                 })
             }
         }

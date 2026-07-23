@@ -111,8 +111,8 @@ impl BrowserProvider {
         {
             // Windows: detect browser URL from active window title
             use windows::Win32::Foundation::{CloseHandle, HWND};
-            use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowTextLengthW};
-            use windows::Win32::System::Threading::{OpenProcess, GetWindowThreadProcessId, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
+            use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowTextLengthW, GetWindowThreadProcessId};
+            use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
             use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 
             unsafe {
@@ -147,10 +147,10 @@ impl BrowserProvider {
                             // Extract URL from title - browsers show title as "Page Title - Browser"
                             let url = title.split(" - ").last().map(|s| s.to_string());
                             return Some(BrowserContext {
-                                url: url.unwrap_or_default(),
-                                title: title.clone(),
-                                browser: process_name,
-                                tab_id: None,
+                                url: url,
+                                title: Some(title.clone()),
+                                browser_name: process_name,
+                                is_engineering_portal: false,
                             });
                         }
                     }

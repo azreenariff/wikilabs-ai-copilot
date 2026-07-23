@@ -917,7 +917,9 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
             registry.register(Box::new(ScreenCaptureProvider::new()));
             registry.register(Box::new(FileObserverProvider::new()));
             info!(count = registry.provider_names().len(), "Observation providers registered");
-            let results = registry.start_all().await;
+            let results = rt.block_on(async {
+                registry.start_all().await
+            });
             for (name, result) in &results {
                 match result {
                     Ok(_) => info!(name, "Observation provider started"),

@@ -116,25 +116,48 @@ impl ClipboardProvider {
     fn read_clipboard(&self) -> Option<String> {
         #[cfg(target_os = "windows")]
         {
-            // Clipboard API is in Win32_UI_WindowsAndMessaging in windows 0.58
-            use windows::Win32::UI::WindowsAndMessaging::{OpenClipboard, GetClipboardData, CloseClipboard, CF_UNICODETEXT};
+            // Raw FFI since windows 0.58 doesn't expose clipboard as a feature
+            #[link(name = "user32")]
+            extern "system" {
+                fn IsClipboardFormatAvailable(format: u32) -> i32;
+                fn OpenClipboard(hwnd: *mut std::ffi::c_void) -> i32;
+                fn GetClipboardData(format: u32) -> isize;
+                fn CloseClipboard() -> i32;
+            }
+            #[link(name = "kernel32")]
+            extern "system" {
+                fn GlobalLock(h: isize) -> *const u16;
+                fn GlobalUnlock(h: isize) -> i32;
+            }
+
+            const CF_UNICODETEXT: u32 = 13;
+
             unsafe {
-                if OpenClipboard(None).is_ok() {
-                    let data = GetClipboardData(CF_UNICODETEXT.0 as u32);
-                    if let Ok(handle) = data {
-                        let ptr = windows::Win32::System::Memory::GlobalLock(handle);
-                        if !ptr.is_null() {
-                            let slice = std::slice::from_raw_parts(ptr as *const u16, 65536);
-                            let len = slice.iter().position(|&c| c == 0).unwrap_or(0);
-                            let text = String::from_utf16_lossy(&slice[..len]);
-                            let _ = windows::Win32::System::Memory::GlobalUnlock(handle);
-                            let _ = CloseClipboard();
-                            return Some(text);
-                        }
-                    }
-                    let _ = CloseClipboard();
+                if IsClipboardFormatAvailable(CF_UNICODETEXT) == 0 {
+                    return None;
                 }
-                None
+                if OpenClipboard(std::ptr::null_mut()) == 0 {
+                    return None;
+                }
+
+                let handle = GetClipboardData(CF_UNICODETEXT);
+                if handle == 0 {
+                    let _ = CloseClipboard();
+                    return None;
+                }
+
+                let ptr = GlobalLock(handle);
+                if ptr.is_null() {
+                    let _ = CloseClipboard();
+                    return None;
+                }
+
+                let slice = std::slice::from_raw_parts(ptr, 65536);
+                let len = slice.iter().position(|&c| c == 0).unwrap_or(0);
+                let text = String::from_utf16_lossy(&slice[..len]);
+                let _ = GlobalUnlock(handle);
+                let _ = CloseClipboard();
+                Some(text)
             }
         }
 

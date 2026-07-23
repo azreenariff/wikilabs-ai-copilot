@@ -93,7 +93,7 @@ impl TerminalProvider {
         #[cfg(target_os = "windows")]
         {
             // Windows: detect Windows Terminal, PowerShell, CMD windows
-            use windows::Win32::System::Threading::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS, PROCESSENTRY32W};
+            use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS, PROCESSENTRY32W};
             unsafe {
                 let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
                 if snapshot.is_invalid() { return Vec::new(); }
@@ -116,11 +116,12 @@ impl TerminalProvider {
 
                     if is_terminal {
                         sessions.push(TerminalSession {
-                            process_name: name,
-                            pid: entry.th32ProcessID,
-                            started_at: chrono::Utc::now().to_rfc3339(),
-                            shell_type: "unknown".to_string(),
-                            command_history: Vec::new(),
+                            session_id: format!("win-term-{}", entry.th32ProcessID),
+                            terminal_name: name,
+                            shell_name: "unknown".to_string(),
+                            working_dir: None,
+                            is_ssh: false,
+                            started_at: chrono::Utc::now(),
                         });
                     }
 

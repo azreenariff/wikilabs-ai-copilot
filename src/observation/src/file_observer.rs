@@ -124,7 +124,7 @@ impl FileObserverProvider {
         #[cfg(target_os = "windows")]
         {
             // Windows: Monitor file handles via NtQuerySystemInformation
-            use windows::Win32::System::Threading::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS, PROCESSENTRY32W};
+            use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS, PROCESSENTRY32W};
             unsafe {
                 let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
                 if snapshot.is_invalid() { return Vec::new(); }
@@ -144,11 +144,12 @@ impl FileObserverProvider {
                         .trim_end_matches('\0').to_lowercase();
                     if engineering_tools.contains(&name.as_str()) {
                         files.push(FileMetadata {
-                            path: name,
-                            process_name: name,
-                            access_type: "read".to_string(),
-                            opened_at: chrono::Utc::now().to_rfc3339(),
-                            size: 0,
+                            path: format!("process:{}", name),
+                            extension: None,
+                            is_config_file: false,
+                            size_bytes: None,
+                            modified_at: None,
+                            content_read: false,
                         });
                     }
                     if Process32NextW(snapshot, &mut entry).is_err() { break; }
