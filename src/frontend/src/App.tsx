@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import ChatAssistant from './pages/ChatAssistant';
+import Guidance from './pages/Guidance';
 import Workspaces from './pages/Workspaces';
 import Skills from './pages/Skills';
 import Knowledge from './pages/Knowledge';
@@ -17,6 +18,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<ChatAssistant />} />
           <Route path="/assistant" element={<ChatAssistant />} />
+          <Route path="/guidance" element={<Guidance />} />
           <Route path="/workspaces" element={<Workspaces />} />
           <Route path="/skills" element={<Skills />} />
           <Route path="/knowledge" element={<Knowledge />} />

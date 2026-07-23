@@ -4,6 +4,7 @@ import { useState, type MouseEvent } from 'react';
 const navItems = [
   { path: '/assistant', label: 'Assistant', icon: '💬' },
   { path: '/workspaces', label: 'Workspaces', icon: '📁' },
+  { path: '/guidance', label: 'Guidance', icon: '🧭' },
   { path: '/skills', label: 'Skills', icon: '🔧' },
   { path: '/knowledge', label: 'Knowledge', icon: '📚' },
   { path: '/activity', label: 'Activity', icon: '📊' },
