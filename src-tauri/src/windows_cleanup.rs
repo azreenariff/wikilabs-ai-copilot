@@ -11,6 +11,11 @@ use std::process::Command;
 use std::sync::Once;
 use tracing::{error, info, warn};
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 static CLEANUP_ONCE: Once = Once::new();
 
 // ── WebView2 Process Management ─────────────────────────────────
@@ -34,6 +39,12 @@ pub fn cleanup_webview2_processes() {
         for proc_name in WEBVIEW2_PROCESSES {
             if cfg!(windows) {
                 // Windows: use taskkill to kill processes
+                #[cfg(windows)]
+                let output = Command::new("taskkill")
+                    .args(&["/F", "/IM", proc_name, "/T"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .output();
+                #[cfg(not(windows))]
                 let output = Command::new("taskkill")
                     .args(&["/F", "/IM", proc_name, "/T"])
                     .output();
@@ -73,6 +84,9 @@ pub fn cleanup_webview2_processes() {
 pub fn cleanup_api_server_port(port: u16) -> bool {
     if cfg!(windows) {
         // Use netstat to find processes on our port
+        #[cfg(windows)]
+        let output = Command::new("netstat").args(&["-ano"]).creation_flags(CREATE_NO_WINDOW).output();
+        #[cfg(not(windows))]
         let output = Command::new("netstat").args(&["-ano"]).output();
 
         if let Ok(o) = output {
@@ -83,6 +97,18 @@ pub fn cleanup_api_server_port(port: u16) -> bool {
                     if let Some(pid_str) = line.split_whitespace().last() {
                         if let Ok(pid) = pid_str.parse::<u32>() {
                             info!(pid, port, "Killing process holding API server port");
+                            #[cfg(windows)]
+                            if let Ok(_) = Command::new("taskkill")
+                                .args(&["/F", "/PID", &pid.to_string()])
+                                .creation_flags(CREATE_NO_WINDOW)
+                                .output()
+                            {
+                                info!(pid, port, "Port 1420 cleared");
+                                return true;
+                            } else {
+                                warn!(pid, port, "Failed to kill process on port");
+                            }
+                            #[cfg(not(windows))]
                             if let Ok(_) = Command::new("taskkill")
                                 .args(&["/F", "/PID", &pid.to_string()])
                                 .output()

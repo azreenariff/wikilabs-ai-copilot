@@ -42,6 +42,7 @@ pub struct ApiServerSettings {
     pub settings: Value,
     pub providers: Vec<Value>,
     pub messages: Arc<Mutex<Vec<ChatMessage>>>,
+    pub workspaces: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,6 +99,7 @@ impl ApiServerSettings {
                 }),
             ],
             messages: Arc::new(Mutex::new(Vec::new())),
+            workspaces: vec!["default".to_string()],
         }
     }
 }
@@ -358,17 +360,22 @@ fn handle_list_providers(state: &ApiServerState) -> (StatusCode, String) {
     (StatusCode::OK, api_response(true, Some(serde_json::Value::Array(providers)), None))
 }
 
-fn handle_get_workspace_list(_state: &ApiServerState) -> (StatusCode, String) {
-    let workspaces = vec!["default".to_string()];
+fn handle_get_workspace_list(state: &ApiServerState) -> (StatusCode, String) {
+    let settings = state.settings.lock().unwrap();
+    let workspaces = settings.workspaces.clone();
+    drop(settings);
     let value = serde_json::to_value(workspaces).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
 
 fn handle_create_workspace(state: &ApiServerState, params: Value) -> (StatusCode, String) {
-    let _name = params.get("name").and_then(|v| v.as_str()).unwrap_or("New Workspace");
-    let _customer = params.get("customer_name").and_then(|v| v.as_str()).unwrap_or("");
+    let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("New Workspace").to_string();
+    let _customer = params.get("customer_name").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let ws_id = uuid::Uuid::new_v4().to_string();
-    info!(id = %ws_id, "Workspace created (in-memory)");
+    let mut settings = state.settings.lock().unwrap();
+    settings.workspaces.push(name.clone());
+    drop(settings);
+    info!(id = %ws_id, name = %name, "Workspace created");
     (StatusCode::OK, api_response(true, Some(serde_json::json!(ws_id)), None))
 }
 
