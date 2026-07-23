@@ -34,7 +34,11 @@
     ],
     "resources": {
       "../src/skills/**/*": "skills/",
-      "../src/engineering-foundations/**/*": "knowledge/"
+      "../src/engineering-foundations/linux/**/*": "knowledge/linux/",
+      "../src/engineering-foundations/windows/**/*": "knowledge/windows/",
+      "../src/engineering-foundations/networking/**/*": "knowledge/networking/",
+      "../src/engineering-foundations/storage/**/*": "knowledge/storage/",
+      "../src/engineering-foundations/security/**/*": "knowledge/security/"
     },
     "icon": [
       "icons/32x32.png",
