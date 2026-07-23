@@ -629,23 +629,37 @@ pub fn create_router(state: ApiServerState) -> Router {
 
 /// Start the HTTP server on the given port (default 1420).
 /// Runs in a dedicated thread to keep the tokio runtime alive.
-pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>) -> Result<(), String> {
+pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skills_path: Option<std::path::PathBuf>) -> Result<(), String> {
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
     };
     let router = create_router(state);
 
-    // Initialize skill and knowledge panels from data directory
+    // Initialize skill and knowledge panels
+    if let Some(ref skills_dir) = skills_path {
+        info!(dir = %skills_dir.display(), "Loading skills from resource path");
+        if let Err(e) = SkillManagementPanel::instance().load_from_directory(&skills_dir.to_string_lossy()) {
+            error!(error = %e, "Failed to load skills from resource path");
+        }
+    } else {
+        // Fallback: try loading from data directory
+        if let Some(ref cp) = config_path {
+            if let Some(data_dir) = cp.parent() {
+                let skills_dir = data_dir.join("skills");
+                info!(dir = %skills_dir.display(), "Loading skills from data directory");
+                if let Err(e) = SkillManagementPanel::instance().load_from_directory(&skills_dir.to_string_lossy()) {
+                    error!(error = %e, "Failed to load skills");
+                }
+            }
+        }
+    }
+
+    // Initialize knowledge packs from data directory
     if let Some(ref cp) = config_path {
         if let Some(data_dir) = cp.parent() {
-            let skills_dir = data_dir.join("skills");
-            info!(dir = %skills_dir.display(), "Loading skills from directory");
-            if let Err(e) = SkillManagementPanel::instance().load_from_directory(&skills_dir.to_string_lossy()) {
-                error!(error = %e, "Failed to load skills");
-            }
             let knowledge_dir = data_dir.join("knowledge");
-            info!(dir = %knowledge_dir.display(), "Loading knowledge packs from directory");
+            info!(dir = %knowledge_dir.display(), "Knowledge packs path set");
         }
     }
 
