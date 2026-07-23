@@ -104,8 +104,7 @@ impl ScreenCaptureProvider {
     fn capture_screen(&self, _screen_index: u32) -> Option<ScreenshotMetadata> {
         #[cfg(target_os = "windows")]
         {
-            use windows::Win32::Graphics::Gdi::{CreateDCW, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject, BitBlt, GetDeviceCaps, DeleteDC, DeleteObject, SRCCOPY, HORZRES, VERTRES, SRCCCOPY};
-            use windows::Win32::Foundation::{BOOL, HWND, RECT};
+            use windows::Win32::Graphics::Gdi::{CreateDCW, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject, BitBlt, GetDeviceCaps, DeleteDC, DeleteObject, SRCCOPY, HORZRES, VERTRES};
             unsafe {
                 let dc = CreateDCW(windows::core::w!("DISPLAY"), None, None, None);
                 if dc.is_invalid() { return None; }
@@ -121,7 +120,7 @@ impl ScreenCaptureProvider {
                 if bitmap.is_invalid() { let _ = DeleteDC(mem_dc); let _ = DeleteDC(dc); return None; }
 
                 let _ = SelectObject(mem_dc, bitmap);
-                let _ = BitBlt(mem_dc, 0, 0, width, height, dc, 0, 0, SRCCCOPY);
+                let _ = BitBlt(mem_dc, 0, 0, width, height, dc, 0, 0, SRCCOPY);
 
                 let _ = DeleteDC(mem_dc);
                 let _ = DeleteDC(dc);

@@ -116,8 +116,8 @@ impl ClipboardProvider {
     fn read_clipboard(&self) -> Option<String> {
         #[cfg(target_os = "windows")]
         {
-            use windows::Win32::UI::Clipboard::{OpenClipboard, GetClipboardData, CloseClipboard, CF_UNICODETEXT};
-            use windows::Win32::Foundation::{CloseHandle, HGLOBAL};
+            // Clipboard API is in Win32_UI_WindowsAndMessaging in windows 0.58
+            use windows::Win32::UI::WindowsAndMessaging::{OpenClipboard, GetClipboardData, CloseClipboard, CF_UNICODETEXT};
             unsafe {
                 if OpenClipboard(None).is_ok() {
                     let data = GetClipboardData(CF_UNICODETEXT.0 as u32);
