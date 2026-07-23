@@ -22,18 +22,6 @@ const commonModels: Record<string, string[]> = {
   Ollama: ['llama3', 'mistral', 'codellama', 'llama2', 'vicuna', 'phi3', 'gemma'],
 };
 
-// Normalize endpoint URL for model fetching
-function normalizeModelsUrl(endpoint: string): string {
-  const trimmed = endpoint.trim().replace(/\/+$/, '');
-  if (trimmed.endsWith('/v1')) {
-    return `${trimmed}/models`;
-  }
-  if (trimmed.includes('/v1/')) {
-    return `${trimmed}/models`;
-  }
-  return `${trimmed}/v1/models`;
-}
-
 function Settings() {
   const [settings, setSettings] = useState({
     ai_provider: {
@@ -63,34 +51,15 @@ function Settings() {
     }
     setLoadingModels(true);
     try {
-      const url = normalizeModelsUrl(endpoint);
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (apiKey) {
-        headers['Authorization'] = `Bearer ${apiKey}`;
-      }
-      const res = await fetch(url, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.data && Array.isArray(data.data)) {
-          const models = data.data.map((m: { id: string }) => m.id).filter(Boolean);
-          if (models.length > 0) {
-            setFetchedModels(models);
-            return;
-          }
-        }
-      }
-      // If /v1/models fails, try /models directly
-      const baseUrl = endpoint.replace(/\/+$/, '').replace(/\/v1\/?$/, '');
-      const fallbackRes = await fetch(`${baseUrl}/models`, { headers });
-      if (fallbackRes.ok) {
-        const data = await fallbackRes.json();
-        if (data?.data && Array.isArray(data.data)) {
-          const models = data.data.map((m: { id: string }) => m.id).filter(Boolean);
-          if (models.length > 0) {
-            setFetchedModels(models);
-            return;
-          }
-        }
+      const res = await fetch('http://localhost:1420/api/commands/list_models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.value) && data.value.length > 0) {
+        setFetchedModels(data.value);
+        return;
       }
       // Couldn't fetch — fall back to hardcoded
       setFetchedModels([]);

@@ -112,6 +112,7 @@ pub async fn api_handler(
         "send_message" => handle_send_message(&state, req.params),
         "get_history" => handle_get_history(&state),
         "list_providers" => handle_list_providers(&state),
+        "list_models" => handle_list_models(&state, req.params).await,
         other => {
             warn!(other, "Unknown API method");
             (StatusCode::BAD_REQUEST, api_response(false, None, Some(format!("Unknown method: {}", other))))
@@ -245,6 +246,92 @@ fn handle_list_providers(state: &ApiServerState) -> (StatusCode, String) {
     let providers = settings.providers.clone();
     drop(settings);
     (StatusCode::OK, api_response(true, Some(serde_json::Value::Array(providers)), None))
+}
+
+async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
+    let api_key = params.get("api_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let endpoint = params.get("endpoint").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if endpoint.is_empty() {
+        return (StatusCode::OK, api_response(false, None, Some("Endpoint is required".to_string())));
+    }
+
+    // Normalize URL: ensure it ends with /v1/models
+    let url = if endpoint.ends_with("/v1") {
+        format!("{}/models", endpoint.trim_end_matches('/'))
+    } else if endpoint.contains("/v1/") {
+        format!("{}/models", endpoint.trim_end_matches('/'))
+    } else {
+        format!("{}/v1/models", endpoint.trim_end_matches('/'))
+    };
+
+    info!(endpoint, url, "Fetching models from provider");
+
+    let mut builder = reqwest::Client::new().get(&url).header("Content-Type", "application/json");
+    if !api_key.is_empty() {
+        builder = builder.header("Authorization", format!("Bearer {}", api_key));
+    }
+
+    match builder.timeout(std::time::Duration::from_secs(10)).send().await {
+        Ok(response) if response.status().is_success() => {
+            match response.json::<Value>().await {
+                Ok(data) => {
+                    let models = data.get("data")
+                        .and_then(|d| d.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|m| m.get("id").and_then(|id| id.as_str().map(String::from)))
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
+                    info!(count = models.len(), "Models fetched successfully");
+                    (StatusCode::OK, api_response(true, Some(serde_json::json!(models)), None))
+                }
+                Err(e) => {
+                    error!("Failed to parse models response: {}", e);
+                    (StatusCode::OK, api_response(false, None, Some(format!("Failed to parse response: {}", e))))
+                }
+            }
+        }
+        Ok(response) => {
+            let status = response.status();
+            error!("Failed to fetch models: HTTP {}", status);
+            // Try fallback: /models (without /v1)
+            let base_url = endpoint.trim_end_matches('/').trim_end_matches("/v1");
+            let fallback_url = format!("{}/models", base_url);
+            info!("Trying fallback URL: {}", fallback_url);
+            let mut fb_builder = reqwest::Client::new().get(&fallback_url).header("Content-Type", "application/json");
+            if !api_key.is_empty() {
+                fb_builder = fb_builder.header("Authorization", format!("Bearer {}", api_key));
+            }
+            match fb_builder.timeout(std::time::Duration::from_secs(10)).send().await {
+                Ok(fb_resp) if fb_resp.status().is_success() => {
+                    match fb_resp.json::<Value>().await {
+                        Ok(data) => {
+                            let models = data.get("data")
+                                .and_then(|d| d.as_array())
+                                .map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|m| m.get("id").and_then(|id| id.as_str().map(String::from)))
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+                            (StatusCode::OK, api_response(true, Some(serde_json::json!(models)), None))
+                        }
+                        Err(e) => {
+                            (StatusCode::OK, api_response(false, None, Some(format!("Fallback parse failed: {}", e))))
+                        }
+                    }
+                }
+                _ => {
+                    (StatusCode::OK, api_response(false, None, Some(format!("HTTP error: {}", status))))
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to connect to provider: {}", e);
+            (StatusCode::OK, api_response(false, None, Some(format!("Cannot reach endpoint: {}", e))))
+        }
+    }
 }
 
 /// Create the router for the API server.

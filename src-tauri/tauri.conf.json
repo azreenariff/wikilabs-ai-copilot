@@ -3,7 +3,7 @@
   "version": "1.1.8",
   "identifier": "com.wikilabs.copilot",
   "build": {
-    "frontendDist": "../dist"
+    "frontendDist": "../src/frontend/dist"
   },
   "app": {
     "withGlobalTauri": true,
