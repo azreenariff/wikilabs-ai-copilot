@@ -295,8 +295,18 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
             stream: None,
         };
 
-        match tokio::runtime::Handle::current()
-            .block_on(provider.chat(ai_request)) {
+        // Run the AI call on a separate thread with its own tokio runtime
+        // to avoid blocking the axum server's runtime
+        let response_result = std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new()
+                .expect("Failed to create blocking runtime for AI call");
+            rt.block_on(provider.chat(ai_request))
+        })
+        .join()
+        .map_err(|e| format!("Thread panicked: {:?}", e))
+        .and_then(|r| r.map_err(|e| e.to_string()));
+
+        match response_result {
             Ok(response) => {
                 let aid = uuid::Uuid::new_v4().to_string();
                 let acreated = chrono::Utc::now().to_rfc3339();
