@@ -181,13 +181,58 @@ impl ActiveWindowProvider {
 
         #[cfg(target_os = "windows")]
         {
-            // Windows: Use Win32 API
-            // Real implementation would use:
-            // - GetForegroundWindow()
-            // - GetWindowText()
-            // - GetWindowThreadProcessId()
-            // - GetModuleFileNameEx()
-            None
+            // Windows: Use Win32 API via windows crate
+            use windows::Win32::Foundation::{CloseHandle, HWND};
+            use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowTextLengthW};
+            use windows::Win32::System::Threading::{OpenProcess, GetWindowThreadProcessId, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
+            use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
+
+            unsafe {
+                let hwnd: HWND = GetForegroundWindow();
+                if hwnd.is_invalid() || hwnd.0 == 0 {
+                    return None;
+                }
+
+                // Get window title
+                let len = GetWindowTextLengthW(hwnd);
+                if len == 0 {
+                    return None;
+                }
+                let mut title_buf = vec![0u16; (len + 1) as usize];
+                GetWindowTextW(hwnd, &mut title_buf);
+                let title = String::from_utf16_lossy(&title_buf[..len as usize]).trim().to_string();
+
+                // Get process ID
+                let mut pid: u32 = 0;
+                let _ = GetWindowThreadProcessId(hwnd, Some(&mut pid));
+                if pid == 0 {
+                    return Some(WindowInfo::new(title, "unknown".to_string()));
+                }
+
+                // Open process to get executable name
+                let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
+                if let Ok(handle) = handle {
+                    let mut exe_buf = [0u16; 260];
+                    let exe_len = GetModuleFileNameExW(handle, None, &mut exe_buf);
+                    let _ = CloseHandle(handle);
+
+                    if exe_len > 0 {
+                        let exe_path = String::from_utf16_lossy(&exe_buf[..exe_len as usize]);
+                        let path = std::path::Path::new(&exe_path);
+                        let process_name = path.file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("unknown")
+                            .to_string();
+
+                        let mut info = WindowInfo::new(title, process_name);
+                        info.executable = Some(exe_path);
+                        info.pid = Some(pid);
+                        return Some(info);
+                    }
+                }
+
+                Some(WindowInfo::new(title, format!("pid:{}", pid)))
+            }
         }
 
         #[cfg(target_os = "macos")]
