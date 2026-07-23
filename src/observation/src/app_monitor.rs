@@ -188,20 +188,13 @@ impl ActiveWindowProvider {
             use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 
             unsafe {
-                let hwnd = match GetForegroundWindow() {
-                    Ok(h) => h,
-                    Err(_) => return None,
-                };
+                let hwnd: HWND = GetForegroundWindow();
                 if hwnd.is_invalid() {
                     return None;
                 }
 
                 // Get window title
                 let len = GetWindowTextLengthW(hwnd);
-                let len = match len {
-                    Ok(l) => l,
-                    Err(_) => return None,
-                };
                 if len == 0 {
                     return None;
                 }

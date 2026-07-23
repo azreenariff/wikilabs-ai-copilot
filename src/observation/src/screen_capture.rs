@@ -107,10 +107,6 @@ impl ScreenCaptureProvider {
             use windows::Win32::Graphics::Gdi::{CreateDCW, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject, BitBlt, GetDeviceCaps, DeleteDC, DeleteObject, SRCCOPY, HORZRES, VERTRES};
             unsafe {
                 let dc = CreateDCW(windows::core::w!("DISPLAY"), None, None, None);
-                let dc = match dc {
-                    Ok(h) => h,
-                    Err(_) => return None,
-                };
                 if dc.is_invalid() { return None; }
 
                 let width = GetDeviceCaps(dc, HORZRES);
@@ -118,17 +114,9 @@ impl ScreenCaptureProvider {
                 if width == 0 || height == 0 { let _ = DeleteDC(dc); return None; }
 
                 let mem_dc = CreateCompatibleDC(dc);
-                let mem_dc = match mem_dc {
-                    Ok(h) => h,
-                    Err(_) => { let _ = DeleteDC(dc); return None; }
-                };
                 if mem_dc.is_invalid() { let _ = DeleteDC(dc); return None; }
 
                 let bitmap = CreateCompatibleBitmap(dc, width, height);
-                let bitmap = match bitmap {
-                    Ok(h) => h,
-                    Err(_) => { let _ = DeleteDC(mem_dc); let _ = DeleteDC(dc); return None; }
-                };
                 if bitmap.is_invalid() { let _ = DeleteDC(mem_dc); let _ = DeleteDC(dc); return None; }
 
                 let _ = SelectObject(mem_dc, bitmap);

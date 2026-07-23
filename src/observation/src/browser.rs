@@ -117,7 +117,7 @@ impl BrowserProvider {
 
             unsafe {
                 let hwnd: HWND = GetForegroundWindow();
-                if hwnd.is_invalid() || hwnd.0 == 0 { return None; }
+                if hwnd.is_invalid() { return None; }
 
                 let len = GetWindowTextLengthW(hwnd);
                 if len == 0 { return None; }
