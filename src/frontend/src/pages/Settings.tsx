@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface AiProvider {
   name: string;
@@ -15,12 +15,24 @@ interface AiProviderConfig {
   context_window: number;
 }
 
-// Common models list for dropdown — issue #5 fix: model as dropdown, not text input
+// Common models list for dropdown — fallback when endpoint can't be reached
 const commonModels: Record<string, string[]> = {
   OpenAI: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'o1', 'o1-mini', 'o3-mini'],
   'Custom Endpoint': ['meta-llama/Llama-3-70b-chat-hf', 'meta-llama/Llama-3-8b-chat-hf', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'gpt-4o', 'gpt-4o-mini'],
   Ollama: ['llama3', 'mistral', 'codellama', 'llama2', 'vicuna', 'phi3', 'gemma'],
 };
+
+// Normalize endpoint URL for model fetching
+function normalizeModelsUrl(endpoint: string): string {
+  const trimmed = endpoint.trim().replace(/\/+$/, '');
+  if (trimmed.endsWith('/v1')) {
+    return `${trimmed}/models`;
+  }
+  if (trimmed.includes('/v1/')) {
+    return `${trimmed}/models`;
+  }
+  return `${trimmed}/v1/models`;
+}
 
 function Settings() {
   const [settings, setSettings] = useState({
@@ -40,6 +52,61 @@ function Settings() {
   const [providers, setProviders] = useState<AiProvider[]>([]);
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  // Fetch models from the endpoint's /v1/models API
+  const fetchModels = useCallback(async (endpoint: string, apiKey: string) => {
+    if (!endpoint) {
+      setFetchedModels([]);
+      return;
+    }
+    setLoadingModels(true);
+    try {
+      const url = normalizeModelsUrl(endpoint);
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.data && Array.isArray(data.data)) {
+          const models = data.data.map((m: { id: string }) => m.id).filter(Boolean);
+          if (models.length > 0) {
+            setFetchedModels(models);
+            return;
+          }
+        }
+      }
+      // If /v1/models fails, try /models directly
+      const baseUrl = endpoint.replace(/\/+$/, '').replace(/\/v1\/?$/, '');
+      const fallbackRes = await fetch(`${baseUrl}/models`, { headers });
+      if (fallbackRes.ok) {
+        const data = await fallbackRes.json();
+        if (data?.data && Array.isArray(data.data)) {
+          const models = data.data.map((m: { id: string }) => m.id).filter(Boolean);
+          if (models.length > 0) {
+            setFetchedModels(models);
+            return;
+          }
+        }
+      }
+      // Couldn't fetch — fall back to hardcoded
+      setFetchedModels([]);
+    } catch {
+      setFetchedModels([]);
+    } finally {
+      setLoadingModels(false);
+    }
+  }, []);
+
+  // Fetch models when endpoint changes
+  useEffect(() => {
+    if (settings.ai_provider.endpoint) {
+      fetchModels(settings.ai_provider.endpoint, settings.ai_provider.api_key);
+    }
+  }, [settings.ai_provider.endpoint, settings.ai_provider.api_key, fetchModels]);
 
   useEffect(() => {
     // Fetch saved settings
@@ -123,6 +190,15 @@ function Settings() {
     }
   }
 
+  async function handleRefreshModels() {
+    await fetchModels(settings.ai_provider.endpoint, settings.ai_provider.api_key);
+    if (fetchedModels.length > 0) {
+      setStatus(`✓ Loaded ${fetchedModels.length} models from endpoint`);
+    } else {
+      setStatus('✗ Could not fetch models from endpoint');
+    }
+  }
+
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '8px 12px',
@@ -135,7 +211,13 @@ function Settings() {
     boxSizing: 'border-box',
   };
 
-  const modelList = commonModels[settings.ai_provider.name] || [];
+  // Build the model list: fetched models first, then fallback hardcoded, then current model
+  const hardcodedList = commonModels[settings.ai_provider.name] || [];
+  const modelList = fetchedModels.length > 0 ? fetchedModels : hardcodedList;
+  // Always include the current model value in the options
+  const allModelOptions = modelList.includes(settings.ai_provider.model)
+    ? modelList
+    : [settings.ai_provider.model, ...modelList];
 
   return (
     <div style={{ padding: '32px', maxWidth: '700px', margin: '0 auto' }}>
@@ -151,7 +233,7 @@ function Settings() {
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>AI Provider</h3>
         <div style={{ display: 'grid', gap: '12px' }}>
-          {/* Provider dropdown — already a select in original */}
+          {/* Provider dropdown */}
           <div>
             <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>
               Provider
@@ -210,38 +292,49 @@ function Settings() {
             />
           </div>
 
-          {/* Model — FIXED: dropdown instead of text input (Issue #5) */}
+          {/* Model — dynamically fetched from endpoint */}
           <div>
             <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>
               Model
             </label>
-            {modelList.length > 0 ? (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <select
                 value={settings.ai_provider.model}
                 onChange={e => setSettings(prev => ({
                   ...prev,
                   ai_provider: { ...prev.ai_provider, model: e.target.value },
                 }))}
-                style={inputStyle}
+                style={{ ...inputStyle, flex: 1 }}
               >
-                {modelList.map(m => (
+                {loadingModels && (
+                  <option value="" disabled>Loading models...</option>
+                )}
+                {!loadingModels && allModelOptions.map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
-                {/* Allow custom models not in the list */}
-                {modelList.indexOf(settings.ai_provider.model) === -1 && (
-                  <option value={settings.ai_provider.model}>{settings.ai_provider.model}</option>
+                {!loadingModels && allModelOptions.length === 0 && (
+                  <option value="" disabled>No models available</option>
                 )}
               </select>
-            ) : (
-              <input
-                value={settings.ai_provider.model}
-                onChange={e => setSettings(prev => ({
-                  ...prev,
-                  ai_provider: { ...prev.ai_provider, model: e.target.value },
-                }))}
-                style={inputStyle}
-              />
-            )}
+              <button
+                onClick={handleRefreshModels}
+                disabled={loadingModels || !settings.ai_provider.endpoint}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  background: 'transparent',
+                  color: 'var(--color-text-primary)',
+                  cursor: loadingModels ? 'not-allowed' : 'pointer',
+                  fontSize: '13px',
+                  opacity: loadingModels ? 0.5 : 1,
+                  whiteSpace: 'nowrap',
+                }}
+                title="Refresh model list from endpoint"
+              >
+                {loadingModels ? '⟳ Loading...' : '↻ Refresh'}
+              </button>
+            </div>
           </div>
 
           {/* Tokens & Context */}
@@ -371,7 +464,7 @@ function Settings() {
         </div>
       </div>
 
-      {/* Save Settings Button — Issue #4 fix: properly wired to API */}
+      {/* Save Settings Button */}
       <button
         onClick={handleSave}
         disabled={saving}
