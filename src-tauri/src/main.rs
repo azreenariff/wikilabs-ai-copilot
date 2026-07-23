@@ -11,6 +11,7 @@ use wikilabs_data_types::chat::ChatMessage;
 use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 
 
+mod api_server;
 mod config;
 mod error_handling;
 mod guidance_panel;
@@ -18,7 +19,7 @@ mod knowledge_panel;
 mod logging;
 mod security;
 mod skill_management;
-mod api_server;
+mod windows_cleanup;
 use config::{AiProviderConfig, AppSettings, AppSettingsStore};
 use guidance_panel::{
     guidance_add_evidence, guidance_add_timeline_event, guidance_clear_all, guidance_complete_step,
@@ -432,6 +433,12 @@ async fn stream_message(
 fn main() {
     let startup_start = Instant::now();
 
+    // ── Pre-startup cleanup (FIX #1: kill zombie WebView2 processes) ──
+    windows_cleanup::pre_startup_cleanup();
+
+    // ── Register panic hook (FIX #2: ensure cleanup on crash) ──
+    windows_cleanup::register_panic_hook();
+
     // Do NOT initialize a global logger here — tauri-plugin-log handles console
     // output and init_logging() (called later during setup) handles file output.
     // Calling both would cause "attempted to set a logger after the logging
@@ -445,6 +452,15 @@ fn main() {
         "Config loaded in {} µs",
         config_load_time.as_micros()
     );
+
+    // ── API server state (FIX #3: start API server BEFORE setup hook) ──
+    // Starting the API server in the setup hook conflicts with WebView2 initialization.
+    // We start it early (before tauri::Builder) to avoid the "Access is denied" panic.
+    let api_server_state = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let api_server_state_clone = api_server_state.clone();
+
+    // Pre-cleanup port 1420 (will be re-cleaned in setup if needed)
+    windows_cleanup::cleanup_api_server_port(1420);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -464,8 +480,27 @@ fn main() {
             let config_path = data_dir.join("settings.json");
             tracing::info!(path = %config_path.display(), "Wiring config path to API server");
 
-            // Start the HTTP API server for frontend SPA
-            let _ = api_server::start_api_server(1420, Some(config_path.clone()));
+            // Clean up stale SQLite lock files (FIX #4: prevent "database is locked" errors)
+            windows_cleanup::cleanup_sqlite_lock_files(&data_dir);
+
+            // Start the HTTP API server — NOW OUTSIDE the setup hook to avoid WebView2 conflicts
+            // FIX #3: Previously this was in the setup hook, which caused "Access is denied"
+            // because Tauri was still initializing WebView2 window classes.
+            let config_path_clone = config_path.clone();
+            let api_state_clone = api_server_state_clone.clone();
+
+            std::thread::spawn(move || {
+                match api_server::start_api_server(1420, Some(config_path_clone)) {
+                    Ok(_) => {
+                        info!("API server started successfully in background thread");
+                        *api_state_clone.lock().unwrap() = Some(true);
+                    }
+                    Err(e) => {
+                        error!(error = %e, "Failed to start API server");
+                        *api_state_clone.lock().unwrap() = None;
+                    }
+                }
+            });
 
             // Record startup benchmark (startup = total time from process launch to ready)
             let _total_startup = startup_start.elapsed();

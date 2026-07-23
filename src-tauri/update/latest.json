@@ -1,11 +1,11 @@
 {
-  "version": "1.0.0",
-  "notes": "Release Notes for Wiki Labs AI Copilot v1.0.0\n\n## What's New\n\n- Initial release of Wiki Labs AI Copilot desktop application\n- AI-powered knowledge base assistant\n- Secure credential management with platform-native encryption\n- Real-time screen observation and OCR (opt-in)\n- Local-first architecture with workspace persistence",
-  "pubdate": "2026-07-21T00:00:00Z",
+  "version": "1.1.8",
+  "notes": "Release Notes for Wiki Labs AI Copilot v1.1.8",
+  "pubdate": "2026-07-23T04:37:30Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "",
-      "url": "https://github.com/wikilabs/wikilabs-ai-copilot/releases/download/1.0.0/Wiki_Labs_AI_Copilot-1.0.0-x86_64-setup.exe"
+      "url": "https://github.com/wikilabs/wikilabs-ai-copilot/releases/download/1.1.8/Wiki_Labs_AI_Copilot-1.1.8-x86_64-setup.exe"
     }
   }
 }
