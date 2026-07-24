@@ -285,7 +285,7 @@ impl ObservationProvider for FileObserverProvider {
         Ok(vec![ObservationEvent::new(
             EventType::ConfigurationFileOpened,
             ProviderType::FileObserver,
-            "stub".to_string(),
+            "inactive".to_string(),
             None,
             ObservationPayload::new(serde_json::json!({
                 "status": "no_config_files_detected",

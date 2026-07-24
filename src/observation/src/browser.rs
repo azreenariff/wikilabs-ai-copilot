@@ -270,7 +270,7 @@ impl ObservationProvider for BrowserProvider {
             None => Ok(vec![ObservationEvent::new(
                 EventType::BrowserContextChanged,
                 ProviderType::Browser,
-                "stub".to_string(),
+                "inactive".to_string(),
                 None,
                 ObservationPayload::new(serde_json::json!({
                     "status": "no_browser_context_detected",

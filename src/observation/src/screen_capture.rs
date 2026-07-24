@@ -250,7 +250,7 @@ impl ObservationProvider for ScreenCaptureProvider {
         Ok(vec![ObservationEvent::new(
             EventType::ScreenshotCaptured,
             ProviderType::ScreenCapture,
-            "stub".to_string(),
+            "inactive".to_string(),
             None,
             ObservationPayload::new(serde_json::json!({
                 "status": "no_screenshot_available",

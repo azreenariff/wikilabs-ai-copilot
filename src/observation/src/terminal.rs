@@ -292,7 +292,7 @@ impl ObservationProvider for TerminalProvider {
             events.push(ObservationEvent::new(
                 EventType::TerminalCommand,
                 ProviderType::Terminal,
-                "stub".to_string(),
+                "inactive".to_string(),
                 None,
                 ObservationPayload::new(serde_json::json!({
                     "status": "no_terminal_sessions_detected",

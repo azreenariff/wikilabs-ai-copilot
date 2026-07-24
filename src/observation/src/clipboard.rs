@@ -264,11 +264,11 @@ impl ObservationProvider for ClipboardProvider {
                 )])
             }
             None => {
-                // No clipboard API available — return metadata-only event
+                // No clipboard API available — return metadata-only event with descriptive name
                 Ok(vec![ObservationEvent::new(
                     EventType::ClipboardChanged,
                     ProviderType::Clipboard,
-                    "stub".to_string(),
+                    "inactive".to_string(),
                     None,
                     ObservationPayload::new(serde_json::json!({
                         "status": "clipboard_not_accessible",

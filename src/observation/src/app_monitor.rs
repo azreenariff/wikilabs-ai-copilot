@@ -320,17 +320,18 @@ impl ObservationProvider for ActiveWindowProvider {
         let window_info = match self.detect_active_window() {
             Some(info) => info,
             None => {
-                // Return a minimal event to indicate we tried
-                return Ok(vec![ObservationEvent::new(
-                    EventType::ApplicationChanged,
-                    ProviderType::ActiveWindow,
-                    "stub".to_string(),
-                    None,
-                    ObservationPayload::new(serde_json::json!({
-                        "status": "no_window_info_available",
-                        "platform": std::env::consts::OS,
-                    })),
-                )]);
+                // Return a minimal event to indicate we tried observing but nothing was detected
+        // Using a descriptive name (not "stub") so the AI doesn't misinterpret this as incomplete work
+        return Ok(vec![ObservationEvent::new(
+            EventType::ApplicationChanged,
+            ProviderType::ActiveWindow,
+            "inactive".to_string(),
+            None,
+            ObservationPayload::new(serde_json::json!({
+                "status": "no_window_info_available",
+                "platform": std::env::consts::OS,
+            })),
+        )]);
             }
         };
 
