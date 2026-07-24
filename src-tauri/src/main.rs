@@ -19,6 +19,7 @@ mod knowledge_panel;
 mod logging;
 mod security;
 mod skill_management;
+mod skill_knowledge;
 mod windows_cleanup;
 use config::{AiProviderConfig, AppSettings, AppSettingsStore};
 use guidance_panel::{

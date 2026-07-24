@@ -22,6 +22,7 @@ use wikilabs_ai::AiProvider;
 use crate::guidance_panel;
 use crate::knowledge_panel::{KnowledgePanel, PackInfo, ValidationReport};
 use crate::skill_management::{SkillCard, SkillManagementPanel};
+use crate::skill_knowledge::{SkillKnowledgeBase, create_skill_knowledge_base};
 use crate::config::AiProviderConfig;
 
 use wikilabs_observation::provider::ProviderRegistry;
@@ -923,6 +924,20 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
         }
     }
 
+    // Build skill knowledge base for AI prompt injection
+    let skill_kb = if let Some(ref skills_dir) = skills_path {
+        create_skill_knowledge_base(&skills_dir.to_string_lossy())
+    } else if let Some(ref cp) = config_path {
+        if let Some(data_dir) = cp.parent() {
+            create_skill_knowledge_base(&data_dir.join("skills").to_string_lossy())
+        } else {
+            create_skill_knowledge_base("")
+        }
+    } else {
+        create_skill_knowledge_base("")
+    };
+    let skill_kb_clone = skill_kb.clone();
+
     // Initialize knowledge packs from data directory
     let knowledge_dir_to_use = knowledge_path.clone().or_else(|| {
         config_path.as_ref().and_then(|cp| cp.parent().map(|p| p.join("knowledge")))
@@ -984,6 +999,7 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
             let registry = std::sync::Arc::new(tokio::sync::Mutex::new(registry));
             let obs_registry = registry.clone();
             let poll_settings = obs_settings.clone();
+            let skill_kb_for_loop = skill_kb_clone.clone();
             rt.spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
                 let mut ai_interval = tokio::time::interval(std::time::Duration::from_secs(30));
@@ -1040,8 +1056,15 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                             if api_key.is_empty() {
                                 // No AI provider configured — generate rule-based recommendations from observations
                                 let panel = guidance_panel::GuidancePanel::instance();
+                                // Dismiss old rule-based recs so new ones replace them
+                                let all = panel.all_recommendations().await;
+                                for prev in &all {
+                                    if !prev.title.starts_with("🧭") {
+                                        let _ = panel.dismiss_recommendation(&prev.id).await;
+                                    }
+                                }
                                 let evidence = panel.get_evidence_status().await;
-                                for ev in evidence.collected.iter().take(3) {
+                                for ev in evidence.collected.iter().take(1) {
                                     let (title, description) = if ev.source.contains("Application") {
                                         ("I see you're working on something", format!("Noticed you switched to {} — looks like you're getting stuff done. Let me know if you need a hand with anything!", ev.finding))
                                     } else if ev.source.contains("Browser") {
@@ -1067,6 +1090,14 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                             }
 
                             let events_summary = last_events.join("\n");
+
+                            // Match observations against skill knowledge base and inject relevant expertise
+                            let skill_kb_guard = skill_kb_for_loop.lock().await;
+                            let observations_text = &events_summary;
+                            let matched_skills = skill_kb_guard.match_observations(observations_text);
+                            let skill_context = skill_kb_guard.format_for_prompt(&matched_skills);
+                            drop(skill_kb_guard);
+
                             let system_prompt = format!(
                                 "You are Wiki Labs AI Copilot — an AI that watches what a developer is doing on their computer and gives helpful, proactive guidance.\n\n\
 You can see what applications they switch to, what they type in terminals, what browser tabs they visit, what they copy, and what files they open.\n\n\
@@ -1078,12 +1109,13 @@ GOOD examples:\n\
 - \"You opened a Python file — need to run it? Try `python3 script.py` to test.\"\n\n\
 BAD examples (too vague):\n\
 - \"You appear to be working on something.\"\n\
-- \"I observed activity in your browser.\"\n\n\
+- \"I observed activity in your browser.\"\n\n{}\n\n\
 Recent observations from the user's computer:\n{}\n\n\
 Based on these observations, give ONE short piece of guidance (1-3 sentences). \
 Be specific and helpful. Suggest a command, a tool, or a next step. \
 Use a natural, conversational tone.\
 If you truly can't tell what they're doing, ask a brief question like \"Working on something? Need a hand?\"",
+                                skill_context,
                                 events_summary
                             );
                             let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
