@@ -1,54 +1,60 @@
 import { useState } from 'react';
 
 const PROVIDERS = [
-  { name: 'OpenAI', endpoint: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'] },
-  { name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1', models: ['anthropic/claude-sonnet-4', 'google/gemini-2.0-flash-001', 'deepseek/deepseek-chat'] },
-  { name: 'Custom Endpoint', endpoint: 'http://localhost:8000/v1', models: ['Custom'] },
-  { name: 'Ollama', endpoint: 'http://localhost:11434/v1', models: ['llama3', 'mistral', 'codellama'] },
+  { name: 'OpenAI', defaultEndpoint: 'https://api.openai.com/v1', needsKey: true },
+  { name: 'OpenRouter', defaultEndpoint: 'https://openrouter.ai/api/v1', needsKey: true },
+  { name: 'Custom Endpoint', defaultEndpoint: 'http://localhost:8000/v1', needsKey: true },
+  { name: 'Ollama', defaultEndpoint: 'http://localhost:11434/v1', needsKey: false },
 ];
 
 function SetupWizard() {
   const [step, setStep] = useState(0);
   const [selectedProvider, setSelectedProvider] = useState(PROVIDERS[0]);
+  const [endpoint, setEndpoint] = useState(PROVIDERS[0].defaultEndpoint);
   const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState(PROVIDERS[0].models[0]);
+  const [model, setModel] = useState('');
+  const [contextWindow, setContextWindow] = useState('128000');
+  const [maxTokens, setMaxTokens] = useState('4096');
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
   const [testResult, setTestResult] = useState<'idle' | 'testing' | 'success' | 'fail'>('idle');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const handleSelectProvider = (p: typeof PROVIDERS[0]) => {
     setSelectedProvider(p);
-    setModel(p.models[0]);
+    setEndpoint(p.defaultEndpoint);
     setApiKey('');
+    setModel('');
+    setFetchedModels([]);
     setTestResult('idle');
+    setError('');
   };
 
   const handleTestConnection = async () => {
     setTestResult('testing');
     setError('');
+    setFetchedModels([]);
     try {
-      const res = await fetch('http://localhost:1420/api/commands/test_connection', {
+      // Test connection and fetch available models
+      const res = await fetch('http://localhost:1420/api/commands/list_models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          params: {
-            name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
-            endpoint: selectedProvider.endpoint,
-            api_key: apiKey,
-            model,
-            max_tokens: 4096,
-            context_window: 128000,
-          },
-        }),
+        body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
       });
       const data = await res.json();
-      if (data.success && data.value) {
+      if (data.success && Array.isArray(data.value) && data.value.length > 0) {
+        setFetchedModels(data.value);
+        setModel(data.value[0]);
+        setTestResult('success');
+      } else if (data.success && Array.isArray(data.value) && data.value.length === 0) {
+        // Connected but no models returned — let user type a model name
+        setFetchedModels([]);
         setTestResult('success');
       } else {
         setTestResult('fail');
-        setError(data.error || 'Connection failed');
+        setError(data.error || 'Connection failed — check URL and key');
       }
-    } catch {
+    } catch (e: any) {
       setTestResult('fail');
       setError('Cannot reach backend');
     }
@@ -65,18 +71,18 @@ function SetupWizard() {
           params: {
             ai_provider: {
               name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
-              endpoint: selectedProvider.endpoint,
+              endpoint,
               api_key: apiKey,
               model,
-              max_tokens: 4096,
-              context_window: 128000,
+              max_tokens: parseInt(maxTokens) || 4096,
+              context_window: parseInt(contextWindow) || 128000,
             },
           },
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setStep(4);
+        setStep(5);
       } else {
         setError(data.error || 'Failed to save');
       }
@@ -88,6 +94,7 @@ function SetupWizard() {
 
   const renderStep = () => {
     switch (step) {
+      // Step 0: Welcome
       case 0:
         return (
           <div style={{ textAlign: 'center' }}>
@@ -104,11 +111,12 @@ function SetupWizard() {
           </div>
         );
 
+      // Step 1: Select provider + enter URL, API key, context, max tokens
       case 1:
         return (
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Choose your AI Provider</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
               {PROVIDERS.map(p => (
                 <div
                   key={p.name}
@@ -125,55 +133,35 @@ function SetupWizard() {
                   </span>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '14px' }}>{p.name}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>{p.endpoint}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>{p.defaultEndpoint}</div>
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '24px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setStep(0)} style={{
-                padding: '8px 20px', borderRadius: '6px', border: '1px solid var(--color-border)',
-                background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer', fontSize: '13px',
-              }}>Back</button>
-              <button onClick={() => setStep(2)} style={{
-                padding: '8px 20px', borderRadius: '6px', border: 'none',
-                background: 'var(--color-accent)', color: 'white', cursor: 'pointer', fontSize: '13px',
-              }}>Next →</button>
-            </div>
-          </div>
-        );
 
-      case 2:
-        return (
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>Enter API Key</h2>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '20px' }}>
-              {selectedProvider.name === 'Ollama'
-                ? 'Ollama runs locally — no API key needed. You can leave this blank.'
-                : `Enter your ${selectedProvider.name} API key.`}
-            </p>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>Model</label>
-              <select
-                value={model}
-                onChange={e => setModel(e.target.value)}
+              <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>API Endpoint URL</label>
+              <input
+                type="text"
+                value={endpoint}
+                onChange={e => setEndpoint(e.target.value)}
+                placeholder="https://api.openai.com/v1"
                 style={{
                   width: '100%', padding: '10px 12px', borderRadius: '6px',
                   border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
                   color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
                 }}
-              >
-                {selectedProvider.models.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              />
             </div>
-            {selectedProvider.name !== 'Ollama' && (
+
+            {selectedProvider.needsKey && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>API Key</label>
                 <input
                   type="password"
                   value={apiKey}
                   onChange={e => setApiKey(e.target.value)}
-                  placeholder="sk-..."
+                  placeholder={selectedProvider.name === 'Ollama' ? '(not needed)' : 'sk-...'}
                   style={{
                     width: '100%', padding: '10px 12px', borderRadius: '6px',
                     border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
@@ -182,20 +170,51 @@ function SetupWizard() {
                 />
               </div>
             )}
+
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>Context Window</label>
+                <input
+                  type="number"
+                  value={contextWindow}
+                  onChange={e => setContextWindow(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: '6px',
+                    border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
+                    color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>Max Tokens</label>
+                <input
+                  type="number"
+                  value={maxTokens}
+                  onChange={e => setMaxTokens(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: '6px',
+                    border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
+                    color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '8px', marginTop: '24px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setStep(1)} style={{
+              <button onClick={() => setStep(0)} style={{
                 padding: '8px 20px', borderRadius: '6px', border: '1px solid var(--color-border)',
                 background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer', fontSize: '13px',
               }}>Back</button>
-              <button onClick={() => setStep(3)} style={{
+              <button onClick={() => setStep(2)} style={{
                 padding: '8px 20px', borderRadius: '6px', border: 'none',
                 background: 'var(--color-accent)', color: 'white', cursor: 'pointer', fontSize: '13px',
-              }}>Test Connection →</button>
+              }}>Next: Test Connection →</button>
             </div>
           </div>
         );
 
-      case 3:
+      // Step 2: Test connection and fetch models
+      case 2:
         return (
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Test Connection</h2>
@@ -203,9 +222,9 @@ function SetupWizard() {
               <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Provider</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{selectedProvider.name}</div>
               <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '12px', marginBottom: '4px' }}>Endpoint</div>
-              <div style={{ fontSize: '14px' }}>{selectedProvider.endpoint}</div>
-              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '12px', marginBottom: '4px' }}>Model</div>
-              <div style={{ fontSize: '14px' }}>{model}</div>
+              <div style={{ fontSize: '14px' }}>{endpoint}</div>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '12px', marginBottom: '4px' }}>Context / Max Tokens</div>
+              <div style={{ fontSize: '14px' }}>{contextWindow} / {maxTokens}</div>
             </div>
 
             {testResult === 'idle' && (
@@ -218,8 +237,38 @@ function SetupWizard() {
               <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>Testing connection...</div>
             )}
             {testResult === 'success' && (
-              <div style={{ fontSize: '14px', color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                ✅ Connection successful!
+              <div>
+                <div style={{ fontSize: '14px', color: 'var(--color-success)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  ✅ Connection successful!
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>Select or type a Model</label>
+                  {fetchedModels.length > 0 ? (
+                    <select
+                      value={model}
+                      onChange={e => setModel(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', borderRadius: '6px',
+                        border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
+                        color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
+                      }}
+                    >
+                      {fetchedModels.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={model}
+                      onChange={e => setModel(e.target.value)}
+                      placeholder="e.g. gpt-4o"
+                      style={{
+                        width: '100%', padding: '10px 12px', borderRadius: '6px',
+                        border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
+                        color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             )}
             {testResult === 'fail' && (
@@ -234,23 +283,25 @@ function SetupWizard() {
             )}
 
             <div style={{ display: 'flex', gap: '8px', marginTop: '24px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setStep(2)} style={{
+              <button onClick={() => setStep(1)} style={{
                 padding: '8px 20px', borderRadius: '6px', border: '1px solid var(--color-border)',
                 background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer', fontSize: '13px',
               }}>Back</button>
-              <button onClick={handleSave} disabled={saving} style={{
+              <button onClick={handleSave} disabled={saving || !model} style={{
                 padding: '8px 20px', borderRadius: '6px', border: 'none',
-                background: 'var(--color-success)', color: 'white', cursor: 'pointer', fontSize: '13px',
+                background: model ? 'var(--color-success)' : 'var(--color-border)',
+                color: 'white', cursor: model ? 'pointer' : 'default', fontSize: '13px',
                 opacity: saving ? 0.6 : 1,
               }}>{saving ? 'Saving...' : 'Save & Finish ✓'}</button>
             </div>
-            {error && step === 3 && (
+            {error && step === 2 && (
               <div style={{ fontSize: '12px', color: 'var(--color-error)', marginTop: '8px' }}>{error}</div>
             )}
           </div>
         );
 
-      case 4:
+      // Step 3: Done (saved)
+      case 5:
         return (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
@@ -279,16 +330,18 @@ function SetupWizard() {
         border: '1px solid var(--color-border)',
         borderRadius: '16px', padding: '40px',
       }}>
-        {/* Step indicator */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '32px', justifyContent: 'center' }}>
-          {[0, 1, 2, 3].map(s => (
-            <div key={s} style={{
-              width: '8px', height: '8px', borderRadius: '50%',
-              background: step >= s ? 'var(--color-accent)' : 'var(--color-border)',
-              transition: 'background 0.2s',
-            }} />
-          ))}
-        </div>
+        {/* Step indicator: show dots except on done page */}
+        {step < 5 && (
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '32px', justifyContent: 'center' }}>
+            {[0, 1, 2].map(s => (
+              <div key={s} style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: step >= s ? 'var(--color-accent)' : 'var(--color-border)',
+                transition: 'background 0.2s',
+              }} />
+            ))}
+          </div>
+        )}
         {renderStep()}
       </div>
     </div>
