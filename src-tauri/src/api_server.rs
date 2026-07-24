@@ -936,100 +936,99 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
             // Spawn background observation polling task
             let registry = std::sync::Arc::new(tokio::sync::Mutex::new(registry));
             let obs_registry = registry.clone();
+            let obs_settings = state.settings.clone();
             rt.spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+                let mut ai_interval = tokio::time::interval(std::time::Duration::from_secs(30));
+                let mut last_events: Vec<String> = Vec::new();
                 loop {
-                    interval.tick().await;
-                    let registry = obs_registry.lock().await;
-                    let providers = registry.all_providers();
-                    for provider in providers {
-                        match provider.observe().await {
-                            Ok(events) => {
-                                for event in events {
-                                    let finding = format!("{:?}: {}", event.event_type, event.source);
-                                    let importance = match event.event_type {
-                                        wikilabs_observation::event::EventType::ApplicationChanged => "high",
-                                        wikilabs_observation::event::EventType::ConfigurationFileOpened => "medium",
-                                        wikilabs_observation::event::EventType::ClipboardChanged => "low",
-                                        _ => "low",
-                                    };
-                                    let panel = guidance_panel::GuidancePanel::instance();
-                                    let _ = panel.add_evidence(
-                                        &event.provider.to_string(),
-                                        &finding,
-                                        &importance.to_string(),
-                                        event.confidence as f64,
-                                    ).await;
-
-                                    // ── Recommendation Engine ──
-                                    // Match observation against knowledge packs and skills
-                                    let source_lower = event.source.to_lowercase();
-                                    let event_str = format!("{:?}", event.event_type).to_lowercase();
-
-                                    // Check knowledge packs for matching topics
-                                    let packs = crate::knowledge_panel::KnowledgePanel::instance().list_packs().await;
-                                    for pack in &packs {
-                                        if !pack.enabled { continue; }
-                                        let pack_name = pack.name.to_lowercase();
-                                        let pack_tags: Vec<String> = pack.tags.iter().map(|t| t.to_lowercase()).collect();
-                                        let pack_cats: Vec<String> = pack.categories.iter().map(|c| c.to_lowercase()).collect();
-
-                                        let matches = source_lower.contains(&pack_name)
-                                            || pack_tags.iter().any(|t| source_lower.contains(t) || event_str.contains(t))
-                                            || pack_cats.iter().any(|c| source_lower.contains(c) || event_str.contains(c));
-
-                                        if matches {
-                                            let _ = crate::knowledge_panel::KnowledgePanel::instance().set_indexed(&pack.name, true, None).await;
+                    tokio::select! {
+                        _ = interval.tick() => {
+                            let registry = obs_registry.lock().await;
+                            let providers = registry.all_providers();
+                            for provider in providers {
+                                match provider.observe().await {
+                                    Ok(events) => {
+                                        for event in events {
+                                            let finding = format!("{:?}: {}", event.event_type, event.source);
+                                            let importance = match event.event_type {
+                                                wikilabs_observation::event::EventType::ApplicationChanged => "high",
+                                                wikilabs_observation::event::EventType::ConfigurationFileOpened => "medium",
+                                                wikilabs_observation::event::EventType::ClipboardChanged => "low",
+                                                _ => "low",
+                                            };
                                             let panel = guidance_panel::GuidancePanel::instance();
-                                            let _ = panel.add_recommendation(
-                                                &format!("Knowledge: {} detected", pack.name),
-                                                &format!("You're working with {} — here's relevant knowledge from the '{}' pack.", pack.description, pack.name),
-                                                &format!("Observed: {} via {}", event.source, event.provider.to_string()),
-                                                &pack.name,
-                                                &pack.categories.first().cloned().unwrap_or_default(),
+                                            let _ = panel.add_evidence(
+                                                &event.provider.to_string(),
+                                                &finding,
+                                                &importance.to_string(),
                                                 event.confidence as f64,
-                                                guidance_panel::CardRiskLevel::Medium,
-                                                vec![guidance_panel::ReferenceDoc {
-                                                    title: format!("{} v{}", pack.name, pack.version),
-                                                    url: None,
-                                                    relevance: "Direct match".to_string(),
-                                                }],
-                                                Some(format!("Review the {} knowledge pack for best practices", pack.name)),
                                             ).await;
+                                            last_events.push(finding);
+                                            if last_events.len() > 20 { last_events.remove(0); }
                                         }
                                     }
-
-                                    // Check skills for matching technologies
-                                    let skills = crate::skill_management::SkillManagementPanel::instance().list_skills();
-                                    for skill in &skills {
-                                        if !skill.enabled { continue; }
-                                        let tech = skill.technology.to_lowercase();
-                                        let cat = skill.category.to_lowercase();
-                                        let skill_name = skill.name.to_lowercase();
-
-                                        let matches = source_lower.contains(&tech)
-                                            || source_lower.contains(&skill_name)
-                                            || event_str.contains(&tech)
-                                            || event_str.contains(&cat);
-
-                                        if matches {
-                                            let panel = guidance_panel::GuidancePanel::instance();
-                                            let _ = panel.add_recommendation(
-                                                &format!("Skill: {} applies here", skill.name),
-                                                &format!("Based on your activity, the '{}' skill ({}) may be relevant.", skill.name, skill.technology),
-                                                &format!("Observed: {} — matching skill technology: {}", event.source, skill.technology),
-                                                &skill.technology,
-                                                &skill.category,
-                                                event.confidence as f64 * skill.confidence,
-                                                guidance_panel::CardRiskLevel::Low,
-                                                vec![],
-                                                Some(format!("Open the {} skill for guidance", skill.name)),
-                                            ).await;
-                                        }
-                                    }
+                                    Err(e) => warn!(error = %e, "Observation poll failed for provider"),
                                 }
                             }
-                            Err(e) => warn!(error = %e, "Observation poll failed for provider"),
+                        }
+                        _ = ai_interval.tick() => {
+                            if last_events.is_empty() { continue; }
+                            let settings = obs_settings.lock().unwrap();
+                            let config = settings.settings.clone();
+                            drop(settings);
+                            let api_key = config.get("ai_provider")
+                                .and_then(|p| p.get("api_key")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            if api_key.is_empty() { continue; }
+                            let model = config.get("ai_provider")
+                                .and_then(|p| p.get("model")).and_then(|v| v.as_str()).unwrap_or("gpt-4o").to_string();
+                            let endpoint = config.get("ai_provider")
+                                .and_then(|p| p.get("endpoint")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            let provider_name = config.get("ai_provider")
+                                .and_then(|p| p.get("name")).and_then(|v| v.as_str()).unwrap_or("openai").to_string();
+                            let max_tokens = config.get("ai_provider")
+                                .and_then(|p| p.get("max_tokens")).and_then(|v| v.as_u64()).unwrap_or(512) as usize;
+
+                            let events_summary = last_events.join("\n");
+                            let system_prompt = format!(
+                                "You are a helpful engineering copilot. You observe the user's activity and provide concise, actionable advice.\n\n\
+                                Recent observations:\n{}\n\n\
+                                Based on these observations, provide ONE specific recommendation or observation. \
+                                Keep it under 3 sentences. Be specific about what the user appears to be doing. \
+                                If you can't determine their activity, just state what you observed.",
+                                events_summary
+                            );
+                            let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
+                                &provider_name, &endpoint, &api_key, &model, max_tokens, 128000
+                            );
+                            let ai_request = wikilabs_ai::provider::AiRequest {
+                                model: model.clone(),
+                                messages: vec![
+                                    wikilabs_ai::provider::AiMessage { role: "system".to_string(), content: system_prompt },
+                                    wikilabs_ai::provider::AiMessage { role: "user".to_string(), content: "What do you observe and recommend?".to_string() },
+                                ],
+                                tools: vec![],
+                                temperature: None,
+                                max_tokens: Some(max_tokens),
+                                stream: None,
+                            };
+                            match provider.chat(ai_request).await {
+                                Ok(response) => {
+                                    let panel = guidance_panel::GuidancePanel::instance();
+                                    let _ = panel.add_recommendation(
+                                        "🧭 Copilot Suggestion",
+                                        &response.message.content,
+                                        "AI analyzed recent observations",
+                                        "AI Copilot",
+                                        "General",
+                                        0.8,
+                                        guidance_panel::CardRiskLevel::Low,
+                                        vec![],
+                                        None,
+                                    ).await;
+                                }
+                                Err(e) => warn!(error = %e, "AI recommendation failed"),
+                            }
                         }
                     }
                 }
