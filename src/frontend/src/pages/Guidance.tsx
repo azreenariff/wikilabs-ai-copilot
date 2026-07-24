@@ -200,14 +200,46 @@ function Guidance() {
       {/* Copilot Mode Selector */}
       <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
         <h3 style={{ fontSize: '14px', margin: '0 0 8px', color: 'var(--color-text-primary)' }}>Copilot Mode</h3>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {['Teaching', 'Balanced', 'Expert', 'Silent'].map(mode => (
-            <button key={mode} onClick={() => setMode(mode.toLowerCase())} style={{
-              padding: '6px 14px', borderRadius: '6px', border: 'none', fontSize: '12px', cursor: 'pointer',
-              background: copilotMode === mode.toLowerCase() ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-              color: copilotMode === mode.toLowerCase() ? 'white' : 'var(--color-text-primary)',
-            }}>{mode}</button>
-          ))}
+        <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
+          Choose how actively the AI Copilot interrupts with suggestions.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button onClick={() => setMode('teaching')} style={{
+            padding: '10px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', cursor: 'pointer',
+            background: copilotMode === 'teaching' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+            color: copilotMode === 'teaching' ? 'white' : 'var(--color-text-primary)',
+            textAlign: 'left',
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: '2px' }}>📚 Teaching</div>
+            <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: 1.3 }}>More suggestions with detailed explanations. Best when learning or when you want the AI to explain its reasoning.</div>
+          </button>
+          <button onClick={() => setMode('balanced')} style={{
+            padding: '10px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', cursor: 'pointer',
+            background: copilotMode === 'balanced' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+            color: copilotMode === 'balanced' ? 'white' : 'var(--color-text-primary)',
+            textAlign: 'left',
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: '2px' }}>⚖️ Balanced</div>
+            <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: 1.3 }}>Moderate suggestions without being too chatty. The default mode for everyday use.</div>
+          </button>
+          <button onClick={() => setMode('expert')} style={{
+            padding: '10px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', cursor: 'pointer',
+            background: copilotMode === 'expert' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+            color: copilotMode === 'expert' ? 'white' : 'var(--color-text-primary)',
+            textAlign: 'left',
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: '2px' }}>🎯 Expert</div>
+            <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: 1.3 }}>Concise suggestions assuming you know the context. Less explanation, more signal.</div>
+          </button>
+          <button onClick={() => setMode('silent')} style={{
+            padding: '10px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', cursor: 'pointer',
+            background: copilotMode === 'silent' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+            color: copilotMode === 'silent' ? 'white' : 'var(--color-text-primary)',
+            textAlign: 'left',
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: '2px' }}>🔇 Silent</div>
+            <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: 1.3 }}>No proactive suggestions. The AI only responds when you message it directly.</div>
+          </button>
         </div>
       </div>
 
