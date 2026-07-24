@@ -1023,18 +1023,17 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                 let panel = guidance_panel::GuidancePanel::instance();
                                 let evidence = panel.get_evidence_status().await;
                                 for ev in evidence.collected.iter().take(3) {
-                                    let title = if ev.source.contains("Application") {
-                                        "🖥️ App Activity Detected"
+                                    let (title, description) = if ev.source.contains("Application") {
+                                        ("I see you're working on something", format!("Noticed you switched to {} — looks like you're getting stuff done. Let me know if you need a hand with anything!", ev.finding))
                                     } else if ev.source.contains("Browser") {
-                                        "🌐 Browser Activity Detected"
+                                        ("Browsing the web?", format!("I see you're on {}. Looking something up? If you're stuck, I can help dig up docs or commands for you.", ev.finding))
                                     } else if ev.source.contains("Clipboard") {
-                                        "📋 Clipboard Activity Detected"
+                                        ("Copied something!", String::from("I noticed you copied some text. If you're working through a setup or config, I can help with the next steps."))
                                     } else {
-                                        "🔍 Activity Detected"
+                                        ("I see you're busy", format!("I noticed you're working on: {}. If you need a hand, just ask!", ev.finding))
                                     };
-                                    let description = format!("Observed: {} — {}", ev.finding, ev.source);
                                     let _ = panel.add_recommendation(
-                                        title,
+                                        &title,
                                         &description,
                                         "Rule-based observation analysis",
                                         "AI Copilot",
@@ -1050,11 +1049,12 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
 
                             let events_summary = last_events.join("\n");
                             let system_prompt = format!(
-                                "You are a helpful engineering copilot. You observe the user's activity and provide concise, actionable advice.\n\n\
+                                "You are an experienced senior DevOps engineer sitting next to a colleague who is troubleshooting. You observe what they're doing and give short, friendly, actionable guidance — like a real teammate would.\n\n\
                                 Recent observations:\n{}\n\n\
-                                Based on these observations, provide ONE specific recommendation or observation. \
-                                Keep it under 3 sentences. Be specific about what the user appears to be doing. \
-                                If you can't determine their activity, just state what you observed.",
+                                Based on these observations, give ONE short piece of guidance (1-3 sentences). \
+Be specific and helpful: if they seem stuck on something, suggest the next step or a related thing to check. \
+Use a natural, conversational tone — like \"you should also check...\", \"maybe try...\", \"don't forget to...\". \
+If you can't tell what they're doing, just briefly note what you observed.",
                                 events_summary
                             );
                             let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
@@ -1074,8 +1074,12 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                             match provider.chat(ai_request).await {
                                 Ok(response) => {
                                     let panel = guidance_panel::GuidancePanel::instance();
+                                    let snapshot = last_events.first().map(|s| {
+                                        if s.len() > 60 { format!("{}…", &s[..60]) } else { s.clone() }
+                                    }).unwrap_or_default();
+                                    let title = format!("🧭 {}", snapshot);
                                     let _ = panel.add_recommendation(
-                                        "🧭 Copilot Suggestion",
+                                        &title,
                                         &response.message.content,
                                         "AI analyzed recent observations",
                                         "AI Copilot",
