@@ -165,11 +165,11 @@ impl SkillKnowledgeBase {
                                 .map(|n| n.to_string_lossy().to_string())
                                 .unwrap_or_default();
                             // Take first 2000 chars of knowledge content for AI context
-                            let truncated = if content.len() > 2000 {
-                                format!("{}...", &content[..2000])
-                            } else {
-                                content
-                            };
+                                                        let truncated = if content.chars().count() > 2000 {
+                                                            format!("{}...", content.chars().take(2000).collect::<String>())
+                                                        } else {
+                                                            content
+                                                        };
                             knowledge_sections.push(KnowledgeSection {
                                 file_name: file_name.clone(),
                                 topic: file_name,
@@ -190,8 +190,8 @@ impl SkillKnowledgeBase {
                     let entry_path = entry.path();
                     if entry_path.is_file() && entry_path.extension().map(|e| e == "md").unwrap_or(false) {
                         if let Ok(content) = fs::read_to_string(&entry_path) {
-                            let truncated = if content.len() > 500 {
-                                format!("{}...", &content[..500])
+                            let truncated = if content.chars().count() > 500 {
+                                format!("{}...", content.chars().take(500).collect::<String>())
                             } else {
                                 content
                             };
