@@ -433,9 +433,6 @@ async fn stream_message(
 fn main() {
     let startup_start = Instant::now();
 
-    // ── Pre-startup cleanup (FIX #1: kill zombie WebView2 processes) ──
-    windows_cleanup::pre_startup_cleanup();
-
     // ── Register panic hook (FIX #2: ensure cleanup on crash) ──
     windows_cleanup::register_panic_hook();
 
@@ -456,15 +453,20 @@ fn main() {
     // ── API server state (FIX #3: start API server BEFORE setup hook) ──
     // Starting the API server in the setup hook conflicts with WebView2 initialization.
     // We start it early (before tauri::Builder) to avoid the "Access is denied" panic.
+    // Build the API server state (to be populated during setup)
     let api_server_state = std::sync::Arc::new(std::sync::Mutex::new(None));
     let api_server_state_clone = api_server_state.clone();
-
-    // Pre-cleanup port 1420 (will be re-cleaned in setup if needed)
-    windows_cleanup::cleanup_api_server_port(1420);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_log::Builder::new().build())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Minimize to tray instead of closing
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
         .manage(settings)
         .setup(move |app| {
             let state_setup_start = Instant::now();
@@ -479,9 +481,6 @@ fn main() {
             let data_dir = app.handle().path().app_data_dir()?;
             let config_path = data_dir.join("settings.json");
             tracing::info!(path = %config_path.display(), "Wiring config path to API server");
-
-            // Clean up stale SQLite lock files (FIX #4: prevent "database is locked" errors)
-            windows_cleanup::cleanup_sqlite_lock_files(&data_dir);
 
             // Start the HTTP API server — NOW OUTSIDE the setup hook to avoid WebView2 conflicts
             // FIX #3: Previously this was in the setup hook, which caused "Access is denied"
@@ -499,7 +498,7 @@ fn main() {
                 .ok();
 
             std::thread::spawn(move || {
-                match api_server::start_api_server(1420, Some(config_path_clone), skills_path, knowledge_path) {
+                match api_server::start_api_server(1420, Some(config_path_clone), skills_path, knowledge_path, Some(app.handle().clone())) {
                     Ok(_) => {
                         info!("API server started successfully in background thread");
                         *api_state_clone.lock().unwrap() = Some(true);
@@ -524,7 +523,50 @@ fn main() {
             // Expose registry via Arc for use in commands
             app.manage(std::sync::Arc::new(std::sync::Mutex::new(registry)));
             app.manage(state);
+
+            // ── System Tray Setup ──
+            let handle = app.handle().clone();
+            // Build tray context menu
+            let show_item = tauri::menu::MenuItemBuilder::with_id("show", "Show Wiki Labs AI Copilot")
+                .build(app)?;
+            let quit_item = tauri::menu::MenuItemBuilder::with_id("quit", "Quit")
+                .build(app)?;
+            let tray_menu = tauri::menu::MenuBuilder::new(app)
+                .item(&show_item)
+                .separator()
+                .item(&quit_item)
+                .build()?;
+
+            let _tray = tauri::tray::TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("Wiki Labs AI Copilot")
+                .menu(&tray_menu)
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
+                        if let Some(window) = tray.app_handle().get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
             Ok(())
+
         })
         .invoke_handler(tauri::generate_handler![
             // Chat commands

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import GuidanceToast from './components/GuidanceToast';
 import ChatAssistant from './pages/ChatAssistant';
 import Guidance from './pages/Guidance';
 import Workspaces from './pages/Workspaces';
@@ -99,6 +100,7 @@ function AppLayout() {
           </div>
         </footer>
       </div>
+      <GuidanceToast />
     </div>
   );
 }
