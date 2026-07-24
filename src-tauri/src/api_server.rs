@@ -662,9 +662,9 @@ async fn handle_guidance_get_all_recommendations() -> (StatusCode, String) {
 
 async fn handle_guidance_dismiss_recommendation(params: Value) -> (StatusCode, String) {
     let rec_id = params.get("rec_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    match guidance_panel::guidance_dismiss_recommendation(rec_id) {
+    match guidance_panel::GuidancePanel::instance().dismiss_recommendation(&rec_id).await {
         Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
     }
 }
 
@@ -672,9 +672,9 @@ async fn handle_guidance_update_recommendation_status(params: Value) -> (StatusC
     let rec_id = params.get("rec_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let status = params.get("status").and_then(|v| serde_json::from_value::<guidance_panel::RecommendationStatus>(v.clone()).ok());
     match status {
-        Some(s) => match guidance_panel::guidance_update_recommendation_status(rec_id, s) {
+        Some(s) => match guidance_panel::GuidancePanel::instance().update_recommendation_status(&rec_id, s).await {
             Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-            Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+            Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
         },
         None => (StatusCode::OK, api_response(false, None, Some("Invalid status".to_string()))),
     }
@@ -691,9 +691,9 @@ async fn handle_guidance_add_evidence(params: Value) -> (StatusCode, String) {
     let finding = params.get("finding").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let importance = params.get("importance").and_then(|v| v.as_str()).unwrap_or("medium").to_string();
     let confidence = params.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.5);
-    match guidance_panel::guidance_add_evidence(source, finding, importance, confidence) {
+    match guidance_panel::GuidancePanel::instance().add_evidence(&source, &finding, &importance, confidence).await {
         Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
     }
 }
 
@@ -701,14 +701,14 @@ async fn handle_guidance_mark_missing(params: Value) -> (StatusCode, String) {
     let needed = params.get("needed").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let description = params.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let importance = params.get("importance").and_then(|v| v.as_str()).unwrap_or("medium").to_string();
-    match guidance_panel::guidance_mark_missing(needed, description, importance) {
+    match guidance_panel::GuidancePanel::instance().mark_missing(&needed, &description, &importance).await {
         Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
     }
 }
 
 async fn handle_guidance_get_workflow_progress() -> (StatusCode, String) {
-    let progress = guidance_panel::guidance_get_workflow_progress();
+    let progress = guidance_panel::GuidancePanel::instance().get_workflow_progress().await;
     let value = serde_json::to_value(progress).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
@@ -718,23 +718,23 @@ async fn handle_guidance_start_workflow(params: Value) -> (StatusCode, String) {
     let workflow_name = params.get("workflow_name").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let problem_category = params.get("problem_category").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let steps = params.get("steps").and_then(|v| serde_json::from_value::<Vec<guidance_panel::WorkflowStepCard>>(v.clone()).ok()).unwrap_or_default();
-    match guidance_panel::guidance_start_workflow(workflow_id, workflow_name, problem_category, steps) {
+    match guidance_panel::GuidancePanel::instance().start_workflow(&workflow_id, &workflow_name, &problem_category, steps).await {
         Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
     }
 }
 
 async fn handle_guidance_complete_step(params: Value) -> (StatusCode, String) {
     let step_id = params.get("step_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let observation = params.get("observation").and_then(|v| v.as_str()).map(|s| s.to_string());
-    match guidance_panel::guidance_complete_step(step_id, observation) {
+    match guidance_panel::GuidancePanel::instance().complete_step(&step_id, observation).await {
         Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
     }
 }
 
 async fn handle_guidance_get_timeline() -> (StatusCode, String) {
-    let timeline = guidance_panel::guidance_get_timeline();
+    let timeline = guidance_panel::GuidancePanel::instance().get_timeline().await;
     let value = serde_json::to_value(timeline).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
@@ -747,15 +747,15 @@ async fn handle_guidance_add_timeline_event(params: Value) -> (StatusCode, Strin
     let description = params.get("description").and_then(|v| v.as_str()).map(|s| s.to_string());
     let confidence = params.get("confidence").and_then(|v| v.as_f64());
     let recommendation_id = params.get("recommendation_id").and_then(|v| v.as_str()).map(|s| s.to_string());
-    match guidance_panel::guidance_add_timeline_event(event_type, title, technology, finding, description, confidence, recommendation_id) {
+    match guidance_panel::GuidancePanel::instance().add_timeline_event(&event_type, title.as_deref(), technology.as_deref(), finding.as_deref(), description.as_deref(), confidence, recommendation_id).await {
         Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
     }
 }
 
 async fn handle_guidance_get_recent_events(params: Value) -> (StatusCode, String) {
     let minutes = params.get("minutes").and_then(|v| v.as_u64()).unwrap_or(60);
-    let events = guidance_panel::guidance_get_recent_events(minutes);
+    let events = guidance_panel::GuidancePanel::instance().get_recent_events(minutes).await;
     let value = serde_json::to_value(events).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
@@ -765,16 +765,16 @@ async fn handle_guidance_record_feedback(params: Value) -> (StatusCode, String) 
     let feedback_type = params.get("feedback_type").and_then(|v| serde_json::from_value::<guidance_panel::FeedbackType>(v.clone()).ok());
     let notes = params.get("notes").and_then(|v| v.as_str()).map(|s| s.to_string());
     match feedback_type {
-        Some(ft) => match guidance_panel::guidance_record_feedback(recommendation_id, ft, notes) {
+        Some(ft) => match guidance_panel::GuidancePanel::instance().record_feedback(&recommendation_id, ft, notes.as_deref()).await {
             Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-            Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+            Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
         },
         None => (StatusCode::OK, api_response(false, None, Some("Invalid feedback_type".to_string()))),
     }
 }
 
 async fn handle_guidance_get_feedback_stats() -> (StatusCode, String) {
-    let stats = guidance_panel::guidance_get_feedback_stats();
+    let stats = guidance_panel::GuidancePanel::instance().get_feedback_stats().await;
     let value = serde_json::to_value(stats).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
@@ -782,9 +782,9 @@ async fn handle_guidance_get_feedback_stats() -> (StatusCode, String) {
 async fn handle_guidance_set_mode(params: Value) -> (StatusCode, String) {
     let mode = params.get("mode").and_then(|v| serde_json::from_value::<guidance_panel::CopilotMode>(v.clone()).ok());
     match mode {
-        Some(m) => match guidance_panel::guidance_set_mode(m) {
+        Some(m) => match guidance_panel::GuidancePanel::instance().set_mode(m).await {
             Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-            Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+            Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
         },
         None => (StatusCode::OK, api_response(false, None, Some("Invalid mode".to_string()))),
     }
@@ -797,15 +797,15 @@ async fn handle_guidance_get_mode() -> (StatusCode, String) {
 }
 
 async fn handle_guidance_get_available_modes() -> (StatusCode, String) {
-    let modes = guidance_panel::guidance_get_available_modes();
+    let modes = guidance_panel::GuidancePanel::instance().available_modes().await;
     let value = serde_json::to_value(modes).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
 
 async fn handle_guidance_clear_all() -> (StatusCode, String) {
-    match guidance_panel::guidance_clear_all() {
+    match guidance_panel::GuidancePanel::instance().clear_all().await {
         Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-        Err(e) => (StatusCode::OK, api_response(false, None, Some(e))),
+        Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
     }
 }
 
