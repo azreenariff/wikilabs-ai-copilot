@@ -75,7 +75,9 @@ function Guidance() {
       });
       const data = await res.json();
       if (data.success && data.value) {
-        setCopilotMode(data.value.mode || data.value || 'balanced');
+        // Normalize: backend returns 'Balanced' (capitalized from serde), frontend uses lowercase
+        const mode = data.value.mode || data.value || 'balanced';
+        setCopilotMode(typeof mode === 'string' ? mode.toLowerCase() : 'balanced');
       }
     } catch {}
   }, []);

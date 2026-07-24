@@ -870,6 +870,18 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
     };
+
+    // Load settings from disk at startup so the AI loop sees the configured API key
+    if let Some(ref cp) = config_path {
+        if let Ok(content) = fs::read_to_string(cp) {
+            if let Ok(parsed) = serde_json::from_str::<Value>(&content) {
+                let mut settings = state.settings.lock().unwrap();
+                settings.settings = parsed;
+                info!("Settings loaded from disk at startup");
+            }
+        }
+    }
+
     let obs_settings = state.settings.clone();
     let router = create_router(state);
 
@@ -942,6 +954,13 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
             }
             info!("Observation engine initialized");
 
+            // Reset guidance state on startup — fresh session, zero evidence
+            {
+                let panel = guidance_panel::GuidancePanel::instance();
+                let _ = rt.block_on(panel.clear_all());
+                info!("Guidance panel state cleared on startup");
+            }
+
             // Spawn background observation polling task
             let registry = std::sync::Arc::new(tokio::sync::Mutex::new(registry));
             let obs_registry = registry.clone();
@@ -999,7 +1018,35 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                         .and_then(|p| p.get("max_tokens")).and_then(|v| v.as_u64()).unwrap_or(512) as usize,
                                 )
                             };
-                            if api_key.is_empty() { continue; }
+                            if api_key.is_empty() {
+                                // No AI provider configured — generate rule-based recommendations from observations
+                                let panel = guidance_panel::GuidancePanel::instance();
+                                let evidence = panel.get_evidence_status().await;
+                                for ev in evidence.collected.iter().take(3) {
+                                    let title = if ev.source.contains("Application") {
+                                        "🖥️ App Activity Detected"
+                                    } else if ev.source.contains("Browser") {
+                                        "🌐 Browser Activity Detected"
+                                    } else if ev.source.contains("Clipboard") {
+                                        "📋 Clipboard Activity Detected"
+                                    } else {
+                                        "🔍 Activity Detected"
+                                    };
+                                    let description = format!("Observed: {} — {}", ev.finding, ev.source);
+                                    let _ = panel.add_recommendation(
+                                        title,
+                                        &description,
+                                        "Rule-based observation analysis",
+                                        "AI Copilot",
+                                        "General",
+                                        0.5,
+                                        guidance_panel::CardRiskLevel::Low,
+                                        vec![],
+                                        None,
+                                    ).await;
+                                }
+                                continue;
+                            }
 
                             let events_summary = last_events.join("\n");
                             let system_prompt = format!(
