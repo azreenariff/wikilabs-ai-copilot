@@ -15,6 +15,12 @@ interface EvidenceStatus {
   total: number;
 }
 
+interface ObservationStatus {
+  observation_enabled: boolean;
+  status: string;
+  providers: string[];
+}
+
 function Guidance() {
   const [recommendations, setRecommendations] = useState<RecommendationCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +28,8 @@ function Guidance() {
   const [selectedRec, setSelectedRec] = useState<RecommendationCard | null>(null);
   const [evidence, setEvidence] = useState<EvidenceStatus | null>(null);
   const [copilotMode, setCopilotMode] = useState('balanced');
+  const [obsStatus, setObsStatus] = useState<ObservationStatus | null>(null);
+  const [obsLoading, setObsLoading] = useState(true);
 
   const fetchRecommendations = useCallback(async () => {
     try {
@@ -69,11 +77,30 @@ function Guidance() {
     } catch {}
   }, []);
 
+  const fetchObsStatus = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:1420/api/commands/observation_get_status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: {} }),
+      });
+      const data = await res.json();
+      if (data.success && data.value) {
+        setObsStatus(data.value);
+      }
+    } catch {
+      setObsStatus(null);
+    } finally {
+      setObsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRecommendations();
     fetchEvidence();
     fetchMode();
-  }, [fetchRecommendations, fetchEvidence, fetchMode]);
+    fetchObsStatus();
+  }, [fetchRecommendations, fetchEvidence, fetchMode, fetchObsStatus]);
 
   const dismissRec = async (recId: string) => {
     try {
@@ -138,6 +165,34 @@ function Guidance() {
           {status}
         </div>
       )}
+
+      {/* Observation Status */}
+      <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '14px', margin: '0 0 8px', color: 'var(--color-text-primary)' }}>🔍 Observation Status</h3>
+        {obsLoading ? (
+          <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>Loading observation status...</div>
+        ) : obsStatus ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: obsStatus.status === 'active' ? 'var(--color-success)' : 'var(--color-error)' }} />
+              <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{obsStatus.status === 'active' ? 'Active' : 'Inactive'}</span>
+              {obsStatus.observation_enabled && <span style={{ color: 'var(--color-text-secondary)', fontSize: '12px' }}>(Engine running)</span>}
+            </div>
+            <div>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Providers: </span>
+              <span style={{ color: 'var(--color-text-primary)' }}>
+                {obsStatus.providers.map((p, i) => (
+                  <span key={p} style={{ display: 'inline-block', padding: '2px 8px', margin: '2px 4px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-accent)', fontSize: '12px' }}>
+                    {p}
+                  </span>
+                ))}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>Observation engine not reachable</div>
+        )}
+      </div>
 
       {/* Copilot Mode Selector */}
       <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>

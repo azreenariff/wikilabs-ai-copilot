@@ -9,7 +9,7 @@ interface AppStatus {
 
 function About() {
   const [status, setStatus] = useState<AppStatus>({
-    version: '1.1.5',
+    version: '',
     running: false,
   });
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ function About() {
             features?: Record<string, boolean>;
           };
           setStatus({
-            version: value.version || '1.1.5',
+            version: value.version || '',
             running: value.status === 'running',
             status: value.status,
             features: value.features,

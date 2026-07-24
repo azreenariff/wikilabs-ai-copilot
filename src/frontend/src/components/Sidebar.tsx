@@ -44,7 +44,7 @@ function Sidebar() {
         minWidth: '56px',
         justifyContent: collapsed ? 'center' : 'flex-start',
       }}>
-        <span style={{ fontSize: '20px' }}>🧠</span>
+        <img src="/logo.png" alt="Logo" style={{ width: collapsed ? '24px' : '28px', height: collapsed ? '24px' : '28px', borderRadius: '6px' }} />
         {!collapsed && <span style={{ fontWeight: 700, fontSize: '14px', whiteSpace: 'nowrap' }}>Wiki Labs AI Copilot</span>}
       </div>
       <nav style={{ flex: 1, padding: '8px 4px' }}>

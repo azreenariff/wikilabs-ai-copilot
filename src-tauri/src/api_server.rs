@@ -928,6 +928,40 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
             }
             info!("Observation engine initialized");
 
+            // Spawn background observation polling task
+            let registry = std::sync::Arc::new(tokio::sync::Mutex::new(registry));
+            let obs_registry = registry.clone();
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+                loop {
+                    interval.tick().await;
+                    let registry = obs_registry.lock().await;
+                    let providers = registry.all_providers();
+                    for provider in providers {
+                        match provider.observe().await {
+                            Ok(events) => {
+                                for event in events {
+                                    let finding = format!("{:?}: {}", event.event_type, event.source);
+                                    let importance = match event.event_type {
+                                        wikilabs_observation::event::EventType::ApplicationChanged => "high",
+                                        wikilabs_observation::event::EventType::ConfigurationFileOpened => "medium",
+                                        wikilabs_observation::event::EventType::ClipboardChanged => "low",
+                                        _ => "low",
+                                    };
+                                    let _ = guidance_panel::guidance_add_evidence(
+                                        event.provider.to_string(),
+                                        finding,
+                                        importance.to_string(),
+                                        event.confidence as f64,
+                                    );
+                                }
+                            }
+                            Err(e) => warn!(error = %e, "Observation poll failed for provider"),
+                        }
+                    }
+                }
+            });
+
             let result = rt.block_on(async {
                 let listener = tokio::net::TcpListener::bind(&addr)
                     .await
