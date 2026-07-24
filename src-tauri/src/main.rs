@@ -498,7 +498,7 @@ fn main() {
                 .ok();
 
             std::thread::spawn(move || {
-                match api_server::start_api_server(1420, Some(config_path_clone), skills_path, knowledge_path, Some(app.handle().clone())) {
+                match api_server::start_api_server(1420, Some(config_path_clone), skills_path, knowledge_path) {
                     Ok(_) => {
                         info!("API server started successfully in background thread");
                         *api_state_clone.lock().unwrap() = Some(true);

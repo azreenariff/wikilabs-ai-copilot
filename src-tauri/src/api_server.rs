@@ -852,7 +852,7 @@ pub fn create_router(state: ApiServerState) -> Router {
 
 /// Start the HTTP server on the given port (default 1420).
 /// Runs in a dedicated thread to keep the tokio runtime alive.
-pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skills_path: Option<std::path::PathBuf>, knowledge_path: Option<std::path::PathBuf>, app_handle: Option<tauri::AppHandle>) -> Result<(), String> {
+pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skills_path: Option<std::path::PathBuf>, knowledge_path: Option<std::path::PathBuf>) -> Result<(), String> {
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
@@ -931,10 +931,8 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
             // Spawn background observation polling task
             let registry = std::sync::Arc::new(tokio::sync::Mutex::new(registry));
             let obs_registry = registry.clone();
-            let notif_handle = app_handle.clone();
             rt.spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
-                let mut total_events = 0usize;
                 loop {
                     interval.tick().await;
                     let registry = obs_registry.lock().await;
@@ -956,20 +954,9 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                         importance.to_string(),
                                         event.confidence as f64,
                                     );
-                                    total_events += 1;
                                 }
                             }
                             Err(e) => warn!(error = %e, "Observation poll failed for provider"),
-                        }
-                    }
-                    // Emit notification when new evidence is collected
-                    if total_events > 0 && total_events % 3 == 0 {
-                        if let Some(ref handle) = notif_handle {
-                            let _ = handle.emit("guidance-notification", serde_json::json!({
-                                "title": "New Guidance Available",
-                                "body": format!("{} observations collected — check the Guidance page for recommendations", total_events),
-                                "total_events": total_events,
-                            }));
                         }
                     }
                 }
