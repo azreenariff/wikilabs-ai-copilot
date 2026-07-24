@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import GuidanceToast from './components/GuidanceToast';
+import SetupWizard from './pages/SetupWizard';
 import ChatAssistant from './pages/ChatAssistant';
 import Guidance from './pages/Guidance';
 import Workspaces from './pages/Workspaces';
@@ -13,6 +14,48 @@ import About from './pages/About';
 import './App.css';
 
 function App() {
+  const [needsSetup, setNeedsSetup] = useState(true);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    fetch('http://localhost:1420/api/commands/get_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: {} }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.value) {
+          const apiKey = data.value.ai_provider?.api_key || '';
+          setNeedsSetup(!apiKey);
+        }
+      })
+      .catch(() => {
+        // If backend not reachable, show the normal app anyway
+        setNeedsSetup(false);
+      })
+      .finally(() => setChecking(false));
+  }, []);
+
+  if (checking) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', background: 'var(--color-bg-primary)',
+        color: 'var(--color-text-secondary)', fontSize: '14px',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <img src="/logo.png" alt="Logo" style={{ width: '48px', height: '48px', borderRadius: '10px', marginBottom: '12px' }} />
+          <div>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (needsSetup) {
+    return <SetupWizard />;
+  }
+
   return (
     <BrowserRouter>
       <Routes>
