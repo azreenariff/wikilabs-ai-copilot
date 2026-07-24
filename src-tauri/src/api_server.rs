@@ -953,12 +953,13 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                         wikilabs_observation::event::EventType::ClipboardChanged => "low",
                                         _ => "low",
                                     };
-                                    let _ = guidance_panel::guidance_add_evidence(
-                                        event.provider.to_string(),
-                                        finding,
-                                        importance.to_string(),
+                                    let panel = guidance_panel::GuidancePanel::instance();
+                                    let _ = panel.add_evidence(
+                                        &event.provider.to_string(),
+                                        &finding,
+                                        &importance.to_string(),
                                         event.confidence as f64,
-                                    );
+                                    ).await;
 
                                     // ── Recommendation Engine ──
                                     // Match observation against knowledge packs and skills
