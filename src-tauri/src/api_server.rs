@@ -175,7 +175,8 @@ pub async fn api_handler(
         "guidance_get_mode" => handle_guidance_get_mode().await,
         "guidance_get_available_modes" => handle_guidance_get_available_modes().await,
         "guidance_clear_all" => handle_guidance_clear_all().await,
-        // Observation commands
+        // System commands
+        "get_status" => handle_get_status().await,
         "observation_get_status" => handle_observation_get_status(&state).await,
         "observation_start" => handle_observation_start(&state).await,
         "observation_stop" => handle_observation_stop(&state).await,
@@ -837,6 +838,24 @@ async fn handle_observation_stop(_state: &ApiServerState) -> (StatusCode, String
     (StatusCode::OK, api_response(true, Some(serde_json::json!({"status": "stopped"})), None))
 }
 
+/// GET /api/commands/get_status — returns app version and backend status.
+async fn handle_get_status() -> (StatusCode, String) {
+    let version = env!("CARGO_PKG_VERSION");
+    let value = serde_json::json!({
+        "version": version,
+        "status": "running",
+        "features": {
+            "chat": true,
+            "knowledge": true,
+            "workspace": true,
+            "skills": true,
+            "mcp": false,
+            "automation": false
+        }
+    });
+    (StatusCode::OK, api_response(true, Some(value), None))
+}
+
 /// Create the router for the API server.
 pub fn create_router(state: ApiServerState) -> Router {
     info!("[API] Creating router with state...");
@@ -1074,6 +1093,13 @@ If you can't tell what they're doing, just briefly note what you observed.",
                             match provider.chat(ai_request).await {
                                 Ok(response) => {
                                     let panel = guidance_panel::GuidancePanel::instance();
+                                    // Remove the previous AI recommendation so each 30s tick replaces it
+                                    let all = panel.all_recommendations().await;
+                                    for prev in &all {
+                                        if prev.title.starts_with("🧭") {
+                                            let _ = panel.dismiss_recommendation(&prev.id).await;
+                                        }
+                                    }
                                     let snapshot = last_events.first().map(|s| {
                                         if s.len() > 60 { format!("{}…", &s[..60]) } else { s.clone() }
                                     }).unwrap_or_default();

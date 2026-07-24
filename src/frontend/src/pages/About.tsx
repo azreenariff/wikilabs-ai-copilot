@@ -75,7 +75,11 @@ function About() {
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <span style={{ fontSize: '48px' }}>🧠</span>
+          <img
+            src="/logo.png"
+            alt="Wiki Labs AI Copilot"
+            style={{ width: '64px', height: '64px', borderRadius: '12px' }}
+          />
           <h3 style={{ fontSize: '24px', fontWeight: 700, margin: '12px 0 4px' }}>
             Wiki Labs AI Copilot
           </h3>
