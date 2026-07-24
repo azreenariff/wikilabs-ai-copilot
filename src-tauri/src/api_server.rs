@@ -1068,9 +1068,11 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
 
                             let events_summary = last_events.join("\n");
                             let system_prompt = format!(
-                                "You are an experienced senior DevOps engineer sitting next to a colleague who is troubleshooting. You observe what they're doing and give short, friendly, actionable guidance — like a real teammate would.\n\n\
-                                Recent observations:\n{}\n\n\
-                                Based on these observations, give ONE short piece of guidance (1-3 sentences). \
+                                "You are Wiki Labs AI Copilot — an intelligent engineering assistant that sits alongside a developer and observes their work in real time. \
+You notice what apps, terminals, browser tabs, and files they switch between, and you offer short, helpful, conversational guidance like a senior teammate would.\n\n\
+Your purpose is to proactively help by suggesting next steps, flagging things to check, or pointing out relevant commands or docs — especially when the user seems stuck or deep in a troubleshooting session.\n\n\
+Recent observations from the user's desktop:\n{}\n\n\
+Based on these observations, give ONE short piece of guidance (1-3 sentences). \
 Be specific and helpful: if they seem stuck on something, suggest the next step or a related thing to check. \
 Use a natural, conversational tone — like \"you should also check...\", \"maybe try...\", \"don't forget to...\". \
 If you can't tell what they're doing, just briefly note what you observed.",
@@ -1116,7 +1118,34 @@ If you can't tell what they're doing, just briefly note what you observed.",
                                         None,
                                     ).await;
                                 }
-                                Err(e) => warn!(error = %e, "AI recommendation failed"),
+                                Err(e) => {
+                                    warn!(error = %e, "AI recommendation failed, using rule-based fallback");
+                                    // AI call failed — generate a rule-based fallback instead
+                                    let panel = guidance_panel::GuidancePanel::instance();
+                                    let evidence = panel.get_evidence_status().await;
+                                    for ev in evidence.collected.iter().take(1) {
+                                        let (title, description) = if ev.source.contains("Application") {
+                                            ("I see you're working on something", format!("Noticed you switched to {} — looks like you're getting stuff done. Let me know if you need a hand with anything!", ev.finding))
+                                        } else if ev.source.contains("Browser") {
+                                            ("Browsing the web?", format!("I see you're on {}. Looking something up? If you're stuck, I can help dig up docs or commands for you.", ev.finding))
+                                        } else if ev.source.contains("Clipboard") {
+                                            ("Copied something!", String::from("I noticed you copied some text. If you're working through a setup or config, I can help with the next steps."))
+                                        } else {
+                                            ("I see you're busy", format!("I noticed you're working on: {}. If you need a hand, just ask!", ev.finding))
+                                        };
+                                        let _ = panel.add_recommendation(
+                                            &title,
+                                            &description,
+                                            "Rule-based observation analysis",
+                                            "AI Copilot",
+                                            "General",
+                                            0.5,
+                                            guidance_panel::CardRiskLevel::Low,
+                                            vec![],
+                                            None,
+                                        ).await;
+                                    }
+                                }
                             }
                         }
                     }
