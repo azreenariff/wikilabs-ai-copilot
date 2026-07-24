@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const PROVIDERS = [
   { name: 'OpenAI', endpoint: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'] },
@@ -12,12 +12,9 @@ function SetupWizard() {
   const [selectedProvider, setSelectedProvider] = useState(PROVIDERS[0]);
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState(PROVIDERS[0].models[0]);
-  const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'idle' | 'testing' | 'success' | 'fail'>('idle');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  const isSetupComplete = step === 4;
 
   const handleSelectProvider = (p: typeof PROVIDERS[0]) => {
     setSelectedProvider(p);
@@ -27,7 +24,6 @@ function SetupWizard() {
   };
 
   const handleTestConnection = async () => {
-    setTesting(true);
     setTestResult('testing');
     setError('');
     try {
@@ -56,7 +52,6 @@ function SetupWizard() {
       setTestResult('fail');
       setError('Cannot reach backend');
     }
-    setTesting(false);
   };
 
   const handleSave = async () => {
