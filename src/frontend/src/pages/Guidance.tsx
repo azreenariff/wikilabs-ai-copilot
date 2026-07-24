@@ -181,7 +181,7 @@ function Guidance() {
             <div>
               <span style={{ color: 'var(--color-text-secondary)' }}>Providers: </span>
               <span style={{ color: 'var(--color-text-primary)' }}>
-                {obsStatus.providers.map((p, i) => (
+                {obsStatus.providers.map(p => (
                   <span key={p} style={{ display: 'inline-block', padding: '2px 8px', margin: '2px 4px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-accent)', fontSize: '12px' }}>
                     {p}
                   </span>
