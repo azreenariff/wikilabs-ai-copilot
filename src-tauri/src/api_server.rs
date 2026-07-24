@@ -862,6 +862,7 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
     };
+    let obs_settings = state.settings.clone();
     let router = create_router(state);
 
     // Initialize skill and knowledge panels
@@ -936,7 +937,7 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
             // Spawn background observation polling task
             let registry = std::sync::Arc::new(tokio::sync::Mutex::new(registry));
             let obs_registry = registry.clone();
-            let obs_settings = state.settings.clone();
+            let poll_settings = obs_settings.clone();
             rt.spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
                 let mut ai_interval = tokio::time::interval(std::time::Duration::from_secs(30));
@@ -974,20 +975,23 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                         }
                         _ = ai_interval.tick() => {
                             if last_events.is_empty() { continue; }
-                            let settings = obs_settings.lock().unwrap();
-                            let config = settings.settings.clone();
-                            drop(settings);
-                            let api_key = config.get("ai_provider")
-                                .and_then(|p| p.get("api_key")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            let (api_key, model, endpoint, provider_name, max_tokens) = {
+                                let settings = poll_settings.lock().unwrap();
+                                let config = settings.settings.clone();
+                                (
+                                    config.get("ai_provider")
+                                        .and_then(|p| p.get("api_key")).and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                                    config.get("ai_provider")
+                                        .and_then(|p| p.get("model")).and_then(|v| v.as_str()).unwrap_or("gpt-4o").to_string(),
+                                    config.get("ai_provider")
+                                        .and_then(|p| p.get("endpoint")).and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                                    config.get("ai_provider")
+                                        .and_then(|p| p.get("name")).and_then(|v| v.as_str()).unwrap_or("openai").to_string(),
+                                    config.get("ai_provider")
+                                        .and_then(|p| p.get("max_tokens")).and_then(|v| v.as_u64()).unwrap_or(512) as usize,
+                                )
+                            };
                             if api_key.is_empty() { continue; }
-                            let model = config.get("ai_provider")
-                                .and_then(|p| p.get("model")).and_then(|v| v.as_str()).unwrap_or("gpt-4o").to_string();
-                            let endpoint = config.get("ai_provider")
-                                .and_then(|p| p.get("endpoint")).and_then(|v| v.as_str()).unwrap_or("").to_string();
-                            let provider_name = config.get("ai_provider")
-                                .and_then(|p| p.get("name")).and_then(|v| v.as_str()).unwrap_or("openai").to_string();
-                            let max_tokens = config.get("ai_provider")
-                                .and_then(|p| p.get("max_tokens")).and_then(|v| v.as_u64()).unwrap_or(512) as usize;
 
                             let events_summary = last_events.join("\n");
                             let system_prompt = format!(
