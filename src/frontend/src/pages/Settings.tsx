@@ -18,6 +18,7 @@ interface AiProviderConfig {
 // Common models list for dropdown — fallback when endpoint can't be reached
 const commonModels: Record<string, string[]> = {
   OpenAI: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'o1', 'o1-mini', 'o3-mini'],
+  OpenRouter: ['anthropic/claude-sonnet-4', 'anthropic/claude-3.5-haiku', 'google/gemini-2.0-flash-001', 'deepseek/deepseek-chat', 'meta-llama/llama-3-70b-instruct', 'mistralai/mixtral-8x22b-instruct'],
   'Custom Endpoint': ['meta-llama/Llama-3-70b-chat-hf', 'meta-llama/Llama-3-8b-chat-hf', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'gpt-4o', 'gpt-4o-mini'],
   Ollama: ['llama3', 'mistral', 'codellama', 'llama2', 'vicuna', 'phi3', 'gemma'],
 };
@@ -109,6 +110,7 @@ function Settings() {
           // Fallback providers
           setProviders([
             { name: 'OpenAI', url: 'https://api.openai.com/v1', api_version: 'v1' },
+            { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1', api_version: 'v1' },
             { name: 'Custom Endpoint', url: 'http://localhost:8000/v1', api_version: 'v1' },
             { name: 'Ollama', url: 'http://localhost:11434/v1', api_version: 'v1' },
           ]);
@@ -118,6 +120,7 @@ function Settings() {
         // Default providers on error
         setProviders([
           { name: 'OpenAI', url: 'https://api.openai.com/v1', api_version: 'v1' },
+          { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1', api_version: 'v1' },
           { name: 'Custom Endpoint', url: 'http://localhost:8000/v1', api_version: 'v1' },
           { name: 'Ollama', url: 'http://localhost:11434/v1', api_version: 'v1' },
         ]);

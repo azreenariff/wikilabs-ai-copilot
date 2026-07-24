@@ -97,6 +97,11 @@ impl ApiServerSettings {
                     "api_version": "v1"
                 }),
                 serde_json::json!({
+                    "name": "OpenRouter",
+                    "url": "https://openrouter.ai/api/v1",
+                    "api_version": "v1"
+                }),
+                serde_json::json!({
                     "name": "Custom Endpoint",
                     "url": "http://localhost:8000/v1",
                     "api_version": "v1"
@@ -954,6 +959,73 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                         importance.to_string(),
                                         event.confidence as f64,
                                     );
+
+                                    // ── Recommendation Engine ──
+                                    // Match observation against knowledge packs and skills
+                                    let source_lower = event.source.to_lowercase();
+                                    let event_str = format!("{:?}", event.event_type).to_lowercase();
+
+                                    // Check knowledge packs for matching topics
+                                    let packs = crate::knowledge_panel::KnowledgePanel::instance().list_packs().await;
+                                    for pack in &packs {
+                                        if !pack.enabled { continue; }
+                                        let pack_name = pack.name.to_lowercase();
+                                        let pack_tags: Vec<String> = pack.tags.iter().map(|t| t.to_lowercase()).collect();
+                                        let pack_cats: Vec<String> = pack.categories.iter().map(|c| c.to_lowercase()).collect();
+
+                                        let matches = source_lower.contains(&pack_name)
+                                            || pack_tags.iter().any(|t| source_lower.contains(t) || event_str.contains(t))
+                                            || pack_cats.iter().any(|c| source_lower.contains(c) || event_str.contains(c));
+
+                                        if matches {
+                                            let _ = crate::knowledge_panel::KnowledgePanel::instance().set_indexed(&pack.name, true, None).await;
+                                            let panel = guidance_panel::GuidancePanel::instance();
+                                            let _ = panel.add_recommendation(
+                                                &format!("Knowledge: {} detected", pack.name),
+                                                &format!("You're working with {} — here's relevant knowledge from the '{}' pack.", pack.description, pack.name),
+                                                &format!("Observed: {} via {}", event.source, event.provider.to_string()),
+                                                &pack.name,
+                                                &pack.categories.first().cloned().unwrap_or_default(),
+                                                event.confidence as f64,
+                                                guidance_panel::CardRiskLevel::Medium,
+                                                vec![guidance_panel::ReferenceDoc {
+                                                    title: format!("{} v{}", pack.name, pack.version),
+                                                    url: None,
+                                                    relevance: "Direct match".to_string(),
+                                                }],
+                                                Some(format!("Review the {} knowledge pack for best practices", pack.name)),
+                                            ).await;
+                                        }
+                                    }
+
+                                    // Check skills for matching technologies
+                                    let skills = crate::skill_management::SkillManagementPanel::instance().list_skills();
+                                    for skill in &skills {
+                                        if !skill.enabled { continue; }
+                                        let tech = skill.technology.to_lowercase();
+                                        let cat = skill.category.to_lowercase();
+                                        let skill_name = skill.name.to_lowercase();
+
+                                        let matches = source_lower.contains(&tech)
+                                            || source_lower.contains(&skill_name)
+                                            || event_str.contains(&tech)
+                                            || event_str.contains(&cat);
+
+                                        if matches {
+                                            let panel = guidance_panel::GuidancePanel::instance();
+                                            let _ = panel.add_recommendation(
+                                                &format!("Skill: {} applies here", skill.name),
+                                                &format!("Based on your activity, the '{}' skill ({}) may be relevant.", skill.name, skill.technology),
+                                                &format!("Observed: {} — matching skill technology: {}", event.source, skill.technology),
+                                                &skill.technology,
+                                                &skill.category,
+                                                event.confidence as f64 * skill.confidence,
+                                                guidance_panel::CardRiskLevel::Low,
+                                                vec![],
+                                                Some(format!("Open the {} skill for guidance", skill.name)),
+                                            ).await;
+                                        }
+                                    }
                                 }
                             }
                             Err(e) => warn!(error = %e, "Observation poll failed for provider"),

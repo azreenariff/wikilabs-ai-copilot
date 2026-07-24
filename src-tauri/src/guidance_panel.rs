@@ -375,6 +375,43 @@ impl GuidancePanel {
         recs.clone()
     }
 
+    /// Adds a recommendation card generated from observations.
+    pub async fn add_recommendation(
+        &self,
+        title: &str,
+        description: &str,
+        reason: &str,
+        technology: &str,
+        category: &str,
+        confidence: f64,
+        risk_level: CardRiskLevel,
+        reference_docs: Vec<ReferenceDoc>,
+        recommended_next_step: Option<String>,
+    ) -> Result<()> {
+        let mut recs = self.recommendations.lock().await;
+        // Avoid duplicates: skip if same title already exists as Active
+        if recs.iter().any(|r| r.title == title && r.status == RecommendationStatus::Active) {
+            return Ok(());
+        }
+        recs.push(RecommendationCard {
+            id: Uuid::new_v4().to_string(),
+            title: title.to_string(),
+            technology: technology.to_string(),
+            category: category.to_string(),
+            description: description.to_string(),
+            reason: reason.to_string(),
+            confidence,
+            evidence: Vec::new(),
+            recommended_next_step,
+            reference_docs,
+            risk_level: Some(risk_level),
+            status: RecommendationStatus::Active,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        });
+        tracing::info!(title, "Generated recommendation");
+        Ok(())
+    }
+
     // ── Evidence Commands ──────────────────────────────────────
 
     /// Adds evidence to the session.

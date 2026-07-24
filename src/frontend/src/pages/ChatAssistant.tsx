@@ -120,6 +120,7 @@ function ChatAssistant() {
               padding: '12px 16px',
               borderRadius: '12px',
               background: msg.role === 'user' ? 'var(--color-user-msg)' : 'var(--color-assistant-msg)',
+              color: msg.role === 'user' ? 'var(--color-user-text)' : 'var(--color-text-primary)',
               border: '1px solid var(--color-border)',
               fontSize: '14px',
               lineHeight: '1.5',
