@@ -10,9 +10,12 @@ interface RecommendationCard {
 }
 
 interface EvidenceStatus {
-  collected: number;
-  missing: number;
-  total: number;
+  collected_count: number;
+  missing_count: number;
+  collected: any[];
+  missing: any[];
+  confidence: number;
+  is_sufficient: boolean;
 }
 
 interface ObservationStatus {
@@ -213,9 +216,9 @@ function Guidance() {
         <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '14px', margin: '0 0 8px', color: 'var(--color-text-primary)' }}>Evidence Status</h3>
           <div style={{ display: 'flex', gap: '16px', fontSize: '13px' }}>
-            <span style={{ color: 'var(--color-success)' }}>✅ Collected: {evidence.collected}</span>
-            <span style={{ color: 'var(--color-error)' }}>❌ Missing: {evidence.missing}</span>
-            <span style={{ color: 'var(--color-text-secondary)' }}>📊 Total: {evidence.total}</span>
+            <span style={{ color: 'var(--color-success)' }}>✅ Collected: {evidence.collected_count}</span>
+            <span style={{ color: 'var(--color-error)' }}>❌ Missing: {evidence.missing_count}</span>
+            <span style={{ color: 'var(--color-text-secondary)' }}>📊 Confidence: {Math.round(evidence.confidence * 100)}%</span>
           </div>
         </div>
       )}

@@ -780,7 +780,15 @@ async fn handle_guidance_get_feedback_stats() -> (StatusCode, String) {
 }
 
 async fn handle_guidance_set_mode(params: Value) -> (StatusCode, String) {
-    let mode = params.get("mode").and_then(|v| serde_json::from_value::<guidance_panel::CopilotMode>(v.clone()).ok());
+    let mode_str = params.get("mode").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    // Normalize: accept lowercase (from frontend) or capitalized
+    let mode = match mode_str.to_lowercase().as_str() {
+        "teaching" => Some(guidance_panel::CopilotMode::Teaching),
+        "balanced" => Some(guidance_panel::CopilotMode::Balanced),
+        "expert" => Some(guidance_panel::CopilotMode::Expert),
+        "silent" => Some(guidance_panel::CopilotMode::Silent),
+        _ => None,
+    };
     match mode {
         Some(m) => match guidance_panel::GuidancePanel::instance().set_mode(m).await {
             Ok(_) => (StatusCode::OK, api_response(true, None, None)),
