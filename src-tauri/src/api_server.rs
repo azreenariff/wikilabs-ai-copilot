@@ -649,13 +649,13 @@ async fn handle_knowledge_import_pack(params: Value) -> (StatusCode, String) {
 // ── Guidance Engine Handlers ────────────────────────────────────
 
 async fn handle_guidance_get_active_recommendations() -> (StatusCode, String) {
-    let recs = guidance_panel::guidance_get_active_recommendations();
+    let recs = guidance_panel::GuidancePanel::instance().active_recommendations().await;
     let value = serde_json::to_value(recs).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
 
 async fn handle_guidance_get_all_recommendations() -> (StatusCode, String) {
-    let recs = guidance_panel::guidance_get_all_recommendations();
+    let recs = guidance_panel::GuidancePanel::instance().all_recommendations().await;
     let value = serde_json::to_value(recs).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
@@ -681,7 +681,7 @@ async fn handle_guidance_update_recommendation_status(params: Value) -> (StatusC
 }
 
 async fn handle_guidance_get_evidence_status() -> (StatusCode, String) {
-    let status = guidance_panel::guidance_get_evidence_status();
+    let status = guidance_panel::GuidancePanel::instance().get_evidence_status().await;
     let value = serde_json::to_value(status).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
@@ -791,7 +791,7 @@ async fn handle_guidance_set_mode(params: Value) -> (StatusCode, String) {
 }
 
 async fn handle_guidance_get_mode() -> (StatusCode, String) {
-    let mode = guidance_panel::guidance_get_mode();
+    let mode = guidance_panel::GuidancePanel::instance().get_mode().await;
     let value = serde_json::to_value(mode).unwrap_or_default();
     (StatusCode::OK, api_response(true, Some(value), None))
 }
