@@ -20,6 +20,7 @@ futures-util = { version = "0.3", features = ["io"] }
 base64 = "0.22"
 url = "2.5"
 tokio-tungstenite = { version = "0.24", features = ["tokio-rustls"] }
+tungstenite = "0.24"
 regex = "1.10"
 
 [target.'cfg(windows)'.dependencies]

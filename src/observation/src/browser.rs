@@ -136,14 +136,16 @@ impl BrowserProvider {
             use windows::Win32::System::Threading::{
                 OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
             };
+            use windows::Win32::Foundation::LPARAM;
             use windows::Win32::UI::WindowsAndMessaging::{
-                EnumChildWindows, GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
+                EnumChildWindows, FindWindowExW, GetClassNameW,
+                GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
                 GetWindowThreadProcessId,
             };
 
             unsafe {
                 let hwnd: HWND = GetForegroundWindow();
-                if hwnd.0 == 0 { return None; }
+                if hwnd.0.is_null() { return None; }
 
                 let len = GetWindowTextLengthW(hwnd);
                 if len == 0 { return None; }
@@ -250,6 +252,9 @@ fn analyze_visible_text(visible_text: &str, url: Option<&str>) -> Vec<BrowserErr
     errors
 }
 
+#[cfg(target_os = "windows")]
+use windows::Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, TRUE};
+
 // ── Visible text collection ─────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
@@ -258,7 +263,7 @@ fn collect_visible_text(hwnd: HWND) -> String {
 
     let mut children: Vec<HWND> = Vec::new();
     unsafe {
-        let _ = EnumChildWindows(hwnd, Some(child_window_text_callback), &mut children as *mut _ as isize);
+        let _ = EnumChildWindows(hwnd, Some(child_window_text_callback), LPARAM(&mut children as *mut _ as _));
     }
 
     let mut child_texts: Vec<String> = Vec::new();
@@ -278,9 +283,11 @@ fn collect_visible_text(_hwnd: isize) -> String {
 }
 
 #[cfg(target_os = "windows")]
-unsafe extern "system" fn child_window_text_callback(hwnd: HWND, lparam: isize) -> bool {
-    if let Some(vec) = &mut *(lparam as *mut Vec<HWND>) { vec.push(hwnd); }
-    true
+unsafe extern "system" fn child_window_text_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    if lparam.0 == 0 { return FALSE; }
+    let ptr = lparam.0 as *mut Vec<HWND>;
+    unsafe { (*ptr).push(hwnd); }
+    TRUE
 }
 
 #[cfg(target_os = "windows")]
@@ -300,7 +307,7 @@ fn get_window_text_safe(hwnd: HWND) -> Option<String> {
 
 #[cfg(target_os = "windows")]
 mod browser_url_windows {
-    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, TRUE};
     use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, GetWindowTextW};
 
     pub(super) fn extract_browser_url(hwnd: HWND, process_name: &str) -> Option<String> {
@@ -315,7 +322,7 @@ mod browser_url_windows {
     fn extract_chromium_url(hwnd: HWND) -> Option<String> {
         unsafe {
             let mut children: Vec<HWND> = Vec::new();
-            let _ = EnumChildWindows(hwnd, Some(callback), &mut children as *mut _ as isize);
+            let _ = EnumChildWindows(hwnd, Some(callback), LPARAM(&mut children as *mut _ as _));
             if children.is_empty() { return None; }
 
             for child in &children {
@@ -333,10 +340,10 @@ mod browser_url_windows {
                 let child_class = get_class_name(*child);
                 if child_class.contains("Shell Embedding") || child_class.contains("Chrome") {
                     let mut gc: Vec<HWND> = Vec::new();
-                    let _ = EnumChildWindows(*child, Some(callback), &mut gc as *mut _ as isize);
+                    let _ = EnumChildWindows(*child, Some(callback), LPARAM(&mut gc as *mut _ as _));
                     for g in &gc {
                         let gc_cls = get_class_name(*g);
-                        if (gc_cls.contains("Edit") || gc_cls.contains("Chrome_AutocompleteEditView")) {
+                        if gc_cls.contains("Edit") || gc_cls.contains("Chrome_AutocompleteEditView") {
                             if let Some(txt) = get_window_text(*g) {
                                 if txt.starts_with("http://") || txt.starts_with("https://") || txt.contains('.') {
                                     return Some(txt);
@@ -353,7 +360,7 @@ mod browser_url_windows {
     fn extract_firefox_url(hwnd: HWND) -> Option<String> {
         unsafe {
             let mut children: Vec<HWND> = Vec::new();
-            let _ = EnumChildWindows(hwnd, Some(callback), &mut children as *mut _ as isize);
+            let _ = EnumChildWindows(hwnd, Some(callback), LPARAM(&mut children as *mut _ as _));
 
             for child in &children {
                 let cls = get_class_name(*child);
@@ -365,7 +372,7 @@ mod browser_url_windows {
                     }
                 }
                 let mut gc: Vec<HWND> = Vec::new();
-                let _ = EnumChildWindows(*child, Some(callback), &mut gc as *mut _ as isize);
+                let _ = EnumChildWindows(*child, Some(callback), LPARAM(&mut gc as *mut _ as _));
                 for g in &gc {
                     let gc_cls = get_class_name(*g);
                     if gc_cls.contains("urlbar") || gc_cls.contains("Mozilla") {
@@ -401,9 +408,11 @@ mod browser_url_windows {
         }
     }
 
-    unsafe extern "system" fn callback(hwnd: HWND, _lparam: isize) -> bool {
-        if let Some(vec) = &mut *(lparam as *mut Vec<HWND>) { vec.push(hwnd); }
-        true
+    unsafe extern "system" fn callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        if lparam.0 == 0 { return FALSE; }
+        let ptr = lparam.0 as *mut Vec<HWND>;
+        unsafe { (*ptr).push(hwnd); }
+        TRUE
     }
 }
 

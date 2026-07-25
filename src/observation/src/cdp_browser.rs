@@ -143,7 +143,7 @@ impl CdpBrowserScraper {
 
             if Process32FirstW(snapshot, &mut pe).is_ok() {
                 loop {
-                    let name = String::from_utf16_lossy(&pe.szExeFile[..pe.cchExeFile as usize])
+                    let name = String::from_utf16_lossy(&pe.szExeFile)
                         .trim_end_matches('\0')
                         .to_lowercase();
 
@@ -304,7 +304,7 @@ impl CdpConnection {
         let msg = serde_json::to_string(&cmd)
             .map_err(|e| format!("JSON encode error: {e}"))?;
 
-        self.ws.send(tokio_tungstenite::WebSocketMessage::Text(msg.into())).await
+        self.ws.send(tungstenite::Message::Text(msg.into())).await
             .map_err(|e| format!("WebSocket send error: {e}"))?;
 
         loop {
@@ -364,6 +364,7 @@ impl CdpConnection {
         let has_form = outer_html.contains("<form") || outer_html.contains("<FORM");
         let has_table = outer_html.contains("<table") || outer_html.contains("<TABLE");
 
+        let errors_len = errors.len();
         Ok(HtmlContent {
             url: String::new(), // Set by caller
             title: String::new(), // Set by caller
@@ -371,7 +372,7 @@ impl CdpConnection {
             meta_description: Some(meta_desc),
             http_status: None,
             errors,
-            is_error_page: !errors.is_empty(),
+            is_error_page: errors_len > 0,
             has_form,
             has_table,
             has_script_error,

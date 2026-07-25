@@ -22,6 +22,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, error, warn};
 
@@ -39,7 +40,7 @@ pub struct ConsoleOutput {
     /// Warnings detected in the output.
     pub warnings: Vec<String>,
     /// When this capture was made.
-    pub captured_at: Instant,
+    pub captured_at: chrono::DateTime<chrono::Utc>,
 }
 
 /// An error detected in console output.
@@ -59,7 +60,28 @@ pub struct ConsoleSession {
     pub last_command: String,
     pub error_count: usize,
     pub is_active: bool,
+    #[serde(serialize_with = "ser_instant", deserialize_with = "de_instant")]
     pub last_update: Instant,
+}
+
+fn ser_instant<S>(t: &Instant, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    // Serialize as milliseconds since start — a simple i64
+    s.serialize_i64(t.elapsed().as_millis() as i64)
+}
+
+fn de_instant<'de, D>(d: D) -> Result<Instant, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let ms: i64 = serde::Deserialize::deserialize(d)?;
+    if ms >= 0 {
+        Ok(Instant::now() - std::time::Duration::from_millis(ms as u64))
+    } else {
+        Ok(Instant::now())
+    }
 }
 
 /// Console output capturer state.
@@ -152,7 +174,7 @@ impl ConsoleOutputCapture {
 
             if let Ok(_) = Process32FirstW(snapshot, &mut pe) {
                 loop {
-                    let name = String::from_utf16_lossy(&pe.szExeFile[..pe.cchExeFile as usize])
+                    let name = String::from_utf16_lossy(&pe.szExeFile)
                         .trim_end_matches('\0')
                         .to_lowercase();
 
@@ -266,7 +288,7 @@ impl ConsoleOutputCapture {
     /// Enumerate windows to find console output.
     #[cfg(target_os = "windows")]
     fn enum_console_windows(
-        hwnd: HWND,
+        hwnd: windows::Win32::Foundation::HWND,
         target_pid: u32,
         texts: &mut Vec<String>,
     ) {
@@ -308,13 +330,20 @@ impl ConsoleOutputCapture {
 
     /// Enumerate child windows of a console window.
     #[cfg(target_os = "windows")]
-    fn enum_console_children(hwnd: HWND, texts: &mut Vec<String>) {
+    fn enum_console_children(hwnd: windows::Win32::Foundation::HWND, texts: &mut Vec<String>) {
+        use windows::Win32::Foundation::{BOOL, FALSE, HWND as WinHWND, TRUE};
         use windows::Win32::UI::WindowsAndMessaging::{
             EnumChildWindows, GetWindowTextLengthW, GetWindowTextW,
         };
 
-        unsafe extern "system" fn callback(hwnd: windows::Win32::Foundation::HWND, lparam: isize) -> bool {
-            if let Some(vec) = &mut *(lparam as *mut Vec<String>) {
+        unsafe extern "system" fn callback(
+            hwnd: WinHWND,
+            lparam: windows::Win32::Foundation::LPARAM,
+        ) -> BOOL {
+            if lparam.0 == 0 { return FALSE; }
+            let ptr = lparam.0 as *mut Vec<String>;
+            unsafe {
+                let vec = &mut *ptr;
                 let len = GetWindowTextLengthW(hwnd);
                 if len > 0 {
                     let mut buf = vec![0u16; (len + 1) as usize];
@@ -327,12 +356,14 @@ impl ConsoleOutputCapture {
                     }
                 }
             }
-            true
+            TRUE
         }
 
-        let mut child_texts: Vec<String> = Vec::new();
-        let _ = EnumChildWindows(hwnd, Some(callback), &mut child_texts as *mut _ as isize);
-        texts.extend(child_texts);
+        unsafe {
+            let mut child_texts: Vec<String> = Vec::new();
+            let _ = EnumChildWindows(hwnd, Some(callback), windows::Win32::Foundation::LPARAM(&mut child_texts as *mut _ as _));
+            texts.extend(child_texts);
+        }
     }
 
     /// Parse console output to extract the last command and current output.
@@ -365,12 +396,12 @@ impl ConsoleOutputCapture {
                 }
             }
             // Content is everything after the last command
-            let content: Vec<&str> = lines.iter().skip(idx.saturating_sub(1)).take(50).collect();
+            let content: Vec<&str> = lines.iter().skip(idx.saturating_sub(1)).take(50).map(|s| *s).collect();
             return (last_command, content.join("\n"));
         }
 
         // No prompt found — return the last 100 lines as content
-        let content: Vec<&str> = lines.iter().rev().take(100).rev().collect();
+        let content: Vec<&str> = lines.iter().rev().take(100).rev().map(|s| *s).collect();
         (String::new(), content.join("\n"))
     }
 

@@ -126,7 +126,7 @@ impl TerminalProvider {
     pub fn detect_sessions(&self) -> Vec<TerminalSession> {
         #[cfg(target_os = "windows")]
         {
-            Self::detect_windows_sessions()
+            terminal_windows::detect_windows_sessions()
         }
         #[cfg(target_os = "linux")]
         {
@@ -175,9 +175,11 @@ mod terminal_windows {
         OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        EnumChildWindows, EnumWindows, EnumWindowsProc, FindWindowExW,
-        GetClassNameW, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
+        EnumChildWindows, EnumWindows, GetClassNameW,
+        GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
+        WNDENUMPROC,
     };
+    use windows::Win32::Foundation::{BOOL, FALSE, LPARAM, TRUE};
 
     use crate::event::ObservationPayload;
     use crate::provider::ProviderConfig;
@@ -185,81 +187,83 @@ mod terminal_windows {
     use super::{TerminalCommand, TerminalSession, TerminalState, ENGINEERING_COMMANDS};
 
     /// Windows-specific terminal session detection.
-    pub(super) fn detect_windows_sessions() -> Vec<TerminalSession> {
+    pub(crate) fn detect_windows_sessions() -> Vec<TerminalSession> {
         let mut sessions = Vec::new();
 
         // Enumerate all top-level windows
-        let mut hwnds: Vec<HWND> = Vec::new();
-        let _ = EnumWindows(
-            EnumWindowsProc(Some(window_enumeration_callback)),
-            &mut hwnds as *mut _ as isize,
-        );
+        unsafe {
+            let mut hwnds: Vec<HWND> = Vec::new();
+            let _ = EnumWindows(
+                Some(window_enumeration_callback),
+                LPARAM(&mut hwnds as *mut _ as _),
+            );
 
-        for hwnd in &hwnds {
-            if hwnd.0 == 0 {
-                continue;
-            }
-
-            // Get class name
-            let mut class_buf = [0u16; 256];
-            let class_len = GetClassNameW(*hwnd, &mut class_buf);
-            if class_len == 0 {
-                continue;
-            }
-            let class_name = String::from_utf16_lossy(&class_buf[..class_len as usize]);
-
-            // Get window title
-            let title_len = GetWindowTextLengthW(*hwnd);
-            if title_len == 0 {
-                continue;
-            }
-            let mut title_buf = vec![0u16; (title_len + 1) as usize];
-            GetWindowTextW(*hwnd, &mut title_buf);
-            let title = String::from_utf16_lossy(&title_buf[..title_len as usize])
-                .trim()
-                .to_string();
-
-            // Get process name
-            let mut pid: u32 = 0;
-            let _ = GetWindowThreadProcessId(*hwnd, Some(&mut pid));
-            if pid == 0 {
-                continue;
-            }
-
-            let mut process_name = String::new();
-            let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
-            if let Ok(proc_handle) = handle {
-                let mut exe_buf = [0u16; 260];
-                let exe_len = GetModuleFileNameExW(proc_handle, None, &mut exe_buf);
-                let _ = CloseHandle(proc_handle);
-                if exe_len > 0 {
-                    let exe_path = String::from_utf16_lossy(&exe_buf[..exe_len as usize]);
-                    let path = std::path::Path::new(&exe_path);
-                    process_name = path
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("")
-                        .to_lowercase();
+            for hwnd in &hwnds {
+                if hwnd.0.is_null() {
+                    continue;
                 }
-            }
 
-            // Check if this is a terminal process
-            if is_terminal_process(&process_name, &class_name, &title) {
-                // Capture the visible text from the window
-                let command_text = get_terminal_text(hwnd, &process_name, &class_name);
-                let is_ssh = process_name.contains("ssh")
-                    || title.to_lowercase().contains("ssh")
-                    || title.to_lowercase().contains("remote");
+                // Get class name
+                let mut class_buf = [0u16; 256];
+                let class_len = GetClassNameW(*hwnd, &mut class_buf);
+                if class_len == 0 {
+                    continue;
+                }
+                let class_name = String::from_utf16_lossy(&class_buf[..class_len as usize]);
 
-                sessions.push(TerminalSession {
-                    session_id: format!("win-term-{:x}", hwnd.0),
-                    terminal_name: process_name.clone(),
-                    shell_name: detect_shell_name(&process_name, &command_text),
-                    working_dir: None,
-                    is_ssh,
-                    started_at: chrono::Utc::now(),
-                    command_text,
-                });
+                // Get window title
+                let title_len = GetWindowTextLengthW(*hwnd);
+                if title_len == 0 {
+                    continue;
+                }
+                let mut title_buf = vec![0u16; (title_len + 1) as usize];
+                GetWindowTextW(*hwnd, &mut title_buf);
+                let title = String::from_utf16_lossy(&title_buf[..title_len as usize])
+                    .trim()
+                    .to_string();
+
+                // Get process name
+                let mut pid: u32 = 0;
+                let _ = GetWindowThreadProcessId(*hwnd, Some(&mut pid));
+                if pid == 0 {
+                    continue;
+                }
+
+                let mut process_name = String::new();
+                let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
+                if let Ok(proc_handle) = handle {
+                    let mut exe_buf = [0u16; 260];
+                    let exe_len = GetModuleFileNameExW(proc_handle, None, &mut exe_buf);
+                    let _ = CloseHandle(proc_handle);
+                    if exe_len > 0 {
+                        let exe_path = String::from_utf16_lossy(&exe_buf[..exe_len as usize]);
+                        let path = std::path::Path::new(&exe_path);
+                        process_name = path
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("")
+                            .to_lowercase();
+                    }
+                }
+
+                // Check if this is a terminal process
+                if is_terminal_process(&process_name, &class_name, &title) {
+                    // Capture the visible text from the window
+                    let command_text = get_terminal_text(hwnd, &process_name, &class_name);
+                    let is_ssh = process_name.contains("ssh")
+                        || title.to_lowercase().contains("ssh")
+                        || title.to_lowercase().contains("remote");
+
+                    sessions.push(TerminalSession {
+                        session_id: format!("win-term-{:p}", hwnd),
+                        terminal_name: process_name.clone(),
+                        shell_name: detect_shell_name(&process_name, &command_text),
+                        working_dir: None,
+                        is_ssh,
+                        started_at: chrono::Utc::now(),
+                        command_text,
+                    });
+                }
             }
         }
 
@@ -318,56 +322,13 @@ mod terminal_windows {
     /// Enhanced to capture more content from PuTTY/MobaXterm, not just the last line.
     /// On Windows, uses EnumChildWindows to gather text from scrollable content areas.
     fn get_terminal_text(hwnd: &HWND, process_name: &str, class_name: &str) -> String {
-        // For PuTTY and similar, get the direct window text
-        if class_name.contains("PuTTY") || class_name.contains("Moba") {
-            let len = GetWindowTextLengthW(*hwnd);
-            if len == 0 {
-                return String::new();
-            }
-            let mut buf = vec![0u16; (len + 1) as usize];
-            let text_len = GetWindowTextW(*hwnd, &mut buf);
-            if text_len > 0 {
-                return String::from_utf16_lossy(&buf[..text_len as usize])
-                    .lines()
-                    .last()
-                    .unwrap_or("")
-                    .trim()
-                    .to_string();
-            }
-        }
-
-        // For Windows Terminal (CascadiaConsole/CascadiaTerminal), try child windows
-        if class_name.contains("Cascadia") || process_name.contains("terminal") {
-            let mut child_hwnds: Vec<HWND> = Vec::new();
-            let _ = EnumChildWindows(
-                *hwnd,
-                EnumWindowsProc(Some(window_enumeration_callback)),
-                &mut child_hwnds as *mut _ as isize,
-            );
-
-            // Check each child for text content
-            for child in &child_hwnds {
-                let child_class = GetClassNameW(*child);
-                if child_class.contains("Edit") || child_class.contains("RichEdit") {
-                    let len = GetWindowTextLengthW(*child);
-                    if len > 0 {
-                        let mut buf = vec![0u16; (len + 1) as usize];
-                        let text_len = GetWindowTextW(*child, &mut buf);
-                        if text_len > 0 {
-                            return String::from_utf16_lossy(&buf[..text_len as usize])
-                                .lines()
-                                .last()
-                                .unwrap_or("")
-                                .trim()
-                                .to_string();
-                        }
-                    }
+        let result: String = unsafe {
+            // For PuTTY and similar, get the direct window text
+            if class_name.contains("PuTTY") || class_name.contains("Moba") {
+                let len = GetWindowTextLengthW(*hwnd);
+                if len == 0 {
+                    return String::new();
                 }
-            }
-
-            // Fallback: get main window text
-            let len = GetWindowTextLengthW(*hwnd);
-            if len > 0 {
                 let mut buf = vec![0u16; (len + 1) as usize];
                 let text_len = GetWindowTextW(*hwnd, &mut buf);
                 if text_len > 0 {
@@ -379,35 +340,87 @@ mod terminal_windows {
                         .to_string();
                 }
             }
-        }
 
-        // Default fallback: get main window text
-        let len = GetWindowTextLengthW(*hwnd);
-        if len == 0 {
-            return String::new();
-        }
-        let mut buf = vec![0u16; (len + 1) as usize];
-        let text_len = GetWindowTextW(*hwnd, &mut buf);
-        if text_len == 0 {
-            return String::new();
-        }
-        String::from_utf16_lossy(&buf[..text_len as usize])
-            .lines()
-            .last()
-            .unwrap_or("")
-            .trim()
-            .to_string()
+            // For Windows Terminal (CascadiaConsole/CascadiaTerminal), try child windows
+            if class_name.contains("Cascadia") || process_name.contains("terminal") {
+                let mut child_hwnds: Vec<HWND> = Vec::new();
+                let _ = EnumChildWindows(
+                    *hwnd,
+                    Some(window_enumeration_callback),
+                    LPARAM(&mut child_hwnds as *mut _ as _),
+                );
+
+                // Check each child for text content
+                for child in &child_hwnds {
+                    let mut child_class_buf = [0u16; 256];
+                    let child_class_len = GetClassNameW(*child, &mut child_class_buf);
+                    let child_class = if child_class_len > 0 {
+                        String::from_utf16_lossy(&child_class_buf[..child_class_len as usize])
+                    } else {
+                        String::new()
+                    };
+                    if child_class.contains("Edit") || child_class.contains("RichEdit") {
+                        let len = GetWindowTextLengthW(*child);
+                        if len > 0 {
+                            let mut buf = vec![0u16; (len + 1) as usize];
+                            let text_len = GetWindowTextW(*child, &mut buf);
+                            if text_len > 0 {
+                                return String::from_utf16_lossy(&buf[..text_len as usize])
+                                    .lines()
+                                    .last()
+                                    .unwrap_or("")
+                                    .trim()
+                                    .to_string();
+                            }
+                        }
+                    }
+                }
+
+                // Fallback: get main window text
+                let len = GetWindowTextLengthW(*hwnd);
+                if len > 0 {
+                    let mut buf = vec![0u16; (len + 1) as usize];
+                    let text_len = GetWindowTextW(*hwnd, &mut buf);
+                    if text_len > 0 {
+                        return String::from_utf16_lossy(&buf[..text_len as usize])
+                            .lines()
+                            .last()
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+                    }
+                }
+            }
+
+            // Default fallback: get main window text
+            let len = GetWindowTextLengthW(*hwnd);
+            if len == 0 {
+                return String::new();
+            }
+            let mut buf = vec![0u16; (len + 1) as usize];
+            let text_len = GetWindowTextW(*hwnd, &mut buf);
+            if text_len == 0 {
+                return String::new();
+            }
+            String::from_utf16_lossy(&buf[..text_len as usize])
+                .lines()
+                .last()
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        };
+        result
     }
 
     /// Windows window enumeration callback.
-    unsafe extern "system" fn window_enumeration_callback(
-        hwnd: HWND,
-        lparam: isize,
-    ) -> bool {
-        if let Some(vec) = &mut *(lparam as *mut Vec<HWND>) {
-            vec.push(hwnd);
-        }
-        true
+    pub(super) unsafe extern "system" fn window_enumeration_callback(
+        hwnd: windows::Win32::Foundation::HWND,
+        lparam: windows::Win32::Foundation::LPARAM,
+    ) -> BOOL {
+        if lparam.0 == 0 { return FALSE; }
+        let ptr = lparam.0 as *mut Vec<HWND>;
+        unsafe { (*ptr).push(hwnd as _); }
+        TRUE
     }
 }
 
