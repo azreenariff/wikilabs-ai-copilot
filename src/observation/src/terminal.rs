@@ -31,6 +31,8 @@ pub struct TerminalSession {
     pub is_ssh: bool,
     /// Session start time.
     pub started_at: chrono::DateTime<chrono::Utc>,
+    /// Command text captured from /proc/<pid>/cmdline or ~/.bash_history.
+    pub command_text: String,
 }
 
 /// A command that was observed in a terminal.
@@ -85,9 +87,7 @@ impl TerminalProvider {
     fn detect_sessions(&self) -> Vec<TerminalSession> {
         #[cfg(target_os = "linux")]
         {
-            // Linux: enumerate running processes matching terminal/shell patterns
-            // This is a stub — real implementation would parse /proc or use ptrace
-            Vec::new()
+            Self::detect_sessions_linux()
         }
 
         #[cfg(target_os = "windows")]
@@ -125,6 +125,7 @@ impl TerminalProvider {
                             working_dir: None,
                             is_ssh: false,
                             started_at: chrono::Utc::now(),
+                            command_text: String::new(),
                         });
                     }
 
@@ -144,6 +145,216 @@ impl TerminalProvider {
         #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
         {
             Vec::new()
+        }
+    }
+
+    /// Linux-specific terminal session detection.
+    /// Uses /proc to enumerate terminal processes and reads last commands from /proc/<pid>/fd/0 (stdin)
+    /// via `ps` for command text.
+    fn detect_sessions_linux() -> Vec<TerminalSession> {
+        // Step 1: Find all terminal/shell processes using ps
+        let ps_output = match std::process::Command::new("ps")
+            .args(["-eo", "pid,ppid,comm,args"])
+            .output()
+        {
+            Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
+            Err(_) => return Vec::new(),
+        };
+
+        // Terminal emulator patterns
+        let terminal_emulators = [
+            "bash", "zsh", "fish", "sh", "dash", "ksh", "csh", "tmux", "screen",
+            "gnome-terminal", "konsole", "xfce4-terminal", "alacritty", "kitty",
+            "wezterm", "foot", "st", "rxvt", "lxterminal", "roxterm",
+            "xterm", "urxvt", "tilix", "mate-terminal", "terminator",
+        ];
+
+        let mut sessions = Vec::new();
+
+        for line in ps_output.lines().skip(1) {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 3 {
+                continue;
+            }
+
+            let comm = parts[2].to_lowercase();
+            let is_terminal_proc = terminal_emulators.iter()
+                .any(|t| comm == *t || comm.ends_with(&format!("_terminal_{t}")));
+
+            // Also check if the process is a shell or is a known terminal emulator
+            let is_shell = matches!(comm.as_str(),
+                "bash" | "zsh" | "fish" | "sh" | "dash" | "ksh" | "csh" | "tcsh");
+
+            // Check if parent is a terminal emulator
+            if let Some(ppid) = parts.get(1) {
+                // Check if any terminal emulator has this shell as a child
+                if is_shell {
+                    // Check if this process has a terminal emulator ancestor
+                    let has_terminal_parent = ps_output.lines().any(|parent_line| {
+                        let parent_parts: Vec<&str> = parent_line.split_whitespace().collect();
+                        if parent_parts.len() >= 3 && parent_parts[0] == *ppid {
+                            let parent_comm = parent_parts[2].to_lowercase();
+                            terminal_emulators.iter().any(|t| parent_comm.contains(t))
+                        } else {
+                            false
+                        }
+                    });
+
+                    if !has_terminal_parent && !comm.starts_with("grep") {
+                        // This is a shell not owned by a terminal emulator we detect
+                        // It's still a terminal session worth observing
+                    }
+                }
+            }
+
+            if is_terminal_proc || is_shell {
+                let pid = parts[0].parse::<i32>().unwrap_or(0);
+                if pid <= 0 {
+                    continue;
+                }
+
+                // Skip our own process and system processes
+                if pid < 2 {
+                    continue;
+                }
+
+                // Get session info from /proc
+                let shell_name = comm.to_string();
+
+                // Get working directory from /proc/<pid>/cwd
+                let working_dir = std::fs::read_link(format!("/proc/{}/cwd", pid))
+                    .ok()
+                    .and_then(|p| p.to_str().map(String::from));
+
+                // Check if SSH session
+                let args = parts.get(3).unwrap_or(&"");
+                let is_ssh = args.contains("ssh") || args.contains("scp") || args.contains("sftp");
+
+                // Get command text from /proc/<pid>/cmdline
+                let command_text = Self::read_cmdline(pid);
+
+                // Get session ID
+                let session_id = format!("linux-term-{}-{}", pid, comm);
+
+                sessions.push(TerminalSession {
+                    session_id,
+                    terminal_name: comm,
+                    shell_name,
+                    working_dir,
+                    is_ssh,
+                    started_at: chrono::Utc::now(),
+                    command_text,
+                });
+            }
+        }
+
+        // Deduplicate by session_id
+        let mut seen = std::collections::HashSet::new();
+        sessions.retain(|s| seen.insert(s.session_id.clone()));
+
+        sessions
+    }
+
+    /// Read command text from /proc/<pid>/cmdline
+    fn read_cmdline(pid: i32) -> String {
+        let path = format!("/proc/{}/cmdline", pid);
+        match std::fs::read(&path) {
+            Ok(bytes) => {
+                if bytes.is_empty() {
+                    return String::new();
+                }
+                // cmdline is null-separated
+                String::from_utf8_lossy(&bytes)
+                    .split('\0')
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            }
+            Err(_) => String::new(),
+        }
+    }
+
+    /// Detect recent commands typed in an active shell session.
+    /// Uses multiple strategies:
+    /// 1. Check if we can read from the terminal's PTY
+    /// 2. Parse ps output for recent command history
+    /// 3. Read from /proc/<pid>/environ for working directory context
+    fn detect_commands_for_session(session: &TerminalSession) -> Vec<String> {
+        let mut commands = Vec::new();
+
+        // Strategy 1: Try to get last command from bash history if we have access
+        if let Some(ref _workdir) = session.working_dir {
+            // Check if ~/.bash_history or ~/.zsh_history is readable
+            let home = std::env::var("HOME").unwrap_or_default();
+            let history_file = format!("{}/.{}", home, if session.shell_name.contains("zsh") { "zsh" } else { "bash" });
+            match std::fs::read_to_string(&history_file) {
+                Ok(history) => {
+                    let last_commands: Vec<String> = history.lines()
+                        .filter(|line| {
+                            let l = line.trim();
+                            // Skip empty lines, comments, and very short lines
+                            !l.is_empty() && !l.starts_with('#') && l.len() > 3
+                        })
+                        .take(5)
+                        .map(String::from)
+                        .collect();
+                    if !last_commands.is_empty() {
+                        commands.extend(last_commands);
+                    }
+                }
+                Err(_) => {}
+            }
+        }
+
+        // Strategy 2: Use ps to get the current command being run
+        let ps_output = match std::process::Command::new("ps")
+            .args(["-o", "pid,comm,args"])
+            .output()
+        {
+            Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
+            Err(_) => return commands,
+        };
+
+        for line in ps_output.lines().skip(1) {
+            if let Some(pid_part) = line.split_whitespace().next() {
+                if let Ok(pid) = pid_part.parse::<i32>() {
+                    if pid == session.session_id.parse::<i32>().unwrap_or(0) {
+                        // Found the process - get the full command
+                        if let Some(args) = line.split_whitespace().nth(2) {
+                            commands.push(args.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Strategy 3: Check /proc for recent I/O (which files were touched)
+        if let Some(pid) = session.session_id.strip_prefix("linux-term-")
+            .and_then(|p| p.split('-').next())
+            .and_then(|p| p.parse::<i32>().ok()) {
+            Self::detect_recent_files(pid, &mut commands);
+        }
+
+        commands
+    }
+
+    /// Detect recently accessed files from /proc/<pid>/fd and /proc/<pid>/io
+    fn detect_recent_files(pid: i32, commands: &mut Vec<String>) {
+        // Check /proc/<pid>/fd for open file descriptors
+        let fd_dir = format!("/proc/{}/fd", pid);
+        if let Ok(fds) = std::fs::read_dir(&fd_dir) {
+            for fd in fds.take(10) {
+                if let Ok(fd) = fd {
+                    if let Ok(target) = std::fs::read_link(fd.path()) {
+                        if let Some(path_str) = target.to_str() {
+                            // Only include files, not pipes/sockets
+                            if path_str.starts_with("/") {
+                                commands.push(format!("opened:{}", path_str));
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -264,6 +475,16 @@ impl ObservationProvider for TerminalProvider {
             // Check for commands in each session
             for session in &sessions {
                 let is_eng = Self::is_engineering_session(session);
+                // Detect recent commands for richer observation data
+                let recent_cmds = Self::detect_commands_for_session(session);
+                // Combine command_text from cmdline with detected recent commands
+                let enriched_command_text = if !session.command_text.is_empty() {
+                    format!("{} | last_cmds: {}", session.command_text, recent_cmds.join("; "))
+                } else if !recent_cmds.is_empty() {
+                    recent_cmds.join("; ")
+                } else {
+                    session.command_text.clone()
+                };
                 let payload = serde_json::json!({
                     "session_id": session.session_id,
                     "terminal": session.terminal_name,
@@ -271,6 +492,8 @@ impl ObservationProvider for TerminalProvider {
                     "working_dir": session.working_dir,
                     "is_ssh": session.is_ssh,
                     "is_engineering": is_eng,
+                    "command_text": enriched_command_text,
+                    "recent_commands": recent_cmds,
                 });
 
                 events.push(ObservationEvent::new(

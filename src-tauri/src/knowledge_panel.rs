@@ -425,6 +425,153 @@ impl KnowledgePanel {
     pub async fn get_metadata(&self, name: &str) -> Option<PackInfo> {
         self.get_pack(name).await
     }
+
+    /// Keyword-matches knowledge packs against observation text.
+    /// Returns enabled packs whose tags, name, description, or categories
+    /// contain keywords found in the observations (case-insensitive, minimum 3 chars).
+    pub async fn match_observations(&self, observations_text: &str) -> Vec<PackInfo> {
+        let packs = self.packs.lock().await;
+        let text_lower = observations_text.to_lowercase();
+
+        // Extract keywords from observations (words >= 3 chars)
+        let keywords: Vec<&str> = text_lower
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|w| w.len() >= 3)
+            .collect();
+
+        let mut matched: Vec<PackInfo> = Vec::new();
+
+        for pack in packs.iter() {
+            if !pack.enabled {
+                continue;
+            }
+
+            // Build searchable text from pack metadata
+            let searchable = format!(
+                "{} {} {} {}",
+                pack.name.to_lowercase(),
+                pack.description.to_lowercase(),
+                pack.tags.join(" ").to_lowercase(),
+                pack.categories.join(" ").to_lowercase()
+            );
+
+            // Check if any keyword matches any searchable field
+            let mut score = 0i32;
+
+            // Tag matches are strongest
+            for tag in &pack.tags {
+                if let Some(pos) = searchable.to_lowercase().find(&tag.to_lowercase()) {
+                    // Check it's not just a substring of a single word
+                    let word_start = searchable[..pos]
+                        .rfind(|c: char| !c.is_alphanumeric())
+                        .unwrap_or(0);
+                    let word_end = pos + tag.len();
+                    let word_end = if word_end >= searchable.len() {
+                        searchable.len()
+                    } else {
+                        searchable[word_end..]
+                            .find(|c: char| !c.is_alphanumeric())
+                            .map(|e| word_end + e)
+                            .unwrap_or(searchable.len())
+                    };
+                    let word = &searchable[word_start..word_end];
+                    if word.to_lowercase() == tag.to_lowercase() {
+                        score += 10;
+                    }
+                }
+            }
+
+            // Name matches
+            for keyword in &keywords {
+                if pack.name.to_lowercase().contains(keyword) {
+                    score += 5;
+                }
+            }
+
+            // Description/category matches
+            for keyword in &keywords {
+                if searchable.contains(keyword) && score < 10 {
+                    score += 2;
+                }
+            }
+
+            // Only include packs with meaningful matches
+            if score >= 5 {
+                matched.push(pack.clone());
+            }
+        }
+
+        // Sort by score descending (highest match first)
+        matched.sort_by(|a, b| {
+            let score_a = Self::match_score(a, &keywords);
+            let score_b = Self::match_score(b, &keywords);
+            score_b.cmp(&score_a)
+        });
+
+        // Cap at 5 most relevant packs
+        matched.truncate(5);
+        matched
+    }
+
+    /// Helper: compute match score for a pack against keywords.
+    fn match_score(pack: &PackInfo, keywords: &[&str]) -> i32 {
+        let searchable = format!(
+            "{} {} {} {}",
+            pack.name.to_lowercase(),
+            pack.description.to_lowercase(),
+            pack.tags.join(" ").to_lowercase(),
+            pack.categories.join(" ").to_lowercase()
+        );
+
+        let mut score = 0i32;
+
+        // Tag matches are strongest
+        for tag in &pack.tags {
+            if searchable.contains(&tag.to_lowercase()) {
+                score += 10;
+            }
+        }
+
+        // Name matches
+        for keyword in keywords {
+            if pack.name.to_lowercase().contains(keyword) {
+                score += 5;
+            }
+        }
+
+        // Description/category matches
+        for keyword in keywords {
+            if searchable.contains(keyword) && score < 10 {
+                score += 2;
+            }
+        }
+
+        score
+    }
+
+    /// Formats matched knowledge packs for injection into the AI prompt.
+    /// Returns a short summary string like:
+    /// "You have expertise in: Kubernetes, Docker (from kubernetes-knowledge pack).\n"
+    pub async fn format_for_prompt(&self, matched_packs: &[PackInfo]) -> String {
+        if matched_packs.is_empty() {
+            return String::new();
+        }
+
+        let mut lines = vec!["[Knowledge Packs Active]".to_string()];
+
+        for pack in matched_packs {
+            let context = if !pack.description.is_empty() && pack.description != "No manifest loaded" {
+                &pack.description
+            } else {
+                &pack.name
+            };
+
+            lines.push(format!("- {} — {}", pack.name, context));
+        }
+
+        lines.push("You can draw on this expertise to provide specific guidance.".to_string());
+        lines.join("\n")
+    }
 }
 
 /// Tauri IPC command to list all packs.

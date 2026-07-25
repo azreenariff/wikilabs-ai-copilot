@@ -369,6 +369,26 @@ impl SkillKnowledgeBase {
                 }
             }
 
+            // PHASE 3 FIX: Also match against the skill's own keywords (tech_features, domain)
+            // so we don't rely solely on detection_rules.yaml patterns
+            if matched_patterns.is_empty() {
+                for feature in &skill.tech_features {
+                    // Extract the feature name (before the colon if present)
+                    let feature_name: String = feature.chars().take_while(|c| *c != ':').collect();
+                    if !feature_name.is_empty() && observations.contains(&feature_name) {
+                        matched_patterns.push(DetectionRule {
+                            id: format!("auto-{}", skill.id),
+                            name: format!("Auto-matched to {}", feature_name),
+                            pattern: feature_name.clone(),
+                            confidence: 0.7,
+                            technology_domain: skill.domain.clone(),
+                            detection_type: "Auto".to_string(),
+                        });
+                        break; // One match per skill is enough
+                    }
+                }
+            }
+
             if !matched_patterns.is_empty() {
                 matches.push(SkillMatch {
                     skill: skill.clone(),

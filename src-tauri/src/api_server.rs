@@ -1098,26 +1098,39 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                             let skill_context = skill_kb_guard.format_for_prompt(&matched_skills);
                             drop(skill_kb_guard);
 
+                            // Match observations against knowledge packs and inject relevant expertise
+                            let knowledge_context = {
+                                let knowledge_panel = KnowledgePanel::instance();
+                                let matched_packs = knowledge_panel.match_observations(observations_text).await;
+                                knowledge_panel.format_for_prompt(&matched_packs).await
+                            };
+
                             let system_prompt = format!(
-                                "You are Wiki Labs AI Copilot — an AI that watches what a developer is doing on their computer and gives helpful, proactive guidance.\n\n\
-You can see what applications they switch to, what they type in terminals, what browser tabs they visit, what they copy, and what files they open.\n\n\
-Your job: based on what you observe, give ONE specific, actionable suggestion. Be a helpful teammate who notices what they're doing and says the thing they might not have thought of yet.\n\n\
-GOOD examples:\n\
-- \"I see you're looking at Nagios. You should also check if MySQL is running — run `systemctl status mysql` to verify.\"\n\
-- \"Looks like you're editing the Nginx config. Don't forget to test it with `nginx -t` before reloading.\"\n\
-- \"You're troubleshooting a Docker container. Try `docker logs <container> --tail 50` to see recent errors.\"\n\
-- \"You opened a Python file — need to run it? Try `python3 script.py` to test.\"\n\n\
-BAD examples (too vague):\n\
-- \"You appear to be working on something.\"\n\
-- \"I observed activity in your browser.\"\n\n{}\n\n\
-Recent observations from the user's computer:\n{}\n\n\
-Based on these observations, give ONE short piece of guidance (1-3 sentences). \
-Be specific and helpful. Suggest a command, a tool, or a next step. \
-Use a natural, conversational tone.\
-If you truly can't tell what they're doing, ask a brief question like \"Working on something? Need a hand?\"",
-                                skill_context,
-                                events_summary
-                            );
+                                                                                        "You are Wiki Labs AI Copilot — an AI that watches what a technical engineer is doing on their computer and gives helpful, proactive guidance.\n\n\
+                                                        You can see what applications they switch to, what commands they type in terminals, what browser tabs they visit, what they copy, and what files they open.\n\n\
+                                                        Your job: based on what you observe, give ONE specific, actionable suggestion. Be a helpful teammate who notices what they're doing and says the thing they might not have thought of yet.\n\n\
+                                                        IMPORTANT: Only suggest things you can actually infer from the user's activity. If you have no real insight, stay quiet or ask a brief question like \"Working on something? Need a hand?\" Don't generate generic advice when you don't have real context.\n\n\
+                                                        GOOD examples:\n\
+                                                        - \"I see you're looking at Nagios. You should also check if MySQL is running — run `systemctl status mysql` to verify.\"\n\
+                                                        - \"Looks like you're editing the Nginx config. Don't forget to test it with `nginx -t` before reloading.\"\n\
+                                                        - \"You're troubleshooting a Docker container. Try `docker logs <container> --tail 50` to see recent errors.\"\n\
+                                                        - \"You opened a Python file — need to run it? Try `python3 script.py` to test.\"\n\
+                                                        - \"I see you're in a `k8s-deploy` directory with `kubectl get pods` in your history — your pods might be CrashLooping, try `kubectl describe pod` for details.\"\n\n\
+                                                        BAD examples (too vague or repetitive):\n\
+                                                        - \"You appear to be working on something.\"\n\
+                                                        - \"I observed activity in your browser.\"\n\
+                                                        - \"You're running bash commands repeatedly.\" (this is not helpful — it's just describing what they're doing)\n\
+                                                        - \"I see you're busy with the terminal.\" (also just restating the obvious)\n\n{}\\n{}\\n\\n\
+                                                        Recent observations from the user's computer:\\n{}\\n\\n\
+                                                        Based on these observations, give ONE short piece of guidance (1-3 sentences). \\\
+                                                        Be specific and helpful. Suggest a command, a tool, or a next step. \\\
+                                                        Use a natural, conversational tone — like you're sitting next to them as a senior DevOps engineer.\\\
+                                                        If you truly can't tell what they're doing from the data, ask a brief question or stay quiet.\\\
+                                                        Never generate the same type of suggestion twice in a row — if they're still in bash, look for something different to mention.",
+                                                                                        skill_context,
+                                                                                        knowledge_context,
+                                                                                        events_summary
+                                                                                    );
                             let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
                                 &provider_name, &endpoint, &api_key, &model, max_tokens, 128000
                             );
@@ -1135,20 +1148,30 @@ If you truly can't tell what they're doing, ask a brief question like \"Working 
                             match provider.chat(ai_request).await {
                                 Ok(response) => {
                                     let panel = guidance_panel::GuidancePanel::instance();
-                                    // Remove the previous AI recommendation so each 30s tick replaces it
+                                    let suggestion_content = &response.message.content;
+
+                                    // Phase 2: Check cooldown/dedup before adding
+                                    if panel.should_skip_suggestion(suggestion_content).await {
+                                        // Same topic recently shown — skip to avoid repetition
+                                        tracing::debug!("Skipping repetitive AI suggestion");
+                                        continue;
+                                    }
+
+                                    // Remove the previous AI recommendation so each tick replaces it
                                     let all = panel.all_recommendations().await;
                                     for prev in &all {
                                         if prev.title.starts_with("🧭") {
                                             let _ = panel.dismiss_recommendation(&prev.id).await;
                                         }
                                     }
+
                                     let snapshot = last_events.first().map(|s| {
                                         if s.len() > 60 { format!("{}…", &s[..60]) } else { s.clone() }
                                     }).unwrap_or_default();
                                     let title = format!("🧭 {}", snapshot);
                                     let _ = panel.add_recommendation(
                                         &title,
-                                        &response.message.content,
+                                        suggestion_content,
                                         "AI analyzed recent observations",
                                         "AI Copilot",
                                         "General",
@@ -1157,6 +1180,9 @@ If you truly can't tell what they're doing, ask a brief question like \"Working 
                                         vec![],
                                         None,
                                     ).await;
+
+                                    // Record this suggestion for dedup/cooldown tracking
+                                    panel.record_suggestion(suggestion_content).await;
                                 }
                                 Err(e) => {
                                     warn!(error = %e, "AI recommendation failed, using rule-based fallback");

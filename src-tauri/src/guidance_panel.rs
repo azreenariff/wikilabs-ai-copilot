@@ -13,6 +13,7 @@
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -313,6 +314,12 @@ pub struct GuidancePanel {
     current_mode: Mutex<CopilotMode>,
     /// Suppressed recommendation IDs.
     suppressed: Mutex<Vec<String>>,
+    /// Dedup: track last AI suggestion content (truncated hash) to skip repeats.
+    last_ai_suggestion_hash: Mutex<String>,
+    /// Dedup: track when last AI suggestion was added to enforce cooldown.
+    last_ai_suggestion_time: Mutex<Option<Instant>>,
+    /// Config: minimum seconds between non-dismissed AI suggestions.
+    min_suggestion_interval_secs: u64,
 }
 
 impl GuidancePanel {
@@ -333,6 +340,9 @@ impl GuidancePanel {
             feedback: Mutex::new(Vec::new()),
             current_mode: Mutex::new(CopilotMode::Balanced),
             suppressed: Mutex::new(Vec::new()),
+            last_ai_suggestion_hash: Mutex::new(String::new()),
+            last_ai_suggestion_time: Mutex::new(None),
+            min_suggestion_interval_secs: 60,
         }
     }
 
@@ -340,6 +350,41 @@ impl GuidancePanel {
     pub fn instance() -> &'static Self {
         static INSTANCE: Lazy<GuidancePanel> = Lazy::new(GuidancePanel::new);
         &INSTANCE
+    }
+
+    /// Check if we should skip this AI suggestion due to dedup/cooldown.
+    /// Returns true if the suggestion should be skipped.
+    pub async fn should_skip_suggestion(&self, new_content: &str) -> bool {
+        // Check cooldown: has it been less than min_suggestion_interval_secs since last suggestion?
+        {
+            let last_time = self.last_ai_suggestion_time.lock().await;
+            if let Some(last_instant) = *last_time {
+                if last_instant.elapsed() < std::time::Duration::from_secs(self.min_suggestion_interval_secs) {
+                    tracing::debug!("Skipping suggestion: cooldown active ({}s elapsed)", last_instant.elapsed().as_secs());
+                    return true;
+                }
+            }
+        }
+
+        // Check dedup: is the content too similar to the last suggestion?
+        let last_hash = self.last_ai_suggestion_hash.lock().await;
+        if !last_hash.is_empty() {
+            // Simple content similarity: check if the new content shares the same first 20 chars (rough topic)
+            let new_prefix: String = new_content.chars().take(20).collect();
+            let last_prefix: String = last_hash.chars().take(20).collect();
+            if new_prefix == last_prefix {
+                tracing::debug!("Skipping suggestion: content too similar (same topic: {})", new_prefix);
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Record an AI suggestion as successfully added (for dedup/cooldown tracking).
+    pub async fn record_suggestion(&self, content: &str) {
+        *self.last_ai_suggestion_hash.lock().await = content.to_string();
+        *self.last_ai_suggestion_time.lock().await = Some(Instant::now());
     }
 
     // ── Recommendation Card Commands ───────────────────────────
