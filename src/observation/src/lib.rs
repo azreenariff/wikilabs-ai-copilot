@@ -12,23 +12,41 @@
 //! - **Privacy Controls** (`privacy`): Master enable/disable, per-provider toggle, pause/resume
 //! - **Active Window Provider** (`app_monitor`): Foreground app/window detection
 //! - **Terminal Provider** (`terminal`): Shell command observation
-//! - **Browser Provider** (`browser`): Browser context detection
+//! - **Browser Provider** (`browser`): Browser context detection (URL extraction via Win32)
 //! - **Clipboard Provider** (`clipboard`): Clipboard content observation
 //! - **File Provider** (`file_observer`): File open/edit observation
 //! - **Screen Capture Provider** (`screen_capture`): Periodic screenshot capture
-//! - **Observation Engine** (`engine`): Orchestrates all providers
+//! - **Shell Integration** (`shell`): Shell command capture via polling
+//! - **Semantic Analyzer** (`semantic_analyzer`): Understands what commands mean
+//! - **Session Tracker** (`session_tracker`): Tracks troubleshooting narratives
+//! - **Cross-Context Correlation** (`correlation`): Links browser+terminal+app context
+//! - **AI Guidance** (`guidance`): Proactive suggestions based on correlated context
+//! - **CDP Browser Scraper** (`cdp_browser`): Chrome DevTools Protocol WebSocket scraping for real HTML analysis
+//! - **Console Output Capture** (`console_output`): Windows Console API for real terminal I/O capture
+//! - **Observation Engine** (`engine`): Orchestrates all providers and consumers
 
 pub mod app_monitor;
 pub mod browser;
 pub mod clipboard;
+pub mod correlation;
 pub mod engine;
 pub mod event;
 pub mod event_bus;
 pub mod file_observer;
+pub mod guidance;
 pub mod privacy;
 pub mod provider;
 pub mod screen_capture;
+pub mod error_detector;
+pub mod semantic_analyzer;
+pub mod session_tracker;
+pub mod shell;
 pub mod terminal;
+pub mod ai_guidance;
+#[cfg(windows)]
+pub mod cdp_browser;
+#[cfg(windows)]
+pub mod console_output;
 
 #[cfg(test)]
 mod tests;
@@ -40,3 +58,10 @@ pub use privacy::{ObservationMode, PrivacyConfig, PrivacyManager};
 pub use provider::{
     ObservationProvider, ProviderConfig, ProviderRegistry, ProviderState, ProviderStatus,
 };
+
+// Re-export new public types
+pub use correlation::{CorrelationEngine, CorrelationSet, CorrelationType};
+pub use guidance::{GuidanceEngine, GuidanceSuggestion, GuidanceSeverity, GuidanceCategory};
+pub use semantic_analyzer::{SemanticAnalyzer, CommandIntent, IntentCategory, AnalysisResult};
+pub use session_tracker::{SessionTracker, SessionState, Suggestion};
+pub use shell::{ShellObserver, ShellStatus, ShellCommand};

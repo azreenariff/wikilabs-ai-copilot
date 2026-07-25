@@ -1,31 +1,16 @@
 {
-  "package": "wikilabs-guidance",
-  "phase": 10,
-  "status": "complete",
-  "actions": [
-    "Created Cargo.toml for src/guidance",
-    "Created src/guidance/src/lib.rs with module declarations",
-    "Added src/guidance to workspace members in root Cargo.toml",
-    "Fixed context_providers.rs: removed unused uuid import, fixed mock_retrieve &mut to &self",
-    "Fixed decision_engine.rs: removed non-existent imports (safety_framework, modes), added GuidanceMode enum, removed duplicate DetailLevel, derived Copy for enums, removed unused CommandRiskLevel import",
-    "Fixed evidence_framework.rs: changed .collected.is_empty() to .collected().is_empty() (3 occurrences), .pending to .pending(), .missing to .missing()",
-    "Fixed recommendation_framework.rs: added Display impl for RiskLevel, fixed test borrow issues by cloning returned references",
-    "Fixed timeline.rs: added & borrow to pattern matches for move types",
-    "Ran cargo fix on crate (auto-formatting fixes applied)",
-    "Fixed test_context_snapshot_summary: changed val.key to val.label in summary format string",
-    "Fixed test_expert_mode_minimal / test_low_confidence_minimal_detail: changed min_detail_level default from Standard to Minimal",
-    "Fixed test_silent_mode_no_guidance: added should_interrupt = false in Silent mode case",
-    "Fixed test_evidence_not_sufficient: added missing_count > 0 check in is_sufficient()",
-    "Fixed safety_framework.rs: Self::PotentiallyDisruptive → CommandRiskLevel::PotentiallyDisruptive",
-    "Fixed safety_framework.rs: requires_confirmation() → false (all risk levels use warnings, no explicit confirmation)",
-    "Fixed regex backreferences in wikilabs-knowledge: xml.rs (removed </\\1> backreference, added closing tag stripping)",
-    "Fixed regex backreferences in wikilabs-knowledge: html.rs (removed </h\\1> backreference, added per-level HEADING_N_RE patterns)",
-    "Workspace build succeeds, all 871 tests pass"
+  "last_fix": "2026-07-26T00:20:00Z",
+  "status": "observation_crate_fixes_complete",
+  "files_changed": [
+    "src/observation/src/session_tracker.rs",
+    "src/observation/src/semantic_analyzer.rs"
   ],
-  "tests_passed": 902,
-  "tests_failed": 0,
-  "workspace_crates": 23,
-  "guidance_crates": 9,
-  "guidance_lines": 3693,
-  "guidance_tests": 91
+  "fixes_applied": [
+    "session_tracker: cmd_intent changed from .map() to .and_then() to flatten Option<Option<T>> to Option<T>",
+    "session_tracker: intent field wrapped in Some() for NarrativeStep",
+    "session_tracker: guidance.unwrap(&str) → guidance.expect(&str) for Option<&str>",
+    "session_tracker: borrow issue fixed with early return after lock re-acquire",
+    "semantic_analyzer: drain() borrow fix by computing cutoff before drain call"
+  ],
+  "build_status": "cargo build success, 0 errors, ~62 warnings (mostly dead_code unused items)"
 }

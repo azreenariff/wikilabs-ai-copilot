@@ -179,6 +179,7 @@ pub async fn api_handler(
         // System commands
         "get_status" => handle_get_status().await,
         "observation_get_status" => handle_observation_get_status(&state).await,
+        "observation_get_context" => handle_observation_get_context().await,
         "observation_start" => handle_observation_start(&state).await,
         "observation_stop" => handle_observation_stop(&state).await,
         other => {
@@ -839,6 +840,19 @@ async fn handle_observation_stop(_state: &ApiServerState) -> (StatusCode, String
     (StatusCode::OK, api_response(true, Some(serde_json::json!({"status": "stopped"})), None))
 }
 
+/// Return current observation context (active recommendations, status).
+async fn handle_observation_get_context() -> (StatusCode, String) {
+    let panel = guidance_panel::GuidancePanel::instance();
+    let active = panel.active_recommendations().await;
+    let all = panel.all_recommendations().await;
+    let value = serde_json::json!({
+        "active_recommendations": active,
+        "all_recommendations": all,
+        "status": "active"
+    });
+    (StatusCode::OK, api_response(true, Some(value), None))
+}
+
 /// GET /api/commands/get_status — returns app version and backend status.
 async fn handle_get_status() -> (StatusCode, String) {
     let version = env!("CARGO_PKG_VERSION");
@@ -995,7 +1009,7 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                 info!("Guidance panel state cleared on startup");
             }
 
-            // Spawn background observation polling task
+            // ── Background observation polling + AI reasoning loop ────────────
             let registry = std::sync::Arc::new(tokio::sync::Mutex::new(registry));
             let obs_registry = registry.clone();
             let poll_settings = obs_settings.clone();
@@ -1003,9 +1017,21 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
             rt.spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
                 let mut ai_interval = tokio::time::interval(std::time::Duration::from_secs(30));
-                let mut last_events: Vec<String> = Vec::new();
+
+                // Structured event summaries (rich JSON payloads, not flat strings)
+                #[derive(Clone)]
+                struct StructuredEvent {
+                    provider: String,
+                    event_type: String,
+                    source: String,
+                    summary: String,
+                    payload_json: serde_json::Value,
+                }
+                let mut last_events: Vec<StructuredEvent> = Vec::new();
+
                 loop {
                     tokio::select! {
+                        // Phase 1: Collect observation events every 5 seconds
                         _ = interval.tick() => {
                             let registry = obs_registry.lock().await;
                             let providers = registry.all_providers();
@@ -1013,7 +1039,22 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                 match provider.observe().await {
                                     Ok(events) => {
                                         for event in events {
-                                            let finding = format!("{:?}: {}", event.event_type, event.source);
+                                            // Build structured summary from the full event payload
+                                            let summary = if let Some(obj) = event.payload.data.as_object() {
+                                                let mut parts: Vec<String> = Vec::new();
+                                                for (key, value) in obj {
+                                                    let display = match value {
+                                                        serde_json::Value::String(s) if s.len() > 300 => format!("{}...", &s[..300]),
+                                                        v => v.to_string(),
+                                                    };
+                                                    parts.push(format!("{}: {}", key, display));
+                                                }
+                                                parts.join(" | ")
+                                            } else {
+                                                event.payload.data.to_string()
+                                            };
+
+                                            let finding = format!("{:?}: {} — {}", event.event_type, event.source, summary.chars().take(200).collect::<String>());
                                             let importance = match event.event_type {
                                                 wikilabs_observation::event::EventType::ApplicationChanged => "high",
                                                 wikilabs_observation::event::EventType::ConfigurationFileOpened => "medium",
@@ -1027,16 +1068,27 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                                 &importance.to_string(),
                                                 event.confidence as f64,
                                             ).await;
-                                            last_events.push(finding);
-                                            if last_events.len() > 20 { last_events.remove(0); }
+
+                                            last_events.push(StructuredEvent {
+                                                provider: event.provider.to_string(),
+                                                event_type: format!("{:?}", event.event_type),
+                                                source: event.source.clone(),
+                                                summary,
+                                                payload_json: event.payload.data.clone(),
+                                            });
+                                            if last_events.len() > 30 { last_events.remove(0); }
                                         }
                                     }
                                     Err(e) => warn!(error = %e, "Observation poll failed for provider"),
                                 }
                             }
                         }
+
+                        // Phase 2: AI reasoning every 30 seconds
                         _ = ai_interval.tick() => {
                             if last_events.is_empty() { continue; }
+
+                            // Read AI config
                             let (api_key, model, endpoint, provider_name, max_tokens) = {
                                 let settings = poll_settings.lock().unwrap();
                                 let config = settings.settings.clone();
@@ -1053,84 +1105,144 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                         .and_then(|p| p.get("max_tokens")).and_then(|v| v.as_u64()).unwrap_or(512) as usize,
                                 )
                             };
+
+                            let panel = guidance_panel::GuidancePanel::instance();
+
                             if api_key.is_empty() {
-                                // No AI provider configured — generate rule-based recommendations from observations
-                                let panel = guidance_panel::GuidancePanel::instance();
-                                // Dismiss old rule-based recs so new ones replace them
+                                // ── Rule-based fallback (no AI key) ──
                                 let all = panel.all_recommendations().await;
                                 for prev in &all {
                                     if !prev.title.starts_with("🧭") {
                                         let _ = panel.dismiss_recommendation(&prev.id).await;
                                     }
                                 }
-                                let evidence = panel.get_evidence_status().await;
-                                for ev in evidence.collected.iter().take(1) {
-                                    let (title, description) = if ev.source.contains("Application") {
-                                        ("I see you're working on something", format!("Noticed you switched to {} — looks like you're getting stuff done. Let me know if you need a hand with anything!", ev.finding))
-                                    } else if ev.source.contains("Browser") {
-                                        ("Browsing the web?", format!("I see you're on {}. Looking something up? If you're stuck, I can help dig up docs or commands for you.", ev.finding))
-                                    } else if ev.source.contains("Clipboard") {
-                                        ("Copied something!", String::from("I noticed you copied some text. If you're working through a setup or config, I can help with the next steps."))
+                                if let Some(latest) = last_events.last() {
+                                    let (title, desc) = if latest.source.contains("Application") {
+                                        ("I see you're working on something", format!("Noticed you switched to {} — need a hand with anything!", latest.summary.chars().take(150).collect::<String>()))
+                                    } else if latest.provider.contains("Browser") {
+                                        let url = latest.payload_json.get("url").and_then(|u| u.as_str()).unwrap_or("a webpage");
+                                        let errs = latest.payload_json.get("detected_errors").and_then(|e| e.as_array()).filter(|a| !a.is_empty());
+                                        if let Some(errs) = errs {
+                                            let err_descs: Vec<String> = errs.iter().filter_map(|e| e.get("description").and_then(|d| d.as_str())).map(|s| s.to_string()).collect();
+                                            ("⚠️ Page errors detected", format!("You're on {}. Errors: {}. Try checking the service — `systemctl status <service>` to verify.", url, err_descs.join(", ")))
+                                        } else {
+                                            ("Browsing?", format!("You're on {}. Looking something up? If stuck, I can help.", url))
+                                        }
                                     } else {
-                                        ("I see you're busy", format!("I noticed you're working on: {}. If you need a hand, just ask!", ev.finding))
+                                        ("You're busy", format!("I see you're working on: {}. Need a hand?", latest.summary.chars().take(100).collect::<String>()))
                                     };
-                                    let _ = panel.add_recommendation(
-                                        &title,
-                                        &description,
-                                        "Rule-based observation analysis",
-                                        "AI Copilot",
-                                        "General",
-                                        0.5,
-                                        guidance_panel::CardRiskLevel::Low,
-                                        vec![],
-                                        None,
-                                    ).await;
+                                    let _ = panel.add_recommendation(&title, &desc, "Rule-based observation", "AI Copilot", "General", 0.5, guidance_panel::CardRiskLevel::Low, vec![], None).await;
                                 }
                                 continue;
                             }
 
-                            let events_summary = last_events.join("\n");
+                            // ── AI-powered cross-context reasoning ──
 
-                            // Match observations against skill knowledge base and inject relevant expertise
+                            // Build per-event summaries for AI prompt
+                            let events_for_ai: Vec<String> = last_events.iter().map(|e| {
+                                format!("[{}] {} on {}: {}",
+                                    e.event_type, e.provider, e.source,
+                                    e.summary.chars().take(300).collect::<String>())
+                            }).collect();
+
+                            // Extract cross-context data (browser URLs, terminal commands, errors)
+                            let browser_urls: Vec<&str> = last_events.iter()
+                                .filter(|e| e.provider == "Browser")
+                                .filter_map(|e| e.payload_json.get("url").and_then(|u| u.as_str()))
+                                .filter(|&u| !u.contains("about:blank") && !u.contains("devtools"))
+                                .collect();
+
+                            let terminal_cmds: Vec<&str> = last_events.iter()
+                                .filter(|e| e.provider == "Terminal")
+                                .filter_map(|e| e.payload_json.get("command_text").and_then(|c| c.as_str()))
+                                .collect();
+
+                            let browser_errors: Vec<&str> = last_events.iter()
+                                .filter(|e| e.provider == "Browser")
+                                .filter_map(|e| e.payload_json.get("detected_errors"))
+                                .filter_map(|e| e.as_array())
+                                .flat_map(|arr| arr.iter().filter_map(|er| er.get("description").and_then(|d| d.as_str())))
+                                .collect();
+
+                            // Build correlated session narrative
+                            let mut session_narrative = String::new();
+                            if !browser_urls.is_empty() || !terminal_cmds.is_empty() || !browser_errors.is_empty() {
+                                session_narrative.push_str("📊 Correlated session context:\n");
+                                if !browser_urls.is_empty() {
+                                    session_narrative.push_str("  🌐 Browser:\n");
+                                    for &url in &browser_urls {
+                                        session_narrative.push_str(&format!("    - {}", url));
+                                        session_narrative.push('\n');
+                                    }
+                                }
+                                if !browser_errors.is_empty() {
+                                    session_narrative.push_str("  ⚠️ Browser errors:\n");
+                                    for &err in &browser_errors {
+                                        session_narrative.push_str(&format!("    - {}\n", err));
+                                    }
+                                }
+                                if !terminal_cmds.is_empty() {
+                                    session_narrative.push_str("  💻 Terminal:\n");
+                                    for &cmd in &terminal_cmds {
+                                        session_narrative.push_str(&format!("    - {}\n", cmd));
+                                    }
+                                }
+                            }
+
+                            // Keywords for knowledge/skill matching
+                            let keywords_str = events_for_ai.join(" ").to_lowercase();
+
+                            // Match against skills and knowledge packs
                             let skill_kb_guard = skill_kb_for_loop.lock().await;
-                            let observations_text = &events_summary;
-                            let matched_skills = skill_kb_guard.match_observations(observations_text);
+                            let matched_skills = skill_kb_guard.match_observations(&keywords_str);
                             let skill_context = skill_kb_guard.format_for_prompt(&matched_skills);
                             drop(skill_kb_guard);
 
-                            // Match observations against knowledge packs and inject relevant expertise
                             let knowledge_context = {
-                                let knowledge_panel = KnowledgePanel::instance();
-                                let matched_packs = knowledge_panel.match_observations(observations_text).await;
-                                knowledge_panel.format_for_prompt(&matched_packs).await
+                                let kp = KnowledgePanel::instance();
+                                let matched_packs = kp.match_observations(&keywords_str).await;
+                                kp.format_for_prompt(&matched_packs).await
                             };
 
+                            // ── Build AI system prompt ──
                             let system_prompt = format!(
-                                                                                        "You are Wiki Labs AI Copilot — an AI that watches what a technical engineer is doing on their computer and gives helpful, proactive guidance.\n\n\
-                                                        You can see what applications they switch to, what commands they type in terminals, what browser tabs they visit, what they copy, and what files they open.\n\n\
-                                                        Your job: based on what you observe, give ONE specific, actionable suggestion. Be a helpful teammate who notices what they're doing and says the thing they might not have thought of yet.\n\n\
-                                                        IMPORTANT: Only suggest things you can actually infer from the user's activity. If you have no real insight, stay quiet or ask a brief question like \"Working on something? Need a hand?\" Don't generate generic advice when you don't have real context.\n\n\
-                                                        GOOD examples:\n\
-                                                        - \"I see you're looking at Nagios. You should also check if MySQL is running — run `systemctl status mysql` to verify.\"\n\
-                                                        - \"Looks like you're editing the Nginx config. Don't forget to test it with `nginx -t` before reloading.\"\n\
-                                                        - \"You're troubleshooting a Docker container. Try `docker logs <container> --tail 50` to see recent errors.\"\n\
-                                                        - \"You opened a Python file — need to run it? Try `python3 script.py` to test.\"\n\
-                                                        - \"I see you're in a `k8s-deploy` directory with `kubectl get pods` in your history — your pods might be CrashLooping, try `kubectl describe pod` for details.\"\n\n\
-                                                        BAD examples (too vague or repetitive):\n\
-                                                        - \"You appear to be working on something.\"\n\
-                                                        - \"I observed activity in your browser.\"\n\
-                                                        - \"You're running bash commands repeatedly.\" (this is not helpful — it's just describing what they're doing)\n\
-                                                        - \"I see you're busy with the terminal.\" (also just restating the obvious)\n\n{}\\n{}\\n\\n\
-                                                        Recent observations from the user's computer:\\n{}\\n\\n\
-                                                        Based on these observations, give ONE short piece of guidance (1-3 sentences). \\\
-                                                        Be specific and helpful. Suggest a command, a tool, or a next step. \\\
-                                                        Use a natural, conversational tone — like you're sitting next to them as a senior DevOps engineer.\\\
-                                                        If you truly can't tell what they're doing from the data, ask a brief question or stay quiet.\\\
-                                                        Never generate the same type of suggestion twice in a row — if they're still in bash, look for something different to mention.",
-                                                                                        skill_context,
-                                                                                        knowledge_context,
-                                                                                        events_summary
-                                                                                    );
+                                "You are Wiki Labs AI Copilot — an AI that watches what a technical engineer is doing and gives helpful, proactive guidance.\n\n\
+                                You can see: applications they switch to, commands they type, browser tabs/URLs/errors, files they open.\n\n\
+                                ## Your job\n\
+                                Analyze the correlated session context and give ONE specific, actionable suggestion.\n\n\
+                                ## Cross-Context Reasoning (CRITICAL)\n\
+                                Connect dots across data sources:\n\
+                                - Browser error + terminal command → troubleshooting. Suggest next diagnostic step.\n\
+                                - Service dashboard + systemctl commands → monitoring. Suggest related checks they haven't done.\n\
+                                - Config file edit + validation/reload command → config change. Suggest what to verify next.\n\
+                                - Service name search + systemctl/docker commands → troubleshooting that service. Connect search to action.\n\n\
+                                ## GOOD examples\n\
+                                - \"I see the Nagios page returned an error, and you're checking `systemctl status nagios`. Check the database first — `systemctl status mysqld` — Nagios stores data in MySQL.\"\n\
+                                - \"You're editing Nginx config and ran `nginx -t`. Now reload with `systemctl reload nginx` and check. If it still breaks, `tail -f /var/log/nginx/error.log`.\"\n\
+                                - \"Docker container in CrashLoopBackOff + you ran `docker logs`. Also check exit code: `docker inspect <container> | grep ExitCode` to see WHY it crashed.\"\n\
+                                - \"Looking at K8s dashboard with pods failing + `kubectl get pods`. Run `kubectl describe pod <pod-name>` to see the actual error.\"\n\
+                                - \"You're checking MySQL status. If it's down, check the error log — `journalctl -u mysql --no-pager -n 50` — that usually tells you why it crashed.\"\n\n\
+                                ## BAD examples\n\
+                                - \"You appear to be working on something.\"\n\
+                                - \"I observed activity in your browser.\"\n\
+                                - \"You're running bash commands repeatedly.\"\n\
+                                - \"I see you're busy with the terminal.\"\n\n\
+                                ## Relevant knowledge (from loaded skill/knowledge packs):\n\
+                                {}\n\n\
+                                ## Correlated session context:\n\
+                                {}\n\
+\n\
+                                ## Recent observations:\n\
+                                {}\n\
+\n\
+                                Give ONE short piece of guidance (1-3 sentences). Be specific, actionable, and conversational — like a senior DevOps engineer sitting next to them.\n\
+                                If you can connect the dots across browser and terminal activity, do it. Never repeat the same type of suggestion.\"\n\n\
+                                If you truly can't tell what they're doing, stay quiet or ask a brief question.",
+                                skill_context,
+                                session_narrative,
+                                events_for_ai.join("\n"),
+                            );
+
                             let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
                                 &provider_name, &endpoint, &api_key, &model, max_tokens, 128000
                             );
@@ -1138,26 +1250,24 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                 model: model.clone(),
                                 messages: vec![
                                     wikilabs_ai::provider::AiMessage { role: "system".to_string(), content: system_prompt },
-                                    wikilabs_ai::provider::AiMessage { role: "user".to_string(), content: "What do you observe and recommend?".to_string() },
+                                    wikilabs_ai::provider::AiMessage { role: "user".to_string(), content: "Analyze the user's correlated session and give ONE specific recommendation.".to_string() },
                                 ],
                                 tools: vec![],
                                 temperature: None,
                                 max_tokens: Some(max_tokens),
                                 stream: None,
                             };
+
                             match provider.chat(ai_request).await {
                                 Ok(response) => {
-                                    let panel = guidance_panel::GuidancePanel::instance();
                                     let suggestion_content = &response.message.content;
 
-                                    // Phase 2: Check cooldown/dedup before adding
                                     if panel.should_skip_suggestion(suggestion_content).await {
-                                        // Same topic recently shown — skip to avoid repetition
                                         tracing::debug!("Skipping repetitive AI suggestion");
                                         continue;
                                     }
 
-                                    // Remove the previous AI recommendation so each tick replaces it
+                                    // Remove previous AI recommendation so each tick replaces it
                                     let all = panel.all_recommendations().await;
                                     for prev in &all {
                                         if prev.title.starts_with("🧭") {
@@ -1165,14 +1275,16 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                         }
                                     }
 
-                                    let snapshot = last_events.first().map(|s| {
-                                        if s.len() > 60 { format!("{}…", &s[..60]) } else { s.clone() }
-                                    }).unwrap_or_default();
-                                    let title = format!("🧭 {}", snapshot);
+                                    let title = if suggestion_content.len() > 60 {
+                                        format!("🧭 {}", &suggestion_content[..60].replace('\n', " ").trim())
+                                    } else {
+                                        format!("🧭 {}", suggestion_content.replace('\n', " ").trim())
+                                    };
+
                                     let _ = panel.add_recommendation(
                                         &title,
                                         suggestion_content,
-                                        "AI analyzed recent observations",
+                                        "AI analyzed correlated session context",
                                         "AI Copilot",
                                         "General",
                                         0.8,
@@ -1180,36 +1292,27 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                         vec![],
                                         None,
                                     ).await;
-
-                                    // Record this suggestion for dedup/cooldown tracking
                                     panel.record_suggestion(suggestion_content).await;
                                 }
                                 Err(e) => {
                                     warn!(error = %e, "AI recommendation failed, using rule-based fallback");
-                                    // AI call failed — generate a rule-based fallback instead
-                                    let panel = guidance_panel::GuidancePanel::instance();
-                                    let evidence = panel.get_evidence_status().await;
-                                    for ev in evidence.collected.iter().take(1) {
-                                        let (title, description) = if ev.source.contains("Application") {
-                                            ("I see you're working on something", format!("Noticed you switched to {} — looks like you're getting stuff done. Let me know if you need a hand with anything!", ev.finding))
-                                        } else if ev.source.contains("Browser") {
-                                            ("Browsing the web?", format!("I see you're on {}. Looking something up? If you're stuck, I can help dig up docs or commands for you.", ev.finding))
-                                        } else if ev.source.contains("Clipboard") {
-                                            ("Copied something!", String::from("I noticed you copied some text. If you're working through a setup or config, I can help with the next steps."))
+                                    if let Some(latest) = last_events.last() {
+                                        let (title, desc) = if latest.provider.contains("Browser") {
+                                            let url = latest.payload_json.get("url").and_then(|u| u.as_str()).unwrap_or("a webpage");
+                                            let errs = latest.payload_json.get("detected_errors").and_then(|e| e.as_array()).filter(|a| !a.is_empty());
+                                            if let Some(errs) = errs {
+                                                let err_descs: Vec<String> = errs.iter().filter_map(|e| e.get("description").and_then(|d| d.as_str())).map(|s| s.to_string()).collect();
+                                                ("⚠️ Page errors", format!("You're on {}. Errors: {}. Try checking the service — `systemctl status <service>`.", url, err_descs.join(", ")))
+                                            } else {
+                                                ("Browsing?", format!("You're on {}. Stuck? I can help.", url))
+                                            }
+                                        } else if latest.provider.contains("Terminal") {
+                                            let cmd = latest.payload_json.get("command_text").and_then(|c| c.as_str()).unwrap_or("commands");
+                                            ("Terminal?", format!("I see you're typing: {}. Next steps?", cmd))
                                         } else {
-                                            ("I see you're busy", format!("I noticed you're working on: {}. If you need a hand, just ask!", ev.finding))
+                                            ("You're busy", format!("Working on: {}. Need a hand?", latest.summary.chars().take(100).collect::<String>()))
                                         };
-                                        let _ = panel.add_recommendation(
-                                            &title,
-                                            &description,
-                                            "Rule-based observation analysis",
-                                            "AI Copilot",
-                                            "General",
-                                            0.5,
-                                            guidance_panel::CardRiskLevel::Low,
-                                            vec![],
-                                            None,
-                                        ).await;
+                                        let _ = panel.add_recommendation(&title, &desc, "Rule-based observation", "AI Copilot", "General", 0.5, guidance_panel::CardRiskLevel::Low, vec![], None).await;
                                     }
                                 }
                             }

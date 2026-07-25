@@ -365,14 +365,20 @@ mod tests {
 
     #[test]
     fn test_mode_disabled_disallows_all() {
-        let config = PrivacyConfig { mode: ObservationMode::Disabled, ..Default::default() };
+        let config = PrivacyConfig {
+            mode: ObservationMode::Disabled,
+            ..Default::default()
+        };
         assert!(!config.is_provider_allowed(&ProviderType::ActiveWindow));
         assert!(!config.is_provider_allowed(&ProviderType::Clipboard));
     }
 
     #[test]
     fn test_mode_paused_disallows_all() {
-        let config = PrivacyConfig { mode: ObservationMode::Paused, ..Default::default() };
+        let config = PrivacyConfig {
+            mode: ObservationMode::Paused,
+            ..Default::default()
+        };
         assert!(!config.is_provider_allowed(&ProviderType::ActiveWindow));
     }
 
@@ -381,7 +387,10 @@ mod tests {
         let config = PrivacyConfig::default();
         assert!(!config.allows_clipboard());
 
-        let config = PrivacyConfig { store_clipboard_content: true, ..Default::default() };
+        let config = PrivacyConfig {
+            store_clipboard_content: true,
+            ..Default::default()
+        };
         assert!(config.allows_clipboard());
     }
 
@@ -390,7 +399,10 @@ mod tests {
         let config = PrivacyConfig::default();
         assert!(!config.allows_file_content());
 
-        let config = PrivacyConfig { store_file_content: true, ..Default::default() };
+        let config = PrivacyConfig {
+            store_file_content: true,
+            ..Default::default()
+        };
         assert!(config.allows_file_content());
     }
 
@@ -399,7 +411,10 @@ mod tests {
         let config = PrivacyConfig::default();
         assert!(config.allows_screenshots());
 
-        let config = PrivacyConfig { screenshot_retention_days: 0, ..Default::default() };
+        let config = PrivacyConfig {
+            screenshot_retention_days: 0,
+            ..Default::default()
+        };
         assert!(!config.allows_screenshots());
     }
 

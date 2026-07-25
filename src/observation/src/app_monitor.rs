@@ -183,9 +183,13 @@ impl ActiveWindowProvider {
         {
             // Windows: Use Win32 API via windows crate
             use windows::Win32::Foundation::{CloseHandle, HWND};
-            use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowTextLengthW, GetWindowThreadProcessId};
-            use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
             use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
+            use windows::Win32::System::Threading::{
+                OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
+            };
+            use windows::Win32::UI::WindowsAndMessaging::{
+                GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
+            };
 
             unsafe {
                 let hwnd: HWND = GetForegroundWindow();
@@ -200,7 +204,9 @@ impl ActiveWindowProvider {
                 }
                 let mut title_buf = vec![0u16; (len + 1) as usize];
                 let _ = GetWindowTextW(hwnd, &mut title_buf);
-                let title = String::from_utf16_lossy(&title_buf[..len as usize]).trim().to_string();
+                let title = String::from_utf16_lossy(&title_buf[..len as usize])
+                    .trim()
+                    .to_string();
 
                 // Get process ID
                 let mut pid: u32 = 0;
@@ -219,7 +225,8 @@ impl ActiveWindowProvider {
                     if exe_len > 0 {
                         let exe_path = String::from_utf16_lossy(&exe_buf[..exe_len as usize]);
                         let path = std::path::Path::new(&exe_path);
-                        let process_name = path.file_stem()
+                        let process_name = path
+                            .file_stem()
                             .and_then(|s| s.to_str())
                             .unwrap_or("unknown")
                             .to_string();
@@ -321,17 +328,17 @@ impl ObservationProvider for ActiveWindowProvider {
             Some(info) => info,
             None => {
                 // Return a minimal event to indicate we tried observing but nothing was detected
-        // Using a descriptive name (not "stub") so the AI doesn't misinterpret this as incomplete work
-        return Ok(vec![ObservationEvent::new(
-            EventType::ApplicationChanged,
-            ProviderType::ActiveWindow,
-            "inactive".to_string(),
-            None,
-            ObservationPayload::new(serde_json::json!({
-                "status": "no_window_info_available",
-                "platform": std::env::consts::OS,
-            })),
-        )]);
+                // Using a descriptive name (not "stub") so the AI doesn't misinterpret this as incomplete work
+                return Ok(vec![ObservationEvent::new(
+                    EventType::ApplicationChanged,
+                    ProviderType::ActiveWindow,
+                    "inactive".to_string(),
+                    None,
+                    ObservationPayload::new(serde_json::json!({
+                        "status": "no_window_info_available",
+                        "platform": std::env::consts::OS,
+                    })),
+                )]);
             }
         };
 

@@ -124,13 +124,18 @@ impl FileObserverProvider {
         #[cfg(target_os = "windows")]
         {
             // Windows: Monitor file handles via NtQuerySystemInformation
-            use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS, PROCESSENTRY32W};
+            use windows::Win32::System::Diagnostics::ToolHelp::{
+                CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+                TH32CS_SNAPPROCESS,
+            };
             unsafe {
                 let snapshot = match CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) {
                     Ok(s) => s,
                     Err(_) => return Vec::new(),
                 };
-                if snapshot.is_invalid() { return Vec::new(); }
+                if snapshot.is_invalid() {
+                    return Vec::new();
+                }
 
                 let mut entry = PROCESSENTRY32W::default();
                 entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
@@ -140,11 +145,20 @@ impl FileObserverProvider {
                 }
 
                 let mut files = Vec::new();
-                let engineering_tools = ["code.exe", "notepad++.exe", "vim.exe", "nvim.exe",
-                    "sublime_text.exe", "idea64.exe", "pycharm64.exe", "eclipse.exe"];
+                let engineering_tools = [
+                    "code.exe",
+                    "notepad++.exe",
+                    "vim.exe",
+                    "nvim.exe",
+                    "sublime_text.exe",
+                    "idea64.exe",
+                    "pycharm64.exe",
+                    "eclipse.exe",
+                ];
                 loop {
                     let name = String::from_utf16_lossy(&entry.szExeFile)
-                        .trim_end_matches('\0').to_lowercase();
+                        .trim_end_matches('\0')
+                        .to_lowercase();
                     if engineering_tools.contains(&name.as_str()) {
                         files.push(FileMetadata {
                             path: format!("process:{}", name),
@@ -155,7 +169,9 @@ impl FileObserverProvider {
                             content_read: false,
                         });
                     }
-                    if Process32NextW(snapshot, &mut entry).is_err() { break; }
+                    if Process32NextW(snapshot, &mut entry).is_err() {
+                        break;
+                    }
                 }
                 let _ = windows::Win32::Foundation::CloseHandle(snapshot);
                 files
