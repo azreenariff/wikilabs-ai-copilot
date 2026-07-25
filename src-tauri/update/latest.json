@@ -1,11 +1,11 @@
 {
-  "version": "1.1.8",
-  "notes": "Release Notes for Wiki Labs AI Copilot v1.1.8",
-  "pubdate": "2026-07-23T04:37:30Z",
+  "version": "1.1.67",
+  "notes": "Release Notes for Wiki Labs AI Copilot v1.1.67",
+  "pubdate": "2026-07-25T08:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "",
-      "url": "https://github.com/wikilabs/wikilabs-ai-copilot/releases/download/1.1.8/Wiki_Labs_AI_Copilot-1.1.8-x86_64-setup.exe"
+      "url": "https://github.com/wikilabs/wikilabs-ai-copilot/releases/download/1.1.67/Wiki_Labs_AI_Copilot-1.1.67-x86_64-setup.exe"
     }
   }
 }
