@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **ChatAssistant**: Remove unused `useCallback` import that caused TypeScript build failure (TS6133)
+- **Observation Engine — Clippy CI (Windows cfg)**: Removed 27+ unused `windows::Win32` imports across observation files (`file_observer.rs`, `console_output.rs`, `terminal.rs`, `browser.rs`, `shell.rs`), unused `regex::Regex` imports where `.contains()` was used instead, and unused `super`, `tracing::{debug, error}`, `std::collections::HashMap` imports
 ## v1.1.74 (Remaining 41 Clippy Errors in observation crate)
 - **Unused imports across 5 observation files** — Removed 27 unused `windows::Win32` imports, unused `regex::Regex` imports, unused `std::collections::HashMap`, unused `chrono::Utc`, unused `tracing::{debug, error}`, and unused `super` imports in `terminal_windows` module
 - **Unnecessary unsafe blocks** — Removed unnecessary `unsafe` blocks in `browser.rs` (browser context detection) and `console_output.rs` (console output capture) where code doesn't actually use FFI or pointer operations
