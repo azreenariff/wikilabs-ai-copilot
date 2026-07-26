@@ -20,7 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Redundant `.cloned()` in `guidance.rs`** — Removed unnecessary `.cloned()` calls on iterators of `&String` (5 occurrences)
 - **Collapsible `if` in `session_tracker.rs`** — Flattened nested `if` statements into single condition with `&&`
 
-#### v1.1.74 (Remaining 41 Clippy Errors in observation crate)
+#### [v1.1.75](https://github.com/azreenariff/wikilabs-ai-copilot/releases/tag/v1.1.75) - 2026-07-26
+
+### Fixed
+- **ChatAssistant**: Remove unused `useCallback` import that caused TypeScript build failure (TS6133)
+## v1.1.74 (Remaining 41 Clippy Errors in observation crate)
 - **Unused imports across 5 observation files** — Removed 27 unused `windows::Win32` imports, unused `regex::Regex` imports, unused `std::collections::HashMap`, unused `chrono::Utc`, unused `tracing::{debug, error}`, and unused `super` imports in `terminal_windows` module
 - **Unnecessary unsafe blocks** — Removed unnecessary `unsafe` blocks in `browser.rs` (browser context detection) and `console_output.rs` (console output capture) where code doesn't actually use FFI or pointer operations
 - **MutexGuard across await point** — Added `#[allow(clippy::await_holding_lock)]` for `state.enabled` access in `cdp_browser.rs::observe()` where the lock is properly scoped in a block but clippy flags the pattern
