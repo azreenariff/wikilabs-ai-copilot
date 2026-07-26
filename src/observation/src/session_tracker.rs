@@ -241,15 +241,14 @@ impl SessionTracker {
                     // Detect specific patterns → suggest next steps
                     if let Some(ref target) = intent.target {
                         let target_lower = target.to_lowercase();
-                        if target_lower.contains("nagios") {
-                            if !session.root_cause_found {
-                                suggestions.push(self.make_suggestion(
-                                    intent,
-                                    &observations,
-                                    Some("Since you're checking Nagios, you should also verify that its database (MySQL) is running — Nagios can't function without it. Try: `systemctl status mysqld`"),
-                                    &mut step_num,
-                                ));
-                            }
+                        if target_lower.contains("nagios")
+                            && !session.root_cause_found {
+                            suggestions.push(self.make_suggestion(
+                                intent,
+                                &observations,
+                                Some("Since you're checking Nagios, you should also verify that its database (MySQL) is running — Nagios can't function without it. Try: `systemctl status mysqld`"),
+                                &mut step_num,
+                            ));
                         }
                         if observations.iter().any(|o| {
                             o.contains("not running")

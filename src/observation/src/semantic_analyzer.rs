@@ -150,10 +150,9 @@ impl SemanticAnalyzer {
             results.push(AnalysisResult::Success("Container/pod is running".to_string()));
         } else if output_lower.contains("pending") || output_lower.contains("imagepullbackoff") || output_lower.contains("errimagepull") {
             results.push(AnalysisResult::Warning("Container/pod has issues".to_string()));
-        } else if output_lower.contains("error") || output_lower.contains("failed") {
-            if output_lower.contains("pod") || output_lower.contains("container") {
-                results.push(AnalysisResult::Error("Container/pod error detected".to_string()));
-            }
+        } else if (output_lower.contains("error") || output_lower.contains("failed"))
+            && (output_lower.contains("pod") || output_lower.contains("container")) {
+            results.push(AnalysisResult::Error("Container/pod error detected".to_string()));
         }
 
         // Check for HTTP status codes

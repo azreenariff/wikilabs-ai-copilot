@@ -599,7 +599,7 @@ impl ObservationProvider for TerminalProvider {
         let mut events = Vec::new();
         {
             let mut state = self.state.lock().unwrap();
-            let was_empty = state.active_sessions.is_empty();
+            let _was_empty = state.active_sessions.is_empty();
 
             // Only emit an event if we detected sessions (newly active)
             if !sessions.is_empty() {

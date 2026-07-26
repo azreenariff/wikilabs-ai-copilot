@@ -17,7 +17,7 @@ use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType
 use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 
 // ── Engineering portal patterns ─────────────────────────────────────
-
+#[allow(dead_code)]
 const ENGINEERING_PORTAL_PATTERNS: &[&str] = &[
     "openshift", "ocp", "okd", "vcenter", "vmware", "vsphere",
     "nagios", "checkmk", "grafana", "prometheus", "kubernetes", "k8s",
@@ -27,7 +27,7 @@ const ENGINEERING_PORTAL_PATTERNS: &[&str] = &[
 ];
 
 // ── HTML error page patterns ────────────────────────────────────────
-
+#[allow(dead_code)]
 const ERROR_PAGE_PATTERNS: &[(&str, &str)] = &[
     ("500", "Internal Server Error"),
     ("502", "Bad Gateway"),
@@ -78,7 +78,9 @@ pub enum BrowserErrorSeverity {
     Critical,
 }
 
+#[allow(dead_code)]
 impl BrowserContext {
+    #[allow(dead_code)]
     fn from_title(browser: &str, title: &str, url: &str) -> Self {
         let is_engineering = ENGINEERING_PORTAL_PATTERNS.iter().any(|pattern| {
             title.to_lowercase().contains(pattern) || url.to_lowercase().contains(pattern)
@@ -201,6 +203,7 @@ impl BrowserProvider {
         None
     }
 
+    #[allow(dead_code)]
     fn looks_like_url(s: &str) -> bool {
         s.starts_with("http://") || s.starts_with("https://") || s.contains('.')
     }
@@ -208,6 +211,7 @@ impl BrowserProvider {
 
 // ── HTML content analysis ───────────────────────────────────────────
 
+#[allow(dead_code)]
 fn analyze_visible_text(visible_text: &str, url: Option<&str>) -> Vec<BrowserError> {
     if visible_text.is_empty() { return Vec::new(); }
 
@@ -220,21 +224,16 @@ fn analyze_visible_text(visible_text: &str, url: Option<&str>) -> Vec<BrowserErr
         let text_matches = text_lower.contains(*pattern);
 
         if text_matches || url_matches {
-            let severity = if text_lower.contains("500") || url_lower.contains("500") {
-                BrowserErrorSeverity::High
-            } else if text_lower.contains("502") || url_lower.contains("502") {
-                BrowserErrorSeverity::High
-            } else if text_lower.contains("503") || url_lower.contains("503") {
+            let severity = if text_lower.contains("503") || url_lower.contains("503") {
                 BrowserErrorSeverity::Critical
-            } else if text_lower.contains("504") || url_lower.contains("504") {
+            } else if text_lower.contains("500") || url_lower.contains("500")
+                || text_lower.contains("502") || url_lower.contains("502")
+                || text_lower.contains("504") || url_lower.contains("504")
+                || text_lower.contains("refused") || text_lower.contains("unable to connect") {
                 BrowserErrorSeverity::High
-            } else if text_lower.contains("403") || url_lower.contains("403") {
-                BrowserErrorSeverity::Medium
-            } else if text_lower.contains("404") || url_lower.contains("404") {
-                BrowserErrorSeverity::Medium
-            } else if text_lower.contains("refused") || text_lower.contains("unable to connect") {
-                BrowserErrorSeverity::High
-            } else if text_lower.contains("timeout") || text_lower.contains("timed out") {
+            } else if text_lower.contains("403") || url_lower.contains("403")
+                || text_lower.contains("404") || url_lower.contains("404")
+                || text_lower.contains("timeout") || text_lower.contains("timed out") {
                 BrowserErrorSeverity::Medium
             } else {
                 BrowserErrorSeverity::Low
@@ -278,6 +277,7 @@ fn collect_visible_text(hwnd: HWND) -> String {
 }
 
 #[cfg(not(target_os = "windows"))]
+#[allow(dead_code)]
 fn collect_visible_text(_hwnd: isize) -> String {
     String::new()
 }
@@ -420,6 +420,7 @@ mod browser_url_windows {
 use browser_url_windows::extract_browser_url;
 
 #[cfg(not(target_os = "windows"))]
+#[allow(dead_code)]
 fn extract_browser_url(_: isize, _: &str) -> Option<String> { None }
 
 // ── ObservationProvider impl ────────────────────────────────────────

@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Nested `impl Default` in CorrelationState** — Removed incorrectly nested `impl Default for CorrelationState` that was placed inside `impl CorrelationState` block in `correlation.rs`
 - **Invalid inner attribute in `semantic_analyzer.rs`** — Removed `#[allow(clippy::collapsible_if)]` inner attribute on an `if` statement which is not valid Rust syntax
 - **Clippy code hygiene** — Added `#[allow(dead_code)]` for `InfraMatch.infrastructure` field, replaced `.last()` with `.next_back()` for iterator usage
+- **Unused parentheses in `browser.rs`** — Removed unnecessary parentheses around `if` conditions in HTTP error detection
+- **If-same-then-else in `browser.rs`** — Consolidated identical-branch `if/else` chains for HTTP 5xx and 4xx error severity detection
+- **Unused variable `was_empty` in `terminal.rs`** — Prefixed with underscore to indicate intentional non-use
+- **Dead field `last_capture` in `shell.rs`** — Added `#[allow(dead_code)]` for planned future use
+- **Redundant `.cloned()` in `guidance.rs`** — Removed unnecessary `.cloned()` calls on iterators of `&String` (5 occurrences)
+- **Collapsible `if` in `session_tracker.rs`** — Flattened nested `if` statements into single condition with `&&`
 
 ## [1.1.4] — 2026-07-22 — CI Fix
 

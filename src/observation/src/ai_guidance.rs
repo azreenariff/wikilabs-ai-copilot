@@ -8,15 +8,13 @@
 //! the rule-based GuidanceEngine output.
 
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::Semaphore;
 
 use crate::correlation::{CorrelationEngine, CorrelationSet};
-use crate::semantic_analyzer::{SemanticAnalyzer, CommandIntent};
+use crate::semantic_analyzer::SemanticAnalyzer;
 use crate::error_detector::{ErrorDetector, DetectedError, ErrorSeverity};
-use crate::browser::BrowserContext;
 
 /// AI configuration for OpenRouter integration.
 #[derive(Debug, Clone)]
@@ -340,7 +338,7 @@ impl AiGuidanceProvider {
                 category,
                 is_actionable: raw.is_actionable,
                 suggested_actions: raw.suggested_actions.clone(),
-                context_summary: format!("AI analysis of observation context"),
+                context_summary: "AI analysis of observation context".to_string(),
             });
         }
 

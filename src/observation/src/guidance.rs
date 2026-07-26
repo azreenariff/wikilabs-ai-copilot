@@ -82,6 +82,7 @@ pub struct GuidanceState {
 pub struct GuidanceEngine {
     state: Arc<Mutex<GuidanceState>>,
     correlation_engine: Arc<CorrelationEngine>,
+    #[allow(dead_code)]
     terminal_provider: TerminalProvider,
     shell_observer: ShellObserver,
 }
@@ -138,15 +139,15 @@ impl GuidanceEngine {
         // Update state
         {
             let mut state = self.state.lock().unwrap();
-            for s in &suggestions {
+            for _s in &suggestions {
                 state.total_generated += 1;
                 state.last_suggestion_time = Some(Utc::now());
             }
             // Keep only active (non-dismissed) suggestions, cap at 5
             let active: Vec<GuidanceSuggestion> = suggestions.iter()
                 .filter(|s| !s.dismissed)
-                .cloned()
                 .take(5)
+                .cloned()
                 .collect();
             state.active_suggestions = active;
         }
@@ -227,7 +228,6 @@ impl GuidanceEngine {
 
         let correlated = record.browser_url.iter()
             .chain(record.terminal_command.iter())
-            .cloned()
             .map(|s| s.chars().take(60).collect())
             .collect();
 
@@ -270,7 +270,6 @@ impl GuidanceEngine {
             suggested_actions: Vec::new(),
             correlated_context: record.browser_url.iter()
                 .chain(record.terminal_command.iter())
-                .cloned()
                 .map(|s| s.chars().take(60).collect())
                 .collect(),
             dismissed: false,
@@ -303,7 +302,6 @@ impl GuidanceEngine {
             suggested_actions: actions,
             correlated_context: record.browser_url.iter()
                 .chain(record.terminal_command.iter())
-                .cloned()
                 .map(|s| s.chars().take(60).collect())
                 .collect(),
             dismissed: false,
@@ -336,7 +334,6 @@ impl GuidanceEngine {
             correlated_context: record.browser_url.iter()
                 .chain(record.terminal_command.iter())
                 .chain(record.active_app.iter())
-                .cloned()
                 .map(|s| s.chars().take(60).collect())
                 .collect(),
             dismissed: false,
@@ -347,10 +344,8 @@ impl GuidanceEngine {
     fn build_general_suggestion(&self, record: &crate::correlation::CorrelationRecord) -> GuidanceSuggestion {
         let id = format!("gen-{}", uuid::Uuid::new_v4().simple());
 
-        let message = format!(
-            "I'm observing your activity and noticed some engineering work happening. \
-            You might want to double-check the configuration you're working with.",
-        );
+        let message = "I'm observing your activity and noticed some engineering work happening. \
+            You might want to double-check the configuration you're working with.".to_string();
 
         GuidanceSuggestion {
             id,
@@ -363,7 +358,6 @@ impl GuidanceEngine {
             correlated_context: record.browser_url.iter()
                 .chain(record.terminal_command.iter())
                 .chain(record.active_app.iter())
-                .cloned()
                 .map(|s| s.chars().take(60).collect())
                 .collect(),
             dismissed: false,

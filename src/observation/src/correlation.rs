@@ -84,6 +84,12 @@ pub struct CorrelationState {
     pub last_scan: Option<Instant>,
 }
 
+impl Default for CorrelationState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CorrelationState {
     pub fn new() -> Self {
         Self {
@@ -161,18 +167,18 @@ impl CorrelationEngine {
             browser_name: ctx
                 .last_browser_url
                 .as_ref()
-                .and_then(|u| {
+                .map(|u| {
                     let lower = u.to_lowercase();
                     if lower.contains("firefox") || lower.contains("librewolf") {
-                        Some("LibreWolf".to_string())
+                        "LibreWolf".to_string()
                     } else if lower.contains("chrome") || lower.contains("brave") {
-                        Some("Chrome".to_string())
+                        "Chrome".to_string()
                     } else if lower.contains("edge") {
-                        Some("Edge".to_string())
+                        "Edge".to_string()
                     } else if lower.contains("safari") {
-                        Some("Safari".to_string())
+                        "Safari".to_string()
                     } else {
-                        Some("Browser".to_string())
+                        "Browser".to_string()
                     }
                 })
                 .unwrap_or_else(|| "Browser".to_string()),

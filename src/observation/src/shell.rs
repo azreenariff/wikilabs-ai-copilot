@@ -40,6 +40,7 @@ struct ShellState {
     active: bool,
     monitored_sessions: Vec<String>,
     commands: Vec<ShellCommand>,
+    #[allow(dead_code)]
     last_capture: Option<Instant>,
     status: ShellStatus,
 }

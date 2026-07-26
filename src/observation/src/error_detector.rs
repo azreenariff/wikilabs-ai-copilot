@@ -259,7 +259,7 @@ impl ErrorDetector {
         let raw = content.to_string();
         let content_lower = content.to_lowercase();
         let url_str = url.unwrap_or("");
-        let url_lower = url_str.to_lowercase();
+        let _url_lower = url_str.to_lowercase();
 
         // Check for common error page patterns
         let browser_errors = [
@@ -401,13 +401,14 @@ impl ErrorDetector {
     }
 
     /// Create a new detected error.
+    #[allow(clippy::too_many_arguments)]
     fn create_error(
         &self,
         severity: ErrorSeverity,
         title: String,
         description: String,
         raw_content: String,
-        url: Option<String>,
+        _url: Option<String>,
         service: Option<String>,
         source: ErrorSource,
     ) -> DetectedError {
