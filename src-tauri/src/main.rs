@@ -17,6 +17,7 @@ mod error_handling;
 mod guidance_panel;
 mod knowledge_panel;
 mod logging;
+mod observation;
 mod security;
 mod skill_management;
 mod skill_knowledge;
@@ -25,9 +26,9 @@ use config::{AiProviderConfig, AppSettings, AppSettingsStore};
 use guidance_panel::{
     guidance_add_evidence, guidance_add_timeline_event, guidance_clear_all, guidance_complete_step,
     guidance_dismiss_recommendation, guidance_get_active_recommendations, guidance_get_all_recommendations,
-    guidance_get_available_modes, guidance_get_evidence_status, guidance_get_feedback_stats,
-    guidance_get_mode, guidance_get_recent_events, guidance_get_timeline, guidance_get_workflow_progress,
-    guidance_mark_missing, guidance_record_feedback, guidance_set_mode, guidance_start_workflow,
+    guidance_get_evidence_status, guidance_get_feedback_stats,
+    guidance_get_recent_events, guidance_get_timeline, guidance_get_workflow_progress,
+    guidance_mark_missing, guidance_record_feedback, guidance_start_workflow,
     guidance_update_recommendation_status,
 };
 use knowledge_panel::{
@@ -399,6 +400,68 @@ fn get_logs(_limit: Option<usize>) -> Result<Vec<String>, String> {
     ])
 }
 
+// ── Advice Chat Window Management ──────────────────────────────
+
+#[tauri::command]
+fn open_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
+    info!("Opening advice chat window (right side)");
+    if let Some(window) = app.get_webview_window("advice-chat") {
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        // Load the embedded advice chat HTML via the API server endpoint
+        let url = tauri::WebviewUrl::App("/advice-chat".into());
+        
+        let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
+            .title("AI Copilot — Live Advice")
+            .inner_size(400.0, 520.0)
+            .resizable(true)
+            .decorations(false)
+            .always_on_top(true)
+            .build()
+            .map_err(|e| e.to_string())?;
+        
+        // Position on the right side of the screen (vertically centered)
+        if let Some(w) = app.get_webview_window("advice-chat") {
+            if let Ok(Some(m)) = w.current_monitor() {
+                let width = 400.0;
+                let height = 520.0;
+                let x = m.size().width as f64 - width - 10.0; // 10px from right edge
+                let y = (m.size().height as f64 - height) / 2.0;
+                let _ = w.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+            }
+        }
+        
+        Ok(())
+    }
+}
+
+#[tauri::command]
+fn close_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("advice-chat") {
+        window.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn open_guidance_page() -> Result<(), String> {
+    // Navigation is handled by the main app's router
+    Ok(())
+}
+
+// ── Window Management ──────────────────────────────────────────
+
+#[tauri::command]
+fn hide_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    info!("Hiding main window (minimize to tray)");
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+    Ok(())
+}
+
 // ── Streaming (placeholder) ────────────────────────────────────
 
 #[tauri::command]
@@ -539,6 +602,18 @@ fn main() {
             app.manage(std::sync::Arc::new(std::sync::Mutex::new(registry)));
             app.manage(state);
 
+            // ── Observation Engine Setup ──
+            // Initialize and start the observation engine to provide
+            // proactive AI guidance based on user activity.
+            let app_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                let engine = observation::init_observation_engine();
+                let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+                rt.block_on(async {
+                    observation::start_observation_engine(engine).await;
+                });
+            });
+
             // ── System Tray Setup ──
             let _handle = app.handle().clone();
             // Build tray context menu
@@ -618,9 +693,6 @@ fn main() {
             guidance_get_recent_events,
             guidance_record_feedback,
             guidance_get_feedback_stats,
-            guidance_set_mode,
-            guidance_get_mode,
-            guidance_get_available_modes,
             guidance_clear_all,
             // System commands
             get_status,
@@ -645,6 +717,11 @@ fn main() {
             skill_set_active,
             skill_validate,
             skill_mark_validated,
+            // Window management
+            hide_main_window,
+            // Advice chat window management
+            open_advice_chat_window,
+            close_advice_chat_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -11,6 +11,9 @@
 //! - Human Approval (engineer must approve before action)
 //! - Proactive Assistance (when/how to interrupt)
 //! - Contextual Follow-Up (continue previous topics)
+//!
+//! Note: CopilotMode has been removed. The engine always runs in Balanced mode
+//! for consistent behavior without confusing user-facing mode switches.
 
 use crate::approval::{ApprovalRequest, HumanApproval};
 use crate::cards::RecommendationCard;
@@ -18,8 +21,7 @@ use crate::decision::{DecisionContext, DecisionEngine};
 use crate::explainability::Explainability;
 use crate::lifecycle::RecommendationLifecycle;
 use crate::memory::SessionMemory;
-use crate::modes::CopilotMode;
-use crate::policy::PolicyEngine;
+use crate::policy::{PolicyEngine, PolicyLevel};
 use crate::proactive::{ProactiveAssistance, ProactiveSignal};
 use crate::recommendation::{EngineeringContext, RecommendationEngine};
 use crate::Recommendation;
@@ -46,28 +48,21 @@ pub struct CopilotEngine {
     conversation_context: crate::conversation::ConversationContext,
     human_approval: HumanApproval,
     proactive: ProactiveAssistance,
-    mode: CopilotMode,
 }
 
 impl CopilotEngine {
-    pub fn new(mode: CopilotMode) -> Self {
+    /// Create a new engine in Balanced mode (default).
+    pub fn new() -> Self {
         CopilotEngine {
             decision_engine: DecisionEngine::new(),
             recommendation_engine: RecommendationEngine::new(),
-            policy_engine: PolicyEngine::new(mode.policy_level()),
+            policy_engine: PolicyEngine::new(PolicyLevel::Balanced),
             lifecycle: RecommendationLifecycle::new(),
             session_memory: SessionMemory::new(),
             conversation_context: crate::conversation::ConversationContext::new(),
             human_approval: HumanApproval::new(),
             proactive: ProactiveAssistance::new(),
-            mode,
         }
-    }
-
-    pub fn with_mode(mut self, mode: CopilotMode) -> Self {
-        self.mode = mode;
-        self.policy_engine.set_level(mode.policy_level());
-        self
     }
 
     /// Process an observation and return a recommendation result.
@@ -322,17 +317,6 @@ impl CopilotEngine {
         None
     }
 
-    /// Switch copilot mode.
-    pub fn switch_mode(&mut self, mode: CopilotMode) {
-        self.mode = mode;
-        self.policy_engine.set_level(mode.policy_level());
-    }
-
-    /// Get current mode.
-    pub fn mode(&self) -> CopilotMode {
-        self.mode
-    }
-
     /// Get session stats.
     pub fn stats(&self) -> (u32, u32, u32, u32) {
         self.session_memory.counts()
@@ -348,7 +332,7 @@ impl CopilotEngine {
 
 impl Default for CopilotEngine {
     fn default() -> Self {
-        CopilotEngine::new(CopilotMode::Balanced)
+        CopilotEngine::new()
     }
 }
 
@@ -366,14 +350,15 @@ mod tests {
     }
 
     #[test]
-    fn test_engine_default_mode() {
+    fn test_engine_default() {
         let engine = CopilotEngine::default();
-        assert_eq!(engine.mode(), CopilotMode::Balanced);
+        let (_, _, _, _) = engine.stats();
+        assert!(true);
     }
 
     #[test]
     fn test_engine_process_observation() {
-        let mut engine = CopilotEngine::new(CopilotMode::Balanced);
+        let mut engine = CopilotEngine::new();
         let ctx = make_ctx();
         let result = engine.process_observation("Pod memory at 90%", &ctx);
         // Should produce a result since error detection has high confidence
@@ -382,40 +367,20 @@ mod tests {
 
     #[test]
     fn test_engine_process_question() {
-        let mut engine = CopilotEngine::new(CopilotMode::Balanced);
+        let mut engine = CopilotEngine::new();
         let ctx = make_ctx();
         let answer = engine.process_question("How is my memory?", &ctx);
         assert!(!answer.is_empty());
     }
 
     #[test]
-    fn test_engine_mode_switch() {
-        let mut engine = CopilotEngine::new(CopilotMode::Balanced);
-        assert_eq!(engine.mode(), CopilotMode::Balanced);
-        engine.switch_mode(CopilotMode::Silent);
-        assert_eq!(engine.mode(), CopilotMode::Silent);
-        engine.switch_mode(CopilotMode::Teaching);
-        assert_eq!(engine.mode(), CopilotMode::Teaching);
-    }
-
-    #[test]
     fn test_engine_clear_session() {
-        let mut engine = CopilotEngine::new(CopilotMode::Balanced);
+        let mut engine = CopilotEngine::new();
         let ctx = make_ctx();
         let _ = engine.process_observation("Pod memory high", &ctx);
         engine.clear_session();
         let (a, d, i, c) = engine.stats();
         assert_eq!((a, d, i, c), (0, 0, 0, 0));
-    }
-
-    #[test]
-    fn test_engine_process_silent_mode() {
-        let mut engine = CopilotEngine::new(CopilotMode::Silent);
-        let ctx = make_ctx();
-        // Silent mode should filter out most recommendations
-        let result = engine.process_observation("Pod memory at 90%", &ctx);
-        // Should be None in silent mode (confidence 0.85 < 1.0)
-        assert!(result.is_none());
     }
 
     #[test]

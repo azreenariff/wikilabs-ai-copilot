@@ -1,575 +1,439 @@
-//! AI Engine Integration — Observation Context Provider
+//! Observation Engine — orchestrates providers, event bus, and downstream consumers.
 //!
-//! Translates observation events into structured context for the AI engine.
-//! This module does NOT analyze content — it provides metadata-based context.
+//! This is the central piece that was missing. Previously, providers existed
+//! but nothing ever started them. Now:
 //!
-//! Supported event types for AI context:
-//! - ApplicationChanged → Current application context
-//! - BrowserContextChanged → Browser context (URL, title)
-//! - TerminalCommand → Active terminal context
-//! - ClipboardChanged → Recent clipboard type (error, stack trace, log)
-//! - ConfigurationFileOpened → Active config files
-//! - ScreenCapture → Screen capture metadata
+//! 1. Creates a ProviderRegistry and registers all providers.
+//! 2. Starts all enabled providers.
+//! 3. Runs a polling loop that collects observations from all providers.
+//! 4. Feeds events to the event bus → session tracker → guidance panel.
+//! 5. When an error is detected or engineering context is found, generates
+//!    a recommendation card and pushes it to the guidance panel.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::time::Duration;
 
-use crate::event::{EventType, ObservationEvent, ProviderType};
+use tokio::sync::Mutex;
 
-/// A structured context entry for the AI engine.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ContextEntry {
-    /// The observation event type that generated this context.
-    pub event_type: EventType,
-    /// The provider that generated this context.
-    pub provider: ProviderType,
-    /// A summary of the current context (no raw content).
-    pub summary: String,
-    /// Metadata from the observation event.
-    pub metadata: HashMap<String, serde_json::Value>,
-    /// When this context was generated.
-    pub timestamp: String,
+use crate::correlation::CorrelationEngine;
+use crate::error_detector::ErrorDetector;
+use crate::event::{ObservationEvent, ObservationPayload, ProviderType};
+use crate::event_bus::EventBus;
+use crate::session_tracker::SessionTracker;
+use crate::provider::{ObservationProvider, ProviderRegistry, ProviderState};
+
+/// Configuration for the observation engine.
+#[derive(Debug, Clone)]
+pub struct ObservationEngineConfig {
+    /// Polling interval for providers that don't push.
+    pub poll_interval_secs: u64,
+    /// Whether to enable error detection.
+    pub enable_error_detection: bool,
+    /// Whether to enable session tracking.
+    pub enable_session_tracking: bool,
+    /// Whether to enable correlation engine.
+    pub enable_correlation: bool,
 }
 
-/// AI context that is sent to the engine alongside LLM prompts.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct AiContext {
-    /// List of active applications.
-    pub applications: Vec<String>,
-    /// Current browser context (if any).
-    pub browser_context: Option<BrowserContextSummary>,
-    /// Current terminal context (if any).
-    pub terminal_context: Option<TerminalContextSummary>,
-    /// Recently opened configuration files.
-    pub config_files: Vec<ConfigFileSummary>,
-    /// Recent clipboard indicators (not content).
-    pub clipboard_indicators: Vec<ClipboardIndicator>,
-    /// Screen capture metadata.
-    pub screen_capture: Option<ScreenCaptureMetadata>,
-    /// Total number of observations since session start.
-    pub total_observations: u64,
-    /// Timestamp when this context was generated.
-    pub generated_at: String,
-}
-
-/// Browser context summary for AI.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct BrowserContextSummary {
-    pub browser: String,
-    pub url: Option<String>,
-    pub title: Option<String>,
-    pub is_engineering_portal: bool,
-}
-
-/// Terminal context summary for AI.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct TerminalContextSummary {
-    pub terminal: String,
-    pub shell: String,
-    pub session_id: String,
-    pub is_ssh: bool,
-    pub is_engineering: bool,
-}
-
-/// Config file summary for AI.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ConfigFileSummary {
-    pub path: String,
-    pub extension: String,
-    pub size_bytes: Option<u64>,
-}
-
-/// Clipboard indicator for AI.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ClipboardIndicator {
-    pub looks_like_error: bool,
-    pub looks_like_stack_trace: bool,
-    pub looks_like_log: bool,
-    pub text_length: u64,
-}
-
-/// Screen capture metadata for AI.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ScreenCaptureMetadata {
-    pub width: u32,
-    pub height: u32,
-    pub screen_index: u32,
-    pub total_screens: u32,
-}
-
-/// AI engine integration context manager.
-///
-/// Translates observation events into structured context entries
-/// that can be injected into LLM prompts.
-pub struct AiContextManager {
-    /// Latest context snapshot.
-    pub latest_context: Arc<Mutex<AiContext>>,
-    /// Number of observations processed.
-    pub observation_count: Arc<Mutex<u64>>,
-    /// Recently seen provider types (for deduplication).
-    pub recent_providers: Arc<Mutex<Vec<ProviderType>>>,
-}
-
-impl AiContextManager {
-    pub fn new() -> Self {
+impl Default for ObservationEngineConfig {
+    fn default() -> Self {
         Self {
-            latest_context: Arc::new(Mutex::new(AiContext::default())),
-            observation_count: Arc::new(Mutex::new(0)),
-            recent_providers: Arc::new(Mutex::new(Vec::new())),
+            poll_interval_secs: 5,
+            enable_error_detection: true,
+            enable_session_tracking: true,
+            enable_correlation: true,
+        }
+    }
+}
+
+/// The observation engine that orchestrates everything.
+pub struct ObservationEngine {
+    config: ObservationEngineConfig,
+    registry: Arc<Mutex<ProviderRegistry>>,
+    event_bus: Arc<EventBus>,
+    correlation_engine: Arc<CorrelationEngine>,
+    error_detector: Arc<ErrorDetector>,
+    session_tracker: Arc<SessionTracker>,
+    /// Whether the engine is running.
+    running: Arc<Mutex<bool>>,
+}
+
+impl ObservationEngine {
+    /// Create a new observation engine with all providers registered.
+    pub fn new(config: ObservationEngineConfig) -> Self {
+        let event_bus = EventBus::with_defaults();
+        let correlation_engine = Arc::new(CorrelationEngine::new());
+        let error_detector = Arc::new(ErrorDetector::new());
+        let session_tracker = Arc::new(SessionTracker::new());
+
+        let registry = Arc::new(Mutex::new(ProviderRegistry::new()));
+
+        Self {
+            config,
+            registry,
+            event_bus: Arc::new(event_bus),
+            correlation_engine,
+            error_detector,
+            session_tracker,
+            running: Arc::new(Mutex::new(false)),
         }
     }
 
-    /// Process an observation event and update context if relevant.
-    pub fn process_event(&self, event: &ObservationEvent) {
-        // Increment observation count
-        let mut count = self.observation_count.lock().unwrap();
-        *count += 1;
+    /// Register a provider with the engine.
+    pub async fn register_provider(&self, provider: Box<dyn ObservationProvider>) {
+        let mut registry = self.registry.lock().await;
+        registry.register(provider);
+    }
 
-        // Skip non-relevant events
-        let relevant = matches!(
-            event.event_type,
-            EventType::ApplicationChanged
-                | EventType::BrowserContextChanged
-                | EventType::TerminalCommand
-                | EventType::ClipboardChanged
-                | EventType::ConfigurationFileOpened
-                | EventType::ScreenshotCaptured
+    /// Start all registered providers.
+    /// Returns the list of (provider_name, result) pairs.
+    pub async fn start(&self) -> Vec<(String, Result<(), String>)> {
+        tracing::info!("[ObservationEngine] Starting observation engine");
+
+        let mut running = self.running.lock().await;
+        *running = true;
+
+        let mut registry = self.registry.lock().await;
+        let results = registry.start_all().await;
+
+        for (name, result) in &results {
+            match result {
+                Ok(_) => tracing::info!("[ObservationEngine] Provider {} started", name),
+                Err(e) => tracing::error!("[ObservationEngine] Provider {} failed: {}", name, e),
+            }
+        }
+
+        drop(registry);
+
+        tracing::info!(
+            "[ObservationEngine] Started {} providers, {} errors",
+            results.len(),
+            results.iter().filter(|(_, r)| r.is_err()).count()
         );
 
-        if !relevant {
-            return;
+        results
+    }
+
+    /// Stop all providers.
+    pub async fn stop(&self) {
+        tracing::info!("[ObservationEngine] Stopping observation engine");
+
+        {
+            let mut running = self.running.lock().await;
+            *running = false;
         }
 
-        // Track which provider types we've seen
-        let mut recent = self.recent_providers.lock().unwrap();
-        if !recent.contains(&event.provider) {
-            recent.push(event.provider.clone());
-            // Keep only last 100 unique providers
-            if recent.len() > 100 {
-                recent.remove(0);
+        let mut registry = self.registry.lock().await;
+        let results = registry.stop_all().await;
+
+        for (name, result) in &results {
+            match result {
+                Ok(_) => tracing::info!("[ObservationEngine] Provider {} stopped", name),
+                Err(e) => tracing::error!("[ObservationEngine] Provider {} stop failed: {}", name, e),
             }
         }
+    }
 
-        // Update context based on provider type
-        let mut ctx = self.latest_context.lock().unwrap();
-        match &event.provider {
-            ProviderType::ActiveWindow => {
-                let app = event.source.clone();
-                if !ctx.applications.contains(&app) {
-                    ctx.applications.push(app);
+    /// Run the observation polling loop (blocking). This runs in a background thread.
+    pub async fn run_loop(&self) {
+        let interval = Duration::from_secs(self.config.poll_interval_secs);
+
+        loop {
+            // Check if we should stop
+            {
+                let running = self.running.lock().await;
+                if !*running {
+                    break;
+                }
+                drop(running);
+            }
+
+            // Poll all providers
+            let registry = self.registry.lock().await;
+
+            for provider in registry.all_providers() {
+                // Skip disabled providers
+                let config = provider.config();
+                if !config.enabled {
+                    continue;
+                }
+
+                // Check provider state
+                match provider.state() {
+                    ProviderState::Active | ProviderState::Paused => {}
+                    ProviderState::Disabled => continue,
+                    ProviderState::Error(_) => continue,
+                }
+
+                // Try to observe
+                match provider.observe().await {
+                    Ok(events) => {
+                        for event in &events {
+                            // Publish to event bus
+                            if let Err(e) = self.event_bus.publish(event.clone()) {
+                                tracing::warn!(
+                                    "[ObservationEngine] Failed to publish event: {}",
+                                    e
+                                );
+                            }
+
+                            // Feed to downstream consumers
+                            self.feed_event(event);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            provider = %provider.name(),
+                            error = %e,
+                            "[ObservationEngine] Observe error"
+                        );
+                    }
                 }
             }
-            ProviderType::Browser => {
-                if let Some(url) = event.payload.data.get("url").and_then(|v| v.as_str()) {
-                    ctx.browser_context = Some(BrowserContextSummary {
-                        browser: event.source.clone(),
-                        url: Some(url.to_string()),
-                        title: event
+
+            drop(registry);
+
+            // Wait for next poll cycle
+            tokio::time::sleep(interval).await;
+        }
+
+        tracing::info!("[ObservationEngine] Polling loop ended");
+    }
+
+    /// Feed an observation event to downstream consumers.
+    fn feed_event(&self, event: &ObservationEvent) {
+        // 1. Update correlation engine based on provider type
+        if self.config.enable_correlation {
+            match &event.provider {
+                ProviderType::ActiveWindow => {
+                    self.correlation_engine
+                        .update_active_app(Some(event.source.clone()));
+                }
+                ProviderType::Browser => {
+                    if let Some(url) = event
+                        .payload
+                        .data
+                        .get("url")
+                        .and_then(|v| v.as_str())
+                    {
+                        let title = event
                             .payload
                             .data
                             .get("title")
                             .and_then(|v| v.as_str())
-                            .map(|s| s.to_string()),
-                        is_engineering_portal: event
+                            .map(|s| s.to_string());
+                        let is_portal = event
                             .payload
                             .data
                             .get("is_engineering_portal")
                             .and_then(|v| v.as_bool())
-                            .unwrap_or(false),
-                    });
+                            .unwrap_or(false);
+                        self.correlation_engine
+                            .update_browser_context(Some(url.to_string()), title, is_portal);
+                    }
                 }
-            }
-            ProviderType::Terminal => {
-                if let Some(session) = event
-                    .payload
-                    .data
-                    .get("session_id")
-                    .and_then(|v| v.as_str())
-                {
-                    ctx.terminal_context = Some(TerminalContextSummary {
-                        terminal: event.source.clone(),
-                        shell: event
+                ProviderType::Terminal => {
+                    if let Some(session_id) = event
+                        .payload
+                        .data
+                        .get("session_id")
+                        .and_then(|v| v.as_str())
+                    {
+                        let shell = event
                             .payload
                             .data
                             .get("shell")
                             .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        session_id: session.to_string(),
-                        is_ssh: event
-                            .payload
-                            .data
-                            .get("is_ssh")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false),
-                        is_engineering: event
-                            .payload
-                            .data
-                            .get("is_engineering")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false),
-                    });
-                }
-            }
-            ProviderType::Clipboard => {
-                if let (Some(error), Some(trace), Some(log), Some(len)) = (
-                    event
-                        .payload
-                        .data
-                        .get("looks_like_error")
-                        .and_then(|v| v.as_bool()),
-                    event
-                        .payload
-                        .data
-                        .get("looks_like_stack_trace")
-                        .and_then(|v| v.as_bool()),
-                    event
-                        .payload
-                        .data
-                        .get("looks_like_log")
-                        .and_then(|v| v.as_bool()),
-                    event
-                        .payload
-                        .data
-                        .get("text_length")
-                        .and_then(|v| v.as_u64()),
-                ) {
-                    ctx.clipboard_indicators.push(ClipboardIndicator {
-                        looks_like_error: error,
-                        looks_like_stack_trace: trace,
-                        looks_like_log: log,
-                        text_length: len,
-                    });
-                    // Keep only last 10 indicators
-                    if ctx.clipboard_indicators.len() > 10 {
-                        ctx.clipboard_indicators.remove(0);
+                            .map(|s| s.to_string());
+                        self.correlation_engine
+                            .update_terminal_context(Some(session_id.to_string()), shell);
                     }
                 }
+                _ => {}
             }
-            ProviderType::FileObserver => {
-                if let (Some(path), Some(ext), Some(size)) = (
-                    event
-                        .payload
-                        .data
-                        .get("path")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
-                    event
-                        .payload
-                        .data
-                        .get("extension")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string()),
-                    event
-                        .payload
-                        .data
-                        .get("size_bytes")
-                        .and_then(|v| v.as_u64()),
-                ) {
-                    ctx.config_files.push(ConfigFileSummary {
-                        path,
-                        extension: ext,
-                        size_bytes: Some(size),
-                    });
-                    if ctx.config_files.len() > 10 {
-                        ctx.config_files.remove(0);
-                    }
+        }
+
+        // 2. Run error detection via analyze_tick
+        if self.config.enable_error_detection {
+            let browser_url = event
+                .payload
+                .data
+                .get("url")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let browser_content = event
+                .payload
+                .data
+                .get("content")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let window_title = event
+                .payload
+                .data
+                .get("title")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let window_content = event
+                .payload
+                .data
+                .get("content")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let errors = self.error_detector.analyze_tick(
+                browser_url.as_deref(),
+                browser_content.as_deref(),
+                None,  // terminal_cmd
+                None,  // terminal_output
+                window_title.as_deref(),
+                window_content.as_deref(),
+            );
+
+            for detected in &errors {
+                tracing::info!(
+                    error_id = detected.id,
+                    severity = ?detected.severity,
+                    title = %detected.title,
+                    "[ObservationEngine] Error detected"
+                );
+            }
+
+            if !errors.is_empty() {
+                let _ = self.event_bus.publish(
+                    ObservationEvent::new(
+                        crate::event::EventType::ApplicationChanged,
+                        ProviderType::ActiveWindow,
+                        "error_detector".to_string(),
+                        None,
+                        ObservationPayload::new(serde_json::json!({
+                            "errors": errors.iter().map(|e| {
+                                serde_json::json!({
+                                    "id": e.id,
+                                    "severity": format!("{:?}", e.severity),
+                                    "title": e.title,
+                                    "description": e.description,
+                                })
+                            }).collect::<Vec<_>>(),
+                        })),
+                    ),
+                );
+            }
+        }
+
+        // 3. Update session tracker
+        if self.config.enable_session_tracking {
+            let browser_url = event
+                .payload
+                .data
+                .get("url")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let browser_error = event
+                .payload
+                .data
+                .get("error")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let command = event
+                .payload
+                .data
+                .get("command_text")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let command_output = event
+                .payload
+                .data
+                .get("output")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let (session, suggestions) = self.session_tracker.process_tick(
+                browser_url.as_deref(),
+                browser_error.as_deref(),
+                command.as_deref(),
+                command_output.as_deref(),
+            );
+
+            // If session tracker generated suggestions, push to event bus
+            if !suggestions.is_empty() {
+                let sugg = &suggestions[0];
+                tracing::info!(
+                    suggestion = %sugg.message,
+                    target = ?sugg.related_target,
+                    confidence = sugg.confidence,
+                    "[ObservationEngine] Session tracker suggestion"
+                );
+
+                // Record evidence from suggestions
+                if let Some(ref target) = sugg.related_target {
+                    let _ = self.event_bus.publish(
+                                        ObservationEvent::new(
+                                            crate::event::EventType::ConfigurationFileOpened,
+                                            ProviderType::ActiveWindow,
+                                            format!("session_tracker_suggestion_{}", target),
+                                            None,
+                                            ObservationPayload::new(serde_json::json!({
+                                                "suggestion": sugg.message,
+                                                "target": target,
+                                                "session_state": format!("{:?}", session.state),
+                                                "hypothesis": session.current_hypothesis,
+                                                "target_system": session.target_system,
+                                            })),
+                                        ),
+                                    );
                 }
             }
-            ProviderType::ScreenCapture => {
-                if let (Some(w), Some(h), Some(s), Some(t)) = (
-                    event
-                        .payload
-                        .data
-                        .get("width")
-                        .and_then(|v| v.as_u64())
-                        .map(|v| v as u32),
-                    event
-                        .payload
-                        .data
-                        .get("height")
-                        .and_then(|v| v.as_u64())
-                        .map(|v| v as u32),
-                    event
-                        .payload
-                        .data
-                        .get("screen_index")
-                        .and_then(|v| v.as_u64())
-                        .map(|v| v as u32),
-                    event
-                        .payload
-                        .data
-                        .get("total_screens")
-                        .and_then(|v| v.as_u64())
-                        .map(|v| v as u32),
-                ) {
-                    ctx.screen_capture = Some(ScreenCaptureMetadata {
-                        width: w,
-                        height: h,
-                        screen_index: s,
-                        total_screens: t,
-                    });
-                }
+
+            // Update session state in the event bus for tracking
+            if session.state != crate::session_tracker::SessionState::Idle {
+                let _ = self.event_bus.publish(
+                    ObservationEvent::new(
+                        crate::event::EventType::ApplicationChanged,
+                        ProviderType::ActiveWindow,
+                        "session_tracker_state".to_string(),
+                        None,
+                        ObservationPayload::new(serde_json::json!({
+                            "session_state": format!("{:?}", session.state),
+                            "steps": session.steps.len(),
+                            "hypothesis": session.current_hypothesis,
+                            "target_system": session.target_system,
+                            "suggested_next_step": session.suggested_next_step,
+                        })),
+                    ),
+                );
             }
-            _ => {}
-        }
-
-        ctx.total_observations = *count;
-    }
-
-    /// Get the current AI context.
-    pub fn get_context(&self) -> AiContext {
-        self.latest_context.lock().unwrap().clone()
-    }
-
-    /// Get the observation count.
-    pub fn get_observation_count(&self) -> u64 {
-        *self.observation_count.lock().unwrap()
-    }
-
-    /// Get the list of unique providers seen.
-    pub fn get_unique_providers(&self) -> Vec<ProviderType> {
-        self.recent_providers.lock().unwrap().clone()
-    }
-}
-
-impl Default for AiContextManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Default for AiContext {
-    fn default() -> Self {
-        Self {
-            applications: Vec::new(),
-            browser_context: None,
-            terminal_context: None,
-            config_files: Vec::new(),
-            clipboard_indicators: Vec::new(),
-            screen_capture: None,
-            total_observations: 0,
-            generated_at: chrono::Utc::now().to_rfc3339(),
-        }
-    }
-}
-
-/// Format the AI context as a human-readable summary for prompts.
-pub fn format_context_for_prompt(ctx: &AiContext) -> String {
-    let mut parts: Vec<String> = Vec::new();
-
-    if !ctx.applications.is_empty() {
-        parts.push(format!(
-            "Current applications: {}",
-            ctx.applications.join(", ")
-        ));
-    }
-
-    if let Some(ref browser) = ctx.browser_context {
-        if browser.is_engineering_portal {
-            parts.push(format!(
-                "Engineering portal: {} - {} ({})",
-                browser.browser,
-                browser.url.as_deref().unwrap_or("unknown"),
-                browser.title.as_deref().unwrap_or("no title")
-            ));
         }
     }
 
-    if let Some(ref terminal) = ctx.terminal_context {
-        if terminal.is_engineering {
-            parts.push(format!(
-                "Engineering terminal: {} (shell: {})",
-                terminal.terminal, terminal.shell
-            ));
-        }
+    /// Get detected errors.
+    pub fn get_errors(&self) -> Vec<crate::error_detector::DetectedError> {
+        self.error_detector.get_errors()
     }
 
-    if !ctx.config_files.is_empty() {
-        let files: Vec<String> = ctx
-            .config_files
-            .iter()
-            .filter_map(|f| {
-                if f.size_bytes.unwrap_or(0) > 0 {
-                    Some(f.path.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
-        if !files.is_empty() {
-            parts.push(format!("Active config files: {}", files.join(", ")));
-        }
+    /// Get current session state.
+    pub fn get_session_state(&self) -> Option<crate::session_tracker::TroubleshootingSession> {
+        self.session_tracker.get_session()
     }
 
-    if !ctx.clipboard_indicators.is_empty() {
-        let errors: u32 = ctx
-            .clipboard_indicators
-            .iter()
-            .filter(|c| c.looks_like_error)
-            .count() as u32;
-        let traces: u32 = ctx
-            .clipboard_indicators
-            .iter()
-            .filter(|c| c.looks_like_stack_trace)
-            .count() as u32;
-        if errors > 0 || traces > 0 {
-            parts.push(format!(
-                "Clipboard: {} errors, {} stack traces detected",
-                errors, traces
-            ));
-        }
+    /// Get provider status.
+    pub async fn get_provider_status(&self) -> Vec<crate::provider::ProviderStatus> {
+        let registry = self.registry.lock().await;
+        registry.all_status()
     }
 
-    if parts.is_empty() {
-        parts.push("No relevant observation context available".to_string());
+    /// Get the event bus reference for subscribing to events.
+    pub fn event_bus(&self) -> &Arc<EventBus> {
+        &self.event_bus
     }
 
-    format!(
-        "## Observation Context\n{}\n\nObservations processed: {}",
-        parts.join("\n"),
-        ctx.total_observations
-    )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::event::ObservationPayload;
-
-    #[test]
-    fn test_context_manager_creation() {
-        let manager = AiContextManager::new();
-        assert_eq!(manager.get_observation_count(), 0);
-        assert!(manager.get_unique_providers().is_empty());
-    }
-
-    #[test]
-    fn test_process_application_event() {
-        let manager = AiContextManager::new();
-        let event = ObservationEvent::new(
-            EventType::ApplicationChanged,
-            ProviderType::ActiveWindow,
-            "vscode".to_string(),
-            None,
-            ObservationPayload::new(serde_json::json!({"app": "vscode"})),
-        );
-        manager.process_event(&event);
-        assert_eq!(manager.get_observation_count(), 1);
-
-        let ctx = manager.get_context();
-        assert!(ctx.applications.contains(&"vscode".to_string()));
-    }
-
-    #[test]
-    fn test_process_browser_event() {
-        let manager = AiContextManager::new();
-        let event = ObservationEvent::new(
-            EventType::BrowserContextChanged,
-            ProviderType::Browser,
-            "firefox".to_string(),
-            None,
-            ObservationPayload::new(serde_json::json!({
-                "url": "https://openshift.example.com",
-                "title": "OpenShift Console",
-                "is_engineering_portal": true,
-            })),
-        );
-        manager.process_event(&event);
-
-        let ctx = manager.get_context();
-        assert!(ctx.browser_context.is_some());
-        let browser = ctx.browser_context.unwrap();
-        assert!(browser.is_engineering_portal);
-        assert!(browser.url.as_ref().unwrap().contains("openshift"));
-    }
-
-    #[test]
-    fn test_process_clipboard_error_event() {
-        let manager = AiContextManager::new();
-        let event = ObservationEvent::new(
-            EventType::ClipboardChanged,
-            ProviderType::Clipboard,
-            "clipboard".to_string(),
-            None,
-            ObservationPayload::new(serde_json::json!({
-                "looks_like_error": true,
-                "looks_like_stack_trace": false,
-                "looks_like_log": false,
-                "text_length": 256,
-            })),
-        );
-        manager.process_event(&event);
-
-        let ctx = manager.get_context();
-        assert!(!ctx.clipboard_indicators.is_empty());
-        assert!(ctx.clipboard_indicators[0].looks_like_error);
-    }
-
-    #[test]
-    fn test_format_context_for_prompt() {
-        let manager = AiContextManager::new();
-        manager.process_event(&ObservationEvent::new(
-            EventType::ApplicationChanged,
-            ProviderType::ActiveWindow,
-            "vscode".to_string(),
-            None,
-            ObservationPayload::new(serde_json::json!({})),
-        ));
-
-        let ctx = manager.get_context();
-        let formatted = format_context_for_prompt(&ctx);
-        assert!(formatted.contains("vscode"));
-        assert!(formatted.contains("Observations processed: 1"));
-    }
-
-    #[test]
-    fn test_format_empty_context() {
-        let manager = AiContextManager::new();
-        let ctx = manager.get_context();
-        let formatted = format_context_for_prompt(&ctx);
-        assert!(formatted.contains("No relevant observation context available"));
-    }
-
-    #[test]
-    fn test_deduplication() {
-        let manager = AiContextManager::new();
-        // Send multiple events from the same provider
-        for _ in 0..5 {
-            manager.process_event(&ObservationEvent::new(
-                EventType::ApplicationChanged,
-                ProviderType::ActiveWindow,
-                "vscode".to_string(),
-                None,
-                ObservationPayload::new(serde_json::json!({})),
-            ));
-        }
-        assert_eq!(manager.get_observation_count(), 5);
-        // Only one unique provider
-        assert_eq!(manager.get_unique_providers().len(), 1);
-    }
-
-    #[test]
-    fn test_clipboard_deduplication() {
-        let manager = AiContextManager::new();
-        // Send 15 identical clipboard events
-        for i in 0..15 {
-            manager.process_event(&ObservationEvent::new(
-                EventType::ClipboardChanged,
-                ProviderType::Clipboard,
-                "clipboard".to_string(),
-                None,
-                ObservationPayload::new(serde_json::json!({
-                    "looks_like_error": true,
-                    "looks_like_stack_trace": false,
-                    "looks_like_log": false,
-                    "text_length": i,
-                })),
-            ));
-        }
-
-        let ctx = manager.get_context();
-        // Should only keep last 10
-        assert!(ctx.clipboard_indicators.len() <= 10);
+    /// Check if the engine is running.
+    pub async fn is_running(&self) -> bool {
+        *self.running.lock().await
     }
 }

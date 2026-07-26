@@ -35,7 +35,6 @@ function SetupWizard() {
     setError('');
     setFetchedModels([]);
     try {
-      // Test connection and fetch available models
       const res = await fetch('http://localhost:1420/api/commands/list_models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,7 +46,6 @@ function SetupWizard() {
         setModel(data.value[0]);
         setTestResult('success');
       } else if (data.success && Array.isArray(data.value) && data.value.length === 0) {
-        // Connected but no models returned — let user type a model name
         setFetchedModels([]);
         setTestResult('success');
       } else {
@@ -82,7 +80,19 @@ function SetupWizard() {
       });
       const data = await res.json();
       if (data.success) {
+        // Explicitly mark first run as complete
+        await fetch('http://localhost:1420/api/commands/set_first_run_complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ params: {} }),
+        }).catch(() => {});
         setStep(5);
+        // Minimize main window to tray after setup
+        await fetch('http://localhost:1420/api/commands/hide_main_window', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ params: {} }),
+        });
       } else {
         setError(data.error || 'Failed to save');
       }
@@ -94,7 +104,6 @@ function SetupWizard() {
 
   const renderStep = () => {
     switch (step) {
-      // Step 0: Welcome
       case 0:
         return (
           <div style={{ textAlign: 'center' }}>
@@ -111,7 +120,6 @@ function SetupWizard() {
           </div>
         );
 
-      // Step 1: Select provider + enter URL, API key, context, max tokens
       case 1:
         return (
           <div>
@@ -122,215 +130,139 @@ function SetupWizard() {
                   key={p.name}
                   onClick={() => handleSelectProvider(p)}
                   style={{
-                    padding: '14px 16px', borderRadius: '10px', cursor: 'pointer',
-                    border: `2px solid ${selectedProvider.name === p.name ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                    background: selectedProvider.name === p.name ? 'rgba(99,102,241,0.1)' : 'var(--color-bg-secondary)',
-                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '12px 16px', borderRadius: '8px', border: selectedProvider.name === p.name ? '2px solid var(--color-accent)' : '2px solid var(--color-border)',
+                    cursor: 'pointer', background: selectedProvider.name === p.name ? 'rgba(66,153,225,0.1)' : 'var(--color-bg-secondary)',
+                    transition: 'border 0.2s',
                   }}
                 >
-                  <span style={{ fontSize: '24px' }}>
-                    {p.name === 'OpenAI' ? '⚡' : p.name === 'OpenRouter' ? '🌐' : p.name === 'Custom Endpoint' ? '🔧' : '🦙'}
-                  </span>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{p.name}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>{p.defaultEndpoint}</div>
-                  </div>
+                  <div style={{ fontWeight: 600 }}>{p.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{p.defaultEndpoint}</div>
                 </div>
               ))}
             </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>API Endpoint URL</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input
                 type="text"
+                placeholder="API Endpoint URL"
                 value={endpoint}
                 onChange={e => setEndpoint(e.target.value)}
-                placeholder="https://api.openai.com/v1"
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '6px',
-                  border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
-                  color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
-                }}
+                style={{ padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: '14px' }}
               />
-            </div>
-
-            {selectedProvider.needsKey && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>API Key</label>
+              {selectedProvider.needsKey && (
                 <input
                   type="password"
+                  placeholder="API Key"
                   value={apiKey}
                   onChange={e => setApiKey(e.target.value)}
-                  placeholder={selectedProvider.name === 'Ollama' ? '(not needed)' : 'sk-...'}
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: '6px',
-                    border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
-                    color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
-                  }}
+                  style={{ padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: '14px' }}
+                />
+              )}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Model name (e.g., gpt-4o)"
+                  value={model}
+                  onChange={e => setModel(e.target.value)}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: '14px' }}
                 />
               </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>Context Window</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="number"
+                  placeholder="Context Window"
                   value={contextWindow}
                   onChange={e => setContextWindow(e.target.value)}
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: '6px',
-                    border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
-                    color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
-                  }}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: '14px' }}
                 />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>Max Tokens</label>
                 <input
                   type="number"
+                  placeholder="Max Tokens"
                   value={maxTokens}
                   onChange={e => setMaxTokens(e.target.value)}
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: '6px',
-                    border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
-                    color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
-                  }}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: '14px' }}
                 />
               </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', marginTop: '24px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setStep(0)} style={{
-                padding: '8px 20px', borderRadius: '6px', border: '1px solid var(--color-border)',
-                background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer', fontSize: '13px',
-              }}>Back</button>
-              <button onClick={() => setStep(2)} style={{
-                padding: '8px 20px', borderRadius: '6px', border: 'none',
-                background: 'var(--color-accent)', color: 'white', cursor: 'pointer', fontSize: '13px',
-              }}>Next: Test Connection →</button>
+              <button
+                onClick={handleTestConnection}
+                disabled={testResult === 'testing'}
+                style={{
+                  padding: '10px 20px', borderRadius: '6px', border: 'none',
+                  background: testResult === 'testing' ? 'var(--color-text-secondary)' : 'var(--color-accent)',
+                  color: 'white', fontSize: '14px', fontWeight: 600, cursor: testResult === 'testing' ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {testResult === 'testing' ? 'Testing...' : 'Test Connection'}
+              </button>
+              {testResult && (
+                <div style={{
+                  padding: '8px 12px', borderRadius: '6px', fontSize: '13px',
+                  background: testResult === 'success' ? 'rgba(49,130,206,0.1)' : 'rgba(245,101,101,0.1)',
+                  color: testResult === 'success' ? 'var(--color-accent)' : '#f56565',
+                }}>
+                  {testResult === 'success' ? '✅ Connection successful!' : `❌ ${error}`}
+                </div>
+              )}
+              {fetchedModels.length > 0 && (
+                <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                  Available models: {fetchedModels.join(', ')}
+                </div>
+              )}
             </div>
           </div>
         );
 
-      // Step 2: Test connection and fetch models
       case 2:
         return (
           <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Test Connection</h2>
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Provider</div>
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>{selectedProvider.name}</div>
-              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '12px', marginBottom: '4px' }}>Endpoint</div>
-              <div style={{ fontSize: '14px' }}>{endpoint}</div>
-              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '12px', marginBottom: '4px' }}>Context / Max Tokens</div>
-              <div style={{ fontSize: '14px' }}>{contextWindow} / {maxTokens}</div>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Privacy & Security</h2>
+            <div style={{ fontSize: '14px', lineHeight: 1.6 }}>
+              <p>Your data is processed locally or via your configured AI provider. No telemetry is sent externally.</p>
+              <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
+                <li>AI responses use your configured provider</li>
+                <li>Chat history stored locally in the app</li>
+                <li>Skills and knowledge packs loaded from your workspace</li>
+              </ul>
             </div>
-
-            {testResult === 'idle' && (
-              <button onClick={handleTestConnection} style={{
-                padding: '10px 24px', borderRadius: '6px', border: 'none',
-                background: 'var(--color-accent)', color: 'white', cursor: 'pointer', fontSize: '14px',
-              }}>🔌 Test Connection</button>
-            )}
-            {testResult === 'testing' && (
-              <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>Testing connection...</div>
-            )}
-            {testResult === 'success' && (
-              <div>
-                <div style={{ fontSize: '14px', color: 'var(--color-success)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  ✅ Connection successful!
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', display: 'block' }}>Select or type a Model</label>
-                  {fetchedModels.length > 0 ? (
-                    <select
-                      value={model}
-                      onChange={e => setModel(e.target.value)}
-                      style={{
-                        width: '100%', padding: '10px 12px', borderRadius: '6px',
-                        border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
-                        color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
-                      }}
-                    >
-                      {fetchedModels.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={model}
-                      onChange={e => setModel(e.target.value)}
-                      placeholder="e.g. gpt-4o"
-                      style={{
-                        width: '100%', padding: '10px 12px', borderRadius: '6px',
-                        border: '1px solid var(--color-border)', background: 'var(--color-bg-primary)',
-                        color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none',
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-            {testResult === 'fail' && (
-              <div style={{ fontSize: '14px', color: 'var(--color-error)' }}>
-                ❌ Connection failed: {error || 'Unknown error'}
-                <button onClick={handleTestConnection} style={{
-                  display: 'block', marginTop: '8px', padding: '6px 16px', borderRadius: '4px',
-                  border: '1px solid var(--color-border)', background: 'transparent',
-                  color: 'var(--color-text-primary)', cursor: 'pointer', fontSize: '12px',
-                }}>Retry</button>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '8px', marginTop: '24px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setStep(1)} style={{
-                padding: '8px 20px', borderRadius: '6px', border: '1px solid var(--color-border)',
-                background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer', fontSize: '13px',
-              }}>Back</button>
-              <button onClick={handleSave} disabled={saving || !model} style={{
-                padding: '8px 20px', borderRadius: '6px', border: 'none',
-                background: model ? 'var(--color-success)' : 'var(--color-border)',
-                color: 'white', cursor: model ? 'pointer' : 'default', fontSize: '13px',
-                opacity: saving ? 0.6 : 1,
-              }}>{saving ? 'Saving...' : 'Save & Finish ✓'}</button>
-            </div>
-            {error && step === 2 && (
-              <div style={{ fontSize: '12px', color: 'var(--color-error)', marginTop: '8px' }}>{error}</div>
-            )}
           </div>
         );
 
-      // Step 3: Done (saved)
-      case 5:
+      case 3:
         return (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
-            <h2 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 8px' }}>You're all set!</h2>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
-              {selectedProvider.name} is configured and ready. Start using the copilot now.
-            </p>
-            <button onClick={() => window.location.href = '/assistant'} style={{
-              padding: '12px 32px', borderRadius: '8px', border: 'none',
-              background: 'var(--color-accent)', color: 'white', fontSize: '15px',
-              fontWeight: 600, cursor: 'pointer',
-            }}>Start Using Copilot →</button>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Workspace</h2>
+            <div style={{ fontSize: '14px', lineHeight: 1.6 }}>
+              <p>The AI copilot will monitor your activity to provide context-aware suggestions. This includes:</p>
+              <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
+                <li>Active window tracking</li>
+                <li>File open events</li>
+                <li>Clipboard activity</li>
+              </ul>
+              <p style={{ marginTop: '12px' }}>You can always disable monitoring from Settings.</p>
+            </div>
           </div>
         );
     }
   };
 
+  const nextStep = () => {
+    if (step < 3) setStep(step + 1);
+    else handleSave();
+  };
+
+  const prevStep = () => {
+    if (step > 0) setStep(step - 1);
+  };
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: 'var(--color-bg-primary)',
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--color-bg-primary)', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     }}>
       <div style={{
-        width: '440px', maxWidth: '90vw',
-        background: 'var(--color-bg-secondary)',
-        border: '1px solid var(--color-border)',
-        borderRadius: '16px', padding: '40px',
+        width: '100%', maxWidth: '520px', padding: '32px',
+        background: 'var(--color-bg-secondary)', borderRadius: '12px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
       }}>
-        {/* Step indicator: show dots except on done page */}
         {step < 5 && (
           <div style={{ display: 'flex', gap: '6px', marginBottom: '32px', justifyContent: 'center' }}>
             {[0, 1, 2].map(s => (
@@ -343,6 +275,43 @@ function SetupWizard() {
           </div>
         )}
         {renderStep()}
+
+        {step >= 1 && step < 5 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
+            <button onClick={prevStep} style={{
+              padding: '10px 20px', borderRadius: '6px', border: '1px solid var(--color-border)',
+              background: 'transparent', color: 'var(--color-text-secondary)', fontSize: '14px', cursor: 'pointer',
+            }}>← Back</button>
+            <button onClick={nextStep} disabled={saving} style={{
+              padding: '10px 20px', borderRadius: '6px', border: 'none',
+              background: saving ? 'var(--color-text-secondary)' : 'var(--color-accent)',
+              color: 'white', fontSize: '14px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+            }}>
+              {step === 3 ? 'Save & Minimize' : 'Next →'}
+            </button>
+          </div>
+        )}
+
+        {error && step !== 5 && (
+          <div style={{
+            marginTop: '16px', padding: '10px 14px', borderRadius: '6px',
+            background: 'rgba(245,101,101,0.1)', color: '#f56565', fontSize: '13px',
+          }}>{error}</div>
+        )}
+
+        {step === 5 && (
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, margin: '0 0 8px' }}>Setup Complete!</h2>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
+              The copilot is now running in the background. You can access it from the system tray.
+            </p>
+            <button onClick={() => window.location.reload()} style={{
+              padding: '10px 20px', borderRadius: '6px', border: '1px solid var(--color-accent)',
+              background: 'transparent', color: 'var(--color-accent)', fontSize: '14px', cursor: 'pointer',
+            }}>Open Copilot</button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use tauri::Manager;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -124,14 +125,6 @@ use crate::knowledge_panel::KnowledgePanel;
 use crate::skill_knowledge::create_skill_knowledge_base;
 use crate::skill_management::SkillManagementPanel;
 
-use wikilabs_observation::provider::ProviderRegistry;
-use wikilabs_observation::app_monitor::ActiveWindowProvider;
-use wikilabs_observation::browser::BrowserProvider;
-use wikilabs_observation::clipboard::ClipboardProvider;
-use wikilabs_observation::terminal::TerminalProvider;
-use wikilabs_observation::screen_capture::ScreenCaptureProvider;
-use wikilabs_observation::file_observer::FileObserverProvider;
-
 /// Request wrapper sent from the frontend.
 #[derive(Debug, Deserialize)]
 pub struct ApiRequest {
@@ -231,6 +224,7 @@ pub async fn api_handler(
     let (status, body) = match method.as_str() {
         "get_settings" => handle_get_settings(&state).await,
         "update_settings" => handle_update_settings(&state, req.params).await,
+        "set_first_run_complete" => handle_set_first_run_complete(&state).await,
         "test_connection" => handle_test_connection(&state, req.params).await,
         "send_message" => handle_send_message(&state, req.params),
         "get_history" => handle_get_history(&state),
@@ -273,9 +267,6 @@ pub async fn api_handler(
         "guidance_get_recent_events" => handle_guidance_get_recent_events(req.params).await,
         "guidance_record_feedback" => handle_guidance_record_feedback(req.params).await,
         "guidance_get_feedback_stats" => handle_guidance_get_feedback_stats().await,
-        "guidance_set_mode" => handle_guidance_set_mode(req.params).await,
-        "guidance_get_mode" => handle_guidance_get_mode().await,
-        "guidance_get_available_modes" => handle_guidance_get_available_modes().await,
         "guidance_clear_all" => handle_guidance_clear_all().await,
         "guidance_show_toast" => {
             let title = req.params.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
@@ -373,6 +364,24 @@ async fn handle_update_settings(state: &ApiServerState, params: Value) -> (Statu
     }
     
     (StatusCode::OK, api_response(true, Some(serde_json::json!({ "status": "updated" })), None))
+}
+
+async fn handle_set_first_run_complete(state: &ApiServerState) -> (StatusCode, String) {
+    let mut settings = state.settings.lock().unwrap();
+    // Set first_run_complete in the settings object
+    settings.settings["first_run_complete"] = serde_json::json!(true);
+    
+    // Persist to disk
+    if let Ok(config_path) = state.config_path.lock() {
+        if let Some(ref path) = *config_path {
+            match fs::write(path, serde_json::to_string_pretty(&settings.settings).unwrap_or_default()) {
+                Ok(_) => info!("first_run_complete persisted to disk"),
+                Err(e) => error!(error = %e, "Failed to persist first_run_complete"),
+            }
+        }
+    }
+    
+    (StatusCode::OK, api_response(true, Some(serde_json::json!({ "first_run_complete": true })), None))
 }
 
 fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, String) {
@@ -919,37 +928,6 @@ async fn handle_guidance_get_feedback_stats() -> (StatusCode, String) {
     (StatusCode::OK, api_response(true, Some(value), None))
 }
 
-async fn handle_guidance_set_mode(params: Value) -> (StatusCode, String) {
-    let mode_str = params.get("mode").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    // Normalize: accept lowercase (from frontend) or capitalized
-    let mode = match mode_str.to_lowercase().as_str() {
-        "teaching" => Some(guidance_panel::CopilotMode::Teaching),
-        "balanced" => Some(guidance_panel::CopilotMode::Balanced),
-        "expert" => Some(guidance_panel::CopilotMode::Expert),
-        "silent" => Some(guidance_panel::CopilotMode::Silent),
-        _ => None,
-    };
-    match mode {
-        Some(m) => match guidance_panel::GuidancePanel::instance().set_mode(m).await {
-            Ok(_) => (StatusCode::OK, api_response(true, None, None)),
-            Err(e) => (StatusCode::OK, api_response(false, None, Some(e.to_string()))),
-        },
-        None => (StatusCode::OK, api_response(false, None, Some("Invalid mode".to_string()))),
-    }
-}
-
-async fn handle_guidance_get_mode() -> (StatusCode, String) {
-    let mode = guidance_panel::GuidancePanel::instance().get_mode().await;
-    let value = serde_json::to_value(mode).unwrap_or_default();
-    (StatusCode::OK, api_response(true, Some(value), None))
-}
-
-async fn handle_guidance_get_available_modes() -> (StatusCode, String) {
-    let modes = guidance_panel::GuidancePanel::instance().available_modes().await;
-    let value = serde_json::to_value(modes).unwrap_or_default();
-    (StatusCode::OK, api_response(true, Some(value), None))
-}
-
 async fn handle_guidance_clear_all() -> (StatusCode, String) {
     match guidance_panel::GuidancePanel::instance().clear_all().await {
         Ok(_) => (StatusCode::OK, api_response(true, None, None)),
@@ -977,13 +955,40 @@ pub fn get_shared_app_handle() -> Option<AppHandle> {
 }
 
 async fn handle_observation_get_status(_state: &ApiServerState) -> (StatusCode, String) {
-    // Return current observation status
-    let value = serde_json::json!({
-        "observation_enabled": true,
-        "status": "active",
-        "providers": ["app_monitor", "browser", "clipboard", "terminal"]
-    });
-    (StatusCode::OK, api_response(true, Some(value), None))
+    // Report real observation engine status
+    let status_value = match crate::observation::get_observation_engine() {
+        Some(engine) => {
+            let status = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(async {
+                    engine.get_provider_status().await
+                })
+            });
+            let running = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(async {
+                    engine.is_running().await
+                })
+            });
+            let active_providers: Vec<String> = status.iter()
+                .filter(|p| p.state == wikilabs_observation::provider::ProviderState::Active)
+                .map(|p| p.name.clone())
+                .collect();
+            serde_json::json!({
+                "observation_enabled": running,
+                "status": if running { "active" } else { "stopped" },
+                "providers": active_providers,
+                "provider_count": status.len(),
+                "active_provider_count": active_providers.len()
+            })
+        },
+        None => serde_json::json!({
+            "observation_enabled": false,
+            "status": "stopped",
+            "providers": [],
+            "provider_count": 0,
+            "active_provider_count": 0
+        })
+    };
+    (StatusCode::OK, api_response(true, Some(status_value), None))
 }
 
 async fn handle_observation_start(_state: &ApiServerState) -> (StatusCode, String) {
@@ -996,7 +1001,18 @@ async fn handle_observation_stop(_state: &ApiServerState) -> (StatusCode, String
     (StatusCode::OK, api_response(true, Some(serde_json::json!({"status": "stopped"})), None))
 }
 
-/// Return current observation context (active recommendations, status).
+/// Open the floating advice chat window on the right side.
+async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String) {
+    info!("Opening advice chat floating window");
+    if let Some(ref app_handle) = state.app_handle {
+        if let Some(window) = (**app_handle).get_webview_window("advice-chat") {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
+    (StatusCode::OK, api_response(true, Some(serde_json::json!({"opened": true})), None))
+}
+
 async fn handle_observation_get_context() -> (StatusCode, String) {
     let panel = guidance_panel::GuidancePanel::instance();
     let active = panel.active_recommendations().await;
@@ -1039,9 +1055,11 @@ pub fn create_router(state: ApiServerState) -> Router {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    let advice_html = include_str!("../assets/advice-chat.html");
     let router = Router::new()
         .route("/api/commands/:method", post(api_handler))
         .route("/health", get(|| async { "ok" }))
+        .route("/advice-chat", get(|| async { advice_html.to_string() }))
         .layer(cors)
         .fallback(|method: axum::http::Method, uri: axum::http::Uri| async move {
             warn!("[API] FALLBACK HIT — method={} uri={}", method, uri);
@@ -1145,25 +1163,9 @@ pub fn start_api_server(
                 });
             }
 
-            // Initialize and start observation engine
-            let mut registry = ProviderRegistry::new();
-            registry.register(Box::new(ActiveWindowProvider::new()));
-            registry.register(Box::new(BrowserProvider::new()));
-            registry.register(Box::new(TerminalProvider::new()));
-            registry.register(Box::new(ClipboardProvider::new()));
-            registry.register(Box::new(ScreenCaptureProvider::new()));
-            registry.register(Box::new(FileObserverProvider::new()));
-            info!(count = registry.provider_names().len(), "Observation providers registered");
-            let results = rt.block_on(async {
-                registry.start_all().await
-            });
-            for (name, result) in &results {
-                match result {
-                    Ok(_) => info!(name, "Observation provider started"),
-                    Err(e) => warn!(name, error = %e, "Observation provider failed to start"),
-                }
-            }
-            info!("Observation engine initialized");
+            // Initialize observation engine — providers already registered in main.rs
+            // via observation::init_observation_engine(). We reuse the shared engine here.
+            info!("Observation engine initialized (shared from main.rs)");
 
             // Reset guidance state on startup — fresh session, zero evidence
             {
@@ -1173,8 +1175,6 @@ pub fn start_api_server(
             }
 
             // ── Background observation polling + AI reasoning loop ────────────
-            let registry = std::sync::Arc::new(tokio::sync::Mutex::new(registry));
-            let obs_registry = registry.clone();
             let poll_settings = obs_settings.clone();
             let skill_kb_for_loop = skill_kb_clone.clone();
             rt.spawn(async move {
@@ -1241,61 +1241,73 @@ pub fn start_api_server(
                     false
                 };
 
+                // Subscribe to the shared observation engine's event bus
+                let event_rx = crate::observation::get_event_receiver();
+                let engine = crate::observation::get_observation_engine();
+
                 loop {
                     tokio::select! {
                         // Phase 1: Collect observation events every 5 seconds
                         _ = interval.tick() => {
-                            let registry = obs_registry.lock().await;
-                            let providers = registry.all_providers();
-                            for provider in providers {
-                                match provider.observe().await {
-                                    Ok(events) => {
-                                        for event in events {
-                                            // Build structured summary from the full event payload
-                                            let summary = if let Some(obj) = event.payload.data.as_object() {
-                                                let mut parts: Vec<String> = Vec::new();
-                                                for (key, value) in obj {
-                                                    let display = match value {
-                                                        serde_json::Value::String(s) if s.len() > 300 => format!("{}...", &s[..300]),
-                                                        v => v.to_string(),
-                                                    };
-                                                    parts.push(format!("{}: {}", key, display));
-                                                }
-                                                parts.join(" | ")
-                                            } else {
-                                                event.payload.data.to_string()
+                            // Drain any buffered events from the shared event bus
+                            if let Some(ref rx) = event_rx {
+                                while let Ok(event) = rx.try_recv() {
+                                    // Build structured summary from the full event payload
+                                    let summary = if let Some(obj) = event.payload.data.as_object() {
+                                        let mut parts: Vec<String> = Vec::new();
+                                        for (key, value) in obj {
+                                            let display = match value {
+                                                serde_json::Value::String(s) if s.len() > 300 => format!("{}...", &s[..300]),
+                                                v => v.to_string(),
                                             };
-
-                                            let finding = format!("{:?}: {} — {}", event.event_type, event.source, summary.chars().take(200).collect::<String>());
-                                            let importance = match event.event_type {
-                                                wikilabs_observation::event::EventType::ApplicationChanged => "high",
-                                                wikilabs_observation::event::EventType::ConfigurationFileOpened => "medium",
-                                                wikilabs_observation::event::EventType::ClipboardChanged => "low",
-                                                _ => "low",
-                                            };
-                                            let panel = guidance_panel::GuidancePanel::instance();
-                                            let _ = panel.add_evidence(
-                                                &event.provider.to_string(),
-                                                &finding,
-                                                &importance.to_string(),
-                                                event.confidence as f64,
-                                            ).await;
-
-                                            // Filter out noise events (UI wrapper, crashpad, background processes)
-                                            let structured = StructuredEvent {
-                                                provider: event.provider.to_string(),
-                                                event_type: format!("{:?}", event.event_type),
-                                                source: event.source.clone(),
-                                                summary,
-                                                payload_json: event.payload.data.clone(),
-                                            };
-                                            if !is_noise_event(&structured) {
-                                                last_events.push(structured);
-                                                if last_events.len() > 30 { last_events.remove(0); }
-                                            }
+                                            parts.push(format!("{}: {}", key, display));
                                         }
+                                        parts.join(" | ")
+                                    } else {
+                                        event.payload.data.to_string()
+                                    };
+
+                                    let finding = format!("{:?}: {} — {}", event.event_type, event.source, summary.chars().take(200).collect::<String>());
+                                    let importance = match event.event_type {
+                                        wikilabs_observation::event::EventType::ApplicationChanged => "high",
+                                        wikilabs_observation::event::EventType::ConfigurationFileOpened => "medium",
+                                        wikilabs_observation::event::EventType::ClipboardChanged => "low",
+                                        _ => "low",
+                                    };
+                                    let panel = guidance_panel::GuidancePanel::instance();
+                                    let _ = panel.add_evidence(
+                                        &event.provider.to_string(),
+                                        &finding,
+                                        &importance.to_string(),
+                                        event.confidence as f64,
+                                    ).await;
+
+                                    // Filter out noise events
+                                    let structured = StructuredEvent {
+                                        provider: event.provider.to_string(),
+                                        event_type: format!("{:?}", event.event_type),
+                                        source: event.source.clone(),
+                                        summary,
+                                        payload_json: event.payload.data.clone(),
+                                    };
+                                    if !is_noise_event(&structured) {
+                                        last_events.push(structured);
+                                        if last_events.len() > 30 { last_events.remove(0); }
                                     }
-                                    Err(e) => warn!(error = %e, "Observation poll failed for provider"),
+                                }
+                            }
+
+                            // Also poll engine errors for immediate error detection
+                            if let Some(ref eng) = engine {
+                                let errors = eng.get_errors();
+                                let panel = guidance_panel::GuidancePanel::instance();
+                                for err in &errors {
+                                    let _ = panel.add_evidence(
+                                        &format!("{:?}", err.source),
+                                        &err.title,
+                                        &format!("{:?}", err.severity),
+                                        0.9,
+                                    ).await;
                                 }
                             }
                         }

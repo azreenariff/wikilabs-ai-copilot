@@ -6,7 +6,7 @@
 //! - View workflow progress
 //! - View guidance timeline
 //! - Provide engineer feedback on recommendations
-//! - Switch copilot modes (Teaching, Balanced, Expert, Silent)
+//! - Recommendation feedback and workflow tracking
 //!
 //! Does NOT execute commands — guidance only.
 
@@ -253,46 +253,6 @@ pub struct FeedbackStatsCard {
     pub needs_adjustment: bool,
 }
 
-// ── Mode Selection ───────────────────────────────────────────────
-
-/// Copilot mode selected in the UI.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum CopilotMode {
-    Teaching,
-    Balanced,
-    Expert,
-    Silent,
-}
-
-impl CopilotMode {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Teaching => "Teaching",
-            Self::Balanced => "Balanced",
-            Self::Expert => "Expert",
-            Self::Silent => "Silent",
-        }
-    }
-
-    pub fn description(&self) -> &'static str {
-        match self {
-            Self::Teaching => "Detailed explanations, assumes no prior knowledge",
-            Self::Balanced => "Moderate explanations, default mode",
-            Self::Expert => "Concise suggestions, assumes deep knowledge",
-            Self::Silent => "No proactive suggestions, only responds to questions",
-        }
-    }
-
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Self::Teaching => "🎓",
-            Self::Balanced => "⚖️",
-            Self::Expert => "🧠",
-            Self::Silent => "🤫",
-        }
-    }
-}
-
 // ── Guidance Panel State ─────────────────────────────────────────
 
 /// The guidance panel backend.
@@ -310,8 +270,6 @@ pub struct GuidancePanel {
     timeline: Mutex<Vec<TimelineEvent>>,
     /// Recorded feedback.
     feedback: Mutex<Vec<RecordedFeedback>>,
-    /// Current copilot mode.
-    current_mode: Mutex<CopilotMode>,
     /// Suppressed recommendation IDs.
     suppressed: Mutex<Vec<String>>,
     /// Dedup: track last AI suggestion content (truncated hash) to skip repeats.
@@ -338,7 +296,6 @@ impl GuidancePanel {
             workflow_progress: Mutex::new(None),
             timeline: Mutex::new(Vec::new()),
             feedback: Mutex::new(Vec::new()),
-            current_mode: Mutex::new(CopilotMode::Balanced),
             suppressed: Mutex::new(Vec::new()),
             last_ai_suggestion_hash: Mutex::new(String::new()),
             last_ai_suggestion_time: Mutex::new(None),
@@ -715,30 +672,6 @@ impl GuidancePanel {
         }
     }
 
-    // ── Mode Commands ──────────────────────────────────────────
-
-    /// Sets the current copilot mode.
-    pub async fn set_mode(&self, mode: CopilotMode) -> Result<()> {
-        *self.current_mode.lock().await = mode.clone();
-        tracing::info!(mode = %mode.label(), "Copilot mode changed");
-        Ok(())
-    }
-
-    /// Returns the current copilot mode.
-    pub async fn get_mode(&self) -> CopilotMode {
-        self.current_mode.lock().await.clone()
-    }
-
-    /// Returns all available modes for the UI.
-    pub async fn available_modes(&self) -> Vec<CopilotMode> {
-        vec![
-            CopilotMode::Teaching,
-            CopilotMode::Balanced,
-            CopilotMode::Expert,
-            CopilotMode::Silent,
-        ]
-    }
-
     // ── Utility Commands ───────────────────────────────────────
 
     /// Clears all guidance state (reset session).
@@ -935,34 +868,6 @@ pub fn guidance_get_feedback_stats() -> FeedbackStatsCard {
     let panel = GuidancePanel::instance();
     use tokio::runtime::Handle;
     Handle::current().block_on(panel.get_feedback_stats())
-}
-
-/// Tauri IPC command to set copilot mode.
-#[tauri::command]
-pub fn guidance_set_mode(mode: CopilotMode) -> Result<(), String> {
-    let panel = GuidancePanel::instance();
-    use tokio::runtime::Handle;
-    Handle::current().block_on(panel.set_mode(mode)).map_err(|e| e.to_string())
-}
-
-/// Tauri IPC command to get current copilot mode.
-#[tauri::command]
-pub fn guidance_get_mode() -> CopilotMode {
-    let panel = GuidancePanel::instance();
-    use tokio::runtime::Handle;
-    Handle::current().block_on(panel.get_mode())
-}
-
-/// Tauri IPC command to get all available copilot modes.
-#[tauri::command]
-pub fn guidance_get_available_modes() -> Vec<CopilotMode> {
-    let _panel = GuidancePanel::instance();
-    vec![
-        CopilotMode::Teaching,
-        CopilotMode::Balanced,
-        CopilotMode::Expert,
-        CopilotMode::Silent,
-    ]
 }
 
 /// Tauri IPC command to clear all guidance state.

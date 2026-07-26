@@ -24,15 +24,23 @@ interface ObservationStatus {
   providers: string[];
 }
 
+interface AdviceMessage {
+  id: string;
+  text: string;
+  timestamp: string;
+  type: 'suggestion' | 'error' | 'info';
+}
+
 function Guidance() {
   const [recommendations, setRecommendations] = useState<RecommendationCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
   const [selectedRec, setSelectedRec] = useState<RecommendationCard | null>(null);
   const [evidence, setEvidence] = useState<EvidenceStatus | null>(null);
-  const [copilotMode, setCopilotMode] = useState('balanced');
   const [obsStatus, setObsStatus] = useState<ObservationStatus | null>(null);
   const [obsLoading, setObsLoading] = useState(true);
+  const [adviceMessages, setAdviceMessages] = useState<AdviceMessage[]>([]);
+  const [activeTab, setActiveTab] = useState<'chat' | 'cards'>('chat');
 
   const fetchRecommendations = useCallback(async () => {
     try {
@@ -66,22 +74,6 @@ function Guidance() {
     } catch {}
   }, []);
 
-  const fetchMode = useCallback(async () => {
-    try {
-      const res = await fetch('http://localhost:1420/api/commands/guidance_get_mode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ params: {} }),
-      });
-      const data = await res.json();
-      if (data.success && data.value) {
-        // Normalize: backend returns 'Balanced' (capitalized from serde), frontend uses lowercase
-        const mode = data.value.mode || data.value || 'balanced';
-        setCopilotMode(typeof mode === 'string' ? mode.toLowerCase() : 'balanced');
-      }
-    } catch {}
-  }, []);
-
   const fetchObsStatus = useCallback(async () => {
     try {
       const res = await fetch('http://localhost:1420/api/commands/observation_get_status', {
@@ -100,12 +92,20 @@ function Guidance() {
     }
   }, []);
 
+  // Poll for new advice messages from the observation loop
   useEffect(() => {
-    fetchRecommendations();
-    fetchEvidence();
-    fetchMode();
-    fetchObsStatus();
-  }, [fetchRecommendations, fetchEvidence, fetchMode, fetchObsStatus]);
+    const poll = () => {
+      fetchRecommendations();
+      fetchEvidence();
+      fetchObsStatus();
+    };
+
+    poll();
+
+    const interval = setInterval(poll, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchRecommendations, fetchEvidence, fetchObsStatus]);
 
   const dismissRec = async (recId: string) => {
     try {
@@ -124,21 +124,8 @@ function Guidance() {
     }
   };
 
-  const setMode = async (mode: string) => {
-    try {
-      const res = await fetch('http://localhost:1420/api/commands/guidance_set_mode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ params: { mode } }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCopilotMode(mode);
-        setStatus(`Mode set to ${mode}`);
-      }
-    } catch {
-      setStatus('Failed to set mode');
-    }
+  const clearAdvice = () => {
+    setAdviceMessages([]);
   };
 
   const getRiskColor = (level: string) => {
@@ -156,6 +143,24 @@ function Guidance() {
       rec.status === 'Accepted' ? 'var(--color-success)' :
       rec.status === 'Rejected' ? 'var(--color-error)' : 'var(--color-text-secondary)';
     return <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: `${color}20`, color }}>{rec.status}</span>;
+  };
+
+  const formatTime = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
+  const getMessageIcon = (type: string) => {
+    switch (type) {
+      case 'error': return '🔴';
+      case 'suggestion': return '💡';
+      case 'info': return 'ℹ️';
+      default: return '💡';
+    }
   };
 
   return (
@@ -199,50 +204,22 @@ function Guidance() {
         )}
       </div>
 
-      {/* Copilot Mode Selector */}
-      <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '14px', margin: '0 0 8px', color: 'var(--color-text-primary)' }}>Copilot Mode</h3>
-        <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '0 0 12px' }}>
-          Choose how actively the AI Copilot interrupts with suggestions.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button onClick={() => setMode('teaching')} style={{
-            padding: '10px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', cursor: 'pointer',
-            background: copilotMode === 'teaching' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: copilotMode === 'teaching' ? 'white' : 'var(--color-text-primary)',
-            textAlign: 'left',
-          }}>
-            <div style={{ fontWeight: 600, marginBottom: '2px' }}>📚 Teaching</div>
-            <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: 1.3 }}>More suggestions with detailed explanations. Best when learning or when you want the AI to explain its reasoning.</div>
-          </button>
-          <button onClick={() => setMode('balanced')} style={{
-            padding: '10px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', cursor: 'pointer',
-            background: copilotMode === 'balanced' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: copilotMode === 'balanced' ? 'white' : 'var(--color-text-primary)',
-            textAlign: 'left',
-          }}>
-            <div style={{ fontWeight: 600, marginBottom: '2px' }}>⚖️ Balanced</div>
-            <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: 1.3 }}>Moderate suggestions without being too chatty. The default mode for everyday use.</div>
-          </button>
-          <button onClick={() => setMode('expert')} style={{
-            padding: '10px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', cursor: 'pointer',
-            background: copilotMode === 'expert' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: copilotMode === 'expert' ? 'white' : 'var(--color-text-primary)',
-            textAlign: 'left',
-          }}>
-            <div style={{ fontWeight: 600, marginBottom: '2px' }}>🎯 Expert</div>
-            <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: 1.3 }}>Concise suggestions assuming you know the context. Less explanation, more signal.</div>
-          </button>
-          <button onClick={() => setMode('silent')} style={{
-            padding: '10px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', cursor: 'pointer',
-            background: copilotMode === 'silent' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: copilotMode === 'silent' ? 'white' : 'var(--color-text-primary)',
-            textAlign: 'left',
-          }}>
-            <div style={{ fontWeight: 600, marginBottom: '2px' }}>🔇 Silent</div>
-            <div style={{ fontSize: '11px', opacity: 0.8, lineHeight: 1.3 }}>No proactive suggestions. The AI only responds when you message it directly.</div>
-          </button>
-        </div>
+      {/* View Toggle */}
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '16px' }}>
+        <button onClick={() => setActiveTab('chat')} style={{
+          padding: '8px 16px', borderRadius: '8px', border: 'none', fontSize: '13px', cursor: 'pointer',
+          background: activeTab === 'chat' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+          color: activeTab === 'chat' ? 'white' : 'var(--color-text-primary)',
+        }}>
+          💬 Advice Chat {adviceMessages.length > 0 && `(${adviceMessages.length})`}
+        </button>
+        <button onClick={() => setActiveTab('cards')} style={{
+          padding: '8px 16px', borderRadius: '8px', border: 'none', fontSize: '13px', cursor: 'pointer',
+          background: activeTab === 'cards' ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+          color: activeTab === 'cards' ? 'white' : 'var(--color-text-primary)',
+        }}>
+          📋 Recommendation Cards {recommendations.length > 0 && `(${recommendations.length})`}
+        </button>
       </div>
 
       {/* Evidence Status */}
@@ -257,41 +234,82 @@ function Guidance() {
         </div>
       )}
 
-      {/* Recommendations */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--color-text-secondary)' }}>Loading recommendations...</div>
-      ) : recommendations.length === 0 ? (
-        <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '48px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-          <p style={{ fontSize: '16px' }}>No active recommendations</p>
-          <p style={{ fontSize: '13px', marginTop: '8px' }}>The guidance engine will provide recommendations as it observes your activity.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: '12px' }}>
-          {recommendations.map(rec => (
-            <div key={rec.id} onClick={() => setSelectedRec(selectedRec?.id === rec.id ? null : rec)} style={{
-              background: 'var(--color-bg-secondary)', border: `1px solid ${selectedRec?.id === rec.id ? 'var(--color-accent)' : 'var(--color-border)'}`,
-              borderRadius: '12px', padding: '16px', cursor: 'pointer', transition: 'all 0.15s',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>{rec.title}</h3>
-                    {getStatusBadge(rec)}
-                    <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: `${getRiskColor(rec.risk_level)}20`, color: getRiskColor(rec.risk_level) }}>{rec.risk_level}</span>
-                  </div>
-                  <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0' }}>{rec.description}</p>
-                </div>
-              </div>
-              {selectedRec?.id === rec.id && (
-                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '8px' }}>
-                  <button onClick={e => { e.stopPropagation(); dismissRec(rec.id); }} style={{
-                    padding: '4px 12px', borderRadius: '4px', border: 'none', background: 'var(--color-error)', color: 'white', fontSize: '12px', cursor: 'pointer',
-                  }}>Dismiss</button>
-                </div>
-              )}
+      {/* Advice Chat View */}
+      {activeTab === 'chat' && (
+        <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h3 style={{ fontSize: '14px', margin: 0, color: 'var(--color-text-primary)' }}>💬 Live Advice</h3>
+            {adviceMessages.length > 0 && (
+              <button onClick={clearAdvice} style={{
+                padding: '4px 12px', borderRadius: '4px', border: '1px solid var(--color-border)',
+                background: 'transparent', color: 'var(--color-text-secondary)', fontSize: '12px', cursor: 'pointer',
+              }}>
+                Clear
+              </button>
+            )}
+          </div>
+          {adviceMessages.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+              <p>Waiting for observations...</p>
+              <p style={{ fontSize: '12px', marginTop: '4px' }}>The guidance engine watches your activity and provides suggestions in real-time.</p>
             </div>
-          ))}
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+              {adviceMessages.map(msg => (
+                <div key={msg.id} style={{
+                  background: msg.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+                  border: `1px solid ${msg.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`,
+                  borderRadius: '8px', padding: '12px',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span>{getMessageIcon(msg.type)}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{formatTime(msg.timestamp)}</span>
+                  </div>
+                  <p style={{ fontSize: '13px', margin: 0, color: 'var(--color-text-primary)', lineHeight: 1.4 }}>{msg.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Recommendation Cards View */}
+      {activeTab === 'cards' && (
+        loading ? (
+          <div style={{ textAlign: 'center', padding: '48px', color: 'var(--color-text-secondary)' }}>Loading recommendations...</div>
+        ) : recommendations.length === 0 ? (
+          <div style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '48px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+            <p style={{ fontSize: '16px' }}>No active recommendations</p>
+            <p style={{ fontSize: '13px', marginTop: '8px' }}>The guidance engine will provide recommendations as it observes your activity.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {recommendations.map(rec => (
+              <div key={rec.id} onClick={() => setSelectedRec(selectedRec?.id === rec.id ? null : rec)} style={{
+                background: 'var(--color-bg-secondary)', border: `1px solid ${selectedRec?.id === rec.id ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                borderRadius: '12px', padding: '16px', cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary)' }}>{rec.title}</h3>
+                      {getStatusBadge(rec)}
+                      <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: `${getRiskColor(rec.risk_level)}20`, color: getRiskColor(rec.risk_level) }}>{rec.risk_level}</span>
+                    </div>
+                    <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0' }}>{rec.description}</p>
+                  </div>
+                </div>
+                {selectedRec?.id === rec.id && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '8px' }}>
+                    <button onClick={e => { e.stopPropagation(); dismissRec(rec.id); }} style={{
+                      padding: '4px 12px', borderRadius: '4px', border: 'none', background: 'var(--color-error)', color: 'white', fontSize: '12px', cursor: 'pointer',
+                    }}>Dismiss</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

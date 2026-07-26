@@ -20,6 +20,18 @@
         "center": true,
         "decorations": true,
         "transparent": false
+      },
+      {
+        "label": "advice-chat",
+        "title": "AI Copilot — Live Advice",
+        "width": 400,
+        "height": 520,
+        "resizable": true,
+        "fullscreen": false,
+        "center": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true
       }
     ],
     "security": {

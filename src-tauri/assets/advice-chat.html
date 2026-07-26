@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Copilot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: transparent; }
+  #app { display: flex; flex-direction: column; height: 100%; background: rgba(15, 15, 25, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; overflow: hidden; }
+  
+  /* Header */
+  #header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(99, 102, 241, 0.15); border-bottom: 1px solid rgba(99, 102, 241, 0.2); min-height: 42px; }
+  #header-left { display: flex; align-items: center; gap: 8px; }
+  #header .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; }
+  #header .title { font-size: 12px; font-weight: 600; color: #e2e8f0; }
+  #header .subtitle { font-size: 10px; color: #94a3b8; }
+  #header-buttons { display: flex; gap: 4px; }
+  #header-buttons button { width: 26px; height: 26px; border: none; border-radius: 6px; background: rgba(255,255,255,0.08); color: #94a3b8; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  #header-buttons button:hover { background: rgba(99, 102, 241, 0.3); color: #e2e8f0; }
+  
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  
+  /* Messages */
+  #messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.3) transparent; }
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 2px; }
+  
+  .msg { max-width: 88%; padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.5; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .msg.ai { align-self: flex-start; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.2); color: #e2e8f0; }
+  .msg.ai .time { font-size: 9px; color: #64748b; margin-top: 4px; }
+  .msg.user { align-self: flex-end; background: rgba(99, 102, 241, 0.6); border: 1px solid rgba(99, 102, 241, 0.5); color: white; }
+  
+  .typing { align-self: flex-start; padding: 8px 14px; display: flex; gap: 4px; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: #6366f1; animation: bounce 1.4s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+  
+  /* Empty state */
+  #empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; padding: 20px; text-align: center; }
+  #empty-state .icon { font-size: 32px; margin-bottom: 8px; }
+  #empty-state p { font-size: 11px; line-height: 1.5; }
+  
+  /* Input area */
+  #input-area { padding: 8px 10px; border-top: 1px solid rgba(99, 102, 241, 0.2); background: rgba(0,0,0,0.2); }
+  #input-row { display: flex; gap: 6px; }
+  #input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; color: #e2e8f0; font-size: 12px; outline: none; resize: none; font-family: inherit; }
+  #input:focus { border-color: rgba(99, 102, 241, 0.5); }
+  #input::placeholder { color: #475569; }
+  #send-btn { width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(99, 102, 241, 0.6); color: white; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  #send-btn:hover { background: rgba(99, 102, 241, 0.8); }
+  #send-btn:disabled { opacity: 0.4; cursor: default; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div id="header-left">
+      <div class="dot"></div>
+      <div>
+        <div class="title">AI Copilot</div>
+        <div class="subtitle" id="status-text">Watching your activity...</div>
+      </div>
+    </div>
+    <div id="header-buttons">
+      <button id="minimize-btn" title="Minimize">−</button>
+      <button id="close-btn" title="Close">✕</button>
+    </div>
+  </div>
+  
+  <div id="messages">
+    <div id="empty-state">
+      <div class="icon">🤖</div>
+      <p>I'm watching your activity and ready to help.<br>Ask me anything or I'll suggest things as I observe.</p>
+    </div>
+  </div>
+  
+  <div id="input-area">
+    <div id="input-row">
+      <textarea id="input" rows="1" placeholder="Ask me anything..."></textarea>
+      <button id="send-btn">→</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:1420/api/commands';
+
+// Elements
+const messagesEl = document.getElementById('messages');
+const emptyState = document.getElementById('empty-state');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('send-btn');
+const statusText = document.getElementById('status-text');
+
+let messages = [];
+let currentThreadId = null;
+let isTyping = false;
+
+function formatTime(d) {
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function addMessage(text, role, animate = true) {
+  if (emptyState) emptyState.style.display = 'none';
+  
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  
+  if (role === 'ai') {
+    div.innerHTML = `${text}<div class="time">${formatTime(new Date())}</div>`;
+  } else {
+    div.textContent = text;
+  }
+  
+  messagesEl.appendChild(div);
+  messages.push({ text, role, time: new Date() });
+  
+  // Auto-scroll
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return div;
+}
+
+function showTyping() {
+  if (isTyping) return;
+  isTyping = true;
+  const div = document.createElement('div');
+  div.className = 'typing';
+  div.id = 'typing-indicator';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function hideTyping() {
+  isTyping = false;
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+async function sendToAI(text) {
+  showTyping();
+  addMessage(text, 'user');
+  
+  try {
+    // Check if we have an active conversation thread
+    let threadId = currentThreadId;
+    
+    // Get active recommendations for context
+    let ctx = '';
+    try {
+      const recRes = await fetch(`${API}/guidance_get_active_recommendations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: {} }),
+      });
+      const recData = await recRes.json();
+      if (recData.success && recData.value && recData.value.length > 0) {
+        const active = recData.value.map(r => `- ${r.title}: ${r.description}`).join('\n');
+        ctx = `\n\nCurrent active recommendations:\n${active}`;
+      }
+    } catch {}
+    
+    // Build a system-aware request
+    const systemPrompt = `You are Wiki Labs AI Copilot, a technical engineer's assistant that watches what they are doing. You give conversational, helpful advice like a senior DevOps teammate — not formal cards or metadata. Use phrases like "you should also check MySQL status" or "I noticed you're working on that deployment — you might want to verify the config first". Always be direct and practical.${ctx}`;
+    
+    const res = await fetch(`${API}/send_message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        params: {
+          message: text,
+          workspace_id: 'default',
+          system_prompt: systemPrompt,
+          thread_id: threadId || null,
+        },
+      }),
+    });
+    
+    const data = await res.json();
+    hideTyping();
+    
+    if (data.success && data.value) {
+      addMessage(data.value.content, 'ai');
+      if (data.value.thread_id) {
+        currentThreadId = data.value.thread_id;
+      }
+    } else {
+      addMessage(data.error || "I'm not connected to the backend right now.", 'ai');
+    }
+  } catch (e) {
+    hideTyping();
+    addMessage("Couldn't reach the backend. Is the app running?", 'ai');
+  }
+}
+
+// Event listeners
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (inputEl.value.trim()) sendToAI(inputEl.value.trim());
+  }
+});
+
+sendBtn.addEventListener('click', () => {
+  if (inputEl.value.trim()) sendToAI(inputEl.value.trim());
+});
+
+// Auto-resize textarea
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + 'px';
+});
+
+// Tauri commands for minimize/close
+async function callCommand(cmd) {
+  try {
+    const res = await fetch(`${API}/${cmd}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: {} }),
+    });
+    return await res.json();
+  } catch { return null; }
+}
+
+document.getElementById('minimize-btn').addEventListener('click', () => {
+  callCommand('close_advice_chat_window');
+});
+
+document.getElementById('close-btn').addEventListener('click', () => {
+  // Full close — call hide and also hide main window to tray
+  callCommand('close_advice_chat_window');
+});
+
+// Poll for new AI-guided advice from observation engine
+let lastMsgCount = messages.length;
+async function pollForAdvice() {
+  try {
+    const res = await fetch(`${API}/guidance_get_active_recommendations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: {} }),
+    });
+    const data = await res.json();
+    if (data.success && data.value) {
+      const active = data.value.filter(r => r.status === 'Active');
+      if (active.length > 0) {
+        // Only send an advice message if we haven't sent one recently
+        const recent = messages.filter(m => m.role === 'ai' && Date.now() - m.time.getTime() < 60000);
+        if (recent.length === 0) {
+          const top = active[0];
+          const advice = `💡 ${top.title}\n${top.description}`;
+          addMessage(advice, 'ai');
+          // Play a subtle notification sound
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 800;
+            gain.gain.value = 0.08;
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+          } catch {}
+        }
+      }
+      // Update status text
+      if (active.length > 0) {
+        statusText.textContent = `${active.length} active suggestion${active.length > 1 ? 's' : ''}`;
+      } else {
+        statusText.textContent = 'Watching your activity...';
+      }
+    }
+  } catch {}
+}
+
+// Poll every 15 seconds
+setInterval(pollForAdvice, 15000);
+// Also check immediately
+pollForAdvice();
+
+// Initial greeting after a short delay
+setTimeout(() => {
+  sendToAI("Hi! I'm your AI copilot. I'll watch what you're doing and chat with you about it. Ask me anything about your systems or ask me to check something for you.");
+}, 2000);
+</script>
+</body>
+</html>

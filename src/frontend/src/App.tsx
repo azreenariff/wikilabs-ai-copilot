@@ -26,7 +26,18 @@ function App() {
       .then(data => {
         if (data.success && data.value) {
           const apiKey = data.value.ai_provider?.api_key || '';
-          setNeedsSetup(!apiKey);
+          const firstRunComplete = data.value.first_run_complete || false;
+          // Show wizard if no API key AND first run not complete
+          setNeedsSetup(!apiKey && !firstRunComplete);
+          // If first run is complete and settings show API key is configured,
+          // hide main window (minimize to tray)
+          if (apiKey && firstRunComplete) {
+            fetch('http://localhost:1420/api/commands/hide_main_window', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ params: {} }),
+            }).catch(() => {});
+          }
         }
       })
       .catch(() => {
