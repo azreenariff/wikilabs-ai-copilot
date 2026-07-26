@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.73] — 2026-07-26 — Observation Engine Clippy Fix
+
+### Fixed
+
+- **Nested `impl Default` in CorrelationState** — Removed incorrectly nested `impl Default for CorrelationState` that was placed inside `impl CorrelationState` block in `correlation.rs`
+- **Invalid inner attribute in `semantic_analyzer.rs`** — Removed `#[allow(clippy::collapsible_if)]` inner attribute on an `if` statement which is not valid Rust syntax
+- **Clippy code hygiene** — Added `#[allow(dead_code)]` for `InfraMatch.infrastructure` field, replaced `.last()` with `.next_back()` for iterator usage
+
 ## [1.1.4] — 2026-07-22 — CI Fix
 
 ### Fixed
