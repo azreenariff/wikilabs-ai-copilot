@@ -200,15 +200,6 @@ impl ConsoleOutputCapture {
     /// Capture output from a specific console host process.
     #[cfg(target_os = "windows")]
     fn capture_console_output(host: &(String, u32, String)) -> Option<ConsoleSession> {
-        use windows::Win32::Foundation::{CloseHandle, HANDLE};
-        use windows::Win32::System::Threading::{
-            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
-        };
-        use windows::Win32::UI::WindowsAndMessaging::{
-            FindWindowW, GetWindowTextLengthW, GetWindowTextW, GetWindowTextA,
-        };
-        use windows::Win32::UI::WindowsAndMessaging::EnumWindows;
-
         let (process_name, pid, _) = host;
 
         // Find the actual console window for this host
@@ -216,26 +207,9 @@ impl ConsoleOutputCapture {
         let mut best_window = std::ptr::null();
         let mut best_len: i32 = 0;
 
-        unsafe {
-            let callback = |hwnd: windows::Win32::Foundation::HWND| -> bool {
-                let mut found_pid: u32 = 0;
-                windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId(
-                    hwnd,
-                    Some(&mut found_pid),
-                );
-                if found_pid == *pid {
-                    let len = windows::Win32::UI::WindowsAndMessaging::GetWindowTextLengthW(hwnd);
-                    if len > best_len {
-                        best_window = hwnd.0;
-                        best_len = len;
-                    }
-                }
-                true
-            };
-
-            // We can't use EnumWindows with a closure easily, so use a different approach
-            // Instead, try to read console text directly
-        }
+        // We can't use EnumWindows with a closure easily, so use a different approach
+        // Instead, try to read console text directly
+        // Note: direct window text reading is handled by get_console_window_text() below
 
         // Try to get console window text via direct Win32 API
         // This reads the window title + class name which includes the command output preview
@@ -265,10 +239,6 @@ impl ConsoleOutputCapture {
     #[cfg(target_os = "windows")]
     fn get_console_window_text(pid: &u32) -> String {
         use windows::Win32::Foundation::HWND;
-        use windows::Win32::UI::WindowsAndMessaging::{
-            FindWindowExW, GetWindowTextLengthW, GetWindowTextW, GetClassNameW,
-            IsWindowVisible,
-        };
 
         let mut texts = Vec::new();
 
@@ -289,10 +259,6 @@ impl ConsoleOutputCapture {
         target_pid: u32,
         texts: &mut Vec<String>,
     ) {
-        use windows::Win32::Foundation::{CloseHandle, HANDLE};
-        use windows::Win32::System::Threading::{
-            OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
-        };
         use windows::Win32::UI::WindowsAndMessaging::{
             EnumChildWindows, GetWindowTextLengthW, GetWindowTextW, GetClassNameW,
             GetWindowThreadProcessId, IsWindowVisible,
@@ -404,8 +370,6 @@ impl ConsoleOutputCapture {
 
     /// Detect errors in console output.
     fn detect_console_errors(output: &str) -> Vec<ConsoleError> {
-        use regex::Regex;
-
         let output_lower = output.to_lowercase();
         let mut errors = Vec::new();
 

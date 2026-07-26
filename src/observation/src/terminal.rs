@@ -180,7 +180,7 @@ mod terminal_windows {
     };
     use windows::Win32::Foundation::{BOOL, FALSE, LPARAM, TRUE};
 
-    use super::{TerminalCommand, TerminalSession, TerminalState, ENGINEERING_COMMANDS};
+    use super::{TerminalCommand, TerminalSession};
 
     /// Windows-specific terminal session detection.
     pub(crate) fn detect_windows_sessions() -> Vec<TerminalSession> {
@@ -421,6 +421,7 @@ mod terminal_windows {
 }
 
 #[cfg(target_os = "windows")]
+// #[allow(dead_code)]
 use terminal_windows::detect_windows_sessions;
 
 // ── Linux-specific terminal detection ──────────────────────────────
