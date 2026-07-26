@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Redundant `.cloned()` in `guidance.rs`** — Removed unnecessary `.cloned()` calls on iterators of `&String` (5 occurrences)
 - **Collapsible `if` in `session_tracker.rs`** — Flattened nested `if` statements into single condition with `&&`
 
-#### [v1.1.75](https://github.com/azreenariff/wikilabs-ai-copilot/releases/tag/v1.1.75) - 2026-07-26
+#### [v1.1.76](https://github.com/azreenariff/wikilabs-ai-copilot/releases/tag/v1.1.76) - 2026-07-26
 
 ### Fixed
 - **ChatAssistant**: Remove unused `useCallback` import that caused TypeScript build failure (TS6133)

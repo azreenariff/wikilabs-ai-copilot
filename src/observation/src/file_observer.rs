@@ -137,8 +137,10 @@ impl FileObserverProvider {
                     return Vec::new();
                 }
 
-                let mut entry = PROCESSENTRY32W::default();
-                entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+                let mut entry = PROCESSENTRY32W {
+                    dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+                    ..Default::default()
+                };
                 if Process32FirstW(snapshot, &mut entry).is_err() {
                     let _ = windows::Win32::Foundation::CloseHandle(snapshot);
                     return Vec::new();

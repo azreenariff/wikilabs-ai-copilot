@@ -145,11 +145,13 @@ impl ConsoleOutputCapture {
     /// Discover console host processes (conhost.exe, WindowsTerminal.exe, wt.exe).
     #[cfg(target_os = "windows")]
     fn discover_console_hosts() -> Vec<(String, u32, String)> {
+        #[allow(unused_imports)]
         use windows::Win32::Foundation::{CloseHandle, HANDLE};
         use windows::Win32::System::Diagnostics::ToolHelp::{
             CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
             TH32CS_SNAPPROCESS,
         };
+        #[allow(unused_imports)]
         use windows::Win32::System::Threading::{
             OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
         };
@@ -170,7 +172,7 @@ impl ConsoleOutputCapture {
                 ..Default::default()
             };
 
-            if let Ok(_) = Process32FirstW(snapshot, &mut pe) {
+            if Process32FirstW(snapshot, &mut pe).is_ok() {
                 loop {
                     let name = String::from_utf16_lossy(&pe.szExeFile)
                         .trim_end_matches('\0')
@@ -217,12 +219,11 @@ impl ConsoleOutputCapture {
         unsafe {
             let callback = |hwnd: windows::Win32::Foundation::HWND| -> bool {
                 let mut found_pid: u32 = 0;
-                let thread_pid = windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId(
-                    hwnd, Some(&mut found_pid)
+                windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId(
+                    hwnd,
+                    Some(&mut found_pid),
                 );
-                let _ = thread_pid;
-
-                if found_pid == *pid as u32 {
+                if found_pid == *pid {
                     let len = windows::Win32::UI::WindowsAndMessaging::GetWindowTextLengthW(hwnd);
                     if len > best_len {
                         best_window = hwnd.0;
@@ -247,7 +248,7 @@ impl ConsoleOutputCapture {
         // Parse the console output for commands and errors
         let (command, text_content) = Self::parse_console_output(&window_text);
         let errors = Self::detect_console_errors(&window_text);
-        let warnings = Self::detect_console_warnings(&window_text);
+        let _warnings = Self::detect_console_warnings(&window_text);
 
         Some(ConsoleSession {
             process_name: process_name.clone(),
@@ -271,14 +272,12 @@ impl ConsoleOutputCapture {
 
         let mut texts = Vec::new();
 
-        unsafe {
-            // Enumerate all windows looking for conhost windows belonging to our PID
-            Self::enum_console_windows(
-                HWND(std::ptr::null_mut()),
-                *pid,
-                &mut texts,
-            );
-        }
+        // Enumerate all windows looking for conhost windows belonging to our PID
+        Self::enum_console_windows(
+            HWND(std::ptr::null_mut()),
+            *pid,
+            &mut texts,
+        );
 
         texts.join("\n")
     }
@@ -374,7 +373,7 @@ impl ConsoleOutputCapture {
         let bash_prompt = Regex::new(r"^\w+@\w+:[~$][^\n]*[$#] ").unwrap();
 
         let mut last_command = String::new();
-        let mut lines: Vec<&str> = full_text.lines().collect();
+        let lines: Vec<&str> = full_text.lines().collect();
 
         // Find the last prompt line
         let mut last_prompt_idx = None;
@@ -394,12 +393,12 @@ impl ConsoleOutputCapture {
                 }
             }
             // Content is everything after the last command
-            let content: Vec<&str> = lines.iter().skip(idx.saturating_sub(1)).take(50).map(|s| *s).collect();
+            let content: Vec<&str> = lines.iter().skip(idx.saturating_sub(1)).take(50).copied().collect();
             return (last_command, content.join("\n"));
         }
 
         // No prompt found — return the last 100 lines as content
-        let content: Vec<&str> = lines.iter().rev().take(100).rev().map(|s| *s).collect();
+        let content: Vec<&str> = lines.iter().rev().take(100).rev().copied().collect();
         (String::new(), content.join("\n"))
     }
 
@@ -468,8 +467,6 @@ impl ConsoleOutputCapture {
 
     /// Detect warnings in console output.
     fn detect_console_warnings(output: &str) -> Vec<String> {
-        use regex::Regex;
-
         let output_lower = output.to_lowercase();
         let mut warnings = Vec::new();
 
