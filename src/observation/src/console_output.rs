@@ -204,7 +204,7 @@ impl ConsoleOutputCapture {
 
         // Find the actual console window for this host
         // We need to find the window whose process matches our PID
-        let mut best_window = std::ptr::null();
+        let mut best_window: *const windows::Win32::Foundation::HWND = std::ptr::null();
         let mut best_len: i32 = 0;
 
         // We can't use EnumWindows with a closure easily, so use a different approach
@@ -260,7 +260,7 @@ impl ConsoleOutputCapture {
         texts: &mut Vec<String>,
     ) {
         use windows::Win32::UI::WindowsAndMessaging::{
-            EnumChildWindows, GetWindowTextLengthW, GetWindowTextW, GetClassNameW,
+            GetWindowTextLengthW, GetWindowTextW,
             GetWindowThreadProcessId, IsWindowVisible,
         };
 
