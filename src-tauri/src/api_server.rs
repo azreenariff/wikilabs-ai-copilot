@@ -80,7 +80,7 @@ fn build_context_system_prompt(
     let context_block = parts.join("\n");
 
     // Build a system prompt that frames the AI's identity as an observer
-    let history_preview = if chat_history.len() > 0 {
+    let _history_preview = if !chat_history.is_empty() {
         format!(
             "\n## Conversation History (recent)\n{}",
             chat_history
@@ -120,10 +120,9 @@ fn build_context_system_prompt(
 }
 
 use crate::guidance_panel;
-use crate::knowledge_panel::{KnowledgePanel, PackInfo, ValidationReport};
-use crate::skill_management::{SkillCard, SkillManagementPanel};
-use crate::skill_knowledge::{SkillKnowledgeBase, create_skill_knowledge_base};
-use crate::config::AiProviderConfig;
+use crate::knowledge_panel::KnowledgePanel;
+use crate::skill_knowledge::create_skill_knowledge_base;
+use crate::skill_management::SkillManagementPanel;
 
 use wikilabs_observation::provider::ProviderRegistry;
 use wikilabs_observation::app_monitor::ActiveWindowProvider;
@@ -568,9 +567,7 @@ async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCo
     }
 
     // Normalize URL: ensure it ends with /v1/models
-    let url = if endpoint.ends_with("/v1") {
-        format!("{}/models", endpoint.trim_end_matches('/'))
-    } else if endpoint.contains("/v1/") {
+    let url = if endpoint.ends_with("/v1") || endpoint.contains("/v1/") {
         format!("{}/models", endpoint.trim_end_matches('/'))
     } else {
         format!("{}/v1/models", endpoint.trim_end_matches('/'))
@@ -960,7 +957,7 @@ async fn handle_guidance_clear_all() -> (StatusCode, String) {
     }
 }
 
-async fn handle_guidance_show_toast(title: &str, body: &str) -> (StatusCode, String) {
+async fn handle_guidance_show_toast(_title: &str, _body: &str) -> (StatusCode, String) {
     // API endpoint exists for frontend compatibility but notification is handled client-side.
     // The browser's Notification API is used in the GuidanceToast component.
     (StatusCode::OK, api_response(true, None, None))
@@ -1227,10 +1224,12 @@ pub fn start_api_server(
                     if event.source.trim().is_empty() {
                         return true;
                     }
-                    if event.source.starts_with("pid:") && !event.source.contains('/') && !event.source.contains('\\') {
-                        if !engineering_terminal_keywords.iter().any(|kw| event.source.contains(kw)) {
-                            return true;
-                        }
+                    if event.source.starts_with("pid:")
+                        && !event.source.contains('/')
+                        && !event.source.contains('\\')
+                        && !engineering_terminal_keywords.iter().any(|kw| event.source.contains(kw))
+                    {
+                        return true;
                     }
                     if event.provider == "ActiveWindow" && (
                         event.source == "inactive"
@@ -1510,7 +1509,7 @@ pub fn start_api_server(
                             let skill_context = skill_kb_guard.format_for_prompt(&matched_skills);
                             drop(skill_kb_guard);
 
-                            let knowledge_context = {
+                            let _knowledge_context = {
                                 let kp = KnowledgePanel::instance();
                                 let matched_packs = kp.match_observations(&keywords_str).await;
                                 kp.format_for_prompt(&matched_packs).await

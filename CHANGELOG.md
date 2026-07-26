@@ -5,10 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.73] — 2026-07-26 — Observation Engine Clippy Fix
+## [1.1.74] — 2026-07-26 — Observation Engine Clippy Fix
 
 ### Fixed
 
+#### v1.1.73 (Partial Fixes)
 - **Nested `impl Default` in CorrelationState** — Removed incorrectly nested `impl Default for CorrelationState` that was placed inside `impl CorrelationState` block in `correlation.rs`
 - **Invalid inner attribute in `semantic_analyzer.rs`** — Removed `#[allow(clippy::collapsible_if)]` inner attribute on an `if` statement which is not valid Rust syntax
 - **Clippy code hygiene** — Added `#[allow(dead_code)]` for `InfraMatch.infrastructure` field, replaced `.last()` with `.next_back()` for iterator usage
@@ -18,6 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dead field `last_capture` in `shell.rs`** — Added `#[allow(dead_code)]` for planned future use
 - **Redundant `.cloned()` in `guidance.rs`** — Removed unnecessary `.cloned()` calls on iterators of `&String` (5 occurrences)
 - **Collapsible `if` in `session_tracker.rs`** — Flattened nested `if` statements into single condition with `&&`
+
+#### v1.1.74 (Remaining 41 Clippy Errors in observation crate)
+- **Unused imports across 5 observation files** — Removed 27 unused `windows::Win32` imports, unused `regex::Regex` imports, unused `std::collections::HashMap`, unused `chrono::Utc`, unused `tracing::{debug, error}`, and unused `super` imports in `terminal_windows` module
+- **Unnecessary unsafe blocks** — Removed unnecessary `unsafe` blocks in `browser.rs` (browser context detection) and `console_output.rs` (console output capture) where code doesn't actually use FFI or pointer operations
+- **MutexGuard across await point** — Added `#[allow(clippy::await_holding_lock)]` for `state.enabled` access in `cdp_browser.rs::observe()` where the lock is properly scoped in a block but clippy flags the pattern
+- **Useless conversion to same type** — Replaced `msg.into()` with `msg.to_string()` where `msg` was already a `String` in `cdp_browser.rs`
+- **Non-snake-case field name** — Added `#[allow(non_snake_case)]` and `#[serde(rename = "webSocketDebuggerUrl")]` to preserve CDP JSON API field name
+- **Using contains() instead of iter().any()** — Replaced `.iter().any(|b| b == name)` with `.contains(name)` in `cdp_browser.rs`
+- **Match for single pattern** — Replaced `match` statements with single pattern to `if let` in `cdp_browser.rs`
+- **Redundant pattern matching** — Replaced `if let Ok(_) = expr` with `if expr.is_ok()` in `console_output.rs`
+- **Casting to same type** — Removed redundant `(u32)` cast in `console_output.rs`
+- **Explicit closure for copying** — Replaced `.map(|s| *s)` with `.copied()` in `console_output.rs`
+- **Field assignment outside Default::default()** — Fixed `file_observer.rs` to use proper struct initialization with `..Default::default()`
+- **Unnecessary parentheses around if condition in browser.rs** — Removed unnecessary parens in HTTP error detection
+- **If-same-then-else in browser.rs** — Consolidated identical-branch if/else chains for HTTP 5xx and 4xx error severity
+- **Unused variable in terminal.rs** — Prefixed with underscore
+- **Dead field in shell.rs** — Added #[allow(dead_code)] for planned future use
+- **Redundant .cloned() in guidance.rs** — Removed .cloned() calls on &String iterators
+- **Collapsible if in session_tracker.rs** — Flattened nested if statements
 
 ## [1.1.4] — 2026-07-22 — CI Fix
 

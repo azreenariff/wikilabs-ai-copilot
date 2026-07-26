@@ -177,12 +177,8 @@ mod terminal_windows {
     use windows::Win32::UI::WindowsAndMessaging::{
         EnumChildWindows, EnumWindows, GetClassNameW,
         GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
-        WNDENUMPROC,
     };
     use windows::Win32::Foundation::{BOOL, FALSE, LPARAM, TRUE};
-
-    use crate::event::ObservationPayload;
-    use crate::provider::ProviderConfig;
 
     use super::{TerminalCommand, TerminalSession, TerminalState, ENGINEERING_COMMANDS};
 
@@ -425,7 +421,7 @@ mod terminal_windows {
 }
 
 #[cfg(target_os = "windows")]
-use terminal_windows::{detect_windows_sessions, window_enumeration_callback};
+use terminal_windows::detect_windows_sessions;
 
 // ── Linux-specific terminal detection ──────────────────────────────
 
