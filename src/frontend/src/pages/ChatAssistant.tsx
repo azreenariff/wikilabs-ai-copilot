@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { marked } from 'marked';
 
 // Configure marked: disable global highlight to avoid XSS, use DOMPurify if available
