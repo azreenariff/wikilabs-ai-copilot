@@ -9,24 +9,30 @@ interface ActiveRecommendation {
 function GuidanceToast() {
   const lastShownRef = useRef<string>('');
   const notificationPermissionRef = useRef<string>('default');
+  const lastShownContentRef = useRef<string>('');
 
   const showOsNotification = useCallback((title: string, body: string) => {
-    // Use the browser's native Notification API — this shows an OS-level toast
-    // at the top-right of the screen, visible even when the app window is minimized.
-    // On Windows WebView2, this delegates to the Windows Toast API.
     try {
-      if (typeof Notification !== 'undefined' && 'requestPermission' in Notification) {
-        if (notificationPermissionRef.current === 'granted') {
-          new Notification(title, { body, tag: 'guidance-toast' });
-        } else if (notificationPermissionRef.current === 'default') {
-          Notification.requestPermission().then((perm) => {
-            notificationPermissionRef.current = perm;
-            if (perm === 'granted') {
-              new Notification(title, { body, tag: 'guidance-toast' });
-            }
-          });
-        }
-        // If 'denied', silently skip
+      if (typeof Notification === 'undefined' || !('requestPermission' in Notification)) return;
+
+      const perm = Notification.permission;
+      if (perm === 'granted') {
+        new Notification(title, { body, tag: 'guidance-toast' });
+      } else if (perm === 'default') {
+        // Request permission first, then immediately show if granted
+        Notification.requestPermission().then((p) => {
+          if (p === 'granted') {
+            new Notification(title, { body, tag: 'guidance-toast' });
+          }
+        }).catch(() => {
+          // Permission request failed — fall back to trying without permission
+          // (some browsers allow notifications even without explicit grant)
+          try {
+            new Notification(title, { body, tag: 'guidance-toast' });
+          } catch {}
+        });
+      } else {
+        // 'denied' — silently skip
       }
     } catch {
       // Notification API not available — silently ignore
@@ -43,9 +49,11 @@ function GuidanceToast() {
       const data = await res.json();
       if (data.success && data.value && data.value.length > 0) {
         const rec = data.value[0] as ActiveRecommendation;
-        if (rec.id !== lastShownRef.current) {
+        // Show if either the ID or the content changed (handles rule-based recs with same title)
+        if ((rec.id !== lastShownRef.current) || (rec.description !== lastShownContentRef.current)) {
           showOsNotification(rec.title, rec.description);
           lastShownRef.current = rec.id;
+          lastShownContentRef.current = rec.description;
         }
       }
     } catch {
@@ -58,11 +66,11 @@ function GuidanceToast() {
     if (typeof Notification !== 'undefined') {
       notificationPermissionRef.current = Notification.permission;
     }
-    const interval = setInterval(poll, 10000);
+    // Poll more frequently to catch new recommendations faster
+    const interval = setInterval(poll, 5000);
     return () => clearInterval(interval);
   }, [poll]);
 
-  // No in-app DOM — notification appears at OS level
   return null;
 }
 

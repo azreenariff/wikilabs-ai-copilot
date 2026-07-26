@@ -74,3 +74,81 @@ body {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+
+/* Markdown rendering styles for assistant messages */
+.assistant-messages-content p {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+.assistant-messages-content pre {
+  background: #1a1a2e;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+.assistant-messages-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+.assistant-messages-content :not(pre) > code {
+  background: #27272a;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.assistant-messages-content pre code {
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.assistant-messages-content ul, .assistant-messages-content ol {
+  padding-left: 24px;
+  margin: 0.5em 0;
+}
+.assistant-messages-content li {
+  margin: 0.25em 0;
+  line-height: 1.6;
+}
+.assistant-messages-content h1, .assistant-messages-content h2, .assistant-messages-content h3,
+.assistant-messages-content h4, .assistant-messages-content h5, .assistant-messages-content h6 {
+  margin: 0.75em 0 0.25em;
+  font-weight: 600;
+}
+.assistant-messages-content h1 { font-size: 1.4em; }
+.assistant-messages-content h2 { font-size: 1.25em; }
+.assistant-messages-content h3 { font-size: 1.1em; }
+.assistant-messages-content strong { font-weight: 600; }
+.assistant-messages-content blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 12px;
+  margin: 0.5em 0;
+  color: var(--color-text-secondary);
+}
+.assistant-messages-content hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1em 0;
+}
+.assistant-messages-content table {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  width: 100%;
+}
+.assistant-messages-content th, .assistant-messages-content td {
+  border: 1px solid var(--color-border);
+  padding: 6px 12px;
+  text-align: left;
+}
+.assistant-messages-content th {
+  background: var(--color-bg-tertiary);
+  font-weight: 600;
+}
+.assistant-messages-content a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.assistant-messages-content a:hover {
+  text-decoration: underline;
+}
