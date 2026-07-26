@@ -388,7 +388,7 @@ impl SemanticAnalyzer {
         if cmd.starts_with("ssh ") {
             let target = cmd.strip_prefix("ssh ").unwrap_or("")
                 .split('@')
-                .last()
+                .next_back()
                 .map(String::from);
             return Some(CommandIntent {
                 command: original.to_string(),

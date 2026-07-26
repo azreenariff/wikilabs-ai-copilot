@@ -441,6 +441,7 @@ impl CorrelationEngine {
 /// An infrastructure keyword match.
 #[derive(Debug, Clone)]
 struct InfraMatch {
+    #[allow(dead_code)]
     infrastructure: String,
     confidence: f32,
     explanation: String,
