@@ -202,14 +202,7 @@ impl ConsoleOutputCapture {
     fn capture_console_output(host: &(String, u32, String)) -> Option<ConsoleSession> {
         let (process_name, pid, _) = host;
 
-        // Find the actual console window for this host
-        // We need to find the window whose process matches our PID
-        let mut best_window: *const windows::Win32::Foundation::HWND = std::ptr::null();
-        let mut best_len: i32 = 0;
-
-        // We can't use EnumWindows with a closure easily, so use a different approach
-        // Instead, try to read console text directly
-        // Note: direct window text reading is handled by get_console_window_text() below
+        // Delegate to get_console_window_text() for Windows window enumeration
 
         // Try to get console window text via direct Win32 API
         // This reads the window title + class name which includes the command output preview
