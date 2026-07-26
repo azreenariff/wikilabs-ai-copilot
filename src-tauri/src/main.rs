@@ -468,6 +468,7 @@ fn main() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_notification::init())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 // Minimize to tray instead of closing
@@ -505,8 +506,14 @@ fn main() {
                 .map(|rd| rd.join("knowledge"))
                 .ok();
 
+            // Clone app_handle BEFORE the thread spawn to avoid capturing &mut tauri::App
+            let app_handle_for_thread = app.handle().clone();
+            let skills_path_thread = skills_path.clone();
+            let knowledge_path_thread = knowledge_path.clone();
+
             std::thread::spawn(move || {
-                match api_server::start_api_server(1420, Some(config_path_clone), skills_path, knowledge_path) {
+                api_server::set_shared_app_handle(app_handle_for_thread.clone());
+                match api_server::start_api_server(1420, Some(config_path_clone), skills_path_thread, knowledge_path_thread, Some(Arc::new(app_handle_for_thread))) {
                     Ok(_) => {
                         info!("API server started successfully in background thread");
                         *api_state_clone.lock().unwrap() = Some(true);

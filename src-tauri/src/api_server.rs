@@ -18,6 +18,7 @@ use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 use wikilabs_ai::AiProvider;
+use tauri::AppHandle;
 
 /// Build a system prompt that includes the AI's own observation context,
 /// recent recommendations with reasoning, and session state.
@@ -144,6 +145,8 @@ pub struct ApiRequest {
 pub struct ApiServerState {
     pub settings: Arc<Mutex<ApiServerSettings>>,
     pub config_path: Arc<Mutex<Option<PathBuf>>>,
+    /// Optional AppHandle for sending native notifications.
+    pub app_handle: Option<Arc<tauri::AppHandle>>,
 }
 
 #[derive(Debug, Clone)]
@@ -275,6 +278,11 @@ pub async fn api_handler(
         "guidance_get_mode" => handle_guidance_get_mode().await,
         "guidance_get_available_modes" => handle_guidance_get_available_modes().await,
         "guidance_clear_all" => handle_guidance_clear_all().await,
+        "guidance_show_toast" => {
+            let title = req.params.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let body = req.params.get("body").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            handle_guidance_show_toast(&title, &body).await
+        },
         // System commands
         "get_status" => handle_get_status().await,
         "observation_get_status" => handle_observation_get_status(&state).await,
@@ -952,6 +960,25 @@ async fn handle_guidance_clear_all() -> (StatusCode, String) {
     }
 }
 
+async fn handle_guidance_show_toast(title: &str, body: &str) -> (StatusCode, String) {
+    // API endpoint exists for frontend compatibility but notification is handled client-side.
+    // The browser's Notification API is used in the GuidanceToast component.
+    (StatusCode::OK, api_response(true, None, None))
+}
+
+/// Internal: shared AppHandle for notifications (set from main.rs after Tauri init).
+static SHARED_APP_HANDLE: std::sync::Mutex<Option<AppHandle>> = std::sync::Mutex::new(None);
+
+pub fn set_shared_app_handle(handle: AppHandle) {
+    let mut guard = SHARED_APP_HANDLE.lock().unwrap();
+    *guard = Some(handle);
+}
+
+pub fn get_shared_app_handle() -> Option<AppHandle> {
+    let guard = SHARED_APP_HANDLE.lock().unwrap();
+    guard.clone()
+}
+
 async fn handle_observation_get_status(_state: &ApiServerState) -> (StatusCode, String) {
     // Return current observation status
     let value = serde_json::json!({
@@ -1031,10 +1058,17 @@ pub fn create_router(state: ApiServerState) -> Router {
 
 /// Start the HTTP server on the given port (default 1420).
 /// Runs in a dedicated thread to keep the tokio runtime alive.
-pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skills_path: Option<std::path::PathBuf>, knowledge_path: Option<std::path::PathBuf>) -> Result<(), String> {
+pub fn start_api_server(
+    port: u16,
+    config_path: Option<std::path::PathBuf>,
+    skills_path: Option<std::path::PathBuf>,
+    knowledge_path: Option<std::path::PathBuf>,
+    app_handle: Option<Arc<tauri::AppHandle>>,
+) -> Result<(), String> {
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
+        app_handle,
     };
 
     // Load settings from disk at startup so the AI loop sees the configured API key
@@ -1161,6 +1195,53 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                 }
                 let mut last_events: Vec<StructuredEvent> = Vec::new();
 
+                // Noise filter: check if an event is non-engineering UI wrapper, crashpad, or background process.
+                // Returns true if the event should be SKIPPED from AI guidance.
+                let noise_sources = [
+                    "crashpad_handler", "ui_wrapper", "ui-wrapper", "chrome_crashpad",
+                    "chrome_crashpad_handler", "ew_rust_backend_ew_rust", "ew_backend",
+                    "ew_rust", "webview", "WebView", "WebViews", "content_helper",
+                    "content-helpers", "gpu-process", "gpu_process", "service_worker",
+                    "network_service", "sandbox", "xdg-desktop-portal", "xdg-screensaver",
+                    "dconf-service", "gmain", "gdbus", "systemd", "dbus-daemon",
+                    "logind", "accounts-daemon", "thermald", "power-profiles-daemon",
+                    "wpa_supplicant", "NetworkManager", "bluetoothd", "avahi-daemon",
+                    "cupsd", "cron", "atd", "getty", "login", "sshd",
+                    "chrome.exe", "chromium.exe", "chrome_crashpad_handler.exe",
+                    "ui_wrapper.exe", "ew_rust_backend.exe", "ew_backend.exe",
+                    "ew_rust.exe", "content-helpers.exe", "gpu-process.exe",
+                    "service_worker.exe", "network_service.exe",
+                ];
+                let engineering_terminal_keywords = [
+                    "bash", "zsh", "powershell", "cmd", "ssh", "code",
+                    "firefox", "chrome", "terminal", "alacritty", "wezterm",
+                ];
+                let is_noise_event = |event: &StructuredEvent| -> bool {
+                    let source_lower = event.source.to_lowercase();
+                    let summary_lower = event.summary.to_lowercase();
+                    for noise in &noise_sources {
+                        if source_lower.contains(noise) || summary_lower.contains(noise) {
+                            return true;
+                        }
+                    }
+                    if event.source.trim().is_empty() {
+                        return true;
+                    }
+                    if event.source.starts_with("pid:") && !event.source.contains('/') && !event.source.contains('\\') {
+                        if !engineering_terminal_keywords.iter().any(|kw| event.source.contains(kw)) {
+                            return true;
+                        }
+                    }
+                    if event.provider == "ActiveWindow" && (
+                        event.source == "inactive"
+                        || summary_lower.contains("no_window_info_available")
+                        || summary_lower.contains("platform:")
+                    ) {
+                        return true;
+                    }
+                    false
+                };
+
                 loop {
                     tokio::select! {
                         // Phase 1: Collect observation events every 5 seconds
@@ -1201,14 +1282,18 @@ pub fn start_api_server(port: u16, config_path: Option<std::path::PathBuf>, skil
                                                 event.confidence as f64,
                                             ).await;
 
-                                            last_events.push(StructuredEvent {
+                                            // Filter out noise events (UI wrapper, crashpad, background processes)
+                                            let structured = StructuredEvent {
                                                 provider: event.provider.to_string(),
                                                 event_type: format!("{:?}", event.event_type),
                                                 source: event.source.clone(),
                                                 summary,
                                                 payload_json: event.payload.data.clone(),
-                                            });
-                                            if last_events.len() > 30 { last_events.remove(0); }
+                                            };
+                                            if !is_noise_event(&structured) {
+                                                last_events.push(structured);
+                                                if last_events.len() > 30 { last_events.remove(0); }
+                                            }
                                         }
                                     }
                                     Err(e) => warn!(error = %e, "Observation poll failed for provider"),
