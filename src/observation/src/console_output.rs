@@ -18,13 +18,11 @@
 //! - Requires PROCESS_QUERY_INFORMATION and PROCESS_VM_READ permissions
 //! - Cannot capture output from terminal multiplexers (tmux, screen) without shell integration
 
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error, warn};
+use tracing::warn;
 
 /// Command output captured from a console buffer.
 #[derive(Debug, Clone, Serialize, Deserialize)]

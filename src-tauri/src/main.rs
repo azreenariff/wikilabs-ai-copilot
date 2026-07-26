@@ -540,7 +540,7 @@ fn main() {
             app.manage(state);
 
             // ── System Tray Setup ──
-            let handle = app.handle().clone();
+            let _handle = app.handle().clone();
             // Build tray context menu
             let show_item = tauri::menu::MenuItemBuilder::with_id("show", "Show Wiki Labs AI Copilot")
                 .build(app)?;

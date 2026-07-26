@@ -138,9 +138,7 @@ impl BrowserProvider {
             use windows::Win32::System::Threading::{
                 OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
             };
-            use windows::Win32::Foundation::LPARAM;
             use windows::Win32::UI::WindowsAndMessaging::{
-                EnumChildWindows, FindWindowExW, GetClassNameW,
                 GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
                 GetWindowThreadProcessId,
             };
@@ -311,11 +309,9 @@ mod browser_url_windows {
     use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, GetWindowTextW};
 
     pub(super) fn extract_browser_url(hwnd: HWND, process_name: &str) -> Option<String> {
-        unsafe {
-            match process_name {
-                "firefox" | "firefox-esr" => extract_firefox_url(hwnd),
-                _ => extract_chromium_url(hwnd),
-            }
+        match process_name {
+            "firefox" | "firefox-esr" => extract_firefox_url(hwnd),
+            _ => extract_chromium_url(hwnd),
         }
     }
 

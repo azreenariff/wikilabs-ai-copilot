@@ -1,0 +1,90 @@
+{
+  "version": "v1.1.74",
+  "target": "Fix CI clippy errors in observation crate (41 errors)",
+  "ci_job": "Clippy job in .github/workflows/ci.yml",
+  "ci_command": "cargo clippy --workspace --exclude wikilabs-desktop -- -D warnings",
+  "ci_platform": "windows-latest",
+  "crate_affected": "wikilabs-observation (src/observation/)",
+  "total_errors": 41,
+  "current_commit": "6374e67 fix: observation engine clippy warnings (v1.1.73)",
+  "next_tag": "v1.1.74",
+  
+  "errors_by_file": {
+    "src/observation/src/browser.rs": [
+      {"line": 141, "type": "unused import", "detail": "LPARAM - unused in detect_browser_context block"},
+      {"line": 143, "type": "unused import", "detail": "EnumChildWindows, FindWindowExW, GetClassNameW - unused in detect_browser_context block"},
+      {"line": 119, "type": "unused import", "detail": "WNDENUMPROC - unused in discover_browsers block"},
+      {"line": 314, "type": "unnecessary unsafe", "detail": "unsafe block around code that doesn't need it in extract_chromium_url"},
+      {"line": 307, "type": "unused import (indirect)", "detail": "finds window text functions in browser_url_windows module"}
+    ],
+    "src/observation/src/terminal.rs": [
+      {"line": 180, "type": "unused import", "detail": "LPARAM - unused in terminal_windows module"},
+      {"line": 184, "type": "unused import", "detail": "ObservationPayload - unused"},
+      {"line": 185, "type": "unused import", "detail": "ProviderConfig - unused"},
+      {"line": 187, "type": "unused import", "detail": "ENGINEERING_COMMANDS, TerminalCommand, TerminalState - unused"},
+      {"line": 428, "type": "unused import", "detail": "detect_windows_sessions, window_enumeration_callback - unused"}
+    ],
+    "src/observation/src/cdp_browser.rs": [
+      {"line": 19, "type": "unused import", "detail": "std::collections::HashMap - unused"},
+      {"line": 26, "type": "unused import", "detail": "error - unused from tracing"},
+      {"line": 119, "type": "unused import", "detail": "HANDLE - unused in discover_browsers block"},
+      {"line": 37, "type": "non-snake-case", "detail": "webSocketDebuggerUrl should be web_socket_debugger_url (serde rename preserves original JSON)"},
+      {"line": 71, "type": "contains vs iter().any", "detail": "using .iter().any() when .contains() is more efficient"},
+      {"line": 150, "type": "match single pattern", "detail": "using match for single pattern, should use if let"},
+      {"line": 174, "type": "match single pattern", "detail": "using match for single pattern, should use if let"},
+      {"line": 193, "type": "await_holding_lock", "detail": "MutexGuard held across await points (state.lock() at L193, awaited at L213, L232, L239)"},
+      {"line": 307, "type": "useless_conversion", "detail": "msg.into() on String that is already String"}
+    ],
+    "src/observation/src/console_output.rs": [
+      {"line": 21, "type": "unused import", "detail": "std::collections::HashMap - unused"},
+      {"line": 25, "type": "unused import", "detail": "error - unused from tracing"},
+      {"line": 27, "type": "unused import", "detail": "debug and error - unused from tracing"},
+      {"line": 150, "type": "unused import", "detail": "HANDLE - unused"},
+      {"line": 156, "type": "unused import", "detail": "OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW - unused"},
+      {"line": 203, "type": "unused import", "detail": "CloseHandle, HANDLE - unused"},
+      {"line": 205, "type": "unused import", "detail": "OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ - unused"},
+      {"line": 208, "type": "unused import", "detail": "FindWindowW, GetWindowTextA, GetWindowTextLengthW, GetWindowTextW - unused"},
+      {"line": 210, "type": "unused import", "detail": "EnumWindows - unused from Win32::UI::WindowsAndMessaging"},
+      {"line": 270, "type": "unused import", "detail": "FindWindowExW, GetClassNameW, GetWindowTextLengthW, GetWindowTextW, IsWindowVisible - unused"},
+      {"line": 295, "type": "unused import", "detail": "CloseHandle, HANDLE - unused"},
+      {"line": 297, "type": "unused import", "detail": "OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW - unused"},
+      {"line": 300, "type": "unused import", "detail": "EnumChildWindows, GetClassNameW - unused"},
+      {"line": 410, "type": "unused import", "detail": "regex::Regex - unused (only uses .contains() on string)"},
+      {"line": 473, "type": "unused import", "detail": "regex::Regex - unused (same as L410)"},
+      {"line": 175, "type": "redundant_pattern_matching", "detail": "if let Ok(_) should be .is_ok()"},
+      {"line": 227, "type": "unnecessary_cast", "detail": "*pid as u32 when pid is already u32"},
+      {"line": 399, "type": "map_clone", "detail": ".map(|s| *s) should be .copied()"},
+      {"line": 404, "type": "map_clone", "detail": ".map(|s| *s) should be .copied()"},
+      {"line": 220, "type": "unused variable", "detail": "callback parameter unused"},
+      {"line": 252, "type": "unused variable", "detail": "warnings variable unused"},
+      {"line": 276, "type": "unnecessary unsafe", "detail": "unsafe block not needed"},
+      {"line": 379, "type": "unnecessary cast", "detail": "unnecessary_cast in window title code"}
+    ],
+    "src/observation/src/file_observer.rs": [
+      {"line": 141, "type": "field_assignment", "detail": "field assignment outside of initializer for Default::default()"},
+      {"line": 140, "type": "field_assignment", "detail": "field assignment outside of initializer for Default::default()"}
+    ]
+  },
+  
+  "fix_strategy": [
+    "1. Remove all unused imports from each file's #[cfg(target_os = \"windows\")] blocks",
+    "2. Fix MutexGuard across await in cdp_browser.rs - drop lock before .await",
+    "3. Add #[allow(...)] for intentionally non-idiomatic code (non_snake_case for serde fields, await_holding_lock where changing would be a larger refactor)",
+    "4. Fix useless_conversion: remove .into() where type is already correct",
+    "5. Fix redundant_pattern_matching: use .is_ok() instead of if let Ok(_)",
+    "6. Fix unnecessary_cast: remove redundant casts",
+    "7. Fix map_clone: use .copied() instead of .map(|s| *s)",
+    "8. Fix unnecessary unsafe: remove unnecessary unsafe blocks",
+    "9. Fix contains() vs iter().any(): use .contains() for direct membership checks",
+    "10. Fix match single pattern: use if let instead of match for single pattern",
+    "11. Fix field_assignment outside initializer: use Default::default() with full initializer or Struct { field: value } syntax"
+  ],
+  
+  "previous_work": [
+    "v1.1.73 tag exists at commit 6374e67",
+    "CI Clippy job failed with 41 errors in observation crate",
+    "CI Test and Build (Windows) jobs pass",
+    "CI Docs Build passes",
+    "Release #119 for v1.1.73 failed because CI Clippy failed"
+  ]
+}

@@ -16,14 +16,13 @@
 //! - Chromium-based browsers only (Chrome, Edge, Brave, Opera, Vivaldi)
 //! - Firefox requires separate CDP implementation
 
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use futures_util::{SinkExt, StreamExt};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error, warn};
+use tracing::{debug, warn};
 
 use crate::event::{ObservationEvent, ObservationPayload};
 
@@ -34,7 +33,7 @@ pub struct CdpTarget {
     pub url: String,
     pub r#type: String,
     pub id: String,
-    pub webSocketDebuggerUrl: Option<String>,
+    pub web_socket_debugger_url: Option<String>,
 }
 
 /// An error detected in the page DOM.
@@ -64,6 +63,7 @@ pub struct HtmlContent {
 
 /// CDP JSON response message.
 #[derive(Debug, Deserialize)]
+#[expect(dead_code)]
 struct CdpMessage {
     pub id: Option<u64>,
     pub result: Option<serde_json::Value>,
@@ -116,7 +116,7 @@ impl CdpBrowserScraper {
     /// Discover Chromium-based browser processes on Windows.
     #[cfg(target_os = "windows")]
     pub fn discover_browsers(&self) -> Vec<(String, u32)> {
-        use windows::Win32::Foundation::{CloseHandle, HANDLE};
+        use windows::Win32::Foundation::CloseHandle;
         use windows::Win32::System::Diagnostics::ToolHelp::{
             CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
             TH32CS_SNAPPROCESS,
@@ -147,7 +147,7 @@ impl CdpBrowserScraper {
                         .trim_end_matches('\0')
                         .to_lowercase();
 
-                    if chromium_browsers.iter().any(|b| *b == name.as_str()) {
+                    if chromium_browsers.contains(&name.as_str()) {
                         browsers.push((name.clone(), pe.th32ProcessID));
                     }
 
@@ -171,17 +171,15 @@ impl CdpBrowserScraper {
 
         for port in 9222..=9230 {
             let url = format!("http://127.0.0.1:{port}/json");
-            match client.get(&url).timeout(Duration::from_secs(2)).send().await {
-                Ok(resp) => {
-                    match resp.json::<Vec<CdpTarget>>().await {
-                        Ok(targets) if !targets.is_empty() => {
-                            debug!("Found {n} CDP targets on port {port}", n = targets.len());
-                            found.push((port, targets));
-                        }
-                        _ => {}
+            if let Ok(resp) = client.get(&url).timeout(Duration::from_secs(2)).send().await {
+                match resp.json::<Vec<CdpTarget>>().await {
+                    Ok(targets) if !targets.is_empty() => {
+                        debug!("Found {n} CDP targets on port {port}", n = targets.len());
+                        found.push((port, targets));
                     }
+                    _ => {}
                 }
-                Err(_) => {} // Port not open or connection refused — skip
+                // Port not open or connection refused — skip
             }
         }
 
@@ -190,14 +188,22 @@ impl CdpBrowserScraper {
 
     /// Main observation — scans for CDP browsers and scrapes page content.
     pub async fn observe(&self) -> Result<Vec<ObservationEvent>, String> {
-        let mut state = self.state.lock().unwrap();
+        let enabled = {
+            let state = self.state.lock().unwrap();
+            state.enabled
+        };
 
-        if !state.enabled {
+        if !enabled {
             return Ok(Vec::new());
         }
 
+        let last_connect = {
+            let state = self.state.lock().unwrap();
+            state.last_connect
+        };
+
         // Rate limit: max 1 scrape every 5 seconds
-        if let Some(last) = state.last_connect {
+        if let Some(last) = last_connect {
             if last.elapsed() < Duration::from_secs(5) {
                 return Ok(Vec::new());
             }
@@ -225,7 +231,7 @@ impl CdpBrowserScraper {
             .or_else(|| targets.first())
             .ok_or("No targets found")?;
 
-        let ws_url = page_target.webSocketDebuggerUrl.clone()
+        let ws_url = page_target.web_socket_debugger_url.clone()
             .ok_or("No WebSocket URL")?;
 
         // Connect via WebSocket
@@ -244,8 +250,11 @@ impl CdpBrowserScraper {
         enriched.url = page_target.url.clone();
         enriched.title = page_target.title.clone();
 
-        state.last_content = Some(enriched.clone());
-        state.last_connect = Some(Instant::now());
+        {
+            let mut state = self.state.lock().unwrap();
+            state.last_content = Some(enriched.clone());
+            state.last_connect = Some(Instant::now());
+        }
 
         let payload = serde_json::json!({
             "browser": browser_name,
@@ -304,7 +313,7 @@ impl CdpConnection {
         let msg = serde_json::to_string(&cmd)
             .map_err(|e| format!("JSON encode error: {e}"))?;
 
-        self.ws.send(tungstenite::Message::Text(msg.into())).await
+        self.ws.send(tungstenite::Message::Text(msg)).await
             .map_err(|e| format!("WebSocket send error: {e}"))?;
 
         loop {
