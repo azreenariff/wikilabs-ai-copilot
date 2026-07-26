@@ -19,6 +19,105 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 use wikilabs_ai::AiProvider;
 
+/// Build a system prompt that includes the AI's own observation context,
+/// recent recommendations with reasoning, and session state.
+/// This makes the AI truly aware of what it has been observing and recommending.
+fn build_context_system_prompt(
+    chat_history: &[ChatMessage],
+) -> Option<String> {
+    let panel = guidance_panel::GuidancePanel::instance();
+    let mut parts: Vec<String> = Vec::new();
+
+    // ── Recent observation events ──
+    let recent_events = futures::executor::block_on(panel.get_recent_events(60));
+    if !recent_events.is_empty() {
+        let mut lines = Vec::new();
+        for e in recent_events.iter().take(30) {
+            let desc = e.description.as_deref().unwrap_or("");
+            let tech = e.technology.as_deref().unwrap_or(e.event_type.as_str());
+            lines.push(format!("- {} on {}: {}", e.event_type, tech, desc));
+        }
+        if !lines.is_empty() {
+            parts.push(format!(
+                "## Recent Observations (last 60 minutes)\n{}\n",
+                lines.join("\n")
+            ));
+        }
+    }
+
+    // ── Recent recommendations with reasoning ──
+    let all_recs = futures::executor::block_on(panel.all_recommendations());
+    if !all_recs.is_empty() {
+        let mut lines = Vec::new();
+        for r in all_recs.iter().take(5) {
+            let status_str = match r.status {
+                guidance_panel::RecommendationStatus::Active => "🟢 active",
+                guidance_panel::RecommendationStatus::Accepted => "✅ accepted",
+                guidance_panel::RecommendationStatus::Rejected => "❌ rejected",
+                guidance_panel::RecommendationStatus::Skipped => "⏭️ skipped",
+                guidance_panel::RecommendationStatus::Dismissed => "❌ dismissed",
+            };
+            let next_step = r.recommended_next_step.as_deref().unwrap_or("");
+            lines.push(format!(
+                "- **{}** ({}) — Reason: {} | Next: {}",
+                r.title, status_str, r.reason, next_step
+            ));
+        }
+        if !lines.is_empty() {
+            parts.push(format!(
+                "## My Recent Recommendations\n{}\n",
+                lines.join("\n")
+            ));
+        }
+    }
+
+    // If we have no context, return None (no system prompt needed)
+    if parts.is_empty() {
+        return None;
+    }
+
+    let context_block = parts.join("\n");
+
+    // Build a system prompt that frames the AI's identity as an observer
+    let history_preview = if chat_history.len() > 0 {
+        format!(
+            "\n## Conversation History (recent)\n{}",
+            chat_history
+                .iter()
+                .rev()
+                .take(10)
+                .map(|m| {
+                    format!(
+                        "- {}: {}",
+                        if m.role == "user" { "User" } else { "Assistant" },
+                        m.content.chars().take(200).collect::<String>()
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    } else {
+        String::new()
+    };
+
+    let session_context = if !chat_history.is_empty() {
+        // If there's conversation history, the AI should continue the conversation
+        // as the same agent that did the observations
+        format!(
+            "{}\n\nYou are the Wiki Labs AI Copilot. You've been actively observing the user's activity in real-time through terminal sessions, browser activity, window changes, and more. The observations and recommendations above are YOUR own — they're what you've noticed and suggested based on what you've seen. Continue your analysis and conversation with full awareness of your prior observations.",
+            context_block
+        )
+    } else {
+        // No conversation history yet — just set the context
+        format!(
+            "{}\n\nYou are the Wiki Labs AI Copilot assistant. You've been actively observing the user's activity in real-time. The observations and recommendations above are YOUR own — what you've noticed and suggested based on what you've seen.",
+            context_block
+        )
+    };
+
+    Some(session_context)
+}
+
 use crate::guidance_panel;
 use crate::knowledge_panel::{KnowledgePanel, PackInfo, ValidationReport};
 use crate::skill_management::{SkillCard, SkillManagementPanel};
@@ -326,12 +425,45 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
             context_window as usize,
         );
 
+        // ── Build context-aware message array ──
+        // 1. Get chat history (already saved user message above)
+        let history = {
+            let settings_ref = state.settings.lock().unwrap();
+            let msgs = settings_ref.messages.lock().unwrap();
+            msgs.clone()
+        };
+
+        // 2. Build system prompt with observation context + recommendations
+        let system_prompt = build_context_system_prompt(&history);
+
+        // 3. Build the messages array for the AI
+        let mut messages: Vec<wikilabs_ai::provider::AiMessage> = Vec::new();
+
+        // Add system prompt if we have observation context
+        if let Some(sys) = system_prompt {
+            messages.push(wikilabs_ai::provider::AiMessage {
+                role: "system".to_string(),
+                content: sys,
+            });
+        }
+
+        // Add all prior chat messages as history
+        for msg in history.iter() {
+            messages.push(wikilabs_ai::provider::AiMessage {
+                role: msg.role.clone(),
+                content: msg.content.clone(),
+            });
+        }
+
+        // Add the current user message
+        messages.push(wikilabs_ai::provider::AiMessage {
+            role: "user".to_string(),
+            content: message.clone(),
+        });
+
         let ai_request = wikilabs_ai::provider::AiRequest {
             model: model.clone(),
-            messages: vec![wikilabs_ai::provider::AiMessage {
-                role: "user".to_string(),
-                content: message.clone(),
-            }],
+            messages,
             tools: vec![],
             temperature: None,
             max_tokens: Some(max_tokens as usize),

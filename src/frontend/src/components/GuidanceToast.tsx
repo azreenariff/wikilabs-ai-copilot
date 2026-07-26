@@ -11,6 +11,34 @@ function GuidanceToast() {
   const [rec, setRec] = useState<ActiveRecommendation | null>(null);
   const [lastId, setLastId] = useState('');
 
+  // Request native notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Trigger native OS notification when new recommendation appears
+  useEffect(() => {
+    if (!visible || !rec) return;
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        const n = new Notification('💡 AI Copilot Guidance', {
+          body: rec.description,
+          icon: '/favicon.ico',
+          tag: rec.id,
+        });
+        n.onclick = () => {
+          window.focus();
+          window.location.href = '/guidance';
+        };
+        setTimeout(() => n.close(), 10000);
+      } catch {
+        // silently ignore notification errors
+      }
+    }
+  }, [visible, rec]);
+
   const poll = useCallback(async () => {
     try {
       const res = await fetch('http://localhost:1420/api/commands/guidance_get_active_recommendations', {
@@ -37,10 +65,10 @@ function GuidanceToast() {
     return () => clearInterval(interval);
   }, [poll]);
 
-  // Auto-dismiss after 15 seconds
+  // Auto-dismiss after 20 seconds
   useEffect(() => {
     if (!visible) return;
-    const timer = setTimeout(() => setVisible(false), 15000);
+    const timer = setTimeout(() => setVisible(false), 20000);
     return () => clearTimeout(timer);
   }, [visible]);
 
@@ -56,7 +84,7 @@ function GuidanceToast() {
       style={{
         position: 'fixed',
         top: '16px',
-        right: '16px',
+        left: '16px',
         zIndex: 9999,
         maxWidth: '420px',
         background: '#1e1e2e',
@@ -94,7 +122,7 @@ function GuidanceToast() {
       </p>
       <style>{`
         @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
+          from { transform: translateX(-100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
