@@ -103,7 +103,7 @@ impl GuidanceEngine {
 
     /// Generate guidance suggestions based on current observation state.
     pub fn generate_suggestions(&self) -> Vec<GuidanceSuggestion> {
-        let engineering = self.correlation_engine.get_engineering_correlations();
+        let engineering = self.correlation_engine.scan();
 
         let mut suggestions = Vec::new();
 

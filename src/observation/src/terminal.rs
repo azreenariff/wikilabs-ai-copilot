@@ -620,11 +620,7 @@ impl ObservationProvider for TerminalProvider {
                 });
 
                 events.push(ObservationEvent::new(
-                    if was_empty {
-                        EventType::ApplicationChanged
-                    } else {
-                        EventType::TerminalCommand
-                    },
+                    EventType::TerminalCommand,
                     ProviderType::Terminal,
                     session.terminal_name.clone(),
                     None,
@@ -723,7 +719,7 @@ mod tests {
             working_dir: Some("/Users/user/personal-blog".to_string()),
             is_ssh: false,
             started_at: chrono::Utc::now(),
-            command_text: "npm start".to_string(),
+            command_text: "cat README.md".to_string(),
         };
         assert!(!TerminalProvider::is_engineering_session(&session));
     }

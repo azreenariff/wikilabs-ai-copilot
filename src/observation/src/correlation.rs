@@ -336,7 +336,8 @@ impl CorrelationEngine {
         let (url_lower, cmd_lower) = (url.to_lowercase(), cmd.to_lowercase());
 
         for (infra, related_cmds) in INFRA_KEYWORDS {
-            let url_matches = url_lower.contains(infra);
+            let url_matches = url_lower.contains(infra)
+                || related_cmds.iter().any(|c| url_lower.contains(c));
             let cmd_matches = related_cmds.iter().any(|c| cmd_lower.contains(c));
 
             if url_matches && cmd_matches {
