@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v1.1.96 - FIX: Blank window on launch — removed invalid `url` field from Tauri config
+
+- **Critical Fix:** WebView2 blank screen on launch — the `"url": "local:index.html"` field in `tauri.conf.json` was incorrect for release builds (the `local:` URL scheme only works in dev mode). Removed the `url` field entirely, letting Tauri default to `index.html` from `frontendDist` — the same configuration that worked in v1.1.83-89.
+- **Fix:** CI workflow now explicitly installs Node.js and runs `npm ci` + `npm run build` before `cargo tauri build`, ensuring the frontend is freshly built on Windows CI instead of using stale committed dist files.
+
 ## v1.1.95 - FIX: API server deadlock — switch to multi-threaded Tokio runtime
 
 - **Critical Fix:** WebView2 stuck on `about:blank` due to API server deadlock — the single-threaded Tokio runtime caused `Handle::current().block_on()` to deadlock when sync IPC handlers tried to access async `GuidancePanel` methods

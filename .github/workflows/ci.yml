@@ -28,6 +28,21 @@ jobs:
         shell: pwsh
         run: cargo install tauri-cli
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: src/frontend
+        run: npm run build
+
       - name: Build Tauri app
         run: cargo tauri build --target x86_64-pc-windows-msvc
         env:
