@@ -38,8 +38,11 @@ function App() {
             signal: makeSignal(),
           });
           const data = await res.json();
+          // DEBUG: log raw response to understand first-run behavior
+          console.log('[startup] get_settings response:', JSON.stringify(data, null, 2));
           if (data.success && data.value) {
             const apiKey = data.value.ai_provider?.api_key || '';
+            console.log('[startup] apiKey length:', apiKey.length, 'needsSetup:', !apiKey);
             // Show wizard if no API key configured.
             // This handles both fresh installs and upgrades where the user never
             // actually completed the wizard but the settings file existed.
