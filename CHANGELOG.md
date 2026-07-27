@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v1.1.93 - FIX: Blank window on launch — wrong URL path in tauri.conf.json
+
+- **Critical Fix:** Blank/dark window on first launch after fresh install — the Tauri window URL was `"local:../src/frontend/dist/index.html"` which resolves OUTSIDE the `frontendDist` directory (Tauri prepends `frontendDist` to `local:` URLs, so this resolves to `../../src/frontend/dist/index.html`). Changed to `"local:index.html"` which correctly loads `frontendDist/index.html`.
+- **Fix:** Removed CSP entirely (CSP was also causing issues in WebView2 on Windows).
+- **Fix:** Added visible "Page Loaded — Checking..." debug indicator in HTML to confirm page renders even before React mounts.
+- **Fix:** Added inline JS error handler to display errors on the page instead of blank screen.
+- **Fix:** Frontend `/ready` polling increased to 20s, wrapped in try/catch/finally.
+- **Fix:** Replaced `AbortSignal.timeout()` with manual `AbortController`.
+- **Fix:** Added React ErrorBoundary wrapper.
+
 ## v1.1.92 - Blank Window Fix — Removed CSP, Added Debug Logging
 
 - **Fix:** Blank/dark window on first launch after fresh install — removed CSP entirely (CSP was likely causing silent blocking of the React bundle in certain WebView2 contexts on Windows)
