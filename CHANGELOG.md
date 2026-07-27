@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v1.1.98 - FIX: Make build_context_system_prompt properly async
+
+- **Fix:** Converted `build_context_system_prompt` from sync to async — replaced `Handle::current().block_on()` with direct `.await` calls
+- **Fix:** Called async `build_context_system_prompt` via local `tokio::runtime::Runtime` from sync `handle_send_message` — avoids `Handler` trait issues
+- **Fix:** No longer depends on blocking the current tokio runtime's worker thread for panel access
+
 ## v1.1.97 - FIX: Setup wizard "Cannot reach backend" — retry logic for early startup
 
 - **Critical Fix:** Setup wizard and Settings "Test Connection" button now use exponential backoff retry when the API server hasn't fully initialized yet (~31s startup time) — eliminates the confusing "Cannot reach backend" error on fresh installs
