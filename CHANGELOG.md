@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.74] — 2026-07-26 — Observation Engine Clippy Fix
+## [1.1.79] — 2026-07-27 — AI Provider Wizard Fixes
+
+### Fixed
+
+- **Model dropdown after test connection** — SetupWizard now shows a `<select>` dropdown for model selection after "Test Connection" succeeds, rather than a plain text input. Users can pick from the fetched model list.
+- **Main window hide after setup** — `hide_main_window` was defined but not registered in the API server's route match. Added both `hide_main_window` and `advice_chat_open` to the API handler match block so the frontend's HTTP calls actually reach the handlers.
+- **Floating advice chat window on startup** — The setup wizard now also calls `advice_chat_open` after hiding the main window, so the floating chat bot appears on the right side of the screen immediately after first-run setup.
+
+### Verified
+
+- **Evidence collection** — Confirmed evidence count of 0 at fresh launch is normal; the observation engine polls every 5 seconds and populates evidence over time. Three providers (app_monitor, clipboard, screen_capture) are registered and running.
 
 ### Fixed
 

@@ -279,6 +279,8 @@ pub async fn api_handler(
         "observation_get_context" => handle_observation_get_context().await,
         "observation_start" => handle_observation_start(&state).await,
         "observation_stop" => handle_observation_stop(&state).await,
+        "hide_main_window" => handle_hide_main_window(&state).await,
+        "advice_chat_open" => handle_advice_chat_open(&state).await,
         other => {
             warn!(other, "Unknown API method");
             (StatusCode::BAD_REQUEST, api_response(false, None, Some(format!("Unknown method: {}", other))))
@@ -999,6 +1001,17 @@ async fn handle_observation_start(_state: &ApiServerState) -> (StatusCode, Strin
 async fn handle_observation_stop(_state: &ApiServerState) -> (StatusCode, String) {
     info!("Observation stop requested");
     (StatusCode::OK, api_response(true, Some(serde_json::json!({"status": "stopped"})), None))
+}
+
+/// Hide the main window (minimize to tray).
+async fn handle_hide_main_window(state: &ApiServerState) -> (StatusCode, String) {
+    info!("Hide main window (minimize to tray) requested");
+    if let Some(ref app_handle) = state.app_handle {
+        if let Some(window) = (**app_handle).get_webview_window("main") {
+            let _ = window.hide();
+        }
+    }
+    (StatusCode::OK, api_response(true, Some(serde_json::json!({"hidden": true})), None))
 }
 
 /// Open the floating advice chat window on the right side.

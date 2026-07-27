@@ -92,7 +92,13 @@ function SetupWizard() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ params: {} }),
-        });
+        }).catch(() => {});
+        // Open the floating advice chat window right after setup
+        await fetch('http://localhost:1420/api/commands/advice_chat_open', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ params: {} }),
+        }).catch(() => {});
       } else {
         setError(data.error || 'Failed to save');
       }
@@ -158,13 +164,25 @@ function SetupWizard() {
                 />
               )}
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Model name (e.g., gpt-4o)"
-                  value={model}
-                  onChange={e => setModel(e.target.value)}
-                  style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: '14px' }}
-                />
+                {fetchedModels.length > 0 ? (
+                  <select
+                    value={model}
+                    onChange={e => setModel(e.target.value)}
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: '14px' }}
+                  >
+                    {fetchedModels.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Model name (e.g., gpt-4o)"
+                    value={model}
+                    onChange={e => setModel(e.target.value)}
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', fontSize: '14px' }}
+                  />
+                )}
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
