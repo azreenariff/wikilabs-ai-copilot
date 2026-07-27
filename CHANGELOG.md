@@ -1,6 +1,13 @@
 # CHANGELOG
 
-## v1.1.93 - FIX: Blank window on launch — wrong URL path in tauri.conf.json
+## v1.1.95 - FIX: API server deadlock — switch to multi-threaded Tokio runtime
+
+- **Critical Fix:** WebView2 stuck on `about:blank` due to API server deadlock — the single-threaded Tokio runtime caused `Handle::current().block_on()` to deadlock when sync IPC handlers tried to access async `GuidancePanel` methods
+- **Fix:** Switched from `Runtime::new()` (single-threaded) to `Builder::new_multi_thread()` with 4 worker threads in `start_api_server()`
+- **Fix:** Replaced `futures::executor::block_on()` with proper `tokio::runtime::Handle::current().block_on()` in `build_context_system_prompt()`
+- **Cleanup:** Removed broken `get_recent_events_sync()` method and unused `futures` dependency
+
+## v1.1.94 - DEBUG: Enable WebView2 devtools for blank window debugging
 
 - **Critical Fix:** Blank/dark window on first launch after fresh install — the Tauri window URL was `"local:../src/frontend/dist/index.html"` which resolves OUTSIDE the `frontendDist` directory (Tauri prepends `frontendDist` to `local:` URLs, so this resolves to `../../src/frontend/dist/index.html`). Changed to `"local:index.html"` which correctly loads `frontendDist/index.html`.
 - **Fix:** Removed CSP entirely (CSP was also causing issues in WebView2 on Windows).
