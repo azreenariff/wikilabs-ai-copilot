@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v1.1.97 - FIX: Setup wizard "Cannot reach backend" — retry logic for early startup
+
+- **Critical Fix:** Setup wizard and Settings "Test Connection" button now use exponential backoff retry when the API server hasn't fully initialized yet (~31s startup time) — eliminates the confusing "Cannot reach backend" error on fresh installs
+- **Fix:** Setup wizard `/ready` health pre-check now uses `retryFetch` (5 retries) instead of a single 5s timeout fetch — the server takes ~31s to load knowledge packs, so the old check failed 99% of the time
+- **Fix:** Settings "Test Connection" button shows "Testing..." state during retry attempts
+- **Fix:** More descriptive error message: "API server may still be starting up, please retry" instead of generic "Cannot reach backend"
+
 ## v1.1.96 - FIX: Blank window on launch — removed invalid `url` field from Tauri config
 
 - **Critical Fix:** WebView2 blank screen on launch — the `"url": "local:index.html"` field in `tauri.conf.json` was incorrect for release builds (the `local:` URL scheme only works in dev mode). Removed the `url` field entirely, letting Tauri default to `index.html` from `frontendDist` — the same configuration that worked in v1.1.83-89.

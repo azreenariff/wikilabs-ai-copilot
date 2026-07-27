@@ -59,22 +59,36 @@ function SetupWizard() {
     setError('');
     setFetchedModels([]);
     try {
-      // Pre-check: verify backend is reachable before attempting list_models.
-      // This catches "server still initializing" before we hit the actual API call.
-      const makeSignal = () => {
-        if (typeof AbortSignal.timeout === 'function') {
-          return AbortSignal.timeout(5000);
-        }
-        const ac = new AbortController();
-        setTimeout(() => ac.abort(), 5000);
-        return ac.signal;
-      };
-      const readyRes = await fetch('http://localhost:1420/ready', { signal: makeSignal() });
-      const readyData = await readyRes.json();
+      // Pre-check: verify backend is reachable and ready before attempting list_models.
+      // Uses retryFetch so it survives early startup when the API server
+      // hasn't bound to the port yet (the server can take ~30s to init).
+      const readyRes = await retryFetch(
+        'http://localhost:1420/ready',
+        { method: 'GET' },
+        5,   // max 5 retries
+        1000, // start with 1s delay
+      );
+      let readyData = await readyRes.json();
       if (!readyData.ready) {
-        setTestResult('fail');
-        setError('API server is still initializing — please wait a moment and try again');
-        return;
+        // Server is up but not fully initialized yet — retry a few more times
+        // with a short delay before giving up
+        let attempts = 0;
+        while (!readyData.ready && attempts < 6) {
+          await new Promise(r => setTimeout(r, 1500));
+          const retryRes = await fetch('http://localhost:1420/ready');
+          const retryData = await retryRes.json();
+          if (retryData.ready) {
+            readyData = retryData;
+            break;
+          }
+          readyData = retryData;
+          attempts++;
+        }
+        if (!readyData.ready) {
+          setTestResult('fail');
+          setError('API server is still initializing — please wait a moment and try again');
+          return;
+        }
       }
 
       const res = await retryFetch(
@@ -83,9 +97,8 @@ function SetupWizard() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
-          signal: makeSignal(),
         },
-        3,  // max 3 retries
+        3,   // max 3 retries
         1000, // start with 1s delay
       );
       const data = await res.json();

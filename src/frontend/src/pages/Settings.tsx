@@ -43,6 +43,30 @@ function Settings() {
   const [saving, setSaving] = useState(false);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [testResult, setTestResult] = useState<'idle' | 'testing' | 'success' | 'fail'>('idle');
+
+  // Retry helper: retry a fetch with backoff, useful when the API server
+  // hasn't finished initializing yet (tokio runtime + knowledge packs take a few seconds).
+  const retryFetch = async (
+    url: string,
+    options: RequestInit,
+    maxRetries: number = 3,
+    baseDelay: number = 1000,
+  ): Promise<Response> => {
+    let lastError: Error | undefined;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch(url, options);
+        return res;
+      } catch (e: any) {
+        lastError = e;
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+        }
+      }
+    }
+    throw lastError!;
+  };
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
   // Fetch models from the endpoint's /v1/models API
@@ -160,20 +184,29 @@ function Settings() {
 
   async function handleTestConnection() {
     setStatus('Testing...');
+    setTestResult('testing');
     try {
-      const res = await fetch('http://localhost:1420/api/commands/test_connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ params: settings.ai_provider }),
-      });
+      const res = await retryFetch(
+        'http://localhost:1420/api/commands/test_connection',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ params: settings.ai_provider }),
+        },
+        3,  // max 3 retries
+        1000, // start with 1s delay
+      );
       const data = await res.json();
       if (data.success) {
         setStatus(data.value ? '✓ Connection successful' : '✗ Connection failed');
+        setTestResult(data.value ? 'success' : 'fail');
       } else {
         setStatus(`✗ ${data.error || 'Connection failed'}`);
+        setTestResult('fail');
       }
     } catch {
-      setStatus('⚠ Cannot reach backend');
+      setStatus('⚠ Cannot reach backend — API server may still be starting up, please retry');
+      setTestResult('fail');
     }
   }
 
@@ -385,18 +418,19 @@ function Settings() {
           {/* Test Connection Button */}
           <button
             onClick={handleTestConnection}
+            disabled={testResult === 'testing'}
             style={{
               padding: '8px 16px',
               borderRadius: '6px',
               border: '1px solid var(--color-border)',
-              background: 'transparent',
+              background: testResult === 'testing' ? 'var(--color-text-secondary)' : 'transparent',
               color: 'var(--color-text-primary)',
-              cursor: 'pointer',
+              cursor: testResult === 'testing' ? 'not-allowed' : 'pointer',
               fontSize: '13px',
               alignSelf: 'flex-start',
             }}
           >
-            Test Connection
+            {testResult === 'testing' ? 'Testing...' : 'Test Connection'}
           </button>
 
           {/* Status message */}
