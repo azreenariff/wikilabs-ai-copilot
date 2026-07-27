@@ -608,9 +608,9 @@ fn main() {
             // proactive AI guidance based on user activity.
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
-                let engine = observation::init_observation_engine();
                 let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
                 rt.block_on(async {
+                    let engine = observation::init_observation_engine().await;
                     observation::start_observation_engine(engine).await;
                 });
             });

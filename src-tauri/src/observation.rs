@@ -14,13 +14,13 @@ static mut EVENT_RECEIVER: Option<Receiver<ObservationEvent>> = None;
 
 /// Initialize the observation engine, register providers, and create
 /// a shared event subscription for downstream consumers.
-pub fn init_observation_engine() -> Arc<ObservationEngine> {
+pub async fn init_observation_engine() -> Arc<ObservationEngine> {
     // Create the engine
     let config = ObservationEngineConfig::default();
     let engine = Arc::new(ObservationEngine::new(config));
 
     // Register available providers
-    register_providers(&engine);
+    register_providers(&engine).await;
 
     // Subscribe to the event bus and store the receiver globally
     let bus = engine.event_bus().clone();
@@ -80,50 +80,39 @@ pub async fn start_observation_engine(engine: Arc<ObservationEngine>) {
 }
 
 /// Register all available providers with the engine.
-fn register_providers(engine: &ObservationEngine) {
-    // Active window provider
-    #[cfg(target_os = "linux")]
+async fn register_providers(engine: &ObservationEngine) {
+    // Active window provider — works on all platforms
     {
         let provider =
             wikilabs_observation::app_monitor::ActiveWindowProvider::new();
         tracing::info!("[Observation] Registering app_monitor provider");
-        engine.register_provider(Box::new(provider));
+        engine.register_provider(Box::new(provider)).await;
     }
 
-    // Clipboard provider
-    #[cfg(target_os = "linux")]
+    // Clipboard provider — works on all platforms
     {
         let provider =
             wikilabs_observation::clipboard::ClipboardProvider::new();
         tracing::info!("[Observation] Registering clipboard provider");
-        engine.register_provider(Box::new(provider));
+        engine.register_provider(Box::new(provider)).await;
     }
 
-    // Screen capture provider
-    #[cfg(target_os = "linux")]
+    // Browser provider — Windows only (Win32 API for URL extraction)
+    #[cfg(target_os = "windows")]
     {
         let provider =
-            wikilabs_observation::screen_capture::ScreenCaptureProvider::new();
+            wikilabs_observation::browser::BrowserProvider::new();
         tracing::info!(
-            "[Observation] Registering screen_capture provider"
+            "[Observation] Registering browser provider"
         );
-        engine.register_provider(Box::new(provider));
+        engine.register_provider(Box::new(provider)).await;
     }
 
+    // Screen capture provider — stub on all platforms, not registered
+    // TODO: Implement screen capture for Windows (DXGI) and Linux (X11/Wayland)
+
     let count = {
-        let mut c = 0;
-        #[cfg(target_os = "linux")]
-        {
-            c += 1;
-        }
-        #[cfg(target_os = "linux")]
-        {
-            c += 1;
-        }
-        #[cfg(target_os = "linux")]
-        {
-            c += 1;
-        }
+        let mut c = 3; // active_window + clipboard + browser
         c
     };
     tracing::info!("[Observation] {} providers registered", count);
