@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.1.99 - FIX: API server bind address — changed from 0.0.0.0 to 127.0.0.1
+
+- **Critical Fix:** Setup wizard "Test Connection" freezes on "Testing..." — the API server was binding to `0.0.0.0:1420` which on Windows can cause TCP connections to succeed but HTTP responses to never be delivered (routing ambiguity with VPN clients/multi-NIC setups). Changed to bind to `127.0.0.1:1420` (loopback only) which eliminates the issue and is also more secure since the API only needs local access.
+
 ## v1.1.98 - FIX: Make build_context_system_prompt properly async
 
 - **Fix:** Converted `build_context_system_prompt` from sync to async — replaced `Handle::current().block_on()` with direct `.await` calls
