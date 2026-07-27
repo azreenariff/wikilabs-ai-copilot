@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v1.1.91 - Blank Window Fix — CSP, ErrorBoundary & Robust Startup
+
+- **Fix:** Blank/dark window on first launch after fresh install — added explicit `script-src` CSP directive to allow frontend ES module scripts (the missing directive caused silent CSP violations in some WebView2 contexts)
+- **Fix:** Added React `ErrorBoundary` wrapper to catch and display runtime render errors instead of showing a blank screen
+- **Fix:** Frontend `/ready` polling timeout increased from 10s to 20s (40 × 500ms) to handle slower Windows initialization (tokio runtime + knowledge pack loading on first launch)
+- **Fix:** Startup check wrapped in `try/catch/finally` to guarantee `setChecking(false)` is always called — prevents the app from being stuck in the loading state forever
+- **Fix:** Replaced `AbortSignal.timeout()` with manual `AbortController` to avoid environment-specific failures in certain WebView2 contexts
+
 ## v1.1.90 - API Server Readiness Fix
 
 - **Fix:** "Cannot reach backend" error during API provider wizard setup — frontend now waits for `/ready` endpoint before making any API calls

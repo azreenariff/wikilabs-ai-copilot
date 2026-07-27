@@ -12,89 +12,91 @@ import Settings from './pages/Settings';
 import About from './pages/About';
 import './App.css';
 
-function App() {
+export default function App() {
   const [needsSetup, setNeedsSetup] = useState(true);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const checkSetup = async () => {
-      // AbortSignal.timeout may not exist in very old browsers; fall back to manual AbortController
-      const makeSignal = () => {
-        if (typeof AbortSignal.timeout === 'function') {
-          return AbortSignal.timeout(3000);
-        }
-        const ac = new AbortController();
-        setTimeout(() => ac.abort(), 3000);
-        return ac.signal;
-      };
-
-      // Step 1: Wait for the API server to be ready (polled up to 20 times, 500ms apart = 10s max).
-      // This avoids "cannot reach backend" errors when the backend hasn't finished initializing.
-      let serverReady = false;
-      for (let r = 0; r < 20; r++) {
-        try {
-          const res = await fetch('http://localhost:1420/ready', { signal: makeSignal() });
-          const data = await res.json();
-          if (data.ready) {
-            serverReady = true;
-            break;
+      try {
+        // Step 1: Wait for the API server to be ready (polled up to 40 times, 500ms apart = 20s max).
+        let serverReady = false;
+        for (let r = 0; r < 40; r++) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            const res = await fetch('http://localhost:1420/ready', { signal: controller.signal });
+            clearTimeout(timeoutId);
+            const data = await res.json();
+            if (data.ready) {
+              serverReady = true;
+              break;
+            }
+          } catch {
+            // Server not ready yet, keep polling
           }
-        } catch {
-          // Server not ready yet, keep polling
+          await new Promise(r => setTimeout(r, 500));
         }
-        await new Promise(r => setTimeout(r, 500));
-      }
 
-      if (!serverReady) {
-        // Backend never became ready — fall through to main UI
-        setChecking(false);
-        return;
-      }
+        if (!serverReady) {
+          // Backend never became ready — fall through to main UI
+          setChecking(false);
+          return;
+        }
 
-      // Step 2: Server is ready. Now check setup status.
-      for (let attempt = 0; attempt < 5; attempt++) {
-        try {
-          const res = await fetch('http://localhost:1420/api/commands/get_settings', {
+        // Step 2: Server is ready. Now check setup status.
+        let settingsData: any = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch('http://localhost:1420/api/commands/get_settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ params: {} }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            const data = await res.json();
+            if (data.success && data.value) {
+              settingsData = data.value;
+            }
+            break; // success
+          } catch {
+            if (attempt < 4) {
+              await new Promise(r => setTimeout(r, 500)); // retry interval
+            } else {
+              // All retries failed — fall through to main UI
+              settingsData = null;
+            }
+          }
+        }
+
+        if (settingsData && settingsData.ai_provider?.api_key) {
+          // API key is configured — hide main window and open floating advice chat
+          setNeedsSetup(false);
+          fetch('http://localhost:1420/api/commands/hide_main_window', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ params: {} }),
-            signal: makeSignal(),
-          });
-          const data = await res.json();
-          if (data.success && data.value) {
-            const apiKey = data.value.ai_provider?.api_key || '';
-            // Show wizard if no API key configured.
-            // This handles both fresh installs and upgrades where the user never
-            // actually completed the wizard but the settings file existed.
-            setNeedsSetup(!apiKey);
-            // If API key is configured, hide main window and open floating advice chat
-            if (apiKey) {
-              fetch('http://localhost:1420/api/commands/hide_main_window', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ params: {} }),
-              }).catch(() => {});
-              // Also open the floating advice chat window on return visits
-              setTimeout(() => {
-                fetch('http://localhost:1420/api/commands/advice_chat_open', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ params: {} }),
-                }).catch(() => {});
-              }, 1500); // small delay to let API server be ready
-            }
-          }
-          break; // success
-        } catch {
-          if (attempt < 4) {
-            await new Promise(r => setTimeout(r, 300)); // faster retry interval
-          } else {
-            // All retries failed — fall through to main UI
-            setNeedsSetup(false);
-          }
+          }).catch(() => {});
+          // Also open the floating advice chat window on return visits
+          setTimeout(() => {
+            fetch('http://localhost:1420/api/commands/advice_chat_open', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ params: {} }),
+            }).catch(() => {});
+          }, 1500); // small delay to let API server be ready
+        } else {
+          // No API key configured — show wizard
+          setNeedsSetup(true);
         }
+      } catch (e) {
+        console.error('[App] Error during setup check:', e);
+      } finally {
+        setChecking(false);
       }
-      setChecking(false);
     };
     checkSetup();
   }, []);
@@ -103,11 +105,11 @@ function App() {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: 'var(--color-bg-primary)',
-        color: 'var(--color-text-secondary)', fontSize: '14px',
+        height: '100vh', background: '#0f0f23',
+        color: '#a1a1aa', fontSize: '14px',
       }}>
         <div style={{ textAlign: 'center' }}>
-          <img src="/logo.png" alt="Logo" style={{ width: '48px', height: '48px', borderRadius: '10px', marginBottom: '12px' }} />
+          <div style={{ width: '48px', height: '48px', borderRadius: '10px', marginBottom: '12px', background: '#1a1a2e' }} />
           <div>Loading...</div>
         </div>
       </div>
@@ -121,7 +123,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<AppLayout />}>
+        <Route element={<AppLayout />} >
           <Route path="/" element={<ChatAssistant />} />
           <Route path="/assistant" element={<ChatAssistant />} />
           <Route path="/guidance" element={<Guidance />} />
@@ -163,18 +165,18 @@ function AppLayout() {
   }, []);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}>
+    <div style={{ display: 'flex', height: '100vh', background: '#0f0f23', color: '#e4e4e7' }}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header style={{
           padding: '8px 16px',
-          borderBottom: '1px solid var(--color-border)',
-          background: 'var(--color-bg-secondary)',
+          borderBottom: '1px solid #27272a',
+          background: '#1a1a2e',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           fontSize: '12px',
-          color: 'var(--color-text-secondary)',
+          color: '#a1a1aa',
         }}>
           <span>Wiki Labs AI Copilot v{status.version}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -183,7 +185,7 @@ function AppLayout() {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              background: status.running ? 'var(--color-success)' : 'var(--color-error)',
+              background: status.running ? '#22c55e' : '#ef4444',
             }} />
             <span>{status.running ? 'Running' : 'Stopped'}</span>
           </div>
@@ -193,10 +195,10 @@ function AppLayout() {
         </main>
         <footer style={{
           padding: '4px 16px',
-          borderTop: '1px solid var(--color-border)',
+          borderTop: '1px solid #27272a',
           fontSize: '11px',
-          color: 'var(--color-text-secondary)',
-          background: 'var(--color-bg-secondary)',
+          color: '#a1a1aa',
+          background: '#1a1a2e',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Phase 4 — MVP Desktop Foundation</span>
@@ -208,5 +210,3 @@ function AppLayout() {
     </div>
   );
 }
-
-export default App;
