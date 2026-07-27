@@ -604,7 +604,7 @@ async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCo
         builder = builder.header("Authorization", format!("Bearer {}", api_key));
     }
 
-    match builder.timeout(std::time::Duration::from_secs(10)).send().await {
+    match builder.timeout(std::time::Duration::from_secs(5)).send().await {
         Ok(response) if response.status().is_success() => {
             match response.json::<Value>().await {
                 Ok(data) => {

@@ -35,10 +35,21 @@ function SetupWizard() {
     setError('');
     setFetchedModels([]);
     try {
+      // AbortSignal.timeout prevents the UI from hanging forever if the API server
+      // or target endpoint is unreachable (same pattern as startup check).
+      const makeSignal = () => {
+        if (typeof AbortSignal.timeout === 'function') {
+          return AbortSignal.timeout(15000); // 15s: covers 10s API server timeout + overhead
+        }
+        const ac = new AbortController();
+        setTimeout(() => ac.abort(), 15000);
+        return ac.signal;
+      };
       const res = await fetch('http://localhost:1420/api/commands/list_models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
+        signal: makeSignal(),
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.value) && data.value.length > 0) {
@@ -54,7 +65,11 @@ function SetupWizard() {
       }
     } catch (e: any) {
       setTestResult('fail');
-      setError('Cannot reach backend');
+      if (e.name === 'AbortError') {
+        setError('Test timed out after 15s — the endpoint may be slow or unreachable');
+      } else {
+        setError('Cannot reach backend');
+      }
     }
   };
 
