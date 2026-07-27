@@ -83,7 +83,9 @@ pub struct DocumentManifest {
 /// Top-level metadata.yaml structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Metadata {
+    #[serde(alias = "name")]
     pub pack_name: String,
+    #[serde(alias = "version")]
     pub pack_version: String,
     pub description: String,
     pub embedding_model: String,
@@ -95,8 +97,17 @@ pub struct Metadata {
     pub categories: Vec<String>,
     #[serde(default)]
     pub references: Vec<String>,
+    #[serde(default = "default_created_at")]
     pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(default = "default_updated_at")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+fn default_created_at() -> chrono::DateTime<chrono::Utc> {
+    chrono::Utc::now()
+}
+fn default_updated_at() -> chrono::DateTime<chrono::Utc> {
+    chrono::Utc::now()
 }
 
 impl Metadata {

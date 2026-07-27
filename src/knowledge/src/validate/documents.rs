@@ -34,13 +34,30 @@ pub fn validate_documents(pack_path: &str) -> Result<DocumentValidationResult> {
     };
 
     if !documents_dir.exists() {
-        result.missing.extend(
-            manifest
-                .documents
-                .iter()
-                .map(|d| d.path.clone())
-                .collect::<Vec<_>>(),
-        );
+        // Fall back to checking the pack root directory directly
+        // (some knowledge packs store documents at the pack root, not under /documents/)
+        for doc in &manifest.documents {
+            let doc_path = path.join(&doc.path);
+            if !doc_path.exists() {
+                result.missing.push(doc.path.clone());
+                debug!(doc = %doc.path, "Document not found");
+                continue;
+            }
+            // Check if file is readable
+            if fs::metadata(&doc_path).is_err() {
+                result.unreadable.push(doc.path.clone());
+                continue;
+            }
+            // Check if file is non-empty
+            let metadata = fs::metadata(&doc_path)?;
+            if metadata.len() == 0 {
+                result.empty.push(doc.path.clone());
+                debug!(doc = %doc.path, "Document is empty");
+                continue;
+            }
+            result.found += 1;
+            debug!(doc = %doc.path, size = metadata.len(), "Document validated");
+        }
         return Ok(result);
     }
 

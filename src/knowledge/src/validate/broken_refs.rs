@@ -37,7 +37,11 @@ pub fn check_broken_refs(pack_path: &str) -> Result<BrokenRefsResult> {
 
     // Check that all referenced document paths exist
     for doc in &manifest.documents {
-        let doc_path = documents_dir.join(&doc.path);
+        // Try both documents/ subdirectory and pack root
+        let mut doc_path = documents_dir.join(&doc.path);
+        if !doc_path.exists() {
+            doc_path = path.join(&doc.path);
+        }
         if !doc_path.exists() {
             result.missing_docs.push(doc.id.clone());
             result.valid = false;
@@ -49,7 +53,10 @@ pub fn check_broken_refs(pack_path: &str) -> Result<BrokenRefsResult> {
     if documents_dir.exists() {
         let link_pattern = regex::Regex::new(r"\[\[(\w[\w-]*)(?:\|[^]]*)?\]\]").ok();
         for doc in &manifest.documents {
-            let doc_path = documents_dir.join(&doc.path);
+            let mut doc_path = documents_dir.join(&doc.path);
+            if !doc_path.exists() {
+                doc_path = path.join(&doc.path);
+            }
             if let Ok(content) = fs::read_to_string(&doc_path) {
                 if let Some(pattern) = &link_pattern {
                     for capture in pattern.captures_iter(&content) {
