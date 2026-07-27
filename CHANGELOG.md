@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v1.1.90 - API Server Readiness Fix
+
+- **Fix:** "Cannot reach backend" error during API provider wizard setup — frontend now waits for `/ready` endpoint before making any API calls
+- **Fix:** Setup wizard "Test Connection" button now pre-checks server readiness to avoid confusing timeout errors when the backend is still initializing (knowledge packs loading, tokio runtime starting)
+
 ## v1.1.89 - Knowledge Pack Schema Compatibility Fixes
 - **Fix:** Knowledge packs with documents at root level (not under `documents/` subdirectory) now validate correctly
 - **Fix:** Metadata.yaml files with `name`/`version` fields (instead of `pack_name`/`pack_version`) now parse correctly via serde aliases

@@ -59,14 +59,24 @@ function SetupWizard() {
     setError('');
     setFetchedModels([]);
     try {
+      // Pre-check: verify backend is reachable before attempting list_models.
+      // This catches "server still initializing" before we hit the actual API call.
       const makeSignal = () => {
         if (typeof AbortSignal.timeout === 'function') {
-          return AbortSignal.timeout(15000);
+          return AbortSignal.timeout(5000);
         }
         const ac = new AbortController();
-        setTimeout(() => ac.abort(), 15000);
+        setTimeout(() => ac.abort(), 5000);
         return ac.signal;
       };
+      const readyRes = await fetch('http://localhost:1420/ready', { signal: makeSignal() });
+      const readyData = await readyRes.json();
+      if (!readyData.ready) {
+        setTestResult('fail');
+        setError('API server is still initializing — please wait a moment and try again');
+        return;
+      }
+
       const res = await retryFetch(
         'http://localhost:1420/api/commands/list_models',
         {

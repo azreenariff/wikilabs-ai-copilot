@@ -1113,6 +1113,10 @@ pub fn create_router(state: ApiServerState) -> Router {
     let router = Router::new()
         .route("/api/commands/:method", post(api_handler))
         .route("/health", get(|| async { "ok" }))
+        .route("/ready", get(|| async { 
+            let ready = crate::api_ready::is_server_ready();
+            format!("{{\"ready\":{}}}", if ready { "true" } else { "false" })
+        }))
         .route("/advice-chat", get(move || async move { Html(advice_html.to_string()) }))
         .layer(cors)
         .fallback(|method: axum::http::Method, uri: axum::http::Uri| async move {
@@ -1638,6 +1642,9 @@ pub fn start_api_server(
                     .map_err(|e| format!("Failed to bind to {}: {}", addr, e))?;
 
                 info!(addr, "API server listening");
+
+                // Signal to frontend that the server is ready to handle requests
+                crate::api_ready::mark_server_ready();
 
                 if let Err(e) = axum::serve(listener, router).await {
                     error!(error = %e, "API server error");

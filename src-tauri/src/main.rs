@@ -11,6 +11,7 @@ use wikilabs_data_types::chat::ChatMessage;
 use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 
 
+mod api_ready;
 mod api_server;
 mod config;
 mod error_handling;

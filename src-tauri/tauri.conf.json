@@ -1,6 +1,6 @@
 {
   "productName": "Wiki Labs AI Copilot",
-  "version": "1.1.89",
+  "version": "1.1.90",
   "identifier": "com.wikilabs.copilot",
   "build": {
     "frontendDist": "../src/frontend/dist"
@@ -11,6 +11,7 @@
       {
         "label": "main",
         "title": "Wiki Labs AI Copilot",
+        "url": "local:../src/frontend/dist/index.html",
         "width": 1400,
         "height": 900,
         "minWidth": 1024,

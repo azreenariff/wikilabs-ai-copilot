@@ -18,19 +18,42 @@ function App() {
 
   useEffect(() => {
     const checkSetup = async () => {
-      // Retry up to 5 times with 300ms delay in case API server hasn't started yet.
-      // Each fetch has a 3s timeout so a dead API server doesn't freeze the UI indefinitely.
+      // AbortSignal.timeout may not exist in very old browsers; fall back to manual AbortController
+      const makeSignal = () => {
+        if (typeof AbortSignal.timeout === 'function') {
+          return AbortSignal.timeout(3000);
+        }
+        const ac = new AbortController();
+        setTimeout(() => ac.abort(), 3000);
+        return ac.signal;
+      };
+
+      // Step 1: Wait for the API server to be ready (polled up to 20 times, 500ms apart = 10s max).
+      // This avoids "cannot reach backend" errors when the backend hasn't finished initializing.
+      let serverReady = false;
+      for (let r = 0; r < 20; r++) {
+        try {
+          const res = await fetch('http://localhost:1420/ready', { signal: makeSignal() });
+          const data = await res.json();
+          if (data.ready) {
+            serverReady = true;
+            break;
+          }
+        } catch {
+          // Server not ready yet, keep polling
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+
+      if (!serverReady) {
+        // Backend never became ready — fall through to main UI
+        setChecking(false);
+        return;
+      }
+
+      // Step 2: Server is ready. Now check setup status.
       for (let attempt = 0; attempt < 5; attempt++) {
         try {
-          // AbortSignal.timeout may not exist in very old browsers; fall back to manual AbortController
-          const makeSignal = () => {
-            if (typeof AbortSignal.timeout === 'function') {
-              return AbortSignal.timeout(3000);
-            }
-            const ac = new AbortController();
-            setTimeout(() => ac.abort(), 3000);
-            return ac.signal;
-          };
           const res = await fetch('http://localhost:1420/api/commands/get_settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
