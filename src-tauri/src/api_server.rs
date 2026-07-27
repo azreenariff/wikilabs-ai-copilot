@@ -26,19 +26,14 @@ use tauri::AppHandle;
 /// Build a system prompt that includes the AI's own observation context,
 /// recent recommendations with reasoning, and session state.
 /// This makes the AI truly aware of what it has been observing and recommending.
-fn build_context_system_prompt(
+async fn build_context_system_prompt(
     chat_history: &[ChatMessage],
 ) -> Option<String> {
     let panel = guidance_panel::GuidancePanel::instance();
     let mut parts: Vec<String> = Vec::new();
 
     // ── Recent observation events ──
-    // We're called from handle_send_message (sync) which is called from api_handler (async).
-    // Use std::sync::Mutex for fast-path data access to avoid any blocking on async runtime.
-    // With multi-threaded tokio runtime, Handle::current().block_on() won't deadlock.
-    // It blocks one worker thread but other threads can continue.
-    use tokio::runtime::Handle;
-    let recent_events = Handle::current().block_on(panel.get_recent_events(60));
+    let recent_events = panel.get_recent_events(60).await;
     if !recent_events.is_empty() {
         let mut lines = Vec::new();
         for e in recent_events.iter().take(30) {
@@ -55,10 +50,7 @@ fn build_context_system_prompt(
     }
 
     // ── Recent recommendations with reasoning ──
-    let all_recs = {
-        use tokio::runtime::Handle;
-        Handle::current().block_on(panel.all_recommendations())
-    };
+    let all_recs = panel.all_recommendations().await;
     if !all_recs.is_empty() {
         let mut lines = Vec::new();
         for r in all_recs.iter().take(5) {
@@ -473,7 +465,10 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         };
 
         // 2. Build system prompt with observation context + recommendations
-        let system_prompt = build_context_system_prompt(&history);
+        let system_prompt = {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime for system prompt");
+            rt.block_on(build_context_system_prompt(&history))
+        };
 
         // 3. Build the messages array for the AI
         let mut messages: Vec<wikilabs_ai::provider::AiMessage> = Vec::new();
