@@ -14,6 +14,7 @@ use anyhow::Result;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
+use std::sync::{Mutex as StdMutex, LazyLock};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -576,6 +577,7 @@ impl GuidancePanel {
             .cloned()
             .collect()
     }
+
 
     // ── Feedback Commands ──────────────────────────────────────
 

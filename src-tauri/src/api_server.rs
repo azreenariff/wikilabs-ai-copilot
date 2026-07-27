@@ -33,7 +33,12 @@ fn build_context_system_prompt(
     let mut parts: Vec<String> = Vec::new();
 
     // ── Recent observation events ──
-    let recent_events = futures::executor::block_on(panel.get_recent_events(60));
+    // We're called from handle_send_message (sync) which is called from api_handler (async).
+    // Use std::sync::Mutex for fast-path data access to avoid any blocking on async runtime.
+    // With multi-threaded tokio runtime, Handle::current().block_on() won't deadlock.
+    // It blocks one worker thread but other threads can continue.
+    use tokio::runtime::Handle;
+    let recent_events = Handle::current().block_on(panel.get_recent_events(60));
     if !recent_events.is_empty() {
         let mut lines = Vec::new();
         for e in recent_events.iter().take(30) {
@@ -50,7 +55,10 @@ fn build_context_system_prompt(
     }
 
     // ── Recent recommendations with reasoning ──
-    let all_recs = futures::executor::block_on(panel.all_recommendations());
+    let all_recs = {
+        use tokio::runtime::Handle;
+        Handle::current().block_on(panel.all_recommendations())
+    };
     if !all_recs.is_empty() {
         let mut lines = Vec::new();
         for r in all_recs.iter().take(5) {
@@ -1211,7 +1219,14 @@ pub fn start_api_server(
     info!(addr, "Starting API server in background thread");
 
     std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new()
+        // Use multi-threaded runtime to prevent deadlock:
+        // - Single-threaded runtime can deadlock when Handle::current().block_on()
+        //   blocks the only worker thread while a spawned task holds a lock
+        // - Multi-threaded runtime allows HTTP handlers to progress on other threads
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(4)
+            .enable_all()
+            .build()
             .map_err(|e| format!("Failed to create tokio runtime: {}", e));
         
         if let Ok(rt) = rt {
