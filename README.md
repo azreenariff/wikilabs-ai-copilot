@@ -1,4 +1,4 @@
-# Wiki Labs AI Copilot v1.1.80
+# Wiki Labs AI Copilot v1.1.81
 
 **An AI-powered enterprise engineering assistant.**
 

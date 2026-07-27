@@ -5,15 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.79] — 2026-07-27 — AI Provider Wizard Fixes
+## [1.1.80] — 2026-07-27 — AI Connection Status Banner + Windows-Only Documentation
 
 ### Fixed
+
+- **Floating advice chat window creation** — `handle_advice_chat_open` (api_server.rs) now creates the `advice-chat` window if it doesn't exist, instead of only calling `show()` on a non-existent window. Window is lazily initialized with proper positioning on the right side of the screen.
+- **Advice chat window on return visits** — `App.tsx` now calls `advice_chat_open` after `hide_main_window` on subsequent launches (not just first-run), so the floating window appears on every launch.
+- **Race condition with API server** — Added 1.5s delay before calling `advice_chat_open` in both SetupWizard (first-run) and App.tsx (return visits), ensuring the API server is ready to handle the request.
+
+### Added
 
 - **Model dropdown after test connection** — SetupWizard now shows a `<select>` dropdown for model selection after "Test Connection" succeeds, rather than a plain text input. Users can pick from the fetched model list.
 - **Main window hide after setup** — `hide_main_window` was defined but not registered in the API server's route match. Added both `hide_main_window` and `advice_chat_open` to the API handler match block so the frontend's HTTP calls actually reach the handlers.
 - **Floating advice chat window on startup** — The setup wizard now also calls `advice_chat_open` after hiding the main window, so the floating chat bot appears on the right side of the screen immediately after first-run setup.
 
-## [1.1.80] — 2026-07-27 — AI Connection Status Banner + Windows-Only Documentation
+## [1.1.81] — 2026-07-27 — Floating Chat Bot Fix
+
+### Fixed
+
+- **Advice-chat window always created** — Rewrote `handle_advice_chat_open` in `api_server.rs` to create the `advice-chat` window from scratch if it doesn't exist, instead of silently failing when `get_webview_window("advice-chat")` returns `None`. The window is lazily initialized with proper 400×520 sizing, decorations, always-on-top, and right-edge positioning.
+- **Floating window on return visits** — `App.tsx` now calls `advice_chat_open` with a 1.5s delay on subsequent app launches (after setup is already complete), fixing the bug where the floating window only appeared on the first run.
+- **API server race condition** — Both `SetupWizard.tsx` (first-run completion) and `App.tsx` (return visits) now use `setTimeout(1500ms)` before calling `advice_chat_open`, ensuring the background API server thread is ready to handle the request.
 
 ### Added
 

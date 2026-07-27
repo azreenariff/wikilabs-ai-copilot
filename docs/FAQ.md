@@ -1,4 +1,4 @@
-# FAQ — Wiki Labs AI Copilot v1.1.80
+# FAQ — Wiki Labs AI Copilot v1.1.81
 
 > Frequently asked questions.
 

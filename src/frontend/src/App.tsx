@@ -33,13 +33,21 @@ function App() {
             // Show wizard if no API key AND first run not complete
             setNeedsSetup(!apiKey && !firstRunComplete);
             // If first run is complete and settings show API key is configured,
-            // hide main window (minimize to tray)
+            // hide main window (minimize to tray) and open floating advice chat
             if (apiKey && firstRunComplete) {
               fetch('http://localhost:1420/api/commands/hide_main_window', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ params: {} }),
               }).catch(() => {});
+              // Also open the floating advice chat window on return visits
+              setTimeout(() => {
+                fetch('http://localhost:1420/api/commands/advice_chat_open', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ params: {} }),
+                }).catch(() => {});
+              }, 1500); // small delay to let API server be ready
             }
           }
           break; // success

@@ -1,4 +1,4 @@
-# Installation Guide — Wiki Labs AI Copilot v1.1.80
+# Installation Guide — Wiki Labs AI Copilot v1.1.81
 
 > Windows installation, upgrade, repair, and uninstall procedures.
 

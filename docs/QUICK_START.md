@@ -1,4 +1,4 @@
-# Quick Start — Wiki Labs AI Copilot v1.1.80
+# Quick Start — Wiki Labs AI Copilot v1.1.81
 
 > Get up and running in 5 minutes.
 

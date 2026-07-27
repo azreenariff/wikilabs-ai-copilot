@@ -94,11 +94,14 @@ function SetupWizard() {
           body: JSON.stringify({ params: {} }),
         }).catch(() => {});
         // Open the floating advice chat window right after setup
-        await fetch('http://localhost:1420/api/commands/advice_chat_open', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ params: {} }),
-        }).catch(() => {});
+        // Add a small delay to ensure API server is ready
+        setTimeout(() => {
+          fetch('http://localhost:1420/api/commands/advice_chat_open', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ params: {} }),
+          }).catch(() => {});
+        }, 1500);
       } else {
         setError(data.error || 'Failed to save');
       }

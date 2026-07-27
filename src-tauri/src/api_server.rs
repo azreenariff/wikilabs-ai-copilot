@@ -1027,12 +1027,40 @@ async fn handle_hide_main_window(state: &ApiServerState) -> (StatusCode, String)
 }
 
 /// Open the floating advice chat window on the right side.
+/// Creates the window if it doesn't exist (lazy init), then shows and focuses it.
 async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String) {
     info!("Opening advice chat floating window");
     if let Some(ref app_handle) = state.app_handle {
-        if let Some(window) = (**app_handle).get_webview_window("advice-chat") {
+        let ah = (**app_handle).clone();
+        // If the window already exists, just show and focus it
+        if let Some(window) = ah.get_webview_window("advice-chat") {
             let _ = window.show();
             let _ = window.set_focus();
+            return (StatusCode::OK, api_response(true, Some(serde_json::json!({"opened": true})), None));
+        }
+        // Window doesn't exist — create it (lazy init)
+        info!("advice-chat window not found, creating it now");
+        let url = tauri::WebviewUrl::External("http://localhost:1420/advice-chat".parse::<url::Url>().unwrap());
+        let result = tauri::WebviewWindowBuilder::new(&ah, "advice-chat", url)
+            .title("AI Copilot — Live Advice")
+            .inner_size(400.0, 520.0)
+            .resizable(true)
+            .decorations(true)
+            .always_on_top(true)
+            .build();
+        if let Ok(window) = result {
+            // Position on the right side of the screen (vertically centered)
+            if let Ok(Some(monitor)) = window.current_monitor() {
+                let width = 400.0;
+                let height = 520.0;
+                let x = monitor.size().width as f64 - width - 10.0;
+                let y = (monitor.size().height as f64 - height) / 2.0;
+                let _ = window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+            }
+            let _ = window.show();
+            let _ = window.set_focus();
+        } else {
+            error!("Failed to create advice-chat window");
         }
     }
     (StatusCode::OK, api_response(true, Some(serde_json::json!({"opened": true})), None))
