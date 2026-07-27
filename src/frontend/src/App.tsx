@@ -40,12 +40,12 @@ function App() {
           const data = await res.json();
           if (data.success && data.value) {
             const apiKey = data.value.ai_provider?.api_key || '';
-            const firstRunComplete = data.value.first_run_complete || false;
-            // Show wizard if no API key AND first run not complete
-            setNeedsSetup(!apiKey && !firstRunComplete);
-            // If first run is complete and settings show API key is configured,
-            // hide main window (minimize to tray) and open floating advice chat
-            if (apiKey && firstRunComplete) {
+            // Show wizard if no API key configured.
+            // This handles both fresh installs and upgrades where the user never
+            // actually completed the wizard but the settings file existed.
+            setNeedsSetup(!apiKey);
+            // If API key is configured, hide main window and open floating advice chat
+            if (apiKey) {
               fetch('http://localhost:1420/api/commands/hide_main_window', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
