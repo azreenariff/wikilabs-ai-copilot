@@ -291,7 +291,7 @@ Phase 6 (Growth)
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Tauri v2 stability issues on macOS | Medium | High | Maintain Windows-first development; allocate buffer weeks for macOS; have Electron fallback plan |
+| Tauri v2 stability on Windows | Medium | High | Allocate buffer weeks for Windows-specific Tauri issues; maintain focused Windows testing pipeline |
 | Vector DB integration complexity | Medium | Medium | Start with SQLite+FTS5 as MVP store; migrate to Chroma/LanceDB in Phase 2 if needed |
 | AI provider abstraction too rigid | Low | Medium | Keep abstraction simple; add flexibility incrementally |
 | Team onboarding slow (new tech: Rust+Tauri) | High | Medium | Pair programming; dedicated onboarding sprint; reference project (OpenHuman) as learning resource |

@@ -1,4 +1,4 @@
-# Wiki Labs AI Copilot v1.0.0
+# Wiki Labs AI Copilot v1.1.80
 
 **An AI-powered enterprise engineering assistant.**
 
@@ -37,7 +37,7 @@ Wiki Labs AI Copilot is a desktop application that assists engineers while they 
 | [Architecture Guide](docs/ARCHITECTURE_GUIDE.md) | System architecture and components |
 | [Security Guide](docs/SECURITY_GUIDE.md) | Security model, threat model, encryption |
 | [Operations Guide](docs/OPERATIONS_GUIDE.md) | Monitoring, logging, maintenance |
-| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Development workflow, contributing |
+| [Developer Guide](docs/DEVELOPER_GUIDE.md) | Development workflow and contributing |
 | [Release Notes](docs/RELEASE_NOTES.md) | v1.0.0 release notes |
 | [Skill Pack Development Guide](docs/SKILL_PACK_DEVELOPMENT_GUIDE.md) | Creating and distributing skill packs |
 

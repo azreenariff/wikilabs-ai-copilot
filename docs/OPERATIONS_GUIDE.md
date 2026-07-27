@@ -1,4 +1,4 @@
-# Operations Guide — Wiki Labs AI Copilot v1.0.0
+# Operations Guide — Wiki Labs AI Copilot v1.1.80
 
 > Monitoring, logging, maintenance, and backup procedures.
 

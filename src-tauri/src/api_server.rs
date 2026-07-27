@@ -11,6 +11,7 @@ use axum::{
     Router,
 };
 use tauri::Manager;
+use tauri::Emitter;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -354,11 +355,22 @@ async fn handle_get_settings(state: &ApiServerState) -> (StatusCode, String) {
 async fn handle_update_settings(state: &ApiServerState, params: Value) -> (StatusCode, String) {
     let mut settings = state.settings.lock().unwrap();
     settings.settings = params.clone();
-    
+
+    // Update AI connection status based on whether api_key is configured
+    if let Some(ai_provider) = settings.settings.get("ai_provider") {
+        if let Some(ai_obj) = ai_provider.as_object() {
+            let api_key = ai_obj.get("api_key").and_then(|v| v.as_str()).unwrap_or("");
+            let status = if api_key.is_empty() { "not_configured" } else { "connected" };
+            let mut new_obj = ai_obj.clone();
+            new_obj.insert("ai_connection_status".to_string(), serde_json::json!(status));
+            settings.settings["ai_provider"] = serde_json::json!(new_obj);
+        }
+    }
+
     // Persist to disk
     if let Ok(config_path) = state.config_path.lock() {
         if let Some(ref path) = *config_path {
-            match fs::write(path, serde_json::to_string_pretty(&params).unwrap_or_default()) {
+            match fs::write(path, serde_json::to_string_pretty(&settings.settings).unwrap_or_default()) {
                 Ok(_) => info!("Settings persisted to disk: {}", path.display()),
                 Err(e) => error!(error = %e, "Failed to persist settings to disk"),
             }
@@ -1096,6 +1108,9 @@ pub fn start_api_server(
     // Clone app_handle for use inside the AI loop closure (state will be consumed by the move)
     let app_handle_for_loop = app_handle.clone();
 
+    // Track whether we have already notified the user about missing AI key
+    let ai_has_notified = Arc::new(std::sync::Mutex::new(false));
+
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
@@ -1193,9 +1208,10 @@ pub fn start_api_server(
             // ── Background observation polling + AI reasoning loop ────────────
             let poll_settings = obs_settings.clone();
             let skill_kb_for_loop = skill_kb_clone.clone();
+            let ai_notify_flag = ai_has_notified.clone();
             rt.spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
-                let mut ai_interval = tokio::time::interval(std::time::Duration::from_secs(30));
+                let mut ai_interval = tokio::time::interval(std::time::Duration::from_secs(15));
 
                 // Structured event summaries (rich JSON payloads, not flat strings)
                 #[derive(Clone)]
@@ -1353,124 +1369,38 @@ pub fn start_api_server(
                             let panel = guidance_panel::GuidancePanel::instance();
 
                             if api_key.is_empty() {
-                                // ── Rule-based fallback (no AI key) — smarter cross-context correlation ──
-
-                                // Extract cross-context data for the same correlation the AI would do
-                                let browser_urls: Vec<&str> = last_events.iter()
-                                    .filter(|e| e.provider == "Browser")
-                                    .filter_map(|e| e.payload_json.get("url").and_then(|u| u.as_str()))
-                                    .filter(|&u| !u.contains("about:blank") && !u.contains("devtools"))
-                                    .collect();
-                                let terminal_cmds: Vec<&str> = last_events.iter()
-                                    .filter(|e| e.provider == "Terminal")
-                                    .filter_map(|e| e.payload_json.get("command_text").and_then(|c| c.as_str()))
-                                    .collect();
-                                let browser_errors: Vec<&str> = last_events.iter()
-                                    .filter(|e| e.provider == "Browser")
-                                    .filter_map(|e| e.payload_json.get("detected_errors"))
-                                    .filter_map(|e| e.as_array())
-                                    .flat_map(|arr| arr.iter().filter_map(|er| er.get("description").and_then(|d| d.as_str())))
-                                    .collect();
-
-                                // Clear old rule-based recommendations (keep AI ones marked with 🧭)
-                                let all = panel.all_recommendations().await;
-                                for prev in &all {
-                                    if !prev.title.starts_with("🧭") {
-                                        let _ = panel.dismiss_recommendation(&prev.id).await;
+                                // No AI key configured — notify user once, then skip
+                                let mut notified = ai_notify_flag.lock().unwrap();
+                                if !*notified {
+                                    // Set status so frontend can display it
+                                    {
+                                        let mut settings = poll_settings.lock().unwrap();
+                                        if let Some(ai) = settings.settings.get_mut("ai_provider") {
+                                            if let Some(obj) = ai.as_object_mut() {
+                                                obj.insert("ai_connection_status".to_string(), serde_json::json!("not_configured"));
+                                            }
+                                        }
+                                    }
+                                    // Show toast notification
+                                    {
+                                        let flag_clone = ai_notify_flag.clone();
+                                        let mut flag_guard = flag_clone.lock().unwrap();
+                                        *flag_guard = true;
+                                    }
+                                    if let Some(ref ah) = app_handle_for_loop {
+                                        let handle_clone = (**ah).clone();
+                                        tokio::task::spawn_blocking(move || {
+                                            if let Some(w) = handle_clone.get_webview_window("main") {
+                                                let _ = w.show();
+                                            }
+                                        });
+                                        // Send notification event to frontend
+                                        let _ = ah.emit("ai-connection-status", serde_json::json!({
+                                            "status": "not_configured",
+                                            "message": "AI Copilot is not connected — no API key configured. Go to Settings to connect your AI provider for intelligent guidance."
+                                        }));
                                     }
                                 }
-
-                                let (title, desc) = if !browser_errors.is_empty() && !terminal_cmds.is_empty() {
-                                    // Browser error + terminal command = active troubleshooting
-                                    let url = browser_urls.first().copied().unwrap_or("a webpage");
-                                    let err_descs: Vec<String> = browser_errors.iter().map(|e| e.to_string()).collect();
-                                    let last_cmd = terminal_cmds.last().unwrap_or(&"");
-                                    if last_cmd.contains("systemctl status") || last_cmd.contains("docker logs") || last_cmd.contains("journalctl") {
-                                        // Already checking status — suggest next step
-                                        if last_cmd.contains("systemctl status") {
-                                            let svc_raw = last_cmd.replace("systemctl status ", "");
-                                            let svc = svc_raw.trim();
-                                            if svc.contains("nagios") || svc.contains("nagiosxi") {
-                                                (format!("Nagios down on {}?", url.chars().take(40).collect::<String>()), format!("You see errors on {} and ran `systemctl status {}`. Nagios needs MySQL — check `systemctl status mysqld`. If MySQL is running, `journalctl -u {} --no-pager -n 20` for the real cause.", url, svc, svc))
-                                            } else if svc.contains("nginx") {
-                                                (format!("Nginx issue on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} and checking `{} status`. If it's failing, `journalctl -u {} --no-pager -n 30` shows why. Also verify ports: `ss -tlnp | grep :80`.", url, svc, svc))
-                                            } else if svc.contains("docker") {
-                                                (format!("Docker issue on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} while checking `{} status`. Check container logs: `docker logs --tail 20 $(docker ps -aq --filter ancestor={})`. Look for OOM kills or config errors.", url, svc, svc))
-                                            } else {
-                                                (format!("Service down on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} and checking `{}` status. Check the logs: `journalctl -u {} --no-pager -n 30`. Also check if the database it depends on is running.", url, svc, svc))
-                                            }
-                                        } else {
-                                            (format!("Troubleshooting on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} and running `{}`. Check related services too — `systemctl status` on any services listed in the logs.", url, last_cmd))
-                                        }
-                                    } else if last_cmd.contains("grep") || last_cmd.contains("tail") {
-                                        // Searching logs — suggest looking at error details
-                                        (format!("Looking at logs on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} and searching logs with `{}`. If you find an error code, try `systemctl status <service>` to check the service state, then `journalctl -u <service> --no-pager -n 50` for details.", url, last_cmd))
-                                    } else {
-                                        (format!("Troubleshooting on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} and typed `{}`. Try `systemctl status <service>` to check if the related service is running, then `journalctl -u <service> -n 30` for log details.", url, last_cmd))
-                                    }
-                                } else if !browser_errors.is_empty() {
-                                    // Browser error only — suggest service check based on URL context
-                                    let url = browser_urls.first().copied().unwrap_or("a webpage");
-                                    let err_descs: Vec<String> = browser_errors.iter().map(|e| e.to_string()).collect();
-                                    if url.contains("nagios") || url.contains("nagiosxi") {
-                                        (format!("Nagios page error on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} — {}. This usually means the backend service is down. Check `systemctl status nagios` and also `systemctl status mysqld` since Nagios stores data in MySQL.", url, err_descs.join(", ")))
-                                    } else if url.contains("grafana") || url.contains("prometheus") {
-                                        (format!("Monitoring page error on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} — {}. Check the backend service — `systemctl status <service-name>` to verify it's running.", url, err_descs.join(", ")))
-                                    } else if url.contains("jenkins") || url.contains("gitlab") {
-                                        (format!("CI/CD page error on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} — {}. Try checking the service — `systemctl status <service-name>` to verify it's running.", url, err_descs.join(", ")))
-                                    } else {
-                                        (format!("⚠️ Page errors on {}?", url.chars().take(40).collect::<String>()), format!("Errors on {} — {}. This usually means the backend is down. Run `systemctl status <service-name>` to check, then `journalctl -u <service> -n 30` for details.", url, err_descs.join(", ")))
-                                    }
-                                } else if !terminal_cmds.is_empty() {
-                                    // Terminal activity only — suggest what to check next
-                                    let last_cmd = terminal_cmds.last().unwrap_or(&"");
-                                    if last_cmd.contains("docker") && last_cmd.contains("ps") {
-                                        (format!("Docker containers?"), format!("Checking Docker with `{}`. Use `docker ps -a` to see stopped containers, or `docker stats` for resource usage. If a container keeps crashing, `docker logs <container>` shows why.", last_cmd))
-                                    } else if last_cmd.contains("docker") && last_cmd.contains("logs") {
-                                        let container = last_cmd.split_whitespace().nth(1).unwrap_or("container");
-                                        (format!("Docker logs?"), format!("Looking at Docker logs for `{}`. Check exit codes with `docker inspect {} --format '{{.State.ExitCode}}'` to see why it failed.", last_cmd, container))
-                                    } else if last_cmd.contains("systemctl") {
-                                        let svc_raw = last_cmd.replace("systemctl ", "");
-                                        let svc = svc_raw.trim();
-                                        (format!("Systemd service?"), format!("Checking `{}`. If it's not running, try `systemctl start {}` then `systemctl status {}` to verify. Check logs with `journalctl -u {} -n 30`. If it crashes on start, the error is in the journal.", svc, svc, svc, svc))
-                                    } else if last_cmd.contains("kubectl") || last_cmd.contains("k8s") || last_cmd.contains("kubernetes") {
-                                        (format!("Kubernetes?"), format!("Kubectl with `{}`. If pods are failing, `kubectl describe pod <pod-name>` shows events and errors. Check `kubectl get pods -A` for the full picture.", last_cmd))
-                                    } else if last_cmd.contains("tail") {
-                                        (format!("Checking logs?"), format!("Reading logs with `{}`. If you find an error, search for the error code: `grep -r 'ERROR' /var/log/` or check the service status with `systemctl status <service>`.", last_cmd))
-                                    } else if last_cmd.contains("grep") || last_cmd.contains("find") {
-                                        (format!("Searching?"), format!("You're searching with `{}`. If you're looking for something specific, try narrowing with `grep -r 'pattern' /path` or `find /path -name '*.conf'`.", last_cmd))
-                                    } else {
-                                        (format!("Terminal?"), format!("Running `{}`. What are you working on? I can suggest related checks or next steps if you tell me the context.", last_cmd))
-                                    }
-                                } else if !browser_urls.is_empty() {
-                                    // Browser only — context-aware based on URL
-                                    let url = browser_urls.last().unwrap_or(&"a webpage");
-                                    if url.contains("github") || url.contains("gitlab") || url.contains("bitbucket") {
-                                        (format!("Code review?"), format!("On a code platform at {}. Looking at repos? I can help with debugging or architecture questions about the code.", url))
-                                    } else if url.contains("docs.") || url.contains("readthedocs") || url.contains("sphinx") || url.contains("wiki") {
-                                        (format!("Reading docs?"), format!("Checking documentation at {}. Stuck on something? Tell me what service or technology you're working with and I can suggest next steps.", url))
-                                    } else if url.contains("grafana") || url.contains("prometheus") || url.contains("nagios") || url.contains("zabbix") || url.contains("monitoring") {
-                                        (format!("Monitoring?"), format!("On a dashboard at {}. Check related service health too — `systemctl status` on any services you're monitoring. If metrics look off, `journalctl -u <service> -n 30` often reveals why.", url))
-                                    } else if url.contains("docker") || url.contains("registry") {
-                                        (format!("Docker hub?"), format!("Checking Docker at {}. You can also manage containers locally — `docker ps -a` for running/stopped, `docker images` for cached images, `docker system df` for disk usage.", url))
-                                    } else {
-                                        (format!("Browsing?"), format!("On {}. Working on something specific? Let me know what service or tech you're dealing with and I can suggest relevant next steps.", url))
-                                    }
-                                } else if let Some(latest) = last_events.last() {
-                                    if latest.provider.contains("ActiveWindow") {
-                                        let app = latest.summary.chars().take(80).collect::<String>();
-                                        (format!("App switched to {}?", app), format!("You opened {} — need a hand setting up or troubleshooting anything?", app))
-                                    } else if latest.provider.contains("File") {
-                                        let file = latest.summary.chars().take(100).collect::<String>();
-                                        (format!("Config file open?"), format!("Looking at {} — is this a config you're editing? After changes, remember to reload: `systemctl reload <service>` or `systemctl restart <service>`.", file))
-                                    } else {
-                                        (format!("Working?"), format!("I see activity: {}. What are you up to?", latest.summary.chars().take(300).collect::<String>()))
-                                    }
-                                } else {
-                                    (format!("Busy?"), format!("I see activity — what can I help with?"))
-                                };
-
-                                let _ = panel.add_recommendation(&title, &desc, "Rule-based observation", "AI Copilot", "General", 0.5, guidance_panel::CardRiskLevel::Low, vec![], None).await;
                                 continue;
                             }
 
@@ -1541,54 +1471,64 @@ pub fn start_api_server(
                                 let kp = KnowledgePanel::instance();
                                 let matched_packs = kp.match_observations(&keywords_str).await;
                                 kp.format_for_prompt(&matched_packs).await
-                            };
+                                                            };
 
-                            // ── Build AI system prompt ──
-                            let system_prompt = format!(
-                                "You are Wiki Labs AI Copilot — an AI that watches what a technical engineer is doing and gives helpful, proactive guidance.\n\n\
-                                You can see: applications they switch to, commands they type, browser tabs/URLs/errors, files they open.\n\n\
-                                ## Your job\n\
-                                Analyze the correlated session context and give ONE specific, actionable suggestion.\n\n\
-                                ## Cross-Context Reasoning (CRITICAL)
-                                                                Connect dots across data sources. Browser errors take HIGHEST priority — if the engineer sees an error on their screen, that's what they need help with.
+                                                            // ── Build AI system prompt ──
+                                                            let system_prompt = format!(
+                                                                "You are Wiki Labs AI Copilot — a helpful teammate who watches what someone is doing and gives proactive, relevant guidance.\n\
+                                                                You can see: applications they switch to, commands they type, browser tabs/URLs/errors, files they open, terminal activity.\n\
+                                                                ## Your job\n\
+                                                                Analyze the correlated session context and give ONE specific, actionable suggestion.\n\
+                                                                ## How to think\n\
+                                                                Connect dots across data sources. If they see an error on their screen, that's what they need help with most.\n\
 
-                                                                ## Priority Order:
-                                                                1. 🔴 Active browser errors — the engineer is LOOKING at an error screen. Fix that first.
-                                                                2. 💻 Terminal commands — the engineer is TYPING. What are they trying to do?
-                                                                3. 🖥️ Active window — what app has focus?
+                                                                ## Priority Order:\n\
+                                                                1. 🔴 Active errors or problems on their screen — fix that first\n\
+                                                                2. 💻 Commands they're running — what are they trying to do?\n\
+                                                                3. 🖥️ What app has focus — what context are they in?\n\
 
-                                                                Connect dots across data sources:
-                                - Browser error + terminal command → troubleshooting. Suggest next diagnostic step.\n\
-                                - Service dashboard + systemctl commands → monitoring. Suggest related checks they haven't done.\n\
-                                - Config file edit + validation/reload command → config change. Suggest what to verify next.\n\
-                                - Service name search + systemctl/docker commands → troubleshooting that service. Connect search to action.\n\n\
-                                ## GOOD examples\n\
-                                - \"I see the Nagios page returned an error, and you're checking `systemctl status nagios`. Check the database first — `systemctl status mysqld` — Nagios stores data in MySQL.\"\n\
-                                - \"You're editing Nginx config and ran `nginx -t`. Now reload with `systemctl reload nginx` and check. If it still breaks, `tail -f /var/log/nginx/error.log`.\"\n\
-                                - \"Docker container in CrashLoopBackOff + you ran `docker logs`. Also check exit code: `docker inspect <container> | grep ExitCode` to see WHY it crashed.\"\n\
-                                - \"Looking at K8s dashboard with pods failing + `kubectl get pods`. Run `kubectl describe pod <pod-name>` to see the actual error.\"\n\
-                                - \"You're checking MySQL status. If it's down, check the error log — `journalctl -u mysql --no-pager -n 50` — that usually tells you why it crashed.\"\n                                - \"I see a database error on the Grafana page. Grafana uses SQLite/PostgreSQL — check the DB first: `systemctl status <db-service>` and `journalctl -u <db-service> -n 30`.\"\nn\n\
-                                ## BAD examples
-                                                                - \"You appear to be working on something.\"\n                                - \"I observed activity in your browser.\"\n                                - \"You're running bash commands repeatedly.\"\n                                - \"I see you're busy with the terminal.\"\n                                - Suggestions that ignore the browser error and focus only on terminal activity
-                                                                - Generic advice that doesn't reference the specific error the engineer is seeing
-                                - \"I observed activity in your browser.\"\n\
-                                - \"You're running bash commands repeatedly.\"\n\
-                                - \"I see you're busy with the terminal.\"\n\n\
-                                ## Relevant knowledge (from loaded skill/knowledge packs):\n\
-                                {}\n\n\
-                                ## Correlated session context:\n\
-                                {}\n\
-\n\
-                                ## Recent observations:\n\
-                                {}\n\
-\n\
-                                Give ONE short piece of guidance (1-3 sentences). Be specific, actionable, and conversational — like a senior DevOps engineer sitting next to them.\n\
-                                If you can connect the dots across browser and terminal activity, do it. Never repeat the same type of suggestion.\"\n\n\
-                                If you truly can't tell what they're doing, stay quiet or ask a brief question.",
-                                skill_context,
-                                session_narrative,
-                                events_for_ai.join("\n"),
-                            );
+                                                                ## Connect the dots:\n\
+                                                                - Error on screen + terminal command → suggest next diagnostic step\n\
+                                                                - Dashboard showing issue + system commands → suggest related checks they haven't done\n\
+                                                                - Config file edit + validation command → suggest what to verify next\n\
+                                                                - Search for something + commands about it → connect the search to the action\n\
+                                                                - Multiple things happening at once → figure out the underlying goal and help with that\n\
+
+                                                                ## Speak like a real person — GOOD examples:\n\
+                                                                - \"I see the Nagios page returned an error, and you're checking `systemctl status nagios`. Check the database first — `systemctl status mysqld` — Nagios stores data in MySQL.\"\n\
+                                                                - \"You're editing Nginx config and ran `nginx -t`. Now reload with `systemctl reload nginx` and check. If it still breaks, `tail -f /var/log/nginx/error.log`.\"\n\
+                                                                - \"Docker container in CrashLoopBackOff + you ran `docker logs`. Also check exit code: `docker inspect <container> | grep ExitCode` to see WHY it crashed.\"\n\
+                                                                - \"Looking at K8s dashboard with pods failing + `kubectl get pods`. Run `kubectl describe pod <pod-name>` to see the actual error.\"\n\
+                                                                - \"You're checking MySQL status. If it's down, check the error log — `journalctl -u mysql --no-pager -n 50` — that usually tells you why it crashed.\"\n\
+                                                                - \"I see a database error on the Grafana page. Grafana uses SQLite/PostgreSQL — check the DB first: `systemctl status <db-service>` and `journalctl -u <db-service> -n 30`.\"\n\
+                                                                - \"You're looking at a 404 page — check if the URL is correct or if the server needs to be started.\"\n\
+                                                                - \"I see you're setting up a new project — have you considered using a package manager to handle dependencies instead of manual downloads?\"\
+
+                                                                ## Don't sound robotic — BAD examples:\n\
+                                                                - \"You appear to be working on something.\"\n\
+                                                                - \"I observed activity in your browser.\"\n\
+                                                                - \"You're running bash commands repeatedly.\"\n\
+                                                                - \"I see you're busy with the terminal.\"\n\
+                                                                - Generic advice that doesn't reference what they're actually seeing\n\
+                                                                - Suggestions that ignore visible errors and focus on something else\n\
+
+                                                                ## Relevant knowledge (from loaded skill/knowledge packs):\n\
+                                                                {}\n\
+
+                                                                ## Correlated session context:\n\
+                                                                {}\n\
+
+                                                                ## Recent observations:\n\
+                                                                {}\n\
+
+                                                                Give ONE short piece of guidance (1-3 sentences). Be specific, actionable, and conversational — like a knowledgeable teammate sitting next to them.\n\
+                                                                If you can connect the dots across what they're doing, do it. Never repeat the same type of suggestion.\"\n\
+
+                                                                If you truly can't tell what they're doing, stay quiet or ask a brief question.",
+                                                                skill_context,
+                                                                session_narrative,
+                                                                events_for_ai.join("\n"),
+                                                            );
 
                             let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
                                 &provider_name, &endpoint, &api_key, &model, max_tokens, 128000
@@ -1655,25 +1595,7 @@ pub fn start_api_server(
                                     }
                                 }
                                 Err(e) => {
-                                    warn!(error = %e, "AI recommendation failed, using rule-based fallback");
-                                    if let Some(latest) = last_events.last() {
-                                        let (title, desc) = if latest.provider.contains("Browser") {
-                                            let url = latest.payload_json.get("url").and_then(|u| u.as_str()).unwrap_or("a webpage");
-                                            let errs = latest.payload_json.get("detected_errors").and_then(|e| e.as_array()).filter(|a| !a.is_empty());
-                                            if let Some(errs) = errs {
-                                                let err_descs: Vec<String> = errs.iter().filter_map(|e| e.get("description").and_then(|d| d.as_str())).map(|s| s.to_string()).collect();
-                                                ("⚠️ Page errors", format!("You're on {}. Errors: {}. Try checking the service — `systemctl status <service>`.", url, err_descs.join(", ")))
-                                            } else {
-                                                ("Browsing?", format!("You're on {}. Stuck? I can help.", url))
-                                            }
-                                        } else if latest.provider.contains("Terminal") {
-                                            let cmd = latest.payload_json.get("command_text").and_then(|c| c.as_str()).unwrap_or("commands");
-                                            ("Terminal?", format!("I see you're typing: {}. Next steps?", cmd))
-                                        } else {
-                                            ("You're busy", format!("Working on: {}. Need a hand?", latest.summary.chars().take(100).collect::<String>()))
-                                        };
-                                        let _ = panel.add_recommendation(&title, &desc, "Rule-based observation", "AI Copilot", "General", 0.5, guidance_panel::CardRiskLevel::Low, vec![], None).await;
-                                    }
+                                    warn!(error = %e, "AI recommendation failed");
                                 }
                             }
                         }

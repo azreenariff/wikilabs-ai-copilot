@@ -27,7 +27,7 @@
 
 ## System Overview
 
-Wiki Labs AI Copilot is a cross-platform desktop application that assists enterprise infrastructure engineers with real-time, context-aware guidance. The application integrates AI-powered chat, knowledge management, skill packs, and desktop observation into a unified copilot experience.
+Wiki Labs AI Copilot is a Windows desktop application that assists enterprise infrastructure engineers with real-time, context-aware guidance. The application integrates AI-powered chat, knowledge management, skill packs, and desktop observation into a unified copilot experience.
 
 ### Key Design Principles
 
@@ -77,7 +77,7 @@ Wiki Labs AI Copilot is a cross-platform desktop application that assists enterp
 
 | Layer | Technology | Version | Purpose |
 |-------|-----------|---------|---------|
-| Desktop | Tauri v2 | 2.x | Cross-platform desktop shell |
+| Desktop | Tauri v2 | 2.x | Windows desktop shell |
 | Frontend | React + TypeScript | 18+ | User interface |
 | Core Language | Rust | 2021 Edition | Core engine, desktop backend |
 | Database | SQLite + rusqlite | bundled | Local data persistence |

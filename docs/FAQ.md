@@ -1,4 +1,4 @@
-# FAQ — Wiki Labs AI Copilot v1.0.0
+# FAQ — Wiki Labs AI Copilot v1.1.80
 
 > Frequently asked questions.
 
@@ -10,7 +10,7 @@ Wiki Labs AI Copilot is an enterprise engineering copilot — a desktop applicat
 
 ### What platforms are supported?
 
-**v1.0.0** supports Windows 10 and Windows 11 (64-bit). macOS and Linux support is planned for future releases.
+**v1.0.0** supports Windows 10 and Windows 11 (64-bit) only. This is the Windows-only release.
 
 ### Is there a free/trial version?
 

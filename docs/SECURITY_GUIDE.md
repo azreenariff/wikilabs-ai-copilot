@@ -1,4 +1,4 @@
-# Security Guide — Wiki Labs AI Copilot v1.0.0
+# Security Guide — Wiki Labs AI Copilot v1.1.80
 
 > Security model, threat model, credentials, encryption, and compliance.
 

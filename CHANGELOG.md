@@ -13,6 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Main window hide after setup** — `hide_main_window` was defined but not registered in the API server's route match. Added both `hide_main_window` and `advice_chat_open` to the API handler match block so the frontend's HTTP calls actually reach the handlers.
 - **Floating advice chat window on startup** — The setup wizard now also calls `advice_chat_open` after hiding the main window, so the floating chat bot appears on the right side of the screen immediately after first-run setup.
 
+## [1.1.80] — 2026-07-27 — AI Connection Status Banner + Windows-Only Documentation
+
+### Added
+
+- **AI Connection Status Banner** — Settings page now shows a clear warning banner when no AI provider is configured, explaining that the AI copilot needs an API key to provide guidance.
+- **Real-time connection status** — Status updates as users type or clear the API key field; banner appears/disappears instantly.
+- **Backend status persistence** — `ai_connection_status` is computed in `handle_update_settings` based on `api_key` presence and stored in the settings JSON file.
+- **Fallback status detection** — Frontend handles missing `ai_connection_status` in old configs by checking `api_key` directly.
+- **Universal system prompt** — Removed "engineer"-specific language; updated to "technical engineer" persona with sysadmin examples (Nagios, Nginx, Docker, K8s, MySQL, Grafana).
+
+### Documentation Updates
+
+- All docs updated to reflect Windows 10/11 (64-bit) only platform support.
+- Architecture docs updated: removed macOS/Linux references, updated to Windows Credential Manager, WebView2, MSI/NSIS installers.
+- All documentation version headers updated to v1.1.80.
+- CI/CD documentation corrected to reflect actual GitHub Actions runners (Ubuntu + Windows, not macOS).
+
 ### Verified
 
 - **Evidence collection** — Confirmed evidence count of 0 at fresh launch is normal; the observation engine polls every 5 seconds and populates evidence over time. Three providers (app_monitor, clipboard, screen_capture) are registered and running.
@@ -143,7 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### CI/CD Workflows
 
-- **Continuous Integration** (`.github/workflows/ci.yml`) — Rust build, cargo test, clippy, docs build, cross-platform (Ubuntu, Windows, macOS)
+- **Continuous Integration** (`.github/workflows/ci.yml`) — Rust build, cargo test, clippy, docs build, cross-platform (Ubuntu for docs, Windows for build/test)
 - **Release** (`.github/workflows/release.yml`) — on-tag builds Windows installer via NSIS, GitHub Release creation, artifact upload
 - **Security** (`.github/workflows/codeql.yml`) — CodeQL analysis, secret scanning
 - **Dependency Review** (`.github/workflows/dependency-review.yml`) — PR dependency review

@@ -66,7 +66,7 @@ src/
 │   │   ├── lib.rs                      # Public API, feature gates
 │   │   ├── screen/                     # Screenshot capture
 │   │   │   ├── mod.rs                  # Module definition
-│   │   │   ├── capturer.rs             # Cross-platform screenshot (screenshoter)
+│   │   │   ├── capturer.rs             # Windows screenshot capture (Win32 API)
 │   │   │   ├── region.rs               # Capture region types
 │   │   │   └── resolution.rs           # Resolution limiting (privacy)
 │   │   ├── app/                        # Application monitor

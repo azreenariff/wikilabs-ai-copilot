@@ -1,4 +1,4 @@
-# Release Notes — Wiki Labs AI Copilot v1.0.0
+# Release Notes — Wiki Labs AI Copilot v1.1.80
 
 > General Availability (GA) Release — Tuesday, July 21, 2026
 

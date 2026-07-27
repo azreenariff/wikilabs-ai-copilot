@@ -1,4 +1,4 @@
-# Troubleshooting Guide — Wiki Labs AI Copilot v1.0.0
+# Troubleshooting Guide — Wiki Labs AI Copilot v1.1.80
 
 > Common issues, diagnostics, and recovery procedures.
 

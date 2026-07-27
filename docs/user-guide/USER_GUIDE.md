@@ -1,4 +1,4 @@
-# User Guide — Wiki Labs AI Copilot v1.0.0
+# User Guide — Wiki Labs AI Copilot v1.1.80
 
 > Complete user manual for end users.
 

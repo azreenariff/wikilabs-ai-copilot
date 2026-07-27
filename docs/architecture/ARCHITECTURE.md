@@ -6,7 +6,7 @@
 ## Overview
 
 Wiki Labs AI Copilot is a Tauri v2 desktop application with a React frontend and a Rust core engine.
-The application runs on Windows, macOS, and Linux.
+The application is built for Windows 10 and Windows 11 (64-bit).
 
 ## Component Diagram
 
@@ -35,8 +35,8 @@ The application runs on Windows, macOS, and Linux.
 │  │  - [NEW] Prompt Injection Defense Layer               │    │
 │  └──────────────────────────────────────────────────────┘    │
 │                                                              │
-│  Platforms: Windows, macOS, Linux                            │
-│  Installer: MSI, DMG, AppImage, deb, rpm                     │
+│  Platforms: Windows 10/11 (64-bit)                    │
+│  Installer: MSI, NSIS (Windows)                        │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -66,11 +66,11 @@ The application runs on Windows, macOS, and Linux.
 | AI Providers | OpenAI, vLLM, Ollama (abstracted) |
 | Logging | tracing + tracing-subscriber |
 | CI/CD | GitHub Actions |
-| Package Format | MSI (Windows), DMG (macOS), AppImage (Linux) |
+| Package Format | MSI, NSIS (Windows) |
 
 ## Data Storage
 
-All data stored in a single SQLite database at `~/.local/share/wikilabs/wikilabs.db`:
+All data stored in a single SQLite database on Windows at `%LOCALAPPDATA%\Wikilabs\wikilabs.db`:
 
 - Workspaces and configuration
 - Chat history (per workspace)
@@ -82,17 +82,19 @@ All data stored in a single SQLite database at `~/.local/share/wikilabs/wikilabs
 
 - **Key Derivation**: Random 256-bit master key in OS keychain
 - **Data Encryption**: AES-256-GCM for confidential/restricted data
-- **Credential Storage**: OS keychain (Credential Manager / Keychain / Secret Service)
+- **Credential Storage**: Windows Credential Manager (default), fallback to encrypted SQLite
 - **Prompt Injection**: Multi-layer defense (normalize, separate, validate)
 - **Data Classification**: Public, Internal, Confidential, Restricted types
 
 ## Platform Support
 
-| Feature | Windows | macOS | Linux |
-|---------|---------|-------|-------|
-| Desktop App | ✅ | ✅ | ✅ |
-| Installer | MSI | DMG | AppImage, deb, rpm |
-| WebView | Edge WebView2 | WKWebView | WebKitGTK |
-| Credential Storage | Credential Manager | Keychain | Secret Service |
+Windows 10/11 (64-bit) is the only supported platform.
+
+| Feature | Windows 10/11 (64-bit) |
+|---------|----------------------|
+| Desktop App | ✅ |
+| Installer | MSI, NSIS |
+| WebView | Edge WebView2 |
+| Credential Storage | Windows Credential Manager |
 
 See [ARCHITECTURE_DECISIONS.md](../ARCHITECTURE_DECISIONS.md) for all ADRs.

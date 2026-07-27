@@ -1,4 +1,4 @@
-# Developer Guide — Wiki Labs AI Copilot v1.0.0
+# Developer Guide — Wiki Labs AI Copilot v1.1.80
 
 > Development workflow, architecture, and contributing guidelines.
 

@@ -43,6 +43,7 @@ function Settings() {
   const [saving, setSaving] = useState(false);
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
   // Fetch models from the endpoint's /v1/models API
   const fetchModels = useCallback(async (endpoint: string, apiKey: string) => {
@@ -92,6 +93,20 @@ function Settings() {
             ...prev,
             ...data.value,
           }));
+          // Extract AI connection status
+          if (data.value.ai_provider && typeof data.value.ai_provider === 'object') {
+            const cs = (data.value.ai_provider as any).ai_connection_status;
+            if (cs) {
+              setConnectionStatus(cs);
+            } else {
+              // Fallback: check if api_key is empty
+              const apiKey = (data.value.ai_provider as any).api_key || '';
+              setConnectionStatus(apiKey.trim() ? 'connected' : 'not_configured');
+            }
+          } else {
+            // No ai_provider in settings at all — not configured
+            setConnectionStatus('not_configured');
+          }
         }
       })
       .catch(() => {});
@@ -203,6 +218,27 @@ function Settings() {
         padding: '24px',
         marginBottom: '16px',
       }}>
+        {/* AI Connection Status Banner */}
+        {connectionStatus === 'not_configured' && (
+          <div style={{
+            background: 'rgba(255, 193, 7, 0.1)',
+            border: '1px solid rgba(255, 193, 7, 0.4)',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
+            <span style={{ fontSize: '20px' }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffc107' }}>AI Copilot Not Connected</div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                No API key configured. The AI copilot can't provide intelligent guidance without an AI provider connection. Enter your API key below to get started.
+              </div>
+            </div>
+          </div>
+        )}
         <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>AI Provider</h3>
         <div style={{ display: 'grid', gap: '12px' }}>
           {/* Provider dropdown */}
@@ -255,10 +291,15 @@ function Settings() {
             <input
               type="password"
               value={settings.ai_provider.api_key}
-              onChange={e => setSettings(prev => ({
-                ...prev,
-                ai_provider: { ...prev.ai_provider, api_key: e.target.value },
-              }))}
+              onChange={e => {
+                const newKey = e.target.value;
+                setSettings(prev => ({
+                  ...prev,
+                  ai_provider: { ...prev.ai_provider, api_key: newKey },
+                }));
+                // Update connection status in real-time
+                setConnectionStatus(newKey.trim() ? 'connected' : 'not_configured');
+              }}
               placeholder="sk-..."
               style={inputStyle}
             />

@@ -1,4 +1,4 @@
-# Administrator Guide — Wiki Labs AI Copilot v1.0.0
+# Administrator Guide — Wiki Labs AI Copilot v1.1.80
 
 > Enterprise deployment, configuration, and system administration.
 
