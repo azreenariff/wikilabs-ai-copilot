@@ -26,10 +26,37 @@
       .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
       @keyframes typing { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-8px); } }
     </style>
-    <script type="module" crossorigin src="/assets/index-BuenhBGs.js"></script>
+    <script type="module" crossorigin src="/assets/index-z4jUxlqI.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Bq4Une4U.css">
   </head>
   <body>
     <div id="root"></div>
+    <div id="loading-fallback" style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:14px;color:#a1a1aa;">Initializing...</div>
+    <script>
+      // Hide loading fallback once React mounts (set by main.tsx)
+      window.__react_ready__ = false;
+      const __fallback = document.getElementById('loading-fallback');
+      const __observer__ = new MutationObserver(() => {
+        if (window.__react_ready__ && __fallback) {
+          __fallback.style.display = 'none';
+        }
+      });
+      __observer__.observe(document.getElementById('root') || document.body, { childList: true, subtree: true });
+    </script>
+      // Inline error handler — runs BEFORE the module script
+      window.onerror = function(msg, url, line, col, err) {
+        var root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = '<div style="padding:20px;color:#ff6b6b;font-family:sans-serif;font-size:14px;"><b>JS Error:</b> ' + msg + '<br>URL: ' + url + ' Line: ' + line + '</div>';
+        }
+        return false;
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        var root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = '<div style="padding:20px;color:#ff6b6b;font-family:sans-serif;font-size:14px;"><b>Unhandled Rejection:</b> ' + e.reason + '</div>';
+        }
+      });
+    </script>
   </body>
 </html>

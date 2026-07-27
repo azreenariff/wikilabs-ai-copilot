@@ -10,3 +10,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </React.StrictMode>,
 );
+// Signal that React has rendered
+window.__react_ready__ = true;

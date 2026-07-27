@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v1.1.92 - Blank Window Fix — Removed CSP, Added Debug Logging
+
+- **Fix:** Blank/dark window on first launch after fresh install — removed CSP entirely (CSP was likely causing silent blocking of the React bundle in certain WebView2 contexts on Windows)
+- **Fix:** Added inline JS error handler to `index.html` — if a JS error occurs, a visible error message is displayed instead of a blank screen
+- **Fix:** Added visible "Initializing..." fallback in HTML — confirms whether the page is rendering at all, even before React mounts
+- **Fix:** Added `Window.__react_ready__` signal so React mount is visible on the page
+- **Fix:** Added `__react_ready__` type declaration in `vite-env.d.ts`
+
 ## v1.1.91 - Blank Window Fix — CSP, ErrorBoundary & Robust Startup
 
 - **Fix:** Blank/dark window on first launch after fresh install — added explicit `script-src` CSP directive to allow frontend ES module scripts (the missing directive caused silent CSP violations in some WebView2 contexts)
