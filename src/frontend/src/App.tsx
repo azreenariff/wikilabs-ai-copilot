@@ -18,13 +18,24 @@ function App() {
 
   useEffect(() => {
     const checkSetup = async () => {
-      // Retry up to 5 times with 500ms delay in case API server hasn't started yet
+      // Retry up to 5 times with 300ms delay in case API server hasn't started yet.
+      // Each fetch has a 3s timeout so a dead API server doesn't freeze the UI indefinitely.
       for (let attempt = 0; attempt < 5; attempt++) {
         try {
+          // AbortSignal.timeout may not exist in very old browsers; fall back to manual AbortController
+          const makeSignal = () => {
+            if (typeof AbortSignal.timeout === 'function') {
+              return AbortSignal.timeout(3000);
+            }
+            const ac = new AbortController();
+            setTimeout(() => ac.abort(), 3000);
+            return ac.signal;
+          };
           const res = await fetch('http://localhost:1420/api/commands/get_settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ params: {} }),
+            signal: makeSignal(),
           });
           const data = await res.json();
           if (data.success && data.value) {
@@ -53,9 +64,9 @@ function App() {
           break; // success
         } catch {
           if (attempt < 4) {
-            await new Promise(r => setTimeout(r, 500)); // wait and retry
+            await new Promise(r => setTimeout(r, 300)); // faster retry interval
           } else {
-            // Final attempt failed
+            // All retries failed — fall through to main UI
             setNeedsSetup(false);
           }
         }

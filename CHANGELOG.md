@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.84] — 2026-07-27 — First-Run Startup Fix (SetupWizard Now Appears)
+
+### Fixed
+
+- **SetupWizard no longer stuck on "Loading..."** — The frontend startup check (`App.tsx`) now uses `AbortSignal.timeout(3000)` on every fetch to the backend API server. Previously, when the API server took time to bind or crashed on startup, each `fetch()` call hung indefinitely, freezing the UI on the "Loading..." screen forever. With the 3-second timeout, the retry loop fails fast (max ~17s total) and the SetupWizard appears immediately if no API key is configured.
+
+### Added
+
+- **Fallback `AbortSignal.timeout` support** — For older browsers that don't support `AbortSignal.timeout()`, a manual `AbortController` with `setTimeout` is used as a fallback, ensuring the timeout works universally.
+
+### Changed
+
+- **Faster retry interval** — Startup check retry interval reduced from 500ms to 300ms for quicker detection of a ready API server.
+
 ## [1.1.82] — 2026-07-27 — Advice Chat Webview Rendering Fix
 
 ### Fixed
