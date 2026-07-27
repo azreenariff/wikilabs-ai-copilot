@@ -1,6 +1,6 @@
 {
   "productName": "Wiki Labs AI Copilot",
-  "version": "1.1.76",
+  "version": "1.1.77",
   "identifier": "com.wikilabs.copilot",
   "build": {
     "frontendDist": "../src/frontend/dist"
@@ -20,18 +20,6 @@
         "center": true,
         "decorations": true,
         "transparent": false
-      },
-      {
-        "label": "advice-chat",
-        "title": "AI Copilot — Live Advice",
-        "width": 400,
-        "height": 520,
-        "resizable": true,
-        "fullscreen": false,
-        "center": false,
-        "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": true
       }
     ],
     "security": {

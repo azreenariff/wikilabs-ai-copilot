@@ -1080,6 +1080,9 @@ pub fn start_api_server(
     knowledge_path: Option<std::path::PathBuf>,
     app_handle: Option<Arc<tauri::AppHandle>>,
 ) -> Result<(), String> {
+    // Clone app_handle for use inside the AI loop closure (state will be consumed by the move)
+    let app_handle_for_loop = app_handle.clone();
+
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
@@ -1624,6 +1627,19 @@ pub fn start_api_server(
                                         None,
                                     ).await;
                                     panel.record_suggestion(suggestion_content).await;
+                                    
+                                    // Open advice chat window if not already open
+                                    if let Some(ref ah) = app_handle_for_loop {
+                                        if ah.get_webview_window("advice-chat").is_none() {
+                                            let handle_clone = (**ah).clone();
+                                            // Spawn a task to open the window (non-blocking)
+                                            tokio::task::spawn_blocking(move || {
+                                                if let Some(w) = handle_clone.get_webview_window("advice-chat") {
+                                                    let _ = w.show();
+                                                }
+                                            });
+                                        }
+                                    }
                                 }
                                 Err(e) => {
                                     warn!(error = %e, "AI recommendation failed, using rule-based fallback");

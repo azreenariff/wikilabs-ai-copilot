@@ -17,34 +17,44 @@ function App() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:1420/api/commands/get_settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ params: {} }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success && data.value) {
-          const apiKey = data.value.ai_provider?.api_key || '';
-          const firstRunComplete = data.value.first_run_complete || false;
-          // Show wizard if no API key AND first run not complete
-          setNeedsSetup(!apiKey && !firstRunComplete);
-          // If first run is complete and settings show API key is configured,
-          // hide main window (minimize to tray)
-          if (apiKey && firstRunComplete) {
-            fetch('http://localhost:1420/api/commands/hide_main_window', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ params: {} }),
-            }).catch(() => {});
+    const checkSetup = async () => {
+      // Retry up to 5 times with 500ms delay in case API server hasn't started yet
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          const res = await fetch('http://localhost:1420/api/commands/get_settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ params: {} }),
+          });
+          const data = await res.json();
+          if (data.success && data.value) {
+            const apiKey = data.value.ai_provider?.api_key || '';
+            const firstRunComplete = data.value.first_run_complete || false;
+            // Show wizard if no API key AND first run not complete
+            setNeedsSetup(!apiKey && !firstRunComplete);
+            // If first run is complete and settings show API key is configured,
+            // hide main window (minimize to tray)
+            if (apiKey && firstRunComplete) {
+              fetch('http://localhost:1420/api/commands/hide_main_window', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ params: {} }),
+              }).catch(() => {});
+            }
+          }
+          break; // success
+        } catch {
+          if (attempt < 4) {
+            await new Promise(r => setTimeout(r, 500)); // wait and retry
+          } else {
+            // Final attempt failed
+            setNeedsSetup(false);
           }
         }
-      })
-      .catch(() => {
-        // If backend not reachable, show the normal app anyway
-        setNeedsSetup(false);
-      })
-      .finally(() => setChecking(false));
+      }
+      setChecking(false);
+    };
+    checkSetup();
   }, []);
 
   if (checking) {
