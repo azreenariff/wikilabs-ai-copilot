@@ -30,27 +30,54 @@ function SetupWizard() {
     setError('');
   };
 
+  // Retry helper: retry a fetch with backoff, useful when the API server
+  // hasn't finished initializing yet (tokio runtime + knowledge packs take a few seconds).
+  const retryFetch = async (
+    url: string,
+    options: RequestInit,
+    maxRetries: number = 3,
+    baseDelay: number = 1000,
+  ): Promise<Response> => {
+    let lastError: Error | undefined;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch(url, options);
+        return res;
+      } catch (e: any) {
+        lastError = e;
+        if (attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s
+          await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+        }
+      }
+    }
+    throw lastError!;
+  };
+
   const handleTestConnection = async () => {
     setTestResult('testing');
     setError('');
     setFetchedModels([]);
     try {
-      // AbortSignal.timeout prevents the UI from hanging forever if the API server
-      // or target endpoint is unreachable (same pattern as startup check).
       const makeSignal = () => {
         if (typeof AbortSignal.timeout === 'function') {
-          return AbortSignal.timeout(15000); // 15s: covers 10s API server timeout + overhead
+          return AbortSignal.timeout(15000);
         }
         const ac = new AbortController();
         setTimeout(() => ac.abort(), 15000);
         return ac.signal;
       };
-      const res = await fetch('http://localhost:1420/api/commands/list_models', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
-        signal: makeSignal(),
-      });
+      const res = await retryFetch(
+        'http://localhost:1420/api/commands/list_models',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
+          signal: makeSignal(),
+        },
+        3,  // max 3 retries
+        1000, // start with 1s delay
+      );
       const data = await res.json();
       if (data.success && Array.isArray(data.value) && data.value.length > 0) {
         setFetchedModels(data.value);
@@ -77,45 +104,72 @@ function SetupWizard() {
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('http://localhost:1420/api/commands/update_settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          params: {
-            ai_provider: {
-              name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
-              endpoint,
-              api_key: apiKey,
-              model,
-              max_tokens: parseInt(maxTokens) || 4096,
-              context_window: parseInt(contextWindow) || 128000,
+      const res = await retryFetch(
+        'http://localhost:1420/api/commands/update_settings',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            params: {
+              ai_provider: {
+                name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
+                endpoint,
+                api_key: apiKey,
+                model,
+                max_tokens: parseInt(maxTokens) || 4096,
+                context_window: parseInt(contextWindow) || 128000,
+              },
             },
-          },
-        }),
-      });
+          }),
+        },
+        3,  // max 3 retries
+        1000, // start with 1s delay
+      );
       const data = await res.json();
       if (data.success) {
         // Explicitly mark first run as complete
-        await fetch('http://localhost:1420/api/commands/set_first_run_complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ params: {} }),
-        }).catch(() => {});
-        setStep(5);
-        // Minimize main window to tray after setup
-        await fetch('http://localhost:1420/api/commands/hide_main_window', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ params: {} }),
-        }).catch(() => {});
-        // Open the floating advice chat window right after setup
-        // Add a small delay to ensure API server is ready
-        setTimeout(() => {
-          fetch('http://localhost:1420/api/commands/advice_chat_open', {
+        const firstRunRes = await retryFetch(
+          'http://localhost:1420/api/commands/set_first_run_complete',
+          {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ params: {} }),
-          }).catch(() => {});
+          },
+          2, 2000,
+        );
+        if (!firstRunRes.ok) {
+          // Non-fatal: log but continue
+        }
+        setStep(5);
+        // Minimize main window to tray after setup
+        const hideRes = await retryFetch(
+          'http://localhost:1420/api/commands/hide_main_window',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ params: {} }),
+          },
+          2, 2000,
+        );
+        if (!hideRes.ok) {
+          // Non-fatal
+        }
+        // Open the floating advice chat window right after setup
+        // Add a small delay to ensure API server is ready
+        setTimeout(async () => {
+          try {
+            await retryFetch(
+              'http://localhost:1420/api/commands/advice_chat_open',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ params: {} }),
+              },
+              2, 2000,
+            );
+          } catch {
+            // Non-fatal
+          }
         }, 1500);
       } else {
         setError(data.error || 'Failed to save');
