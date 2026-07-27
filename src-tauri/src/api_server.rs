@@ -7,6 +7,7 @@ use axum::{
     extract::{Path, State},
     extract::Json,
     http::StatusCode,
+    response::{Html, Response},
     routing::{get, post},
     Router,
 };
@@ -1112,7 +1113,7 @@ pub fn create_router(state: ApiServerState) -> Router {
     let router = Router::new()
         .route("/api/commands/:method", post(api_handler))
         .route("/health", get(|| async { "ok" }))
-        .route("/advice-chat", get(|| async { advice_html.to_string() }))
+        .route("/advice-chat", get(move || async move { Html(advice_html.to_string()) }))
         .layer(cors)
         .fallback(|method: axum::http::Method, uri: axum::http::Uri| async move {
             warn!("[API] FALLBACK HIT — method={} uri={}", method, uri);
