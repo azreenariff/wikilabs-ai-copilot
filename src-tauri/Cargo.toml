@@ -7,6 +7,14 @@ authors = ["Wiki Labs Team"]
 license = "MIT"
 rust-version = "1.77"
 
+[[bin]]
+name = "wikilabs-desktop"
+path = "src/main.rs"
+
+[[bin]]
+name = "test_axum"
+path = "src/test_axum.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

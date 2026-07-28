@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v1.1.104 - FIX: Advice-chat floating window renders JS/CSS on Windows (static asset path resolution)
+
+- **Critical Fix:** The floating "AI Copilot — Live Advice" window showed a blank screen because the API server's static asset resolver (`ServeDir::new("../assets")`) used a relative path that didn't resolve correctly on Windows NSIS-installed builds. The HTML file loaded (via `include_str!`), but the JS/CSS files at `/assets/` returned 404, so React never mounted.
+- **Fix:** The `api_server.rs` now resolves the assets directory using a multi-tier approach: (1) binary's parent directory + `assets/` (covers Windows NSIS installs), (2) Tauri resource_dir() (covers Tauri bundler), (3) current working directory, (4) crate root's `../assets/`. This ensures the correct path is found regardless of deployment environment.
+- **Fix:** Added `../assets` to `bundle.resources` in `tauri.conf.json` so the NSIS installer includes the JS/CSS files alongside the binary.
+- **Result:** The floating advice chat window now renders the full Guidance UI with React on all platforms (Windows, Linux).
+
 ## v1.1.103 - FIX: Settings persistence merge + HTTP/2 SETTINGS_TIMEOUT in AI provider connections
 
 - **Fix:** Setup wizard "Test Connection" now persists AI provider config properly. Previously, `handle_update_settings` replaced the entire settings object with only `{ "ai_provider": {...} }`, losing all other settings fields. Now merges incoming params into existing settings, preserving theme, log_level, first_run_complete, etc.

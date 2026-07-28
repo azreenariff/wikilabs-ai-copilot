@@ -1123,9 +1123,8 @@ async fn handle_get_status() -> (StatusCode, String) {
     });
     (StatusCode::OK, api_response(true, Some(value), None))
 }
-
 /// Create the router for the API server.
-pub fn create_router(state: ApiServerState) -> Router {
+pub fn create_router(state: ApiServerState, assets_dir: Option<String>) -> Router {
     info!("[API] Creating router with state...");
     
     // Debug: list all registered routes
@@ -1137,7 +1136,9 @@ pub fn create_router(state: ApiServerState) -> Router {
         .allow_headers(Any);
 
     let advice_html = include_str!("../assets/advice-chat.html");
-    let router = Router::new()
+    
+    // Build router — ServeDir assets path uses absolute path to avoid relative-path issues on Windows
+    let mut router = Router::new()
         .route("/api/commands/:method", post(api_handler))
         .route("/health", get(|| async { "ok" }))
         .route("/ready", get(|| async { 
@@ -1145,14 +1146,21 @@ pub fn create_router(state: ApiServerState) -> Router {
             format!("{{\"ready\":{}}}", if ready { "true" } else { "false" })
         }))
         .route("/advice-chat", get(move || async move { Html(advice_html.to_string()) }))
-        // Serve static assets (JS, CSS, images) for the advice-chat window
-        .nest_service("/assets", ServeDir::new("../assets"))
         .layer(cors)
         .fallback(|method: axum::http::Method, uri: axum::http::Uri| async move {
             warn!("[API] FALLBACK HIT — method={} uri={}", method, uri);
             (StatusCode::NOT_FOUND, format!("No route for {} {}", method, uri))
         })
         .with_state(state);
+    
+    // Serve static assets (JS, CSS, images) for the advice-chat window
+    // Use absolute path resolved from the assets_dir parameter — avoids relative-path CWD issues on Windows
+    if let Some(ref assets_dir) = assets_dir {
+        router = router.nest_service("/assets", ServeDir::new(assets_dir));
+        info!(assets_dir = %assets_dir, "Serving static assets");
+    } else {
+        warn!("[API] No assets directory configured — static assets (JS/CSS) will not be served");
+    }
     
     info!("[API] Router fully configured with fallback");
     router
@@ -1173,6 +1181,52 @@ pub fn start_api_server(
     // Track whether we have already notified the user about missing AI key
     let ai_has_notified = Arc::new(std::sync::Mutex::new(false));
 
+    // Resolve absolute assets directory path for static file serving
+    // The build.rs copies frontend dist assets into src-tauri/assets/
+    // We need the absolute path to avoid relative-path CWD issues on Windows
+    // MUST be done BEFORE app_handle is moved into state
+    let assets_dir = {
+        // Try 1: From current exe's parent — for release builds on Windows NSIS,
+        // the binary is in the install dir and assets are installed alongside it
+        std::env::current_exe().ok().and_then(|exe| {
+            exe.parent()
+                .map(|parent| parent.join("assets"))
+                .and_then(|p| p.canonicalize().ok())
+                .map(|p| p.to_string_lossy().to_string())
+        })
+        // Try 2: Use Tauri resource_dir if app_handle is available (for Tauri bundler)
+        .or_else(|| {
+            if let Some(ref ah) = app_handle {
+                if let Ok(resource_dir) = ah.path().resource_dir() {
+                    let candidate = resource_dir.join("assets");
+                    if candidate.exists() {
+                        return Some(candidate.to_string_lossy().to_string());
+                    }
+                }
+            }
+            None
+        })
+        // Try 3: From current working directory (debug/development)
+        .or_else(|| {
+            std::env::current_dir()
+                .ok()
+                .and_then(|cwd| cwd.join("assets").canonicalize().ok())
+                .map(|p| p.to_string_lossy().to_string())
+        })
+        // Try 4: From crate root's assets directory (build-time path)
+        .or_else(|| {
+            std::env::current_dir()
+                .ok()
+                .and_then(|cwd| cwd.join("../assets").canonicalize().ok())
+                .map(|p| p.to_string_lossy().to_string())
+        })
+        .unwrap_or_else(|| {
+            warn!("[API] Could not resolve assets directory — static assets will not be served");
+            String::new()
+        })
+    };
+    info!(assets_dir = %assets_dir, "Resolved assets directory");
+
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
@@ -1191,7 +1245,8 @@ pub fn start_api_server(
     }
 
     let obs_settings = state.settings.clone();
-    let router = create_router(state);
+
+    let router = create_router(state, Some(assets_dir));
 
     // Initialize skill and knowledge panels
     if let Some(ref skills_dir) = skills_path {
