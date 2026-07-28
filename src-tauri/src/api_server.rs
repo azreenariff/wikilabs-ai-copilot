@@ -303,7 +303,6 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
     if endpoint.is_empty() {
         return (StatusCode::OK, api_response(false, None, Some("Endpoint is required".to_string())));
     }
-    // Actually test the connection by hitting the /models endpoint
     // Normalize: if endpoint ends with /v1, just append /models; if just a base URL, append /v1/models
     let url = if endpoint.ends_with("/v1") {
         format!("{}{}/models", endpoint.trim_end_matches('/'), "")
@@ -314,9 +313,14 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
     };
     info!(endpoint, url, "Testing AI provider connection");
 
-    // Use HTTP/1 only to avoid HTTP/2 SETTINGS_TIMEOUT issues
+    // Use HTTP/1 only to avoid HTTP/2 SETTINGS_TIMEOUT issues.
+    // Close idle connections immediately to prevent stale connection accumulation
+    // across multiple rapid test requests.
     let client = reqwest::Client::builder()
         .http1_only()
+        .pool_idle_timeout(std::time::Duration::from_secs(0)) // disable connection pooling
+        .pool_max_idle_per_host(0) // no persistent connections
+        .timeout(std::time::Duration::from_secs(20))
         .build().unwrap_or_else(|_| reqwest::Client::new());
 
     match client
@@ -324,7 +328,6 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .header("Connection", "close")
-        .timeout(std::time::Duration::from_secs(15))
         .send()
         .await
     {
@@ -625,8 +628,12 @@ async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCo
 
     let mut builder = reqwest::Client::builder()
         .http1_only()
+        .pool_idle_timeout(std::time::Duration::from_secs(0)) // disable connection pooling
+        .pool_max_idle_per_host(0) // no persistent connections
         .build().unwrap_or_else(|_| reqwest::Client::new());
-    let mut request = builder.get(&url).header("Content-Type", "application/json");
+    let mut request = builder.get(&url)
+        .header("Content-Type", "application/json")
+        .header("Connection", "close");
     if !api_key.is_empty() {
         request = request.header("Authorization", format!("Bearer {}", api_key));
     }
@@ -659,7 +666,14 @@ async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCo
             let base_url = endpoint.trim_end_matches('/').trim_end_matches("/v1");
             let fallback_url = format!("{}/models", base_url);
             info!("Trying fallback URL: {}", fallback_url);
-            let mut fb_builder = reqwest::Client::new().get(&fallback_url).header("Content-Type", "application/json");
+            let mut fb_builder = reqwest::Client::builder()
+                .http1_only()
+                .pool_idle_timeout(std::time::Duration::from_secs(0))
+                .pool_max_idle_per_host(0)
+                .build().unwrap_or_else(|_| reqwest::Client::new())
+                .get(&fallback_url)
+                .header("Content-Type", "application/json")
+                .header("Connection", "close");
             if !api_key.is_empty() {
                 fb_builder = fb_builder.header("Authorization", format!("Bearer {}", api_key));
             }

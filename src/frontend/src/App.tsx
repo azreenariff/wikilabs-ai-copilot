@@ -108,9 +108,55 @@ export default function App() {
         height: '100vh', background: '#0f0f23',
         color: '#a1a1aa', fontSize: '14px',
       }}>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+          }
+          @keyframes dot-bounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+          }
+        `}</style>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '10px', marginBottom: '12px', background: '#1a1a2e' }} />
-          <div>Loading...</div>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '10px', marginBottom: '16px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            animation: 'pulse 2s ease-in-out infinite',
+            position: 'relative',
+          }}>
+            <div style={{
+              position: 'absolute', inset: '8px', borderRadius: '6px',
+              border: '2px solid rgba(255,255,255,0.3)',
+              animation: 'spin 2s linear infinite',
+            }} />
+          </div>
+          <div style={{
+            display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center',
+            height: '20px',
+          }}>
+            <span>Loading</span>
+            <span style={{
+              display: 'inline-flex', gap: '3px',
+            }}>
+              <span style={{
+                animation: 'dot-bounce 1.4s ease-in-out infinite',
+                animationDelay: '0ms',
+              }}>.</span>
+              <span style={{
+                animation: 'dot-bounce 1.4s ease-in-out infinite',
+                animationDelay: '0.2s',
+              }}>.</span>
+              <span style={{
+                animation: 'dot-bounce 1.4s ease-in-out infinite',
+                animationDelay: '0.4s',
+              }}>.</span>
+            </span>
+          </div>
         </div>
       </div>
     );

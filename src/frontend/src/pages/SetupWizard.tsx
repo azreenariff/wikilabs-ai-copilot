@@ -39,7 +39,7 @@ function SetupWizard() {
     options: RequestInit,
     maxRetries: number = 3,
     baseDelay: number = 1000,
-    timeoutMs: number = 15000,
+    timeoutMs: number = 25000,
   ): Promise<Response> => {
     let lastError: Error | undefined;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -85,7 +85,10 @@ function SetupWizard() {
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const retryRes = await fetch('http://localhost:1420/ready', { signal: controller.signal });
+            const retryRes = await fetch('http://localhost:1420/ready', {
+              signal: controller.signal,
+              headers: { Connection: 'close' },
+            });
             clearTimeout(timeoutId);
             const retryData = await retryRes.json();
             if (retryData.ready) {
@@ -238,6 +241,16 @@ function SetupWizard() {
       case 1:
         return (
           <div>
+            <style>{`
+              @keyframes btn-pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.6; }
+              }
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
             <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Choose your AI Provider</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
               {PROVIDERS.map(p => (
@@ -316,9 +329,24 @@ function SetupWizard() {
                   padding: '10px 20px', borderRadius: '6px', border: 'none',
                   background: testResult === 'testing' ? 'var(--color-text-secondary)' : 'var(--color-accent)',
                   color: 'white', fontSize: '14px', fontWeight: 600, cursor: testResult === 'testing' ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 }}
               >
-                {testResult === 'testing' ? 'Testing...' : 'Test Connection'}
+                {testResult === 'testing' ? (
+                  <>
+                    <span style={{
+                      width: '16px', height: '16px',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTopColor: 'white',
+                      borderRadius: '50%',
+                      animation: 'spin 0.8s linear infinite',
+                      display: 'inline-block',
+                    }} />
+                    Testing...
+                  </>
+                ) : (
+                  'Test Connection'
+                )}
               </button>
               {testResult && (
                 <div style={{
