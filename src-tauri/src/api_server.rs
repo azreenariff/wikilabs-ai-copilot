@@ -440,44 +440,67 @@ fn handle_preflight_check(state: &ApiServerState, req_params: Value) -> (StatusC
                         "detail": "Not configured"
                     }));
                 } else {
-                    // Block on the async test connection synchronously
-                    let test_result = tokio::runtime::Handle::current().block_on(
-                        handle_test_connection(state, serde_json::json!({
-                            "api_key": api_key,
-                            "endpoint": endpoint
-                        }))
-                    );
-                    if test_result.0 == StatusCode::OK {
-                        if let Ok(parsed_body) = serde_json::from_str::<Value>(&test_result.1) {
-                            if let Some(val) = parsed_body.get("value") {
-                                if val.as_bool() == Some(true) {
-                                    checks.insert("ai_provider".to_string(), serde_json::json!({
-                                        "status": "pass",
-                                        "label": "AI Provider",
-                                        "detail": "Connection successful"
-                                    }));
-                                } else {
-                                    all_ok = false;
-                                    let detail = parsed_body.get("error")
-                                        .and_then(|e| e.as_str())
-                                        .unwrap_or("Connection test failed")
-                                        .to_string();
-                                    checks.insert("ai_provider".to_string(), serde_json::json!({
-                                        "status": "fail",
-                                        "label": "AI Provider",
-                                        "detail": detail
-                                    }));
-                                }
-                            }
-                        }
-                    } else {
-                        all_ok = false;
-                        checks.insert("ai_provider".to_string(), serde_json::json!({
-                            "status": "fail",
-                            "label": "AI Provider",
-                            "detail": test_result.1
-                        }));
-                    }
+                                    // Block on the async test connection synchronously — must use
+                                    // std::thread::spawn with a new tokio runtime because
+                                    // Handle::current().block_on() panics inside axum's tokio runtime.
+                                    // Clone the Arc handles (cheap, 'static) to move into the thread.
+                                    let state_clone = ApiServerState {
+                                        settings: state.settings.clone(),
+                                        config_path: state.config_path.clone(),
+                                        app_handle: None,
+                                    };
+                                    let spawn_handle = std::thread::spawn(move || {
+                                        let rt = tokio::runtime::Runtime::new()
+                                            .expect("Failed to create test runtime");
+                                        rt.block_on(handle_test_connection(&state_clone, serde_json::json!({
+                                            "api_key": api_key,
+                                            "endpoint": endpoint
+                                        })))
+                                    });
+
+                                    match spawn_handle.join() {
+                                        Ok(test_result) => {
+                                            if test_result.0 == StatusCode::OK {
+                                                if let Ok(parsed_body) = serde_json::from_str::<Value>(&test_result.1) {
+                                                    if let Some(val) = parsed_body.get("value") {
+                                                        if val.as_bool() == Some(true) {
+                                                            checks.insert("ai_provider".to_string(), serde_json::json!({
+                                                                "status": "pass",
+                                                                "label": "AI Provider",
+                                                                "detail": "Connection successful"
+                                                            }));
+                                                        } else {
+                                                            all_ok = false;
+                                                            let detail = parsed_body.get("error")
+                                                                .and_then(|e| e.as_str())
+                                                                .unwrap_or("Connection test failed")
+                                                                .to_string();
+                                                            checks.insert("ai_provider".to_string(), serde_json::json!({
+                                                                "status": "fail",
+                                                                "label": "AI Provider",
+                                                                "detail": detail
+                                                            }));
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                all_ok = false;
+                                                checks.insert("ai_provider".to_string(), serde_json::json!({
+                                                    "status": "fail",
+                                                    "label": "AI Provider",
+                                                    "detail": test_result.1
+                                                }));
+                                            }
+                                        }
+                                        Err(e) => {
+                                            all_ok = false;
+                                            checks.insert("ai_provider".to_string(), serde_json::json!({
+                                                "status": "fail",
+                                                "label": "AI Provider",
+                                                "detail": format!("Thread panicked: {:?}", e)
+                                            }));
+                                        }
+                                    }
                 }
             }
         }
