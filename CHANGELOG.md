@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v1.1.107 — FIX: Preflight crashes + rotating loading phases + real HTTP health check
+
+- **Critical Fix:** Fixed preflight check panics that caused "Failed to fetch" on startup. The root cause was `Handle::current().block_on()` inside an axum request handler, which panics at runtime (cannot block a tokio thread from within its own runtime). Replaced with `std::thread::spawn` + new tokio runtime (the documented pattern for axum integration).
+- **UI:** Preflight loading spinner now cycles through rotating phase messages ("Checking API server...", "Verifying server readiness...", "Loading settings...", "Preparing interface...") every 2 seconds instead of showing a generic message with bouncing dots.
+- **Preflight:** Added real HTTP `GET /health` round-trip check to confirm the API server actually accepts network requests, not just that the process exists. If /health fails, the frontend shows "API server is not responding" instead of a generic crash.
+- **Preflight:** First checklist item now shows the actual /health response body ("ok") for transparent verification.
+
 ## v1.1.106 — FIX: Pre-flight check screen with knowledge packs validation
 
 - **Pre-flight check screen:** Added a startup health-check page that verifies the API server is running, the /ready endpoint responds, settings are loaded, the AI provider connection works (when configured), and knowledge packs are loaded. Each check shows a spinning indicator that resolves to a checkmark or error icon. The screen auto-transitions to the main UI or SetupWizard after showing results.
