@@ -47,18 +47,24 @@ function Settings() {
 
   // Retry helper: retry a fetch with backoff, useful when the API server
   // hasn't finished initializing yet (tokio runtime + knowledge packs take a few seconds).
+  // Each individual fetch attempt has a timeout to prevent hanging indefinitely.
   const retryFetch = async (
     url: string,
     options: RequestInit,
     maxRetries: number = 3,
     baseDelay: number = 1000,
+    timeoutMs: number = 15000,
   ): Promise<Response> => {
     let lastError: Error | undefined;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const res = await fetch(url, options);
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
         return res;
       } catch (e: any) {
+        clearTimeout(timeoutId);
         lastError = e;
         if (attempt < maxRetries) {
           await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));

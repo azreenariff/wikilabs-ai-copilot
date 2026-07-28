@@ -32,18 +32,25 @@ function SetupWizard() {
 
   // Retry helper: retry a fetch with backoff, useful when the API server
   // hasn't finished initializing yet (tokio runtime + knowledge packs take a few seconds).
+  // Each individual fetch attempt has a timeout to prevent hanging indefinitely
+  // if the server accepts the connection but never responds.
   const retryFetch = async (
     url: string,
     options: RequestInit,
     maxRetries: number = 3,
     baseDelay: number = 1000,
+    timeoutMs: number = 15000,
   ): Promise<Response> => {
     let lastError: Error | undefined;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const res = await fetch(url, options);
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
         return res;
       } catch (e: any) {
+        clearTimeout(timeoutId);
         lastError = e;
         if (attempt < maxRetries) {
           // Exponential backoff: 1s, 2s, 4s
@@ -75,13 +82,20 @@ function SetupWizard() {
         let attempts = 0;
         while (!readyData.ready && attempts < 6) {
           await new Promise(r => setTimeout(r, 1500));
-          const retryRes = await fetch('http://localhost:1420/ready');
-          const retryData = await retryRes.json();
-          if (retryData.ready) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const retryRes = await fetch('http://localhost:1420/ready', { signal: controller.signal });
+            clearTimeout(timeoutId);
+            const retryData = await retryRes.json();
+            if (retryData.ready) {
+              readyData = retryData;
+              break;
+            }
             readyData = retryData;
-            break;
+          } catch {
+            // Timeout or network error — continue polling
           }
-          readyData = retryData;
           attempts++;
         }
         if (!readyData.ready) {
