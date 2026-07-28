@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.1.109 — FIX: Preflight check not reaching API handler
+
+- **Critical Fix:** Fixed preflight check failing on startup. The frontend was sending `POST /api/preflight_check` but no route existed for that path. The handler was registered under `/api/commands/preflight_check` but the frontend was calling the wrong URL. Fixed both `App.tsx` and `PreflightCheck.tsx` to use `/api/commands/preflight_check`.
+
 ## v1.1.108 — Add clear diagnostic logging for Windows troubleshooting
 
 - **Diagnostics:** Added `>>>` console markers (`println!`) alongside `tracing` across the full app startup sequence — API server (thread spawn, Tokio runtime, TCP bind, ready), observation engine (creation, provider registration, start), and frontend (loading, render, setup check). All markers prefixed with `[API]`, `[OBS]`, or `[Wiki Labs]` for easy grepping in Windows Event Viewer / console logs.
@@ -7,7 +11,9 @@
 - **Critical Fix:** Fixed preflight check panics that caused "Failed to fetch" on startup. The root cause was `Handle::current().block_on()` inside an axum request handler, which panics at runtime (cannot block a tokio thread from within its own runtime). Replaced with `std::thread::spawn` + new tokio runtime (the documented pattern for axum integration).
 - **UI:** Preflight loading spinner now cycles through rotating phase messages ("Checking API server...", "Verifying server readiness...", "Loading settings...", "Preparing interface...") every 2 seconds instead of showing a generic message with bouncing dots.
 - **Preflight:** Added real HTTP `GET /health` round-trip check to confirm the API server actually accepts network requests, not just that the process exists. If /health fails, the frontend shows "API server is not responding" instead of a generic crash.
-- **Preflight:** First checklist item now shows the actual /health response body ("ok") for transparent verification.
+|- **Preflight:** First checklist item now shows the actual /health response body ("ok") for transparent verification.
+
+## v1.1.107 — PLACEHOLDER: Pre-flight check screen implementation (see v1.1.106)
 
 ## v1.1.106 — FIX: Pre-flight check screen with knowledge packs validation
 
