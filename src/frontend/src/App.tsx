@@ -218,6 +218,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Advice chat window route — renders ChatAssistant without sidebar */}
+        <Route path="/advice-chat" element={<ChatAssistant />} />
         <Route element={<AppLayout />} >
           <Route path="/" element={<ChatAssistant />} />
           <Route path="/assistant" element={<ChatAssistant />} />

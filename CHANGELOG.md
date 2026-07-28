@@ -1,8 +1,8 @@
 # CHANGELOG
 
-## v1.1.113 — FIX: Advice-chat blank window (build.rs path resolution)
+## v1.1.114 — FIX: Advice-chat blank window (router route mismatch)
 
-- **Critical Fix:** Fixed advice-chat floating window showing blank on Windows. The build.rs `build.rs` used relative paths (`../src/frontend/dist`) that resolved incorrectly when Cargo runs build scripts from a different working directory. This caused advice-chat.html to always reference stale JS hashes, resulting in a blank window. Switched to `env!("CARGO_MANIFEST_DIR")` for reliable absolute paths.
+- **Critical Fix:** Fixed advice-chat floating window showing blank after preflight check. The advice-chat window loads at URL path `/advice-chat` but the React `BrowserRouter` had no route matching this path. The `Routes` element rendered nothing, making the entire window blank. Added `<Route path="/advice-chat" element={<ChatAssistant />} />` so the floating chat window renders correctly.
 
 
 ## v1.1.112 — FIX: WebView2 fetch hangs on localhost — bind API server to 0.0.0.0 + 60s total timeout
