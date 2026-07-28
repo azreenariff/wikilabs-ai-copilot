@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.1.100 - FIX: Floating advice chat window renders correctly
+
+- **Critical Fix:** The floating "AI Copilot — Live Advice" window showed a red screen with "HTML LOADED OK" instead of the Guidance UI. The API server was serving advice-chat.html but not the referenced static assets (/assets/*.js, /assets/*.css), so React never mounted. Added `tower-http` `fs` feature and `ServeDir::new("../assets")` to serve the static files at `/assets/` path.
+
 ## v1.1.99 - FIX: API server bind address — changed from 0.0.0.0 to 127.0.0.1
 
 - **Critical Fix:** Setup wizard "Test Connection" freezes on "Testing..." — the API server was binding to `0.0.0.0:1420` which on Windows can cause TCP connections to succeed but HTTP responses to never be delivered (routing ambiguity with VPN clients/multi-NIC setups). Changed to bind to `127.0.0.1:1420` (loopback only) which eliminates the issue and is also more secure since the API only needs local access.
