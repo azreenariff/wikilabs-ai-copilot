@@ -71,7 +71,7 @@ export default function PreflightCheck({ checks, onComplete }: PreflightCheckPro
         // Step 1: Health check — verify API server actually responds to HTTP
         const healthCtrl = new AbortController();
         const healthTimeout = setTimeout(() => healthCtrl.abort(), 5000);
-        const healthRes = await fetch('http://localhost:1420/health', {
+        const healthRes = await fetch('http://127.0.0.1:1420/health', {
           signal: healthCtrl.signal,
         });
         clearTimeout(healthTimeout);
@@ -89,7 +89,7 @@ export default function PreflightCheck({ checks, onComplete }: PreflightCheckPro
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const res = await fetch('http://localhost:1420/api/preflight_check', {
+        const res = await fetch('http://127.0.0.1:1420/api/preflight_check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ test_provider: false }),

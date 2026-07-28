@@ -18,9 +18,11 @@ pub async fn init_observation_engine() -> Arc<ObservationEngine> {
     // Create the engine
     let config = ObservationEngineConfig::default();
     let engine = Arc::new(ObservationEngine::new(config));
+    println!("[OBS] >>> ObservationEngine created");
 
     // Register available providers
     register_providers(&engine).await;
+    println!("[OBS] >>> Providers registered");
 
     // Subscribe to the event bus and store the receiver globally
     let bus = engine.event_bus().clone();
@@ -41,6 +43,7 @@ pub async fn init_observation_engine() -> Arc<ObservationEngine> {
     tracing::info!(
         "[Observation] Observation engine initialized with providers"
     );
+    println!("[OBS] >>> Observation engine initialized OK — global store set");
     engine
 }
 
@@ -58,34 +61,44 @@ pub fn get_event_receiver() -> Option<Receiver<ObservationEvent>> {
 /// Start the observation engine providers.
 pub async fn start_observation_engine(engine: Arc<ObservationEngine>) {
     tracing::info!("[Observation] Starting observation providers");
+    println!("[OBS] >>> Starting observation providers");
 
     let results = engine.start().await;
+    println!("[OBS] >>> engine.start() returned — {} results", results.len());
     for (name, result) in &results {
         match result {
-            Ok(_) => tracing::info!("[Observation] Provider {} started", name),
+            Ok(_) => {
+                tracing::info!("[Observation] Provider {} started", name);
+                println!("[OBS] >>> Provider {} started OK", name);
+            }
             Err(e) => {
                 tracing::error!(
                     "[Observation] Provider {} failed: {}",
                     name,
                     e
-                )
+                );
+                println!("[OBS] >>> Provider {} FAILED: {}", name, e);
             }
         }
     }
+    println!("[OBS] >>> All providers started — spawning polling loop");
 
     // Start the polling loop in a background task
     tokio::spawn(async move {
         engine.run_loop().await;
+        println!("[OBS] >>> Polling loop exited");
     });
 }
 
 /// Register all available providers with the engine.
 async fn register_providers(engine: &ObservationEngine) {
+    println!("[OBS] >>> Starting provider registration");
     // Active window provider — works on all platforms
     {
         let provider =
             wikilabs_observation::app_monitor::ActiveWindowProvider::new();
         tracing::info!("[Observation] Registering app_monitor provider");
+        println!("[OBS] >>> Registered app_monitor provider");
         engine.register_provider(Box::new(provider)).await;
     }
 
@@ -94,6 +107,7 @@ async fn register_providers(engine: &ObservationEngine) {
         let provider =
             wikilabs_observation::clipboard::ClipboardProvider::new();
         tracing::info!("[Observation] Registering clipboard provider");
+        println!("[OBS] >>> Registered clipboard provider");
         engine.register_provider(Box::new(provider)).await;
     }
 
@@ -105,11 +119,13 @@ async fn register_providers(engine: &ObservationEngine) {
         tracing::info!(
             "[Observation] Registering browser provider"
         );
+        println!("[OBS] >>> Registered browser provider (Windows)");
         engine.register_provider(Box::new(provider)).await;
     }
 
     // Screen capture provider — stub on all platforms, not registered
     // TODO: Implement screen capture for Windows (DXGI) and Linux (X11/Wayland)
+    println!("[OBS] >>> Provider registration complete");
 
     let count = {
         let mut c = 3; // active_window + clipboard + browser

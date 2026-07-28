@@ -35,7 +35,7 @@ function Skills() {
 
   const fetchSkills = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/skill_list', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/skill_list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: {} }),
@@ -60,7 +60,7 @@ function Skills() {
     if (!skill) return;
     try {
       const cmd = skill.enabled ? 'skill_disable' : 'skill_enable';
-      const res = await fetch(`http://localhost:1420/api/commands/${cmd}`, {
+      const res = await fetch(`http://127.0.0.1:1420/api/commands/${cmd}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { name } }),
@@ -79,7 +79,7 @@ function Skills() {
 
   const validateSkill = async (name: string) => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/skill_validate', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/skill_validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { name } }),

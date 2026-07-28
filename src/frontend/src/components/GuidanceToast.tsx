@@ -41,7 +41,7 @@ function GuidanceToast() {
 
   const poll = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/guidance_get_active_recommendations', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/guidance_get_active_recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: {} }),

@@ -40,7 +40,7 @@ function Knowledge() {
 
   const fetchPacks = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/knowledge_list_packs', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/knowledge_list_packs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: {} }),
@@ -67,7 +67,7 @@ function Knowledge() {
     if (!pack) return;
     try {
       const cmd = pack.enabled ? 'knowledge_disable_pack' : 'knowledge_enable_pack';
-      const res = await fetch(`http://localhost:1420/api/commands/${cmd}`, {
+      const res = await fetch(`http://127.0.0.1:1420/api/commands/${cmd}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { name } }),
@@ -89,7 +89,7 @@ function Knowledge() {
 
   const reindexPack = async (name: string) => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/knowledge_reindex_pack', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/knowledge_reindex_pack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { name } }),
@@ -108,7 +108,7 @@ function Knowledge() {
 
   const checkValidation = async (name: string) => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/knowledge_get_validation_report', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/knowledge_get_validation_report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { name } }),

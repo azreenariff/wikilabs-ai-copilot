@@ -70,7 +70,7 @@ function SetupWizard() {
       // Uses retryFetch so it survives early startup when the API server
       // hasn't bound to the port yet (the server can take ~30s to init).
       const readyRes = await retryFetch(
-        'http://localhost:1420/ready',
+        'http://127.0.0.1:1420/ready',
         { method: 'GET' },
         5,   // max 5 retries
         1000, // start with 1s delay
@@ -85,7 +85,7 @@ function SetupWizard() {
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const retryRes = await fetch('http://localhost:1420/ready', {
+            const retryRes = await fetch('http://127.0.0.1:1420/ready', {
               signal: controller.signal,
               headers: { Connection: 'close' },
             });
@@ -109,7 +109,7 @@ function SetupWizard() {
       }
 
       const res = await retryFetch(
-        'http://localhost:1420/api/commands/list_models',
+        'http://127.0.0.1:1420/api/commands/list_models',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -145,7 +145,7 @@ function SetupWizard() {
     setError('');
     try {
       const res = await retryFetch(
-        'http://localhost:1420/api/commands/update_settings',
+        'http://127.0.0.1:1420/api/commands/update_settings',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -169,7 +169,7 @@ function SetupWizard() {
       if (data.success) {
         // Explicitly mark first run as complete
         const firstRunRes = await retryFetch(
-          'http://localhost:1420/api/commands/set_first_run_complete',
+          'http://127.0.0.1:1420/api/commands/set_first_run_complete',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -183,7 +183,7 @@ function SetupWizard() {
         setStep(5);
         // Minimize main window to tray after setup
         const hideRes = await retryFetch(
-          'http://localhost:1420/api/commands/hide_main_window',
+          'http://127.0.0.1:1420/api/commands/hide_main_window',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -199,7 +199,7 @@ function SetupWizard() {
         setTimeout(async () => {
           try {
             await retryFetch(
-              'http://localhost:1420/api/commands/advice_chat_open',
+              'http://127.0.0.1:1420/api/commands/advice_chat_open',
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

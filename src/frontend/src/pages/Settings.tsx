@@ -85,7 +85,7 @@ function Settings() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
-      const res = await fetch('http://localhost:1420/api/commands/list_models', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/list_models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
@@ -115,7 +115,7 @@ function Settings() {
 
   useEffect(() => {
     // Fetch saved settings
-    fetch('http://localhost:1420/api/commands/get_settings', {
+    fetch('http://127.0.0.1:1420/api/commands/get_settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ params: {} }),
@@ -146,7 +146,7 @@ function Settings() {
       .catch(() => {});
 
     // Fetch available providers
-    fetch('http://localhost:1420/api/commands/list_providers', {
+    fetch('http://127.0.0.1:1420/api/commands/list_providers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ params: {} }),
@@ -180,7 +180,7 @@ function Settings() {
     setSaving(true);
     setStatus('');
     try {
-      await fetch('http://localhost:1420/api/commands/update_settings', {
+      await fetch('http://127.0.0.1:1420/api/commands/update_settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: settings }),
@@ -197,7 +197,7 @@ function Settings() {
     setTestResult('testing');
     try {
       const res = await retryFetch(
-        'http://localhost:1420/api/commands/test_connection',
+        'http://127.0.0.1:1420/api/commands/test_connection',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

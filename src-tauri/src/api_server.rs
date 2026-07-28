@@ -1391,6 +1391,8 @@ pub fn start_api_server(
     knowledge_path: Option<std::path::PathBuf>,
     app_handle: Option<Arc<tauri::AppHandle>>,
 ) -> Result<(), String> {
+    println!("[API] >>> start_api_server(port={}) called", port);
+    tracing::info!("[API] >>> start_api_server(port={}) called", port);
     // Clone app_handle for use inside the AI loop closure (state will be consumed by the move)
     let app_handle_for_loop = app_handle.clone();
 
@@ -1522,6 +1524,8 @@ pub fn start_api_server(
             .map_err(|e| format!("Failed to create tokio runtime: {}", e));
         
         if let Ok(rt) = rt {
+            println!("[API] >>> Tokio multi-threaded runtime created OK");
+            tracing::info!("[API] >>> Tokio multi-threaded runtime created OK");
             // Initialize knowledge packs inside the tokio runtime
             if let Some(ref kdir_path) = kdir_str {
                 info!(dir = %kdir_path, "Loading knowledge packs");
@@ -1530,6 +1534,9 @@ pub fn start_api_server(
                 rt.block_on(async {
                     if let Err(e) = panel.initialize(&kdir).await {
                         error!(error = %e, "Failed to load knowledge packs");
+                        println!("[API] >>> Knowledge packs load FAILED: {}", e);
+                    } else {
+                        println!("[API] >>> Knowledge packs loaded OK");
                     }
                 });
             }
@@ -1537,6 +1544,7 @@ pub fn start_api_server(
             // Initialize observation engine — providers already registered in main.rs
             // via observation::init_observation_engine(). We reuse the shared engine here.
             info!("Observation engine initialized (shared from main.rs)");
+            println!("[API] >>> Observation engine initialized");
 
             // Reset guidance state on startup — fresh session, zero evidence
             {
@@ -1944,13 +1952,25 @@ pub fn start_api_server(
             });
 
             let result = rt.block_on(async {
-                let listener = tokio::net::TcpListener::bind(&addr)
-                    .await
-                    .map_err(|e| format!("Failed to bind to {}: {}", addr, e))?;
+                // TCP bind inside tokio runtime
+                let listener = match tokio::net::TcpListener::bind(&addr).await {
+                    Ok(l) => {
+                        println!("[API] >>> Tokio TCP bound to {}", addr);
+                        tracing::info!("[API] >>> Tokio TCP bound to {}", addr);
+                        l
+                    }
+                    Err(e) => {
+                        println!("[API] >>> Tokio TCP bind FAILED to {}: {}", addr, e);
+                        tracing::error!("[API] >>> Tokio TCP bind FAILED to {}: {}", addr, e);
+                        return Err(format!("Failed to bind to {}: {}", addr, e));
+                    }
+                };
 
                 info!(addr, "API server listening");
 
                 // Signal to frontend that the server is ready to handle requests
+                println!("[API] >>> Ready marker set — server is live!");
+                tracing::info!("[API] >>> Ready marker set — server is live!");
                 crate::api_ready::mark_server_ready();
 
                 if let Err(e) = axum::serve(listener, router).await {

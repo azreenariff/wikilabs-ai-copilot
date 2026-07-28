@@ -1,6 +1,8 @@
 # CHANGELOG
 
-## v1.1.107 — FIX: Preflight crashes + rotating loading phases + real HTTP health check
+## v1.1.108 — Add clear diagnostic logging for Windows troubleshooting
+
+- **Diagnostics:** Added `>>>` console markers (`println!`) alongside `tracing` across the full app startup sequence — API server (thread spawn, Tokio runtime, TCP bind, ready), observation engine (creation, provider registration, start), and frontend (loading, render, setup check). All markers prefixed with `[API]`, `[OBS]`, or `[Wiki Labs]` for easy grepping in Windows Event Viewer / console logs.
 
 - **Critical Fix:** Fixed preflight check panics that caused "Failed to fetch" on startup. The root cause was `Handle::current().block_on()` inside an axum request handler, which panics at runtime (cannot block a tokio thread from within its own runtime). Replaced with `std::thread::spawn` + new tokio runtime (the documented pattern for axum integration).
 - **UI:** Preflight loading spinner now cycles through rotating phase messages ("Checking API server...", "Verifying server readiness...", "Loading settings...", "Preparing interface...") every 2 seconds instead of showing a generic message with bouncing dots.

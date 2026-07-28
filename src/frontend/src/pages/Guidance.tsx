@@ -44,7 +44,7 @@ function Guidance() {
 
   const fetchRecommendations = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/guidance_get_active_recommendations', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/guidance_get_active_recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: {} }),
@@ -62,7 +62,7 @@ function Guidance() {
 
   const fetchEvidence = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/guidance_get_evidence_status', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/guidance_get_evidence_status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: {} }),
@@ -76,7 +76,7 @@ function Guidance() {
 
   const fetchObsStatus = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/observation_get_status', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/observation_get_status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: {} }),
@@ -109,7 +109,7 @@ function Guidance() {
 
   const dismissRec = async (recId: string) => {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/guidance_dismiss_recommendation', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/guidance_dismiss_recommendation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { rec_id: recId } }),

@@ -17,7 +17,7 @@ function About() {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const res = await fetch('http://localhost:1420/api/commands/get_status', {
+        const res = await fetch('http://127.0.0.1:1420/api/commands/get_status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ params: {} }),

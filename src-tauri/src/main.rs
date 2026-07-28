@@ -577,14 +577,20 @@ fn main() {
             let knowledge_path_thread = knowledge_path.clone();
 
             std::thread::spawn(move || {
+                // Diagnostic marker: thread has started
+                tracing::info!("[MAIN] API server thread spawned — calling start_api_server(port=1420)");
+                println!("=== [Wiki Labs] Starting API server on port 1420 ===");
                 api_server::set_shared_app_handle(app_handle_for_thread.clone());
+                tracing::info!("[MAIN] set_shared_app_handle done");
                 match api_server::start_api_server(1420, Some(config_path_clone), skills_path_thread, knowledge_path_thread, Some(Arc::new(app_handle_for_thread))) {
                     Ok(_) => {
-                        info!("API server started successfully in background thread");
+                        tracing::info!("[MAIN] API server started successfully in background thread");
+                        println!("=== [Wiki Labs] API server STARTED OK ===");
                         *api_state_clone.lock().unwrap() = Some(true);
                     }
                     Err(e) => {
-                        error!(error = %e, "Failed to start API server");
+                        tracing::error!("[MAIN] Failed to start API server: {}", e);
+                        println!("=== [Wiki Labs] API server FAILED: {} ===", e);
                         *api_state_clone.lock().unwrap() = None;
                     }
                 }

@@ -28,7 +28,7 @@ function Activity() {
   const fetchActivity = useCallback(async () => {
     try {
       // Fetch system logs
-      const logsRes = await fetch('http://localhost:1420/api/commands/get_logs', {
+      const logsRes = await fetch('http://127.0.0.1:1420/api/commands/get_logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: {} }),
@@ -39,7 +39,7 @@ function Activity() {
       }
 
       // Fetch chat history (default workspace)
-      const historyRes = await fetch('http://localhost:1420/api/commands/get_history', {
+      const historyRes = await fetch('http://127.0.0.1:1420/api/commands/get_history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { workspace_id: 'default', limit: 50 } }),

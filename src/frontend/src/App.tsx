@@ -14,6 +14,7 @@ import PreflightCheck from './pages/PreflightCheck';
 import './App.css';
 
 export default function App() {
+  console.log('[Wiki Labs] >>> App component rendered');
   const [needsSetup, setNeedsSetup] = useState(true);
   const [preflightDone, setPreflightDone] = useState(false);
   const [preflightChecks, setPreflightChecks] = useState<Record<string, { status: string; label: string; detail: string }>>({});
@@ -21,14 +22,16 @@ export default function App() {
 
   useEffect(() => {
     const checkSetup = async () => {
+      console.log('[Wiki Labs] >>> checkSetup started');
       try {
         // Step 1: Wait for the API server to be ready (polled up to 40 times, 500ms apart = 20s max).
+        console.log('[Wiki Labs] >>> Checking API server /ready endpoint');
         let serverReady = false;
         for (let r = 0; r < 40; r++) {
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000);
-            const res = await fetch('http://localhost:1420/ready', { signal: controller.signal });
+            const res = await fetch('http://127.0.0.1:1420/ready', { signal: controller.signal });
             clearTimeout(timeoutId);
             const data = await res.json();
             if (data.ready) {
@@ -50,7 +53,7 @@ export default function App() {
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 15000);
-          const pfRes = await fetch('http://localhost:1420/api/preflight_check', {
+          const pfRes = await fetch('http://127.0.0.1:1420/api/preflight_check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ test_provider: true }),
@@ -74,7 +77,7 @@ export default function App() {
           try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);
-            const res = await fetch('http://localhost:1420/api/commands/get_settings', {
+            const res = await fetch('http://127.0.0.1:1420/api/commands/get_settings', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ params: {} }),
@@ -85,6 +88,7 @@ export default function App() {
             if (data.success && data.value) {
               settingsData = data.value;
             }
+            console.log('[Wiki Labs] >>> API server /ready response received');
             break; // success
           } catch {
             if (attempt < 4) {
@@ -98,15 +102,16 @@ export default function App() {
 
         if (settingsData && settingsData.ai_provider?.api_key) {
           // API key is configured — hide main window and open floating advice chat
+          console.log('[Wiki Labs] >>> AI key found, showing main UI');
           setNeedsSetup(false);
-          fetch('http://localhost:1420/api/commands/hide_main_window', {
+          fetch('http://127.0.0.1:1420/api/commands/hide_main_window', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ params: {} }),
           }).catch(() => {});
           // Also open the floating advice chat window on return visits
           setTimeout(() => {
-            fetch('http://localhost:1420/api/commands/advice_chat_open', {
+            fetch('http://127.0.0.1:1420/api/commands/advice_chat_open', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ params: {} }),
@@ -114,6 +119,7 @@ export default function App() {
           }, 1500); // small delay to let API server be ready
         } else {
           // No API key configured — show wizard
+          console.log('[Wiki Labs] >>> No AI key found, showing setup wizard');
           setNeedsSetup(true);
         }
       } catch (e) {
@@ -207,7 +213,7 @@ function AppLayout() {
   });
 
   useEffect(() => {
-    fetch('http://localhost:1420/api/commands/get_status', {
+    fetch('http://127.0.0.1:1420/api/commands/get_status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ params: {} }),

@@ -50,7 +50,7 @@ function ChatAssistant() {
 
   async function loadHistory() {
     try {
-      const res = await fetch('http://localhost:1420/api/commands/get_history', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/get_history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { workspace_id: 'default', limit: 50 } }),
@@ -149,7 +149,7 @@ function ChatAssistant() {
         aiMessage = `[${attachmentPreviews.length} image(s) attached - see preview above]\n\n${aiMessage}`;
       }
 
-      const res = await fetch('http://localhost:1420/api/commands/send_message', {
+      const res = await fetch('http://127.0.0.1:1420/api/commands/send_message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
