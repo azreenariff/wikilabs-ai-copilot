@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v1.1.102 - FIX: Add AbortController timeout to frontend fetch to prevent "Testing..." stall
+
+- **Fix:** Setup wizard and Settings page `retryFetch` helper now uses `AbortController` with 15-second timeout per fetch attempt. Previously, when the API server was slow to respond (initialization phase, high load, or network issues), the browser's native `fetch` API would hang indefinitely because it has no default timeout, causing the "Test Connection" button to show "Testing..." and never resolve.
+- **Fix:** Settings page `fetchModels` function also added 15-second AbortController timeout, preventing the "Refresh models" button from hanging indefinitely.
+- **Fix:** Setup wizard's `/ready` polling loop now uses a 10-second timeout on each fetch attempt instead of a plain `fetch` without timeout.
+
 ## v1.1.101 - FIX: build.rs generates clean advice-chat.html with correct JS/CSS hashes at compile time
 
 - **Critical Fix:** The `build.rs` script now dynamically copies JS/CSS files from `src/frontend/dist/assets/` into `src-tauri/assets/` at compile time, eliminating the hash mismatch between advice-chat.html and the actual bundled assets. On CI builds, Vite generates new content hashes — previously the advice-chat.html hardcoded old hashes from the local development build, causing React to fail to mount.
