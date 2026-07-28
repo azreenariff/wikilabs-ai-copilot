@@ -19,6 +19,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::services::ServeDir;
 use tracing::{error, info, warn};
 use wikilabs_ai::AiProvider;
 use tauri::AppHandle;
@@ -1121,6 +1122,8 @@ pub fn create_router(state: ApiServerState) -> Router {
             format!("{{\"ready\":{}}}", if ready { "true" } else { "false" })
         }))
         .route("/advice-chat", get(move || async move { Html(advice_html.to_string()) }))
+        // Serve static assets (JS, CSS, images) for the advice-chat window
+        .nest_service("/assets", ServeDir::new("../assets"))
         .layer(cors)
         .fallback(|method: axum::http::Method, uri: axum::http::Uri| async move {
             warn!("[API] FALLBACK HIT — method={} uri={}", method, uri);
