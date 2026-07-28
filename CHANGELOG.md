@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v1.1.111 — FIX: WebView2 fetch hangs on localhost — added CSP for http origins + 60s total timeout
+
+- **Critical Fix:** WebView2 blocks `fetch('http://127.0.0.1:1420/ready')` from a `tauri://localhost` page due to mixed content/security policy. Added explicit `csp` in `tauri.conf.json` allowing `http://127.0.0.1` and `http://localhost` in `connect-src` and `default-src` so fetch calls from the frontend to the local API server are allowed.
+- **Safety net:** Added a 60-second total startup timeout on the `checkSetup` function. If the AbortController doesn't work in this WebView2 environment, the app still transitions to the UI instead of hanging forever.
+- **Diagnostics:** Loading phase now shows "Startup timeout — showing interface anyway" if the 60s timeout fires, making it obvious.
+
 ## v1.1.110 — FIX: Startup hang — improved /ready polling + diagnostic logging
 
 - **Fix:** Removed invalid `"security": {}` from `tauri.conf.json`. This key doesn't exist in Tauri v2 and could have caused WebView2 misconfiguration on some builds.

@@ -22,6 +22,14 @@ export default function App() {
   const [loadingPhase, setLoadingPhase] = useState('Initializing...');
 
   useEffect(() => {
+    // Total startup timeout: 60 seconds. If everything hangs (AbortController doesn't work
+    // in this WebView2), this ensures the app never stays on the loading screen forever.
+    const totalTimeout = setTimeout(() => {
+      console.error('[Wiki Labs] >>> Total startup timeout reached (60s) — forcing main UI');
+      setLoadingPhase('Startup timeout — showing interface anyway');
+      setTimeout(() => setShowingMain(true), 3000);
+    }, 60000);
+
     const checkSetup = async () => {
       console.log('[Wiki Labs] >>> checkSetup started');
       try {
@@ -141,6 +149,8 @@ export default function App() {
         }
       } catch (e) {
         console.error('[App] Error during setup check:', e);
+      } finally {
+        clearTimeout(totalTimeout);
       }
     };
     checkSetup();
