@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v1.1.113 — FIX: Advice-chat blank window (build.rs path resolution)
+
+- **Critical Fix:** Fixed advice-chat floating window showing blank on Windows. The build.rs `build.rs` used relative paths (`../src/frontend/dist`) that resolved incorrectly when Cargo runs build scripts from a different working directory. This caused advice-chat.html to always reference stale JS hashes, resulting in a blank window. Switched to `env!("CARGO_MANIFEST_DIR")` for reliable absolute paths.
+
+
 ## v1.1.112 — FIX: WebView2 fetch hangs on localhost — bind API server to 0.0.0.0 + 60s total timeout
 
 - **Critical Fix:** WebView2 can't reach `http://127.0.0.1:1420` from a `tauri://localhost` page — the fetch hangs or is blocked. Bound the API server to `0.0.0.0:{port}` instead of `127.0.0.1:{port}` so the WebView2 can connect.

@@ -32,11 +32,26 @@ fn generate_advice_chat_html(frontend_dist: &Path, target_path: &Path) -> std::i
     Ok(())
 }
 
+fn ensure_copy(src: &Path, dst: &Path) -> std::io::Result<()> {
+    // Only copy if source is newer or destination doesn't exist
+    let dst_exists = dst.exists();
+    let src_mtime = fs::metadata(src)?.modified()?;
+    if dst_exists {
+        let dst_mtime = fs::metadata(dst)?.modified()?;
+        if src_mtime <= dst_mtime {
+            return Ok(());
+        }
+    }
+    fs::copy(src, dst)?;
+    println!("cargo:warning=Copied {} to assets/", src.file_name().unwrap().to_string_lossy());
+    Ok(())
+}
+
 fn main() {
-    // Only copy if the frontend dist exists (it won't during dev if user
-    // hasn't run `npm run build` yet)
-    let frontend_dist = Path::new("../src/frontend/dist");
-    let target_assets = Path::new("../assets");
+    // Resolve paths relative to src-tauri/ (where cargo runs build.rs from)
+    let workspace_root = env!("CARGO_MANIFEST_DIR"); // = src-tauri/
+    let frontend_dist = Path::new(workspace_root).join("../src/frontend/dist");
+    let target_assets = Path::new(workspace_root).join("assets");
 
     if frontend_dist.exists() {
         println!("cargo:warning=Building with frontend dist...");
@@ -72,12 +87,14 @@ fn main() {
         if index_src.exists() {
             if let Err(e) = fs::copy(&index_src, target_assets.join("index.html")) {
                 eprintln!("Warning: failed to copy index.html: {}", e);
+            } else {
+                println!("cargo:warning=Copied index.html to assets/");
             }
         }
 
         // Generate a clean advice-chat.html (remove debug overlay)
         if let Err(e) = generate_advice_chat_html(
-            frontend_dist,
+            &frontend_dist,
             target_assets.join("advice-chat.html").as_path(),
         ) {
             eprintln!("Warning: failed to generate advice-chat.html: {}", e);
@@ -89,13 +106,10 @@ fn main() {
         );
     }
 
-    // Tell cargo to re-run this script if the frontend dist changes
+    // Tell cargo to re-run this script when these change
     println!("cargo:rerun-if-changed=../src/frontend/dist");
     println!("cargo:rerun-if-changed=../src/frontend/dist/assets");
-
-    // Also rebuild if the assets themselves change (dev mode)
-    println!("cargo:rerun-if-changed=../assets");
-    println!("cargo:rerun-if-changed=../assets/advice-chat.html");
+    println!("cargo:rerun-if-changed=../src/frontend/dist/index.html");
 
     tauri_build::build();
 }
