@@ -360,6 +360,9 @@ fn handle_preflight_check(state: &ApiServerState, req_params: Value) -> (StatusC
     let mut all_ok = true;
 
     // Check 1: API server process is running (we are it, so always pass)
+    // Note: The frontend performs an actual HTTP /health check and shows the
+    // result as "API Server" with the response body. This backend check is
+    // kept as a fallback for non-HTTP invocations (e.g. embedded mode).
     checks.insert("api_server_running".to_string(), serde_json::json!({
         "status": "pass",
         "label": "API Server",

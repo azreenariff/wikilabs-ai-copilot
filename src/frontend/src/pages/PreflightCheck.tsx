@@ -68,6 +68,24 @@ export default function PreflightCheck({ checks, onComplete }: PreflightCheckPro
     // Otherwise, fetch from backend
     const runPreflight = async () => {
       try {
+        // Step 1: Health check — verify API server actually responds to HTTP
+        const healthCtrl = new AbortController();
+        const healthTimeout = setTimeout(() => healthCtrl.abort(), 5000);
+        const healthRes = await fetch('http://localhost:1420/health', {
+          signal: healthCtrl.signal,
+        });
+        clearTimeout(healthTimeout);
+
+        if (!healthRes.ok) {
+          if (!cancelled) {
+            setError('API server is not responding');
+            setLoading(false);
+          }
+          return;
+        }
+        const healthData = await healthRes.text();
+
+        // Step 2: Full preflight check
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -83,9 +101,17 @@ export default function PreflightCheck({ checks, onComplete }: PreflightCheckPro
 
         if (!cancelled) {
           if (data.value) {
+            // Inject the health check result as the first item
             const mapped: Record<string, CheckItem> = {};
+            mapped['api_server_health'] = {
+              status: healthRes.ok ? 'pass' : 'fail',
+              label: 'API Server',
+              detail: healthData.trim(),
+            };
             for (const [key, item] of Object.entries(data.value)) {
-              mapped[key] = {
+              // Re-map: Server Ready -> API Server (consolidate)
+              const mappedKey = key === 'ready_endpoint' ? 'api_server_ready' : key;
+              mapped[mappedKey] = {
                 status: (item as any).status || 'skip',
                 label: (item as any).label || key,
                 detail: (item as any).detail || '',
