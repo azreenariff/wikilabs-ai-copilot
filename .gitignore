@@ -51,3 +51,8 @@ target/doctor/
 scripts/
 # Frontend dependencies
 src/frontend/node_modules/
+
+# Build artifacts from build.rs
+src-tauri/assets/index-*.js
+src-tauri/assets/index-*.css
+src-tauri/assets/index.html
