@@ -313,11 +313,18 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
         format!("{}/v1/models", endpoint.trim_end_matches('/'))
     };
     info!(endpoint, url, "Testing AI provider connection");
-    match reqwest::Client::new()
+
+    // Use HTTP/1 only to avoid HTTP/2 SETTINGS_TIMEOUT issues
+    let client = reqwest::Client::builder()
+        .http1_only()
+        .build().unwrap_or_else(|_| reqwest::Client::new());
+
+    match client
         .get(&url)
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
-        .timeout(std::time::Duration::from_secs(10))
+        .header("Connection", "close")
+        .timeout(std::time::Duration::from_secs(15))
         .send()
         .await
     {
@@ -356,7 +363,20 @@ async fn handle_get_settings(state: &ApiServerState) -> (StatusCode, String) {
 
 async fn handle_update_settings(state: &ApiServerState, params: Value) -> (StatusCode, String) {
     let mut settings = state.settings.lock().unwrap();
-    settings.settings = params.clone();
+
+    // Merge incoming params into existing settings instead of replacing entirely.
+    // This preserves theme, log_level, privacy_mode, first_run_complete, etc.
+    let mut merged = if let Some(existing) = settings.settings.as_object() {
+        existing.clone()
+    } else {
+        serde_json::Map::new()
+    };
+    if let Some(params_obj) = params.as_object() {
+        for (key, value) in params_obj {
+            merged.insert(key.clone(), value.clone());
+        }
+    }
+    settings.settings = serde_json::Value::Object(merged);
 
     // Update AI connection status based on whether api_key is configured
     if let Some(ai_provider) = settings.settings.get("ai_provider") {
@@ -603,12 +623,15 @@ async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCo
 
     info!(endpoint, url, "Fetching models from provider");
 
-    let mut builder = reqwest::Client::new().get(&url).header("Content-Type", "application/json");
+    let mut builder = reqwest::Client::builder()
+        .http1_only()
+        .build().unwrap_or_else(|_| reqwest::Client::new());
+    let mut request = builder.get(&url).header("Content-Type", "application/json");
     if !api_key.is_empty() {
-        builder = builder.header("Authorization", format!("Bearer {}", api_key));
+        request = request.header("Authorization", format!("Bearer {}", api_key));
     }
 
-    match builder.timeout(std::time::Duration::from_secs(5)).send().await {
+    match request.timeout(std::time::Duration::from_secs(5)).send().await {
         Ok(response) if response.status().is_success() => {
             match response.json::<Value>().await {
                 Ok(data) => {

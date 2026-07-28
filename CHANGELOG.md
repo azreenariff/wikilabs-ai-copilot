@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v1.1.103 - FIX: Settings persistence merge + HTTP/2 SETTINGS_TIMEOUT in AI provider connections
+
+- **Fix:** Setup wizard "Test Connection" now persists AI provider config properly. Previously, `handle_update_settings` replaced the entire settings object with only `{ "ai_provider": {...} }`, losing all other settings fields. Now merges incoming params into existing settings, preserving theme, log_level, first_run_complete, etc.
+- **Fix:** "Test Connection" and "List Models" no longer timeout from HTTP/2 SETTINGS_TIMEOUT. Both `reqwest::Client` instances now use `http1_only()` to eliminate the HTTP/2 SETTINGS frame ACK hang. Added `Connection: close` header to prevent stale connection accumulation.
+- **Fix:** Test connection timeout increased from 10s to 15s to match frontend UI display.
+- **Fix:** `handle_list_models` also uses HTTP/1 only to prevent the same connection pooling issue when fetching available models.
+
 ## v1.1.102 - FIX: Add AbortController timeout to frontend fetch to prevent "Testing..." stall
 
 - **Fix:** Setup wizard and Settings page `retryFetch` helper now uses `AbortController` with 15-second timeout per fetch attempt. Previously, when the API server was slow to respond (initialization phase, high load, or network issues), the browser's native `fetch` API would hang indefinitely because it has no default timeout, causing the "Test Connection" button to show "Testing..." and never resolve.
