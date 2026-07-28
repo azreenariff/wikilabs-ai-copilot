@@ -1508,7 +1508,7 @@ pub fn start_api_server(
     let kdir = knowledge_dir_to_use.clone();
     let kdir_str = kdir.as_ref().map(|d| d.to_string_lossy().to_string());
 
-    let addr = format!("127.0.0.1:{port}");
+    let addr = format!("0.0.0.0:{port}");
 
     info!(addr, "Starting API server in background thread");
 
