@@ -1,6 +1,12 @@
 # CHANGELOG
 
-## v1.1.100 - FIX: Floating advice chat window renders correctly
+## v1.1.101 - FIX: build.rs generates clean advice-chat.html with correct JS/CSS hashes at compile time
+
+- **Critical Fix:** The `build.rs` script now dynamically copies JS/CSS files from `src/frontend/dist/assets/` into `src-tauri/assets/` at compile time, eliminating the hash mismatch between advice-chat.html and the actual bundled assets. On CI builds, Vite generates new content hashes — previously the advice-chat.html hardcoded old hashes from the local development build, causing React to fail to mount.
+- **Fix:** Also generates advice-chat.html from the frontend's index.html, removing the debug "HTML LOADED OK" red overlay that was previously hardcoded in the HTML file.
+- **Result:** The floating advice chat window now always loads the correct React bundle regardless of the build environment.
+
+## v1.1.101 - FIX: Floating advice chat window renders correctly
 
 - **Critical Fix:** The floating "AI Copilot — Live Advice" window showed a red screen with "HTML LOADED OK" instead of the Guidance UI. The API server was serving advice-chat.html but not the referenced static assets (/assets/*.js, /assets/*.css), so React never mounted. Added `tower-http` `fs` feature and `ServeDir::new("../assets")` to serve the static files at `/assets/` path.
 
