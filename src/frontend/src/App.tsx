@@ -10,11 +10,14 @@ import Knowledge from './pages/Knowledge';
 import Activity from './pages/Activity';
 import Settings from './pages/Settings';
 import About from './pages/About';
+import PreflightCheck from './pages/PreflightCheck';
 import './App.css';
 
 export default function App() {
   const [needsSetup, setNeedsSetup] = useState(true);
-  const [checking, setChecking] = useState(true);
+  const [preflightDone, setPreflightDone] = useState(false);
+  const [preflightChecks, setPreflightChecks] = useState<Record<string, { status: string; label: string; detail: string }>>({});
+  const [showingMain, setShowingMain] = useState(false);
 
   useEffect(() => {
     const checkSetup = async () => {
@@ -40,11 +43,32 @@ export default function App() {
 
         if (!serverReady) {
           // Backend never became ready — fall through to main UI
-          setChecking(false);
           return;
         }
 
-        // Step 2: Server is ready. Now check setup status.
+        // Step 2: Run pre-flight check (health + optional provider test)
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
+          const pfRes = await fetch('http://localhost:1420/api/preflight_check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ test_provider: true }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          const pfData = await pfRes.json();
+          if (pfData.success && pfData.value) {
+            setPreflightChecks(pfData.value);
+            setPreflightDone(true);
+          }
+        } catch (pfErr) {
+          // Preflight check failed — still continue, just mark as incomplete
+          console.warn('[App] Preflight check failed, continuing anyway:', pfErr);
+          setPreflightDone(true);
+        }
+
+        // Step 3: Check setup status
         let settingsData: any = null;
         for (let attempt = 0; attempt < 5; attempt++) {
           try {
@@ -94,74 +118,66 @@ export default function App() {
         }
       } catch (e) {
         console.error('[App] Error during setup check:', e);
-      } finally {
-        setChecking(false);
       }
     };
     checkSetup();
   }, []);
 
-  if (checking) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: '#0f0f23',
-        color: '#a1a1aa', fontSize: '14px',
-      }}>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-          }
-          @keyframes dot-bounce {
-            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-            40% { transform: scale(1); opacity: 1; }
-          }
-        `}</style>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '10px', marginBottom: '16px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            animation: 'pulse 2s ease-in-out infinite',
-            position: 'relative',
-          }}>
-            <div style={{
-              position: 'absolute', inset: '8px', borderRadius: '6px',
-              border: '2px solid rgba(255,255,255,0.3)',
-              animation: 'spin 2s linear infinite',
-            }} />
-          </div>
-          <div style={{
-            display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center',
-            height: '20px',
-          }}>
-            <span>Loading</span>
-            <span style={{
-              display: 'inline-flex', gap: '3px',
-            }}>
-              <span style={{
-                animation: 'dot-bounce 1.4s ease-in-out infinite',
-                animationDelay: '0ms',
-              }}>.</span>
-              <span style={{
-                animation: 'dot-bounce 1.4s ease-in-out infinite',
-                animationDelay: '0.2s',
-              }}>.</span>
-              <span style={{
-                animation: 'dot-bounce 1.4s ease-in-out infinite',
-                animationDelay: '0.4s',
-              }}>.</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    );
+  // Show pre-flight check screen briefly, then transition to SetupWizard or main UI
+  if (preflightDone && !showingMain) {
+    return <PreflightCheck checks={preflightChecks} onComplete={() => setShowingMain(true)} />;
   }
 
+  // Show loading while preflight is running
+  if (!preflightDone) {
+    return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      height: '100vh', background: '#0f0f23',
+    }}>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        @keyframes dot-bounce {
+          0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+          40% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '14px', marginBottom: '20px',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          animation: 'pulse 2s ease-in-out infinite',
+          position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"
+            style={{ animation: 'spin 1.5s linear infinite' }}>
+            <path d="M21 12a9 9 0 11-6.219-8.56" />
+          </svg>
+        </div>
+        <h2 style={{ color: '#e4e4e7', fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
+          Starting up...
+        </h2>
+        <p style={{ color: '#71717a', fontSize: '13px', marginBottom: '16px' }}>
+          Checking server health and configuration
+        </p>
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+          <span style={{ animation: 'dot-bounce 1.4s ease-in-out infinite', animationDelay: '0ms' }}>.</span>
+          <span style={{ animation: 'dot-bounce 1.4s ease-in-out infinite', animationDelay: '0.2s' }}>.</span>
+          <span style={{ animation: 'dot-bounce 1.4s ease-in-out infinite', animationDelay: '0.4s' }}>.</span>
+        </div>
+      </div>
+    </div>
+  );
+  }
+
+  // Preflight complete — show SetupWizard or main UI
   if (needsSetup) {
     return <SetupWizard />;
   }

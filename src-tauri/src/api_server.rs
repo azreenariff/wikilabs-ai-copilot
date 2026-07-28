@@ -276,6 +276,8 @@ pub async fn api_handler(
             let body = req.params.get("body").and_then(|v| v.as_str()).unwrap_or("").to_string();
             handle_guidance_show_toast(&title, &body).await
         },
+        // Pre-flight checks
+        "preflight_check" => handle_preflight_check(&state, req.params),
         // System commands
         "get_status" => handle_get_status().await,
         "observation_get_status" => handle_observation_get_status(&state).await,
@@ -345,6 +347,180 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
             (StatusCode::OK, api_response(false, None, Some(format!("Cannot reach endpoint: {}", e))))
         }
     }
+}
+
+/// Pre-flight check handler: verifies API server health and optionally tests AI provider.
+/// Returns structured results for frontend checklist UI.
+fn handle_preflight_check(state: &ApiServerState, req_params: Value) -> (StatusCode, String) {
+    let test_provider = req_params.get("test_provider")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let mut checks = serde_json::Map::new();
+    let mut all_ok = true;
+
+    // Check 1: API server process is running (we are it, so always pass)
+    checks.insert("api_server_running".to_string(), serde_json::json!({
+        "status": "pass",
+        "label": "API Server",
+        "detail": "Running"
+    }));
+
+    // Check 2: /ready endpoint is responding
+    let ready = crate::api_ready::is_server_ready();
+    if ready {
+        checks.insert("ready_endpoint".to_string(), serde_json::json!({
+            "status": "pass",
+            "label": "Server Ready",
+            "detail": "Fully initialized"
+        }));
+    } else {
+        all_ok = false;
+        checks.insert("ready_endpoint".to_string(), serde_json::json!({
+            "status": "fail",
+            "label": "Server Ready",
+            "detail": "Still initializing..."
+        }));
+    }
+
+    // Check 3: Settings loaded from disk
+    let settings_val = {
+        let settings_guard = state.settings.lock().unwrap();
+        settings_guard.settings.clone()
+    };
+    if let Ok(config_path) = state.config_path.lock() {
+        if let Some(ref path) = *config_path {
+            if let Ok(content) = fs::read_to_string(path) {
+                if let Ok(parsed) = serde_json::from_str::<Value>(&content) {
+                    {
+                        let mut settings_guard = state.settings.lock().unwrap();
+                        settings_guard.settings = parsed.clone();
+                    }
+                    checks.insert("settings_loaded".to_string(), serde_json::json!({
+                        "status": "pass",
+                        "label": "Settings",
+                        "detail": format!("Loaded from {}", path.display())
+                    }));
+                } else {
+                    all_ok = false;
+                    checks.insert("settings_loaded".to_string(), serde_json::json!({
+                        "status": "fail",
+                        "label": "Settings",
+                        "detail": "Invalid JSON"
+                    }));
+                }
+            } else {
+                // No settings file yet — OK for first run
+                checks.insert("settings_loaded".to_string(), serde_json::json!({
+                    "status": "skip",
+                    "label": "Settings",
+                    "detail": "No config yet (first run)"
+                }));
+            }
+        } else {
+            checks.insert("settings_loaded".to_string(), serde_json::json!({
+                "status": "skip",
+                "label": "Settings",
+                "detail": "No config path set"
+            }));
+        }
+    }
+
+    // Check 4: AI provider connection (optional) — reuse existing handle_test_connection logic
+    if test_provider {
+        if let Some(ai_provider) = settings_val.get("ai_provider") {
+            if let Some(ai_obj) = ai_provider.as_object() {
+                let api_key = ai_obj.get("api_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let endpoint = ai_obj.get("endpoint").and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+                if api_key.is_empty() || endpoint.is_empty() {
+                    checks.insert("ai_provider".to_string(), serde_json::json!({
+                        "status": "skip",
+                        "label": "AI Provider",
+                        "detail": "Not configured"
+                    }));
+                } else {
+                    // Block on the async test connection synchronously
+                    let test_result = tokio::runtime::Handle::current().block_on(
+                        handle_test_connection(state, serde_json::json!({
+                            "api_key": api_key,
+                            "endpoint": endpoint
+                        }))
+                    );
+                    if test_result.0 == StatusCode::OK {
+                        if let Ok(parsed_body) = serde_json::from_str::<Value>(&test_result.1) {
+                            if let Some(val) = parsed_body.get("value") {
+                                if val.as_bool() == Some(true) {
+                                    checks.insert("ai_provider".to_string(), serde_json::json!({
+                                        "status": "pass",
+                                        "label": "AI Provider",
+                                        "detail": "Connection successful"
+                                    }));
+                                } else {
+                                    all_ok = false;
+                                    let detail = parsed_body.get("error")
+                                        .and_then(|e| e.as_str())
+                                        .unwrap_or("Connection test failed")
+                                        .to_string();
+                                    checks.insert("ai_provider".to_string(), serde_json::json!({
+                                        "status": "fail",
+                                        "label": "AI Provider",
+                                        "detail": detail
+                                    }));
+                                }
+                            }
+                        }
+                    } else {
+                        all_ok = false;
+                        checks.insert("ai_provider".to_string(), serde_json::json!({
+                            "status": "fail",
+                            "label": "AI Provider",
+                            "detail": test_result.1
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    // Check 5: Knowledge packs loaded
+    if let Ok(packs_dir) = std::env::var("WIKILABS_KNOWLEDGE_DIR") {
+        if let Ok(entries) = std::fs::read_dir(&packs_dir) {
+            let mut pack_count = 0;
+            for entry in entries.flatten() {
+                if entry.path().extension().and_then(|e| e.to_str()) == Some("pack.json") {
+                    pack_count += 1;
+                }
+            }
+            if pack_count > 0 {
+                checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
+                    "status": "pass",
+                    "label": "Knowledge Packs",
+                    "detail": format!("{} pack(s) loaded from {}", pack_count, packs_dir)
+                }));
+            } else {
+                checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
+                    "status": "skip",
+                    "label": "Knowledge Packs",
+                    "detail": "No packs found"
+                }));
+            }
+        } else {
+            checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
+                "status": "skip",
+                "label": "Knowledge Packs",
+                "detail": "Cannot read knowledge directory"
+            }));
+        }
+    } else {
+        checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
+            "status": "skip",
+            "label": "Knowledge Packs",
+            "detail": "Not configured"
+        }));
+    }
+
+    (StatusCode::OK, api_response(all_ok, Some(Value::Object(checks)), None))
 }
 
 async fn handle_get_settings(state: &ApiServerState) -> (StatusCode, String) {

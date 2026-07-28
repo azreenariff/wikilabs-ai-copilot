@@ -1,6 +1,12 @@
 # CHANGELOG
 
-## v1.1.105 — FIX: Loading animations + resolve flaky test connection timeouts
+## v1.1.106 — FIX: Pre-flight check screen with knowledge packs validation
+
+- **Pre-flight check screen:** Added a startup health-check page that verifies the API server is running, the /ready endpoint responds, settings are loaded, the AI provider connection works (when configured), and knowledge packs are loaded. Each check shows a spinning indicator that resolves to a checkmark or error icon. The screen auto-transitions to the main UI or SetupWizard after showing results.
+- **Knowledge packs validation:** Added a dedicated pre-flight check that scans the configured knowledge directory for `.pack.json` files and reports the count. Shows pass (with count), skip (no packs or directory not found), or skip (not configured).
+- **Frontend startup flow:** Rewrote App.tsx to show a loading spinner during preflight, then the detailed check results page, then auto-transition to SetupWizard or main UI after 2.5 seconds.
+
+## v1.1.105 — FIX: Loading animations + fix flaky test connection timeouts
 
 - **Loading animation (splash screen):** Replaced plain "Loading..." text with a gradient icon that pulses, a spinning ring around it, and bouncing dots for a polished startup feel.
 - **Loading animation (setup wizard):** Test Connection button now shows a spinner icon during testing.
