@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v1.1.110 — FIX: Startup hang — improved /ready polling + diagnostic logging
+
+- **Fix:** Removed invalid `"security": {}` from `tauri.conf.json`. This key doesn't exist in Tauri v2 and could have caused WebView2 misconfiguration on some builds.
+- **Fix:** Reduced `/ready` polling from 40 attempts to 20 attempts (10s max instead of 20s) to prevent the loading screen from hanging indefinitely when the API server never responds.
+- **Fix:** Added `cache: 'no-store'` and `mode: 'cors'` to fetch calls to prevent any caching-related hangs in WebView2.
+- **Diagnostics:** Added detailed logging for every `/ready` poll attempt (attempt number, response status, response data, errors) — makes it much easier to debug Windows WebView2 network issues.
+- **UI:** Loading screen now shows the current phase ("Initializing..." → "Checking API server..." → "Running pre-flight checks...") so you can see exactly where the app is stuck.
+
 ## v1.1.109 — FIX: Preflight check not reaching API handler
 
 - **Critical Fix:** Fixed preflight check failing on startup. The frontend was sending `POST /api/preflight_check` but no route existed for that path. The handler was registered under `/api/commands/preflight_check` but the frontend was calling the wrong URL. Fixed both `App.tsx` and `PreflightCheck.tsx` to use `/api/commands/preflight_check`.

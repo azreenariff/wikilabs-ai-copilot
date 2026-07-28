@@ -19,40 +19,55 @@ export default function App() {
   const [preflightDone, setPreflightDone] = useState(false);
   const [preflightChecks, setPreflightChecks] = useState<Record<string, { status: string; label: string; detail: string }>>({});
   const [showingMain, setShowingMain] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState('Initializing...');
 
   useEffect(() => {
     const checkSetup = async () => {
       console.log('[Wiki Labs] >>> checkSetup started');
       try {
-        // Step 1: Wait for the API server to be ready (polled up to 40 times, 500ms apart = 20s max).
+        // Step 1: Wait for the API server to be ready (polled up to 20 times, 500ms apart = 10s max).
         console.log('[Wiki Labs] >>> Checking API server /ready endpoint');
+        setLoadingPhase('Checking API server...');
         let serverReady = false;
-        for (let r = 0; r < 40; r++) {
+        let firstError = null;
+        for (let r = 0; r < 20; r++) {
           try {
+            console.log(`[Wiki Labs] >>> Poll /ready attempt ${r+1}/20`);
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
-            const res = await fetch('http://127.0.0.1:1420/ready', { signal: controller.signal });
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch('http://127.0.0.1:1420/ready', { 
+              signal: controller.signal,
+              cache: 'no-store',
+              mode: 'cors',
+            });
             clearTimeout(timeoutId);
+            console.log(`[Wiki Labs] >>> /ready response: status=${res.status}`);
             const data = await res.json();
+            console.log(`[Wiki Labs] >>> /ready data:`, JSON.stringify(data));
             if (data.ready) {
               serverReady = true;
+              console.log('[Wiki Labs] >>> Server ready!');
               break;
             }
-          } catch {
-            // Server not ready yet, keep polling
+          } catch (e: any) {
+            if (!firstError) firstError = e;
+            console.warn(`[Wiki Labs] >>> /ready attempt ${r+1} failed:`, e?.message || e);
           }
           await new Promise(r => setTimeout(r, 500));
         }
 
         if (!serverReady) {
+          console.warn('[Wiki Labs] >>> Server never became ready. First error:', firstError?.message || firstError);
           // Backend never became ready — fall through to main UI
           return;
         }
 
         // Step 2: Run pre-flight check (health + optional provider test)
+        console.log('[Wiki Labs] >>> Running preflight check...');
+        setLoadingPhase('Running pre-flight checks...');
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000);
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
           const pfRes = await fetch('http://127.0.0.1:1420/api/commands/preflight_check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -60,14 +75,16 @@ export default function App() {
             signal: controller.signal,
           });
           clearTimeout(timeoutId);
+          console.log('[Wiki Labs] >>> Preflight response:', pfRes.status);
           const pfData = await pfRes.json();
+          console.log('[Wiki Labs] >>> Preflight data:', JSON.stringify(pfData));
           if (pfData.success && pfData.value) {
             setPreflightChecks(pfData.value);
             setPreflightDone(true);
           }
-        } catch (pfErr) {
+        } catch (pfErr: any) {
           // Preflight check failed — still continue, just mark as incomplete
-          console.warn('[App] Preflight check failed, continuing anyway:', pfErr);
+          console.warn('[App] Preflight check failed, continuing anyway:', pfErr?.message || pfErr);
           setPreflightDone(true);
         }
 
@@ -168,10 +185,10 @@ export default function App() {
           </svg>
         </div>
         <h2 style={{ color: '#e4e4e7', fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
-          Starting up...
+          Wiki Labs AI Copilot
         </h2>
         <p style={{ color: '#71717a', fontSize: '13px', marginBottom: '16px' }}>
-          Checking server health and configuration
+          {loadingPhase}
         </p>
         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
           <span style={{ animation: 'dot-bounce 1.4s ease-in-out infinite', animationDelay: '0ms' }}>.</span>
