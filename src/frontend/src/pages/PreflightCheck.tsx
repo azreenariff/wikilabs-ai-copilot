@@ -17,6 +17,23 @@ export default function PreflightCheck({ checks, onComplete }: PreflightCheckPro
   const [error, setError] = useState<string | null>(null);
   const [allDone, setAllDone] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
+  const [loadingPhaseText, setLoadingPhaseText] = useState("Checking API server...");
+
+  // Cycle through loading phase messages while fetching
+  useEffect(() => {
+    const phases = [
+      "Checking API server...",
+      "Verifying server readiness...",
+      "Loading settings...",
+      "Preparing interface...",
+    ];
+    let phaseIndex = 0;
+    const interval = setInterval(() => {
+      phaseIndex = (phaseIndex + 1) % phases.length;
+      setLoadingPhaseText(phases[phaseIndex]);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,9 +126,9 @@ export default function PreflightCheck({ checks, onComplete }: PreflightCheckPro
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
           }
-          @keyframes dot-bounce {
-            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-            40% { transform: scale(1); opacity: 1; }
+          @keyframes fade-in-out {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
           }
           @keyframes checkmark {
             0% { transform: scale(0); opacity: 0; }
@@ -138,14 +155,12 @@ export default function PreflightCheck({ checks, onComplete }: PreflightCheckPro
           <h2 style={{ color: '#e4e4e7', fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>
             Starting up...
           </h2>
-          <p style={{ color: '#71717a', fontSize: '13px', marginBottom: '16px' }}>
-            Checking server health and configuration
+          <p style={{
+            color: '#71717a', fontSize: '13px', marginBottom: '16px',
+            animation: 'fade-in-out 2s ease-in-out infinite',
+          }}>
+            {loadingPhaseText}
           </p>
-          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-            <span style={{ animation: 'dot-bounce 1.4s ease-in-out infinite', animationDelay: '0ms' }}>.</span>
-            <span style={{ animation: 'dot-bounce 1.4s ease-in-out infinite', animationDelay: '0.2s' }}>.</span>
-            <span style={{ animation: 'dot-bounce 1.4s ease-in-out infinite', animationDelay: '0.4s' }}>.</span>
-          </div>
         </div>
       </div>
     );
