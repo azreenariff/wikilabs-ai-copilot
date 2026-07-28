@@ -1,6 +1,10 @@
 # CHANGELOG
 
-## v1.1.104 - FIX: Advice-chat floating window renders JS/CSS on Windows (static asset path resolution)
+## v1.1.105 — FIX: Loading animations + resolve flaky test connection timeouts
+
+- **Loading animation (splash screen):** Replaced plain "Loading..." text with a gradient icon that pulses, a spinning ring around it, and bouncing dots for a polished startup feel.
+- **Loading animation (setup wizard):** Test Connection button now shows a spinner icon during testing.
+- **Flaky test connection timeouts:** Fixed the root cause — stale connections accumulating from connection pooling + tight 15s timeout. Backend timeout: 15s → 20s. Frontend retryFetch default timeout: 15s → 25s. Disabled HTTP connection pooling on all outbound reqwest clients (`pool_idle_timeout(0)`, `pool_max_idle_per_host(0)`) to prevent stale CLOSE_WAIT connections from accumulating across multiple test attempts. Added `Connection: close` headers throughout.
 
 - **Critical Fix:** The floating "AI Copilot — Live Advice" window showed a blank screen because the API server's static asset resolver (`ServeDir::new("../assets")`) used a relative path that didn't resolve correctly on Windows NSIS-installed builds. The HTML file loaded (via `include_str!`), but the JS/CSS files at `/assets/` returned 404, so React never mounted.
 - **Fix:** The `api_server.rs` now resolves the assets directory using a multi-tier approach: (1) binary's parent directory + `assets/` (covers Windows NSIS installs), (2) Tauri resource_dir() (covers Tauri bundler), (3) current working directory, (4) crate root's `../assets/`. This ensures the correct path is found regardless of deployment environment.
