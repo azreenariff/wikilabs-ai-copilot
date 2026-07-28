@@ -83,11 +83,15 @@ function Settings() {
     }
     setLoadingModels(true);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       const res = await fetch('http://localhost:1420/api/commands/list_models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       const data = await res.json();
       if (data.success && Array.isArray(data.value) && data.value.length > 0) {
         setFetchedModels(data.value);
@@ -539,5 +543,4 @@ function Settings() {
     </div>
   );
 }
-
 export default Settings;
