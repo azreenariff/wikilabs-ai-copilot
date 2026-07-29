@@ -366,7 +366,7 @@ fn build_observation_context() -> String {
     // Run the intent analyzer — this synthesizes all observations into a structured summary
     let summary = engine.analyze_intent();
 
-    if summary.current_activity.is_empty() && summary.intent.is_none() && summary.issues.is_empty() {
+    if summary.current_activity.is_empty() && summary.intent.is_none() && summary.issues.is_empty() && summary.infrastructure_context.is_empty() && summary.suggested_guidance.is_empty() {
         return String::new();
     }
 
@@ -471,21 +471,49 @@ fn build_observation_context() -> String {
 
     // ── Suggested Guidance ──
     if !summary.suggested_guidance.is_empty() {
-        context.push_str("
-## Suggested Guidance
-");
+        context.push_str("\n## Suggested Guidance\n");
         for guidance in &summary.suggested_guidance {
-            context.push_str(&format!("- {}
-", guidance.chars().take(300).collect::<String>()));
+            context.push_str(&format!("- {}\n", guidance.chars().take(300).collect::<String>()));
+        }
+    }
+
+    // ── Infrastructure Context ──
+    if !summary.infrastructure_context.is_empty() {
+        context.push_str("\n## Infrastructure Context\n");
+        for ctx in &summary.infrastructure_context {
+            context.push_str(&format!("- {}\n", ctx.chars().take(300).collect::<String>()));
+        }
+    }
+
+    // ── Correlated Insight ──
+    // Help the AI connect the dots across browser + terminal + vision
+    if !summary.issues.is_empty() && (!summary.current_activity.is_empty() || summary.intent.is_some()) {
+        context.push_str("\n## What to Focus On\n");
+        // Priority: errors first, then intent, then related context
+        context.push_str("- **Fix errors first** — resolve detected issues before anything else\n");
+        if let Some(ref intent) = summary.intent {
+            context.push_str(&format!("- **User is trying to**: {} (confidence: {:.0}%)\n", intent.intent, intent.confidence * 100.0));
+            if !intent.infrastructure_targets.is_empty() {
+                context.push_str(&format!("- **Key systems**: {}\n", intent.infrastructure_targets.join(", ")));
+            }
+        }
+        if !summary.current_activity.iter().any(|a| matches!(a.category, wikilabs_observation::ActivityCategory::VisualError)) {
+            for activity in &summary.current_activity {
+                if matches!(activity.category, wikilabs_observation::ActivityCategory::VisualInsight | wikilabs_observation::ActivityCategory::Troubleshooting) {
+                    context.push_str(&format!("- **Watch for**: {}\n", activity.description.chars().take(150).collect::<String>()));
+                    break;
+                }
+            }
         }
     }
 
     tracing::debug!(
-        "Intent analysis produced context in {} µs, {} activities, {} issues, {} guidance items",
+        "Intent analysis produced context in {} µs, {} activities, {} issues, {} guidance items, {} infrastructure context",
         start.elapsed().as_micros(),
         summary.current_activity.len(),
         summary.issues.len(),
-        summary.suggested_guidance.len()
+        summary.suggested_guidance.len(),
+        summary.infrastructure_context.len()
     );
 
     context
