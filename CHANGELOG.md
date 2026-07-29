@@ -1,3 +1,8 @@
+## v1.1.119 — FIX: Observation engine never ran + knowledge packs preflight detection
+
+- **Critical Fix:** Fixed observation engine polling loop never running. `start_observation_engine()` spawned the `run_loop` via `tokio::spawn` and returned immediately, causing the tokio runtime to drop and cancel the polling loop. Added a blocking loop in `start_observation_engine` to keep the runtime alive while providers poll. This was the root cause of no guidance appearing — observations weren't being collected at all.
+- **Knowledge packs preflight fix:** Preflight check now detects `manifest.yaml` files (correct pack format) instead of only looking for non-existent `pack.json` files. Shows correct "5 pack(s) loaded" status.
+
 ## v1.1.118 — FIX: Observation engine race condition + knowledge packs preflight
 
 - **Critical Fix:** Fixed observation engine race condition where the API server started before the observation engine initialized, causing `EVENT_RECEIVER` to be `None` and all observation events to be silently dropped. Observation thread now starts first with a 3-second wait before API server begins.
