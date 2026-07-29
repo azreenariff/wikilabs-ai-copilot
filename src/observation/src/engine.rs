@@ -7,7 +7,9 @@
 //! 2. Starts all enabled providers.
 //! 3. Runs a polling loop that collects observations from all providers.
 //! 4. Feeds events to the event bus → session tracker → guidance panel.
-//! 5. When an error is detected or engineering context is found, generates
+//! 5. Produces heartbeat events periodically so the AI always has context
+//!    even when no state changes are detected.
+//! 6. When an error is detected or engineering context is found, generates
 //!    a recommendation card and pushes it to the guidance panel.
 
 use std::sync::Arc;
@@ -158,12 +160,13 @@ impl ObservationEngine {
 
             // Poll all providers
             let registry = self.registry.lock().await;
+            let provider_count = registry.all_providers().len();
             let mut event_count = 0usize;
 
             tracing::info!(
                 "[ObservationEngine] Poll tick #{} — polling {} providers",
                 tick,
-                registry.all_providers().len()
+                provider_count
             );
 
             for provider in registry.all_providers() {
@@ -223,10 +226,36 @@ impl ObservationEngine {
                     event_count
                 );
             } else {
+                // No state-change events — produce a heartbeat so the AI always
+                // has recent context. This prevents the "no guidance appears"
+                // problem when the user is working in a stable window (e.g.
+                // browsing an engineering portal without switching windows).
                 tracing::debug!(
-                    "[ObservationEngine] Poll tick #{} returned 0 events (nothing changed)",
+                    "[ObservationEngine] Poll tick #{} returned 0 events — producing heartbeat",
                     tick
                 );
+
+                let heartbeat_event = crate::event::ObservationEvent::new(
+                    crate::event::EventType::ApplicationChanged,
+                    crate::event::ProviderType::ActiveWindow,
+                    "engine_heartbeat".to_string(),
+                    None,
+                    crate::event::ObservationPayload::new(serde_json::json!({
+                        "type": "heartbeat",
+                        "poll_tick": tick,
+                        "provider_count": provider_count,
+                        "message": "Observation engine is active — AI can use current context for guidance"
+                    })),
+                );
+
+                if let Err(e) = self.event_bus.publish(heartbeat_event.clone()) {
+                    tracing::warn!(
+                        "[ObservationEngine] Failed to publish heartbeat event: {}",
+                        e
+                    );
+                } else {
+                    event_count += 1;
+                }
             }
 
             // Wait for next poll cycle

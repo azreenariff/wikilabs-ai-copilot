@@ -1,4 +1,9 @@
 ## v1.1.123 — ENH: Enhanced intent analyzer with structured observation context
+### [UNRELEASED] — Observation Engine Fixes
+
+- **Critical Fix:** Observation engine was not producing events when user activity was stable (no window/clipboard/browser changes). Added **heartbeat events** that fire every 5-second poll cycle when no state-change events are detected. This ensures the AI always has context to work with, even when the user is working in a stable window (e.g. browsing an engineering portal without switching apps).
+- **Noise filter fix:** Heartbeat events (`engine_heartbeat`) are now explicitly allowed through the noise filter instead of being dropped alongside "inactive" events from providers.
+
 
 - **Enhanced IntentAnalyzer:** New module that synthesizes browser, terminal, app data into structured 'intent summaries' for proactive AI guidance. Categories detected activity (troubleshooting, deployment, monitoring, etc.) with confidence scores, detects intent and goals, lists infrastructure targets, and generates suggested next steps.
 - **Browser content in events:** Browser provider now includes visible_text (up to 2000 chars) in event payloads, enabling content-level intent detection instead of just URL/title.

@@ -1654,6 +1654,10 @@ pub fn start_api_server(
                     ) {
                         return true;
                     }
+                    // Allow heartbeat events — they keep the AI context alive
+                    if event.source == "engine_heartbeat" {
+                        return false;
+                    }
                     false
                 };
 
