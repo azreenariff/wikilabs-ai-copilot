@@ -1988,9 +1988,28 @@ pub fn start_api_server(
                 info!(addr, "API server listening");
 
                 // Signal to frontend that the server is ready to handle requests
+                // MUST happen BEFORE knowledge pack loading — frontend polls /ready
+                // to determine if the API server is alive. Knowledge packs are an
+                // optional enhancement; the server can serve API commands without them.
                 println!("[API] >>> Ready marker set — server is live!");
                 tracing::info!("[API] >>> Ready marker set — server is live!");
                 crate::api_ready::mark_server_ready();
+
+                // Load knowledge packs inside the runtime but AFTER marking ready
+                // so the frontend can start communicating with the server immediately
+                if let Some(ref kdir_path) = kdir_str {
+                    info!(dir = %kdir_path, "Loading knowledge packs (background)");
+                    let panel = KnowledgePanel::instance();
+                    let kdir = kdir_path.clone();
+                    rt.spawn(async move {
+                        if let Err(e) = panel.initialize(&kdir).await {
+                            error!(error = %e, "Failed to load knowledge packs");
+                            println!("[API] >>> Knowledge packs load FAILED: {}", e);
+                        } else {
+                            println!("[API] >>> Knowledge packs loaded OK");
+                        }
+                    });
+                }
 
                 if let Err(e) = axum::serve(listener, router).await {
                     error!(error = %e, "API server error");

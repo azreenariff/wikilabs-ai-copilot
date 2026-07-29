@@ -1,4 +1,10 @@
-## v1.1.119 — FIX: Observation engine never ran + knowledge packs preflight detection
+## v1.1.120 — FIX: Startup timeout on Windows (preflight check robustness)
+
+- **Critical Fix:** Fixed "Startup timeout — showing interface anyway" issue on Windows. The `/ready` marker was only set *after* knowledge packs loaded, causing the frontend's preflight check to timeout on slow systems. Now the ready marker fires immediately after the TCP listener binds — knowledge packs load in a background task afterwards. The server can serve API commands without knowledge packs loaded.
+- **Startup timeout reduced:** 60s → 30s total startup timeout. The frontend now polls `/ready` with a shorter 3s fetch timeout and 300ms retry interval (9s total for server-ready check), so the user isn't stuck waiting.
+- **Graceful fallback:** When the API server never becomes ready, the frontend now sets `preflightDone=true` immediately instead of silently hanging. The app shows "Interface ready (server unavailable)" and falls through to main UI.
+- **Preflight check is now best-effort:** If `preflight_check` returns no data or fails, the frontend continues anyway — it no longer blocks the UI.
+- **Settings fetch timeout reduced:** 5s → 3s per attempt with faster retries.
 
 - **Critical Fix:** Fixed observation engine polling loop never running. `start_observation_engine()` spawned the `run_loop` via `tokio::spawn` and returned immediately, causing the tokio runtime to drop and cancel the polling loop. Added a blocking loop in `start_observation_engine` to keep the runtime alive while providers poll. This was the root cause of no guidance appearing — observations weren't being collected at all.
 - **Knowledge packs preflight fix:** Preflight check now detects `manifest.yaml` files (correct pack format) instead of only looking for non-existent `pack.json` files. Shows correct "5 pack(s) loaded" status.

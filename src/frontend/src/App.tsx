@@ -22,27 +22,31 @@ export default function App() {
   const [loadingPhase, setLoadingPhase] = useState('Initializing...');
 
   useEffect(() => {
-    // Total startup timeout: 60 seconds. If everything hangs (AbortController doesn't work
-    // in this WebView2), this ensures the app never stays on the loading screen forever.
+    // Total startup timeout: 30 seconds (was 60 — reduced so the user isn't stuck waiting).
+    // If everything hangs (AbortController doesn't work in this WebView2), this ensures
+    // the app never stays on the loading screen forever.
     const totalTimeout = setTimeout(() => {
-      console.error('[Wiki Labs] >>> Total startup timeout reached (60s) — forcing main UI');
+      console.error('[Wiki Labs] >>> Total startup timeout reached (30s) — forcing main UI');
       setLoadingPhase('Startup timeout — showing interface anyway');
-      setTimeout(() => setShowingMain(true), 3000);
-    }, 60000);
+      setTimeout(() => setShowingMain(true), 0); // no delay — show immediately
+    }, 30000);
 
     const checkSetup = async () => {
       console.log('[Wiki Labs] >>> checkSetup started');
       try {
-        // Step 1: Wait for the API server to be ready (polled up to 20 times, 500ms apart = 10s max).
+        // Step 1: Wait for the API server to be ready.
+        // - Polled up to 30 times (30 * 300ms = 9s) with a short 3s fetch timeout.
+        // - If we can't reach 127.0.0.1:1420 at all, the fetch will fail quickly
+        //   and we fall through gracefully to main UI.
         console.log('[Wiki Labs] >>> Checking API server /ready endpoint');
         setLoadingPhase('Checking API server...');
         let serverReady = false;
-        let firstError = null;
-        for (let r = 0; r < 20; r++) {
+        let firstError: any = null;
+        for (let r = 0; r < 30; r++) {
           try {
-            console.log(`[Wiki Labs] >>> Poll /ready attempt ${r+1}/20`);
+            console.log(`[Wiki Labs] >>> Poll /ready attempt ${r+1}/30`);
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
             const res = await fetch('http://127.0.0.1:1420/ready', { 
               signal: controller.signal,
               cache: 'no-store',
@@ -59,23 +63,29 @@ export default function App() {
             }
           } catch (e: any) {
             if (!firstError) firstError = e;
-            console.warn(`[Wiki Labs] >>> /ready attempt ${r+1} failed:`, e?.message || e);
+            // After 10 failed attempts, start logging more aggressively
+            if (r >= 10) {
+              console.warn(`[Wiki Labs] >>> /ready attempt ${r+1} failed:`, e?.message || e);
+            }
           }
-          await new Promise(r => setTimeout(r, 500));
+          await new Promise(r => setTimeout(r, 300));
         }
 
         if (!serverReady) {
           console.warn('[Wiki Labs] >>> Server never became ready. First error:', firstError?.message || firstError);
           // Backend never became ready — fall through to main UI
+          setLoadingPhase('Interface ready (server unavailable)');
+          setPreflightDone(true);
           return;
         }
 
         // Step 2: Run pre-flight check (health + optional provider test)
+        // The preflight check is a best-effort — if it fails, continue anyway.
         console.log('[Wiki Labs] >>> Running preflight check...');
         setLoadingPhase('Running pre-flight checks...');
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
           const pfRes = await fetch('http://127.0.0.1:1420/api/commands/preflight_check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -89,6 +99,10 @@ export default function App() {
           if (pfData.success && pfData.value) {
             setPreflightChecks(pfData.value);
             setPreflightDone(true);
+          } else {
+            // Preflight returned no data — still continue
+            console.warn('[Wiki Labs] >>> Preflight returned no value:', JSON.stringify(pfData));
+            setPreflightDone(true);
           }
         } catch (pfErr: any) {
           // Preflight check failed — still continue, just mark as incomplete
@@ -101,7 +115,7 @@ export default function App() {
         for (let attempt = 0; attempt < 5; attempt++) {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
             const res = await fetch('http://127.0.0.1:1420/api/commands/get_settings', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -113,7 +127,7 @@ export default function App() {
             if (data.success && data.value) {
               settingsData = data.value;
             }
-            console.log('[Wiki Labs] >>> API server /ready response received');
+            console.log('[Wiki Labs] >>> Settings response received');
             break; // success
           } catch {
             if (attempt < 4) {
