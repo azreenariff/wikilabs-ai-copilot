@@ -295,7 +295,6 @@ mod screen_capture_windows {
                         }
 
             // Get process name for more detail
-            let mut process_name = String::new();
             if !foreground_hwnd.0.is_null() {
                 let mut pid: u32 = 0;
                 let _ = GetWindowThreadProcessId(foreground_hwnd, Some(&mut pid));

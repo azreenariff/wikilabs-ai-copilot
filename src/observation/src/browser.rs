@@ -302,6 +302,7 @@ fn collect_visible_text(_hwnd: isize) -> String {
 }
 
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 unsafe extern "system" fn child_window_text_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
     if lparam.0 == 0 { return FALSE; }
     let ptr = lparam.0 as *mut Vec<HWND>;
