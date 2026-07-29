@@ -1,4 +1,4 @@
-## v1.1.120 — FIX: Startup timeout on Windows (preflight check robustness)
+## v1.1.121 — FIX: Startup timeout + Knowledge packs path + restart endpoint
 
 - **Critical Fix:** Fixed "Startup timeout — showing interface anyway" issue on Windows. The `/ready` marker was only set *after* knowledge packs loaded, causing the frontend's preflight check to timeout on slow systems. Now the ready marker fires immediately after the TCP listener binds — knowledge packs load in a background task afterwards. The server can serve API commands without knowledge packs loaded.
 - **Startup timeout reduced:** 60s → 30s total startup timeout. The frontend now polls `/ready` with a shorter 3s fetch timeout and 300ms retry interval (9s total for server-ready check), so the user isn't stuck waiting.
