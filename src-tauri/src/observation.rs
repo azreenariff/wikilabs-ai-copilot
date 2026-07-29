@@ -138,12 +138,29 @@ async fn register_providers(engine: &ObservationEngine) {
         engine.register_provider(Box::new(provider)).await;
     }
 
-    // Screen capture provider — stub on all platforms, not registered
-    // TODO: Implement screen capture for Windows (DXGI) and Linux (X11/Wayland)
+    // Screen capture provider — captures screenshots, feeds to vision analyzer
+    #[cfg(target_os = "windows")]
+    {
+        let provider = wikilabs_observation::screen_capture::ScreenCaptureProvider::new();
+        tracing::info!("[Observation] Registering screen_capture provider");
+        println!("[OBS] >>> Registered screen_capture provider (Windows)");
+        engine.register_provider(Box::new(provider)).await;
+    }
+
+    // Vision analysis provider — analyzes screenshots via Vision AI
+    {
+        let provider = wikilabs_observation::vision_analyzer::VisionAnalyzerProvider::new();
+        tracing::info!("[Observation] Registering vision_analyzer provider");
+        println!("[OBS] >>> Registered vision_analyzer provider");
+        engine.register_provider(Box::new(provider)).await;
+    }
     println!("[OBS] >>> Provider registration complete");
 
     let count = {
         let mut c = 3; // active_window + clipboard + browser
+        #[cfg(target_os = "windows")]
+        c += 1; // screen_capture
+        c += 1; // vision_analyzer
         c
     };
     tracing::info!("[Observation] {} providers registered", count);

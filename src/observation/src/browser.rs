@@ -256,22 +256,41 @@ use windows::Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, TRUE};
 
 #[cfg(target_os = "windows")]
 fn collect_visible_text(hwnd: HWND) -> String {
-    use windows::Win32::UI::WindowsAndMessaging::EnumChildWindows;
+    use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
 
-    let mut children: Vec<HWND> = Vec::new();
-    unsafe {
-        let _ = EnumChildWindows(hwnd, Some(child_window_text_callback), LPARAM(&mut children as *mut _ as _));
+    // Collect text from ALL nested child windows, not just direct children.
+    // Browser pages often have deeply nested iframes/UI layers.
+    let mut all_texts: Vec<String> = Vec::new();
+    collect_browser_text_recursive(hwnd, &mut all_texts);
+
+    if all_texts.is_empty() {
+        // Fallback: get the main window title/text
+        get_window_text_safe(hwnd).unwrap_or_default()
+    } else {
+        let all_text = all_texts.join(" ");
+        // Increase buffer to 20000 chars for more context (error pages can be long)
+        if all_text.len() > 20000 { all_text[..20000].to_string() } else { all_text }
     }
+}
 
-    let mut child_texts: Vec<String> = Vec::new();
-    for child in &children {
-        if let Some(t) = get_window_text_safe(*child) {
-            if !t.is_empty() { child_texts.push(t); }
+/// Recursively enumerate all nested child windows and collect text from every control.
+#[cfg(target_os = "windows")]
+fn collect_browser_text_recursive(hwnd: HWND, texts: &mut Vec<String>) {
+    unsafe {
+        // Collect text from this window
+        if let Some(t) = get_window_text_safe(hwnd) {
+            if !t.is_empty() {
+                texts.push(t);
+            }
+        }
+
+        // Recurse into child windows
+        let mut children: Vec<HWND> = Vec::new();
+        let _ = EnumChildWindows(hwnd, Some(browser_child_callback), LPARAM(&mut children as *mut _ as _));
+        for child in &children {
+            collect_browser_text_recursive(*child, texts);
         }
     }
-
-    let all_text = child_texts.join(" ");
-    if all_text.len() > 5000 { all_text[..5000].to_string() } else { all_text }
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -282,6 +301,14 @@ fn collect_visible_text(_hwnd: isize) -> String {
 
 #[cfg(target_os = "windows")]
 unsafe extern "system" fn child_window_text_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    if lparam.0 == 0 { return FALSE; }
+    let ptr = lparam.0 as *mut Vec<HWND>;
+    unsafe { (*ptr).push(hwnd); }
+    TRUE
+}
+
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn browser_child_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
     if lparam.0 == 0 { return FALSE; }
     let ptr = lparam.0 as *mut Vec<HWND>;
     unsafe { (*ptr).push(hwnd); }
@@ -533,6 +560,8 @@ impl ObservationProvider for BrowserProvider {
         details.insert("platform".to_string(), serde_json::json!(std::env::consts::OS));
         details
     }
+
+    fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
 #[cfg(test)]

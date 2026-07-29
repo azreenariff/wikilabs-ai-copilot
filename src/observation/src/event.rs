@@ -31,6 +31,8 @@ pub enum ProviderType {
     FileObserver,
     /// Screenshot capture.
     ScreenCapture,
+    /// Vision AI analysis of screenshots.
+    VisionAnalysis,
     /// Custom / user-defined provider.
     Custom(String),
 }
@@ -44,6 +46,7 @@ impl std::fmt::Display for ProviderType {
             ProviderType::Clipboard => write!(f, "clipboard"),
             ProviderType::FileObserver => write!(f, "file_observer"),
             ProviderType::ScreenCapture => write!(f, "screen_capture"),
+            ProviderType::VisionAnalysis => write!(f, "vision_analysis"),
             ProviderType::Custom(name) => write!(f, "{}", name),
         }
     }
@@ -60,6 +63,8 @@ pub enum EventType {
     TerminalCommand,
     /// Screenshot was captured.
     ScreenshotCaptured,
+    /// Vision AI analysis of a screenshot is available.
+    VisionAnalysisResult,
     /// Browser context changed.
     BrowserContextChanged,
     /// Clipboard content changed.
@@ -80,6 +85,7 @@ impl std::fmt::Display for EventType {
             EventType::ApplicationChanged => write!(f, "application_changed"),
             EventType::TerminalCommand => write!(f, "terminal_command"),
             EventType::ScreenshotCaptured => write!(f, "screenshot_captured"),
+            EventType::VisionAnalysisResult => write!(f, "vision_analysis_result"),
             EventType::BrowserContextChanged => write!(f, "browser_context_changed"),
             EventType::ClipboardChanged => write!(f, "clipboard_changed"),
             EventType::ConfigurationFileOpened => write!(f, "configuration_file_opened"),
@@ -238,6 +244,7 @@ mod tests {
         assert_eq!(ProviderType::Clipboard.to_string(), "clipboard");
         assert_eq!(ProviderType::FileObserver.to_string(), "file_observer");
         assert_eq!(ProviderType::ScreenCapture.to_string(), "screen_capture");
+        assert_eq!(ProviderType::VisionAnalysis.to_string(), "vision_analysis");
         assert_eq!(
             ProviderType::Custom("my_provider".to_string()).to_string(),
             "my_provider"
@@ -254,6 +261,10 @@ mod tests {
         assert_eq!(
             EventType::ScreenshotCaptured.to_string(),
             "screenshot_captured"
+        );
+        assert_eq!(
+            EventType::VisionAnalysisResult.to_string(),
+            "vision_analysis_result"
         );
         assert_eq!(
             EventType::BrowserContextChanged.to_string(),

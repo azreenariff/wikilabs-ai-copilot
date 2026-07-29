@@ -315,97 +315,99 @@ mod terminal_windows {
     }
 
     /// Get the visible text content from a terminal window.
-    /// Enhanced to capture more content from PuTTY/MobaXterm, not just the last line.
-    /// On Windows, uses EnumChildWindows to gather text from scrollable content areas.
+    /// Enhanced to capture full buffer content, not just the last line.
+    /// On Windows, recursively enumerates child windows to gather all text areas
+    /// (including scrollable terminal buffer areas inside tab containers).
     fn get_terminal_text(hwnd: &HWND, process_name: &str, class_name: &str) -> String {
+        use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
+
         let result: String = unsafe {
-            // For PuTTY and similar, get the direct window text
-            if class_name.contains("PuTTY") || class_name.contains("Moba") {
+            // Strategy 1: Enumerate ALL child/grandchild windows and collect text from every
+            // text-bearing control (Edit, Static, RichEdit, msctls_statusbar32, SysListView32, etc.)
+            let mut all_texts: Vec<String> = Vec::new();
+            collect_terminal_text_recursive(hwnd, &mut all_texts);
+
+            if !all_texts.is_empty() {
+                // Join all collected text segments, de-duplicate empty lines, take the last 100 lines
+                let full_text = all_texts.join("\n");
+                let lines: Vec<&str> = full_text.lines().filter(|l| !l.trim().is_empty()).collect();
+                // Return last 100 lines (terminal scroll buffer size)
+                let start = if lines.len() > 100 { lines.len() - 100 } else { 0 };
+                lines[start..].join("\n").trim().to_string()
+            } else {
+                // Strategy 2: GetWindowTextW on top-level as fallback
                 let len = GetWindowTextLengthW(*hwnd);
                 if len == 0 {
                     return String::new();
                 }
                 let mut buf = vec![0u16; (len + 1) as usize];
                 let text_len = GetWindowTextW(*hwnd, &mut buf);
-                if text_len > 0 {
-                    return String::from_utf16_lossy(&buf[..text_len as usize])
-                        .lines()
-                        .last()
-                        .unwrap_or("")
-                        .trim()
-                        .to_string();
+                if text_len == 0 {
+                    return String::new();
                 }
+                String::from_utf16_lossy(&buf[..text_len as usize])
+                    .lines()
+                    .last()
+                    .unwrap_or("")
+                    .trim()
+                    .to_string()
             }
-
-            // For Windows Terminal (CascadiaConsole/CascadiaTerminal), try child windows
-            if class_name.contains("Cascadia") || process_name.contains("terminal") {
-                let mut child_hwnds: Vec<HWND> = Vec::new();
-                let _ = EnumChildWindows(
-                    *hwnd,
-                    Some(window_enumeration_callback),
-                    LPARAM(&mut child_hwnds as *mut _ as _),
-                );
-
-                // Check each child for text content
-                for child in &child_hwnds {
-                    let mut child_class_buf = [0u16; 256];
-                    let child_class_len = GetClassNameW(*child, &mut child_class_buf);
-                    let child_class = if child_class_len > 0 {
-                        String::from_utf16_lossy(&child_class_buf[..child_class_len as usize])
-                    } else {
-                        String::new()
-                    };
-                    if child_class.contains("Edit") || child_class.contains("RichEdit") {
-                        let len = GetWindowTextLengthW(*child);
-                        if len > 0 {
-                            let mut buf = vec![0u16; (len + 1) as usize];
-                            let text_len = GetWindowTextW(*child, &mut buf);
-                            if text_len > 0 {
-                                return String::from_utf16_lossy(&buf[..text_len as usize])
-                                    .lines()
-                                    .last()
-                                    .unwrap_or("")
-                                    .trim()
-                                    .to_string();
-                            }
-                        }
-                    }
-                }
-
-                // Fallback: get main window text
-                let len = GetWindowTextLengthW(*hwnd);
-                if len > 0 {
-                    let mut buf = vec![0u16; (len + 1) as usize];
-                    let text_len = GetWindowTextW(*hwnd, &mut buf);
-                    if text_len > 0 {
-                        return String::from_utf16_lossy(&buf[..text_len as usize])
-                            .lines()
-                            .last()
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                    }
-                }
-            }
-
-            // Default fallback: get main window text
-            let len = GetWindowTextLengthW(*hwnd);
-            if len == 0 {
-                return String::new();
-            }
-            let mut buf = vec![0u16; (len + 1) as usize];
-            let text_len = GetWindowTextW(*hwnd, &mut buf);
-            if text_len == 0 {
-                return String::new();
-            }
-            String::from_utf16_lossy(&buf[..text_len as usize])
-                .lines()
-                .last()
-                .unwrap_or("")
-                .trim()
-                .to_string()
         };
         result
+    }
+
+    /// Recursively enumerate child/grandchild windows and collect text from all
+    /// text-bearing controls. Builds a comprehensive picture of terminal content.
+    fn collect_terminal_text_recursive(hwnd: &HWND, texts: &mut Vec<String>) {
+        unsafe {
+            // Get class name to determine if this is a text-bearing control
+            let mut class_buf = [0u16; 256];
+            let class_len = GetClassNameW(*hwnd, &mut class_buf);
+            let class_name = if class_len > 0 {
+                String::from_utf16_lossy(&class_buf[..class_len as usize])
+            } else {
+                String::new()
+            };
+
+            // Text-bearing window classes used by terminal emulators
+            let text_classes = [
+                "Edit", "RichEdit", "RichEdit20A", "RichEdit20W",
+                "msctls_statusbar32", "SysListView32", "DirectUIHWND",
+                "WorkerW", "Shell Embedding", "Shell DocObject View",
+                "TabWindowClass", "MDIClient", "Afx:", "Chrome_WidgetWin",
+            ];
+            let is_text_control = text_classes.iter().any(|tc| class_name.contains(tc));
+
+            // Also check: does the window have text? (terminal output areas)
+            let len = GetWindowTextLengthW(*hwnd);
+            if len > 0 && is_text_control {
+                let mut buf = vec![0u16; (len + 1) as usize];
+                let text_len = GetWindowTextW(*hwnd, &mut buf);
+                if text_len > 0 {
+                    let text = String::from_utf16_lossy(&buf[..text_len as usize]);
+                    if !text.trim().is_empty() {
+                        texts.push(text);
+                    }
+                }
+            } else if len > 0 && !is_text_control {
+                // Even non-typical classes may hold terminal text (MobaXterm tabs, etc.)
+                let mut buf = vec![0u16; (len + 1) as usize];
+                let text_len = GetWindowTextW(*hwnd, &mut buf);
+                if text_len > 0 {
+                    let text = String::from_utf16_lossy(&buf[..text_len as usize]);
+                    if !text.trim().is_empty() {
+                        texts.push(text);
+                    }
+                }
+            }
+
+            // Recurse into child windows (up to reasonable depth)
+            let mut child_hwnds: Vec<HWND> = Vec::new();
+            let _ = EnumChildWindows(*hwnd, Some(window_enumeration_callback), LPARAM(&mut child_hwnds as *mut _ as _));
+            for child in &child_hwnds {
+                collect_terminal_text_recursive(child, texts);
+            }
+        }
     }
 
     /// Windows window enumeration callback.
@@ -664,6 +666,8 @@ impl ObservationProvider for TerminalProvider {
         );
         details
     }
+
+    fn as_any(&self) -> &dyn std::any::Any { self }
 }
 
 #[cfg(test)]

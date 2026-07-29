@@ -173,6 +173,9 @@ pub trait ObservationProvider: Send + Sync {
     fn status_details(&self) -> HashMap<String, serde_json::Value> {
         HashMap::new()
     }
+
+    /// Downcast to concrete type (for engine → provider communication).
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 /// Registry that manages all observation providers.

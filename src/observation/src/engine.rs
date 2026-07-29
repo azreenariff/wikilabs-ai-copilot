@@ -24,6 +24,7 @@ use crate::event_bus::EventBus;
 use crate::session_tracker::SessionTracker;
 use crate::intent_analyzer::IntentAnalyzer;
 use crate::provider::{ObservationProvider, ProviderRegistry, ProviderState};
+use crate::vision_analyzer::VisionAnalyzerProvider;
 
 /// Configuration for the observation engine.
 #[derive(Debug, Clone)]
@@ -371,6 +372,19 @@ impl ObservationEngine {
                         }
                     }
                 }
+                ProviderType::ScreenCapture => {
+                    // Feed screenshot to vision analyzer if available
+                    if let Some(data_base64) = event.payload.data.get("data_base64").and_then(|v| v.as_str()) {
+                        let width = event.payload.data.get("width").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        let height = event.payload.data.get("height").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        let focused_window = event.payload.data
+                            .get("focused_window")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(|| "unknown".to_string());
+                        self.feed_screenshot_to_vision_analyzer(data_base64.to_string(), width, height, focused_window);
+                    }
+                }
                 _ => {}
             }
         }
@@ -597,5 +611,25 @@ impl ObservationEngine {
     /// Check if the engine is running.
     pub async fn is_running(&self) -> bool {
         *self.running.lock().await
+    }
+
+    /// Feed a screenshot from the screen capture provider to the vision analyzer.
+    /// This is called by feed_event() when a ScreenshotCaptured event is received.
+    pub fn feed_screenshot_to_vision_analyzer(
+        &self,
+        data_base64: String,
+        width: u32,
+        height: u32,
+        focused_window: String,
+    ) {
+        let registry = self.registry.blocking_lock();
+        for provider in registry.all_providers() {
+            if provider.provider_type() == ProviderType::VisionAnalysis {
+                if let Some(vision) = provider.as_any().downcast_ref::<VisionAnalyzerProvider>() {
+                    vision.queue_screenshot(data_base64.clone(), width, height, focused_window.clone());
+                    tracing::debug!("[Engine] Screenshot queued for vision analysis");
+                }
+            }
+        }
     }
 }

@@ -48,6 +48,7 @@ pub mod intent_analyzer;
 pub mod cdp_browser;
 #[cfg(windows)]
 pub mod console_output;
+pub mod vision_analyzer;
 
 #[cfg(test)]
 mod tests;
