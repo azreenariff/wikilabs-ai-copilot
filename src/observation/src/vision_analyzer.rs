@@ -449,7 +449,7 @@ fn parse_vision_response(response: &str, focused_window: &str) -> VisionAnalysis
     }
 
     // Extract suggestions (look for sentences with "should", "try", "check", "verify")
-    let sentences: Vec<&str> = response.split(|c| c == '.' || c == '!' || c == '?').collect();
+    let sentences: Vec<&str> = response.split(|c: char| c.is_ascii_punctuation()).collect();
     for sentence in &sentences {
         let s_lower = sentence.to_lowercase();
         if s_lower.contains("should") || s_lower.contains("try") || s_lower.contains("check")

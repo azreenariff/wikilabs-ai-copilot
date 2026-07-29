@@ -386,9 +386,8 @@ impl ObservationEngine {
                         self.feed_screenshot_to_vision_analyzer(data_base64.to_string(), width, height, focused_window);
                     }
                 }
-                ProviderType::VisionAnalysis => {
+                ProviderType::VisionAnalysis if event.event_type == crate::event::EventType::VisionAnalysisResult => {
                     // Phase 3: Capture VisionAnalysisResult event and feed to IntentAnalyzer
-                    if event.event_type == crate::event::EventType::VisionAnalysisResult {
                         if let Some(data_obj) = event.payload.data.as_object() {
                             // Parse the VisionAnalysisResult from the event payload
                             if let Some(inferred_intent) = data_obj.get("inferred_intent").and_then(|v| v.as_str()).map(|s| s.to_string()) {
@@ -422,7 +421,6 @@ impl ObservationEngine {
                                 self.intent_analyzer.set_vision_result(result);
                             }
                         }
-                    }
                 }
                 _ => {}
             }
@@ -631,10 +629,7 @@ impl ObservationEngine {
         let active_app = correlation.get_active_app();
 
         // Get session state for intent analysis
-        let session_state = session.as_ref().map(|s| {
-            // Clone the TroubleshootingSession - it's a Clone type
-            s.clone()
-        });
+        let session_state = session.clone();
 
         self.intent_analyzer.analyze(
             browser_ctx.as_ref(),

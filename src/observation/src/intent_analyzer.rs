@@ -156,6 +156,7 @@ impl IntentAnalyzer {
     }
 
     /// Analyze all available observations and produce a complete intent summary.
+    #[allow(clippy::too_many_arguments)]
     pub fn analyze(
         &self,
         browser_ctx: Option<&BrowserContext>,
@@ -597,7 +598,7 @@ impl IntentAnalyzer {
             }
         }
 
-        confidence = confidence / (activity_count + 1).max(1) as f32;
+        confidence /= (activity_count + 1).max(1) as f32;
         confidence = confidence.min(0.99);
 
         let (intent, category, goal) = if has_troubleshooting {
@@ -719,9 +720,12 @@ impl IntentAnalyzer {
             IssueSeverity::High
         } else if p.contains("403") || p.contains("404") {
             IssueSeverity::Medium
-        } else if p.contains("connection refused") || p.contains("unable to connect") {
-            IssueSeverity::High
-        } else if p.contains("dns") || p.contains("ssl") || p.contains("certificate") {
+        } else if p.contains("connection refused")
+            || p.contains("unable to connect")
+            || p.contains("dns")
+            || p.contains("ssl")
+            || p.contains("certificate")
+        {
             IssueSeverity::High
         } else if p.contains("error") || p.contains("warning") {
             IssueSeverity::Medium

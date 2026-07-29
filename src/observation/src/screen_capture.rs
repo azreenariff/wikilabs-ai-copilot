@@ -474,6 +474,7 @@ mod screen_capture_windows {
 // ── Linux Screen Capture (Stub) ─────────────────────────────────────
 
 #[cfg(not(target_os = "windows"))]
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 fn screen_capture_windows(_config: ScreenCaptureConfig) -> Option<CapturedScreenshot> {
     // Linux: requires X11/xcb or Wayland xdg-desktop-portal
     // Implementation requires libxcb-dev, x11 crate

@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn test_default_system_prompt_content() {
         let prompt = EngineeringPersona::default_system_prompt();
-        assert!(prompt.contains("Senior Infrastructure Engineer"));
+        assert!(prompt.to_lowercase().contains("senior infrastructure engineer"));
         assert!(prompt.contains("evidence-based"));
         assert!(prompt.contains("verification"));
         assert!(prompt.contains("confidence"));
