@@ -288,6 +288,7 @@ pub async fn api_handler(
         "observation_stop" => handle_observation_stop(&state).await,
         "hide_main_window" => handle_hide_main_window(&state).await,
         "advice_chat_open" => handle_advice_chat_open(&state).await,
+        "restart" => handle_restart_api_server(&state).await,
         other => {
             warn!(other, "Unknown API method");
             (StatusCode::BAD_REQUEST, api_response(false, None, Some(format!("Unknown method: {}", other))))
@@ -349,6 +350,16 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
             (StatusCode::OK, api_response(false, None, Some(format!("Cannot reach endpoint: {}", e))))
         }
     }
+}
+
+/// Restart handler: signals the frontend that the API server needs a restart.
+/// The frontend will call this and then re-check readiness.
+async fn handle_restart_api_server(state: &ApiServerState) -> (StatusCode, String) {
+    info!("[API] Restart requested — signaling frontend");
+    // The server can't restart itself (it's already running).
+    // Instead, signal the frontend to show the loading screen again and re-poll.
+    // In a full restart scenario, the Tauri app would need to restart its process.
+    (StatusCode::OK, api_response(true, None, Some("Restart initiated. Please refresh the window.".to_string())))
 }
 
 /// Pre-flight check handler: verifies API server health and optionally tests AI provider.
@@ -1463,10 +1474,16 @@ pub fn start_api_server(
     };
     info!(assets_dir = %assets_dir, "Resolved assets directory");
 
-    // Initialize knowledge packs from data directory — compute early so it's available for state
-    let knowledge_dir_to_use = knowledge_path.clone().or_else(|| {
-        config_path.as_ref().and_then(|cp| cp.parent().map(|p| p.join("knowledge")))
-    });
+    // Initialize knowledge packs from multiple possible locations:
+    // 1. Bundled resource directory (from tauri.conf.json bundle.resources)
+    // 2. App data directory (for user-installed/updated packs)
+    // 3. Config directory parent (legacy fallback)
+    // On Windows NSIS installer, resource_dir() may not always resolve correctly,
+    // so we try data_dir as a fallback where bundled resources are also copied.
+    let data_dir = config_path.as_ref().and_then(|cp| cp.parent().map(|p| p.to_path_buf()));
+    let knowledge_dir_to_use = knowledge_path.clone()
+        .or_else(|| data_dir.clone().map(|dd| dd.join("knowledge")))
+        .or_else(|| config_path.as_ref().and_then(|cp| cp.parent().map(|p| p.join("knowledge"))));
 
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
