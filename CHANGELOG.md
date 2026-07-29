@@ -1,3 +1,9 @@
+## v1.1.118 — FIX: Observation engine race condition + knowledge packs preflight
+
+- **Critical Fix:** Fixed observation engine race condition where the API server started before the observation engine initialized, causing `EVENT_RECEIVER` to be `None` and all observation events to be silently dropped. Observation thread now starts first with a 3-second wait before API server begins.
+- **Knowledge packs "Not configured" fix:** Preflight check now uses the actual knowledge directory path from `ApiServerState` instead of relying on the `WIKILABS_KNOWLEDGE_DIR` environment variable.
+- **Compile fix:** Moved `knowledge_dir_to_use` computation before `ApiServerState` construction to fix forward-reference error.
+
 # CHANGELOG
 
 ## v1.1.117 — FIX: Chat window panic when sending message (nested tokio runtime)
