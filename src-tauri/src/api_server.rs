@@ -682,7 +682,7 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
             context_window as usize,
         );
 
-        // ── Build context-aware message array ──
+        // Build context-aware message array
         // 1. Get chat history (already saved user message above)
         let history = {
             let settings_ref = state.settings.lock().unwrap();
@@ -691,9 +691,28 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         };
 
         // 2. Build system prompt with observation context + recommendations
+        // Spawn a dedicated thread with its own tokio runtime to avoid
+        // "Cannot start a runtime from within a runtime" panic.
         let system_prompt = {
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime for system prompt");
-            rt.block_on(build_context_system_prompt(&history))
+            let history2 = history.clone();
+            let (tx, rx) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Runtime::new()
+                    .expect("Failed to create runtime for system prompt");
+                let prompt = rt.block_on(build_context_system_prompt(&history2));
+                let _ = tx.send(prompt);
+            });
+            // Wait for the spawned thread to complete
+            let mut result: Option<String> = None;
+            let start = std::time::Instant::now();
+            while start.elapsed() < std::time::Duration::from_secs(5) {
+                if let Ok(r) = rx.try_recv() {
+                    result = r;
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            result
         };
 
         // 3. Build the messages array for the AI
@@ -730,8 +749,7 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
             stream: None,
         };
 
-        // Run the AI call on a separate thread with its own tokio runtime
-        // to avoid blocking the axum server's runtime
+        // Run the AI call in a blocking thread to avoid holding up the server
         let response_result = std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new()
                 .expect("Failed to create blocking runtime for AI call");
