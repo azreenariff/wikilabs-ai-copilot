@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 
 use crate::correlation::CorrelationEngine;
 use crate::error_detector::ErrorDetector;
-use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
+use crate::event::{ObservationEvent, ObservationPayload, ProviderType};
 use crate::event_bus::EventBus;
 use crate::session_tracker::SessionTracker;
 use crate::provider::{ObservationProvider, ProviderRegistry, ProviderState};
