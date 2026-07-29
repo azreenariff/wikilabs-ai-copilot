@@ -140,6 +140,8 @@ pub struct ApiRequest {
 pub struct ApiServerState {
     pub settings: Arc<Mutex<ApiServerSettings>>,
     pub config_path: Arc<Mutex<Option<PathBuf>>>,
+    /// The knowledge packs directory used at startup (for preflight checks).
+    pub knowledge_dir: Arc<Mutex<Option<PathBuf>>>,
     /// Optional AppHandle for sending native notifications.
     pub app_handle: Option<Arc<tauri::AppHandle>>,
 }
@@ -450,6 +452,7 @@ fn handle_preflight_check(state: &ApiServerState, req_params: Value) -> (StatusC
                                     let state_clone = ApiServerState {
                                         settings: state.settings.clone(),
                                         config_path: state.config_path.clone(),
+                                        knowledge_dir: state.knowledge_dir.clone(),
                                         app_handle: None,
                                     };
                                     let spawn_handle = std::thread::spawn(move || {
@@ -510,41 +513,32 @@ fn handle_preflight_check(state: &ApiServerState, req_params: Value) -> (StatusC
     }
 
     // Check 5: Knowledge packs loaded
-    if let Ok(packs_dir) = std::env::var("WIKILABS_KNOWLEDGE_DIR") {
-        if let Ok(entries) = std::fs::read_dir(&packs_dir) {
-            let mut pack_count = 0;
-            for entry in entries.flatten() {
-                if entry.path().extension().and_then(|e| e.to_str()) == Some("pack.json") {
-                    pack_count += 1;
+    let kp_status = match state.knowledge_dir.lock().unwrap().as_ref() {
+        Some(kdir) => {
+            match std::fs::read_dir(kdir) {
+                Ok(entries) => {
+                    let mut pack_count = 0;
+                    for entry in entries.flatten() {
+                        if entry.path().extension().and_then(|e| e.to_str()) == Some("pack.json") {
+                            pack_count += 1;
+                        }
+                    }
+                    if pack_count > 0 {
+                        (true, format!("{} pack(s) loaded from {}", pack_count, kdir.display()))
+                    } else {
+                        (false, "No packs found".to_string())
+                    }
                 }
+                Err(_) => (false, format!("Cannot read knowledge directory: {}", kdir.display())),
             }
-            if pack_count > 0 {
-                checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
-                    "status": "pass",
-                    "label": "Knowledge Packs",
-                    "detail": format!("{} pack(s) loaded from {}", pack_count, packs_dir)
-                }));
-            } else {
-                checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
-                    "status": "skip",
-                    "label": "Knowledge Packs",
-                    "detail": "No packs found"
-                }));
-            }
-        } else {
-            checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
-                "status": "skip",
-                "label": "Knowledge Packs",
-                "detail": "Cannot read knowledge directory"
-            }));
         }
-    } else {
-        checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
-            "status": "skip",
-            "label": "Knowledge Packs",
-            "detail": "Not configured"
-        }));
-    }
+        None => (false, "Not configured".to_string()),
+    };
+    checks.insert("knowledge_packs_loaded".to_string(), serde_json::json!({
+        "status": if kp_status.0 { "pass" } else { "skip" },
+        "label": "Knowledge Packs",
+        "detail": kp_status.1
+    }));
 
     (StatusCode::OK, api_response(all_ok, Some(Value::Object(checks)), None))
 }
@@ -1463,9 +1457,15 @@ pub fn start_api_server(
     };
     info!(assets_dir = %assets_dir, "Resolved assets directory");
 
+    // Initialize knowledge packs from data directory — compute early so it's available for state
+    let knowledge_dir_to_use = knowledge_path.clone().or_else(|| {
+        config_path.as_ref().and_then(|cp| cp.parent().map(|p| p.join("knowledge")))
+    });
+
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
+        knowledge_dir: Arc::new(Mutex::new(knowledge_dir_to_use.clone())),
         app_handle,
     };
 
@@ -1516,11 +1516,6 @@ pub fn start_api_server(
         create_skill_knowledge_base("")
     };
     let skill_kb_clone = skill_kb.clone();
-
-    // Initialize knowledge packs from data directory
-    let knowledge_dir_to_use = knowledge_path.clone().or_else(|| {
-        config_path.as_ref().and_then(|cp| cp.parent().map(|p| p.join("knowledge")))
-    });
 
     // Store knowledge path for later async initialization
     let kdir = knowledge_dir_to_use.clone();

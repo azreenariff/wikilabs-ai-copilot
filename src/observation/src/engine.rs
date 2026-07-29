@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 
 use crate::correlation::CorrelationEngine;
 use crate::error_detector::ErrorDetector;
-use crate::event::{ObservationEvent, ObservationPayload, ProviderType};
+use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
 use crate::event_bus::EventBus;
 use crate::session_tracker::SessionTracker;
 use crate::provider::{ObservationProvider, ProviderRegistry, ProviderState};
@@ -137,8 +137,11 @@ impl ObservationEngine {
     /// Run the observation polling loop (blocking). This runs in a background thread.
     pub async fn run_loop(&self) {
         let interval = Duration::from_secs(self.config.poll_interval_secs);
+        let mut tick = 0u64;
 
         loop {
+            tick += 1;
+
             // Check if we should stop
             {
                 let running = self.running.lock().await;
@@ -150,6 +153,13 @@ impl ObservationEngine {
 
             // Poll all providers
             let registry = self.registry.lock().await;
+            let mut event_count = 0usize;
+
+            tracing::info!(
+                "[ObservationEngine] Poll tick #{} — polling {} providers",
+                tick,
+                registry.all_providers().len()
+            );
 
             for provider in registry.all_providers() {
                 // Skip disabled providers
@@ -168,7 +178,15 @@ impl ObservationEngine {
                 // Try to observe
                 match provider.observe().await {
                     Ok(events) => {
+                        tracing::debug!(
+                            provider = %provider.name(),
+                            events = events.len(),
+                            "[ObservationEngine] Provider returned events"
+                        );
+
                         for event in &events {
+                            event_count += 1;
+
                             // Publish to event bus
                             if let Err(e) = self.event_bus.publish(event.clone()) {
                                 tracing::warn!(
@@ -192,6 +210,19 @@ impl ObservationEngine {
             }
 
             drop(registry);
+
+            if event_count > 0 {
+                tracing::info!(
+                    "[ObservationEngine] Poll tick #{} returned {} events — publishing to event bus",
+                    tick,
+                    event_count
+                );
+            } else {
+                tracing::debug!(
+                    "[ObservationEngine] Poll tick #{} returned 0 events (nothing changed)",
+                    tick
+                );
+            }
 
             // Wait for next poll cycle
             tokio::time::sleep(interval).await;

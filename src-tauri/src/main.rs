@@ -577,6 +577,24 @@ fn main() {
             let knowledge_path_thread = knowledge_path.clone();
 
             std::thread::spawn(move || {
+                let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+                rt.block_on(async {
+                    let engine = observation::init_observation_engine().await;
+                    observation::start_observation_engine(engine).await;
+                });
+            });
+
+            // Wait for the observation engine to initialize before starting the API server.
+            // The API server's event drain needs get_event_receiver() to return Some.
+            std::thread::sleep(std::time::Duration::from_secs(3));
+            tracing::info!("[MAIN] Observation engine initialization wait complete — now starting API server");
+
+            // Clone app_handle BEFORE the thread spawn to avoid capturing &mut tauri::App
+            let app_handle_for_thread = app.handle().clone();
+            let skills_path_thread = skills_path.clone();
+            let knowledge_path_thread = knowledge_path.clone();
+
+            std::thread::spawn(move || {
                 // Diagnostic marker: thread has started
                 tracing::info!("[MAIN] API server thread spawned — calling start_api_server(port=1420)");
                 println!("=== [Wiki Labs] Starting API server on port 1420 ===");
@@ -609,18 +627,6 @@ fn main() {
             // Expose registry via Arc for use in commands
             app.manage(std::sync::Arc::new(std::sync::Mutex::new(registry)));
             app.manage(state);
-
-            // ── Observation Engine Setup ──
-            // Initialize and start the observation engine to provide
-            // proactive AI guidance based on user activity.
-            let app_handle = app.handle().clone();
-            std::thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-                rt.block_on(async {
-                    let engine = observation::init_observation_engine().await;
-                    observation::start_observation_engine(engine).await;
-                });
-            });
 
             // ── System Tray Setup ──
             let _handle = app.handle().clone();
