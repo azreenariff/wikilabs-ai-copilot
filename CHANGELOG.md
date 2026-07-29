@@ -1,3 +1,7 @@
+## v1.1.124 — ENH: AI persona clarified — explicit copilot identity and purpose
+
+- **AI Persona update:** System prompt updated to explicitly state the AI's identity as the Wiki Labs AI Copilot with a clear purpose: to serve as the user's AI copilot — a companion that watches what they're doing and proactively offers helpful suggestions like a knowledgeable teammate.
+
 ## v1.1.123 — ENH: Enhanced intent analyzer with structured observation context
 ### [UNRELEASED] — Observation Engine Fixes
 
