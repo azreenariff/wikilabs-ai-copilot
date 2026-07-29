@@ -384,6 +384,8 @@ fn build_observation_context() -> String {
             wikilabs_observation::ActivityCategory::Development => "💻 development",
             wikilabs_observation::ActivityCategory::Browsing => "🌐 browsing",
             wikilabs_observation::ActivityCategory::Communication => "📬 communication",
+            wikilabs_observation::ActivityCategory::VisualInsight => "👁️ visual insight",
+            wikilabs_observation::ActivityCategory::VisualError => "👁️ visual error",
             wikilabs_observation::ActivityCategory::Unknown => "❓ unknown",
         };
         context.push_str(&format!(
@@ -405,6 +407,8 @@ fn build_observation_context() -> String {
             wikilabs_observation::ActivityCategory::Development => "💻 development",
             wikilabs_observation::ActivityCategory::Browsing => "🌐 browsing",
             wikilabs_observation::ActivityCategory::Communication => "📬 communication",
+            wikilabs_observation::ActivityCategory::VisualInsight => "👁️ visual insight",
+            wikilabs_observation::ActivityCategory::VisualError => "👁️ visual error",
             wikilabs_observation::ActivityCategory::Unknown => "❓ mixed activity",
         };
         context.push_str(&format!("

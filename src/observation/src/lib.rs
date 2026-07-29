@@ -91,3 +91,9 @@ pub fn init_observation_engine() -> std::sync::Arc<ObservationEngine> {
 pub fn get_observation_engine() -> Option<std::sync::Arc<ObservationEngine>> {
     OBSERVATION_ENGINE.get().cloned()
 }
+
+/// Get the latest Vision analysis result from the global observation engine.
+/// Returns `None` if the engine hasn't been initialized or no Vision result is available.
+pub fn get_vision_result() -> Option<crate::vision_analyzer::VisionAnalysisResult> {
+    get_observation_engine().and_then(|engine| engine.get_vision_result())
+}

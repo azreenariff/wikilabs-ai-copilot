@@ -51,6 +51,10 @@ pub enum ActivityCategory {
     Browsing,
     /// Communication (email, chat, etc.).
     Communication,
+    /// AI Vision analysis detected something noteworthy on screen.
+    VisualInsight,
+    /// AI Vision detected an error or problem on screen.
+    VisualError,
     /// Unknown or mixed intent.
     Unknown,
 }
@@ -111,6 +115,8 @@ pub enum IssueSeverity {
 pub struct IntentAnalyzer {
     semantic_analyzer: Arc<SemanticAnalyzer>,
     state: Arc<Mutex<IntentAnalyzerState>>,
+    /// Optional reference to VisionAnalyzerProvider for cross-context correlation.
+    vision_provider: Arc<Mutex<Option<crate::vision_analyzer::VisionAnalysisResult>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -129,6 +135,7 @@ impl IntentAnalyzer {
                 last_intent: None,
                 intent_history: Vec::new(),
             })),
+            vision_provider: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -141,7 +148,8 @@ impl IntentAnalyzer {
         active_app: Option<&str>,
         errors: &[DetectedError],
         session_state: Option<&TroubleshootingSession>,
-        correlation: &CorrelationEngine,
+        _correlation: &CorrelationEngine,
+        vision: Option<&crate::vision_analyzer::VisionAnalysisResult>,
     ) -> IntentSummary {
         let mut summary = IntentSummary {
             current_activity: Vec::new(),
@@ -174,6 +182,11 @@ impl IntentAnalyzer {
         // 5. Analyze troubleshooting session state
         if let Some(session) = session_state {
             self.analyze_session(session, &mut summary);
+        }
+
+        // 5.5. Analyze Vision AI results (Phase 3)
+        if let Some(vision_ref) = vision {
+            self.analyze_vision(vision_ref, &mut summary);
         }
 
         // 6. Synthesize overall intent from all signals
@@ -462,9 +475,51 @@ impl IntentAnalyzer {
         }
     }
 
+    /// Analyze Vision AI analysis result and add to the summary.
+    /// This is the Phase 3 bridge: raw system events → Vision analysis → intent synthesis.
+    fn analyze_vision(&self, vision: &crate::vision_analyzer::VisionAnalysisResult, summary: &mut IntentSummary) {
+        // Record the focused app context that was analyzed
+        if let Some(ref app) = vision.focused_app {
+            summary.current_activity.push(UserActivity {
+                description: format!("Screen focused: {}", app),
+                category: ActivityCategory::Unknown,
+                confidence: 0.9,
+            });
+        }
+
+        // If AI detected user activity on screen, add it
+        if let Some(ref activity) = vision.user_activity {
+            summary.current_activity.push(UserActivity {
+                description: format!("AI Vision detected activity: {}", activity),
+                category: ActivityCategory::Unknown,
+                confidence: 0.8,
+            });
+        }
+
+        // If AI detected an inferred intent from the screen, add it
+        if let Some(ref intent) = vision.inferred_intent {
+            summary.infrastructure_context.push(format!("User's screen activity: {}", intent));
+        }
+
+        // If AI detected errors on screen, add them as high-severity issues
+        for err in &vision.errors_detected {
+            summary.issues.push(IssueReport {
+                severity: IssueSeverity::High,
+                title: format!("Screen error detected: {}", err.description),
+                description: format!("Vision AI detected a {} severity error on screen", err.severity),
+                source: "vision_analyzer".to_string(),
+            });
+        }
+
+        // If AI found suggestions, add them as guidance
+        for sug in &vision.suggestions {
+            summary.suggested_guidance.push(format!("AI Vision suggests: {}", sug));
+        }
+    }
+
     /// Synthesize an overall intent from the collected signals.
     fn synthesize_intent(&self, summary: &IntentSummary) -> Option<UserIntent> {
-        let mut confidence = 0.0;
+        let mut confidence = 0.0f32;
         let mut activity_count = 0u32;
         let mut issues_count = 0u32;
         let mut has_troubleshooting = false;
@@ -484,10 +539,10 @@ impl IntentAnalyzer {
             }
 
             match activity.category {
-                ActivityCategory::Troubleshooting => { has_troubleshooting = true; }
-                ActivityCategory::Deployment => { has_deployment = true; }
-                ActivityCategory::Monitoring => { has_monitoring = true; }
-                ActivityCategory::Administration => { has_admin = true; }
+                ActivityCategory::Troubleshooting => has_troubleshooting = true,
+                ActivityCategory::Deployment => has_deployment = true,
+                ActivityCategory::Monitoring => has_monitoring = true,
+                ActivityCategory::Administration => has_admin = true,
                 _ => {}
             }
         }
@@ -509,24 +564,23 @@ impl IntentAnalyzer {
         confidence = confidence / (activity_count + 1).max(1) as f32;
         confidence = confidence.min(0.99);
 
-        // Determine overall intent
         let (intent, category, goal) = if has_troubleshooting {
             (
                 "Troubleshooting an issue".to_string(),
                 ActivityCategory::Troubleshooting,
-                Some("User appears to be diagnosing and fixing a problem with their infrastructure or application".to_string()),
+                Some("User appears to be diagnosing and fixing a problem".to_string()),
             )
         } else if has_deployment {
             (
                 "Deploying or configuring infrastructure".to_string(),
                 ActivityCategory::Deployment,
-                Some("User is setting up, deploying, or configuring systems or services".to_string()),
+                Some("User is setting up, deploying, or configuring systems".to_string()),
             )
         } else if has_monitoring {
             (
                 "Monitoring system health and performance".to_string(),
                 ActivityCategory::Monitoring,
-                Some("User is checking the status and performance of their infrastructure".to_string()),
+                Some("User is checking the status and performance of infrastructure".to_string()),
             )
         } else if has_admin {
             (
@@ -535,17 +589,16 @@ impl IntentAnalyzer {
                 Some("User is managing systems, services, or infrastructure".to_string()),
             )
         } else if activity_count == 1 && activity_count > 0 {
-            // Single browsing activity with no errors → just browsing
             (
                 "General browsing or navigation".to_string(),
                 ActivityCategory::Browsing,
-                Some("User is viewing information or navigating their environment".to_string()),
+                Some("User is viewing information or navigating".to_string()),
             )
         } else if !related_actions.is_empty() {
             (
                 "Mixed activity — multiple tasks in progress".to_string(),
                 ActivityCategory::Unknown,
-                Some("User is engaged in several activities — the copilot should identify the most relevant one to assist with".to_string()),
+                Some("User is engaged in several activities".to_string()),
             )
         } else {
             return None;
@@ -568,11 +621,8 @@ impl IntentAnalyzer {
             suggested_steps.push("Consider running a health check after deployment".to_string());
         }
 
-        // If we have terminal commands + browser, check for correlation
-        let has_browser = summary.current_activity.iter().any(|a| a.description.contains("Browsing"));
-        let has_terminal = summary.current_activity.iter().any(|a| a.description.contains("Running") || a.description.contains("Terminal"));
-        if has_browser && has_terminal {
-            suggested_steps.push("Cross-reference what's in the browser with terminal output to correlate context".to_string());
+        if activity_count > 0 && issues_count == 0 && !has_troubleshooting {
+            suggested_steps.push("Everything looks stable — no immediate issues detected".to_string());
         }
 
         Some(UserIntent {
@@ -626,21 +676,6 @@ impl IntentAnalyzer {
         suggestions
     }
 
-    /// Convert semantic intent category to activity category.
-    fn intent_to_category(&self, category: &IntentCategory) -> ActivityCategory {
-        match category {
-            IntentCategory::ServiceHealthCheck => ActivityCategory::Monitoring,
-            IntentCategory::ServiceStartStop => ActivityCategory::Deployment,
-            IntentCategory::LogInspection => ActivityCategory::Troubleshooting,
-            IntentCategory::NetworkDiagnostic => ActivityCategory::Troubleshooting,
-            IntentCategory::ConfigurationChange => ActivityCategory::Deployment,
-            IntentCategory::DataQuery => ActivityCategory::Development,
-            IntentCategory::Deployment => ActivityCategory::Deployment,
-            IntentCategory::Troubleshooting => ActivityCategory::Troubleshooting,
-            IntentCategory::General => ActivityCategory::Administration,
-        }
-    }
-
     /// Determine severity for browser error patterns.
     fn browser_error_severity(&self, pattern: &str) -> IssueSeverity {
         let p = pattern.to_lowercase();
@@ -657,6 +692,32 @@ impl IntentAnalyzer {
         } else {
             IssueSeverity::Low
         }
+    }
+
+    /// Convert semantic intent category to activity category.
+    fn intent_to_category(&self, category: &IntentCategory) -> ActivityCategory {
+        match category {
+            IntentCategory::ServiceHealthCheck => ActivityCategory::Monitoring,
+            IntentCategory::ServiceStartStop => ActivityCategory::Deployment,
+            IntentCategory::LogInspection => ActivityCategory::Troubleshooting,
+            IntentCategory::NetworkDiagnostic => ActivityCategory::Troubleshooting,
+            IntentCategory::ConfigurationChange => ActivityCategory::Deployment,
+            IntentCategory::DataQuery => ActivityCategory::Development,
+            IntentCategory::Deployment => ActivityCategory::Deployment,
+            IntentCategory::Troubleshooting => ActivityCategory::Troubleshooting,
+            IntentCategory::General => ActivityCategory::Administration,
+        }
+    }
+
+    /// Set the latest Vision analysis result for cross-context correlation.
+    pub fn set_vision_result(&self, result: crate::vision_analyzer::VisionAnalysisResult) {
+        let mut guard = self.vision_provider.lock().unwrap();
+        *guard = Some(result);
+    }
+
+    /// Get the latest Vision analysis result, if any.
+    pub fn get_vision_result(&self) -> Option<crate::vision_analyzer::VisionAnalysisResult> {
+        self.vision_provider.lock().unwrap().clone()
     }
 
     /// Get the last analyzed intent.

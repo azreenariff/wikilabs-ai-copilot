@@ -58,6 +58,12 @@ pub fn get_event_receiver() -> Option<Receiver<ObservationEvent>> {
     unsafe { EVENT_RECEIVER.clone() }
 }
 
+/// Get the latest Vision analysis result.
+/// Delegates to the global observation engine.
+pub fn get_vision_result() -> Option<wikilabs_observation::vision_analyzer::VisionAnalysisResult> {
+    get_observation_engine().and_then(|engine| engine.get_vision_result())
+}
+
 /// Start the observation engine providers.
 pub async fn start_observation_engine(engine: Arc<ObservationEngine>) {
     tracing::info!("[Observation] Starting observation providers");
@@ -157,10 +163,10 @@ async fn register_providers(engine: &ObservationEngine) {
     println!("[OBS] >>> Provider registration complete");
 
     let count = {
-        let mut c = 3; // active_window + clipboard + browser
+        let mut c = 2; // active_window + clipboard (always)
+        c += 1; // vision_analyzer (always)
         #[cfg(target_os = "windows")]
-        c += 1; // screen_capture
-        c += 1; // vision_analyzer
+        { c += 2; } // browser + screen_capture (Windows)
         c
     };
     tracing::info!("[Observation] {} providers registered", count);

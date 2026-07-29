@@ -76,6 +76,35 @@ async fn build_context_system_prompt(
         }
     }
 
+    // ── Screen Vision Analysis ──
+    // Phase 4: Include the latest Vision analysis result in the AI prompt
+    if let Some(vision_result) = crate::observation::get_vision_result() {
+        let mut vision_lines = Vec::new();
+        if let Some(ref intent) = vision_result.inferred_intent {
+            vision_lines.push(format!("🔍 **AI Vision detected**: You appear to be {}", intent));
+        }
+        if !vision_result.errors_detected.is_empty() {
+            for err in &vision_result.errors_detected {
+                vision_lines.push(format!("⚠️ **Screen error detected**: {} ({})", err.description, err.severity));
+            }
+        }
+        if !vision_result.suggestions.is_empty() {
+            for sug in &vision_result.suggestions {
+                vision_lines.push(format!("💡 **AI Vision suggests**: {}", sug));
+            }
+        }
+        // Include focused app context
+        if let Some(ref app) = vision_result.focused_app {
+            vision_lines.push(format!("📺 **Active app**: {}", app));
+        }
+        if !vision_lines.is_empty() {
+            parts.push(format!(
+                "## Screen Vision Analysis (AI-powered)\n{}\n",
+                vision_lines.join("\n")
+            ));
+        }
+    }
+
     // If we have no context, return None (no system prompt needed)
     if parts.is_empty() {
         return None;

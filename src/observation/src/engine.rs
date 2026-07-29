@@ -385,6 +385,44 @@ impl ObservationEngine {
                         self.feed_screenshot_to_vision_analyzer(data_base64.to_string(), width, height, focused_window);
                     }
                 }
+                ProviderType::VisionAnalysis => {
+                    // Phase 3: Capture VisionAnalysisResult event and feed to IntentAnalyzer
+                    if event.event_type == crate::event::EventType::VisionAnalysisResult {
+                        if let Some(data_obj) = event.payload.data.as_object() {
+                            // Parse the VisionAnalysisResult from the event payload
+                            if let Some(inferred_intent) = data_obj.get("inferred_intent").and_then(|v| v.as_str()).map(|s| s.to_string()) {
+                                let errors_detected: Vec<crate::vision_analyzer::VisionError> = data_obj.get("errors_detected")
+                                    .and_then(|v| v.as_array())
+                                    .map(|arr| arr.iter().filter_map(|e| {
+                                        e.as_object().and_then(|obj| {
+                                            let description = obj.get("description").and_then(|d| d.as_str()).map(|s| s.to_string())?;
+                                            let severity = obj.get("severity").and_then(|s| s.as_str()).unwrap_or("low").to_string();
+                                            Some(crate::vision_analyzer::VisionError { description, severity })
+                                        })
+                                    }).collect())
+                                    .unwrap_or_default();
+                                let suggestions: Vec<String> = data_obj.get("suggestions")
+                                    .and_then(|v| v.as_array())
+                                    .map(|arr| arr.iter().filter_map(|e| e.as_str().map(|s| s.to_string())).collect())
+                                    .unwrap_or_default();
+                                let focused_app = data_obj.get("focused_app").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                let user_activity = data_obj.get("user_activity").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                let confidence = data_obj.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+                                let result = crate::vision_analyzer::VisionAnalysisResult {
+                                    timestamp: chrono::Utc::now(),
+                                    focused_app,
+                                    user_activity,
+                                    errors_detected,
+                                    inferred_intent: Some(inferred_intent),
+                                    suggestions,
+                                    raw_analysis: String::new(),
+                                    confidence,
+                                };
+                                self.intent_analyzer.set_vision_result(result);
+                            }
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -605,7 +643,14 @@ impl ObservationEngine {
             &errors,
             session_state.as_ref(),
             correlation,
+            // Phase 3: pass the latest Vision analysis result for cross-context correlation
+            self.intent_analyzer.get_vision_result().as_ref(),
         )
+    }
+
+    /// Get the latest Vision analysis result from the intent analyzer.
+    pub fn get_vision_result(&self) -> Option<crate::vision_analyzer::VisionAnalysisResult> {
+        self.intent_analyzer.get_vision_result()
     }
 
     /// Check if the engine is running.

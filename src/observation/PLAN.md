@@ -1,8 +1,8 @@
-# Observation Engine — Screen Capture + Vision AI Integration
-
-## Project Status: Phase 0 — Analysis Complete, Implementation Not Started
-
-### Background
+|# Observation Engine — Screen Capture + Vision AI Integration
+|
+|## Project Status: Phase 1 ✓ Complete, Phase 2 ✓ Complete, Phase 3 — In Progress
+|
+|### Background
 The Observation Framework has structural support for screen capture (`screen_capture.rs`, `capture.rs`, `ocr.rs`) but these are all **stubs**. The real gap is that structured data (Win32 API window text, clipboard, process names) can't reliably capture what's actually on screen — leading to the copilot missing critical context like browser error pages and terminal commands.
 
 ### Goal
@@ -39,14 +39,18 @@ Build a true "copilot advisor" that can:
 - Provider registered with ObservationEngine
 - Platform: Windows first (BitBlt → GDI Bitmap → PNG via libwebp or encode to PNG in Rust), then Linux (xdg-desktop-portal or X11)
 
-**Phase 2: Vision Analysis Provider**
-- New provider `src/observation/src/vision_analyzer.rs` that:
-  - Takes latest screenshot from screen_capture buffer
-  - Sends to Vision model (OpenRouter API, GPT-4o/Vision)
-  - Returns structured analysis: "what's on screen", "what app", "what's wrong", "user intent"
-  - Emits `VisionAnalysis` event with structured JSON
-- Configurable via settings (model, API key, endpoint, poll interval)
-- Privacy: blur/redact sensitive content before sending (optional)
+**Phase 2: Vision Analysis Provider** ✅ COMPLETE (v1.1.77)
+- Created `src/observation/src/vision_analyzer.rs` with full Vision AI integration
+- Takes latest screenshot from engine buffer (via `feed_event()` → `feed_screenshot_to_vision_analyzer()`)
+- Sends to Vision model (OpenRouter API, Claude Sonnet 4, GPT-4o, etc.)
+- Returns structured analysis: "what's on screen", "what app", "what's wrong", "user intent"
+- Emits `VisionAnalysisResult` event with structured JSON
+- Configurable via settings (model, API key, endpoint, poll interval — default 30s)
+- Rate limited: max 1 call per configured interval (default 30s)
+- 6 unit tests passing
+- Wired into engine via `feed_event()` → `ProviderType::ScreenCapture` handler
+- Added `as_any()` downcasting to `ObservationProvider` trait
+- Added `queue_screenshot()` external API for engine → provider communication
 
 **Phase 3: Enhanced Intent Synthesis**
 - Feed Vision analysis results into `IntentAnalyzer` alongside structured data
@@ -116,8 +120,8 @@ When context is lost, new sessions should:
 5. Performance — screen capture + Vision on every poll will slow down the app
 
 ### Next Steps (for new sessions)
-1. Start with Phase 1: Implement real screen capture (BitBlt → PNG base64)
-2. Build provider in `screen_capture.rs` that actually captures and saves pixels
-3. Register with engine, test polling loop
-4. Move to Phase 2: Vision analyzer provider
-5. Integrate into API server AI loop
+1. Phase 3: Feed Vision analysis into IntentAnalyzer for enhanced intent synthesis
+2. Wire Vision analysis results into api_server.rs AI prompt
+3. Implement real screen capture (Phase 1) — BitBlt on Windows, xdg-desktop-portal on Linux
+4. Add Vision to the main app config/settings UI
+5. Consider privacy: blur/redact sensitive content before sending to Vision API

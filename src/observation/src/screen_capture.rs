@@ -442,8 +442,9 @@ mod screen_capture_windows {
     /// Convert BGRA pixel buffer to PNG-encoded bytes using the image crate.
     fn bgra_to_png(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
         use image::Rgba;
+        use std::io::Cursor;
 
-        // BGRA to RGB — create RgbaImage
+        // BGRA to RGBA — create RgbaImage
         let mut rgba_image = image::RgbaImage::new(width, height);
         for y in 0..height {
             for x in 0..width {
@@ -459,15 +460,10 @@ mod screen_capture_windows {
             }
         }
 
-        // Encode to PNG in memory (RgbaImage::encode_png takes compression + filter directly)
-        let png_data = rgba_image.encode_png(
-            image::codecs::png::PngCompression::Default,
-            image::codecs::png::PngFilterType::Sub,
-        );
-
-        // encode_png returns a Result<Vec<u8>, ...>
-        match png_data {
-            Ok(bytes) => bytes,
+        // Encode to PNG in memory using PngEncoder
+        let mut encoder = image::codecs::png::PngEncoder::new(Cursor::new(Vec::new()));
+        match encoder.encode_image(&rgba_image) {
+            Ok(_) => encoder.into_inner().into_inner(),
             Err(e) => {
                 tracing::warn!("Failed to encode screenshot as PNG: {}", e);
                 Vec::new()
