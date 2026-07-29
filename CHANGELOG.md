@@ -1,3 +1,10 @@
+## v1.1.123 — ENH: Enhanced intent analyzer with structured observation context
+
+- **Enhanced IntentAnalyzer:** New module that synthesizes browser, terminal, app data into structured 'intent summaries' for proactive AI guidance. Categories detected activity (troubleshooting, deployment, monitoring, etc.) with confidence scores, detects intent and goals, lists infrastructure targets, and generates suggested next steps.
+- **Browser content in events:** Browser provider now includes visible_text (up to 2000 chars) in event payloads, enabling content-level intent detection instead of just URL/title.
+- **CorrelationEngine enhancements:** Stores full BrowserContext and terminal output with accessor methods `get_full_browser_context()` and `get_terminal_output()`.
+- **Structured observation context:** `build_observation_context()` now outputs categorized sections: What the user is doing, Intent Analysis, Detected Issues, and Suggested Guidance — enabling targeted proactive suggestions.
+
 ## v1.1.122 — FIX: App logging now captures all modules (api_server, observation, etc.)
 
 - **Critical Fix:** The `init_logging()` function was declared but never called, meaning ALL `tracing::info!()` / `debug!()` / `error!()` calls from the API server, observation engine, guidance panel, and other modules were silently dropped. Now `init_logging()` is called at process startup with debug level, capturing all module logs to the app log file. Log rotation (7-day cleanup) also runs at startup to prevent stale file accumulation.
