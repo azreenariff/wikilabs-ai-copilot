@@ -319,7 +319,7 @@ mod terminal_windows {
     /// On Windows, recursively enumerates child windows to gather all text areas
     /// (including scrollable terminal buffer areas inside tab containers).
     fn get_terminal_text(hwnd: &HWND, _process_name: &str, _class_name: &str) -> String {
-        use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
+        use windows::Win32::UI::WindowsAndMessaging::GetClassNameW;
 
         let result: String = unsafe {
             // Strategy 1: Enumerate ALL child/grandchild windows and collect text from every

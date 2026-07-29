@@ -1,3 +1,13 @@
+## v1.1.127 — FIX: Windows screen_capture.rs compilation errors
+
+- **Fixed `screen_capture_windows` module vs function error:** Corrected call from bare `screen_capture_windows(...)` to fully qualified `screen_capture_windows::screen_capture_windows(...)` since the function lives inside a module with the same name.
+- **Fixed `screen_width`/`screen_height` type mismatch (i32 vs u32):** Cast `config.max_width` and `config.max_height` to `i32` for comparison against signed `GetDeviceCaps` return values.
+- **Fixed `bmiColors` array size:** Changed from empty `[]` to `[Default::default()]` — `BITMAPINFOHEADER` expects a `[RGBQUAD; 1]` array even for 32-bit DIB.
+- **Fixed `GetDIBits` pointer type:** Wrapped `pixel_buffer.as_mut_ptr()` in `Some()` to match `Option<*mut c_void>` signature.
+- **Fixed `base64::Engine` trait import:** Added `use base64::Engine;` to bring the `encode()` method into scope.
+- **Fixed `PngEncoder::write_image()` color type:** Changed `image::ColorType::Rgba8` to `ExtendedColorType::Rgba8` and use `PngEncoder::new(&mut data)` pattern (image 0.25 API) instead of deprecated `into_inner()`.
+- **Cleaned up unused imports:** Removed `BITMAP`, `GetObjectW` from GDI, `GetClassNameW` from browser/terminal modules.
+
 ## v1.1.126 — FIX: Observation engine compilation errors on Windows
 
 - **Fixed `PALENTRYSIZE` import error:** Removed deprecated `PALENTRYSIZE` constant from GDI imports (no longer exported in windows crate v0.58).

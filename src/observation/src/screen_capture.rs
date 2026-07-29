@@ -126,7 +126,7 @@ impl ScreenCaptureProvider {
     fn capture(&self) -> Option<CapturedScreenshot> {
         #[cfg(target_os = "windows")]
         {
-            screen_capture_windows(
+            screen_capture_windows::screen_capture_windows(
                 self.state.lock().unwrap().screen_config.clone(),
             )
         }
@@ -263,8 +263,8 @@ mod screen_capture_windows {
     use windows::Win32::Foundation::HWND;
     use windows::Win32::Graphics::Gdi::{
         BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC,
-        DeleteObject, GetDC, GetDeviceCaps, GetObjectW, ReleaseDC,
-        SelectObject, SRCCOPY, BITMAP, BITMAPINFO, BITMAPINFOHEADER,
+        DeleteObject, GetDC, GetDeviceCaps, ReleaseDC,
+        SelectObject, SRCCOPY, BITMAPINFO, BITMAPINFOHEADER,
         DIB_RGB_COLORS, GetDIBits, HORZRES, VERTRES,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
@@ -276,6 +276,8 @@ mod screen_capture_windows {
     use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 
     use crate::screen_capture::{CapturedScreenshot, ScreenshotType, ScreenCaptureConfig};
+    use base64::Engine;
+    use image::ImageEncoder;
 
     pub(super) fn screen_capture_windows(config: ScreenCaptureConfig) -> Option<CapturedScreenshot> {
         unsafe {
@@ -333,7 +335,7 @@ mod screen_capture_windows {
             }
 
             // Scale down if needed
-            let (width, height) = if screen_width > config.max_width || screen_height > config.max_height {
+            let (width, height) = if (screen_width as i32) > config.max_width as i32 || (screen_height as i32) > config.max_height as i32 {
                 let ratio = (config.max_width as f64 / screen_width as f64)
                     .min(config.max_height as f64 / screen_height as f64)
                     .max(0.1);
@@ -366,7 +368,7 @@ mod screen_capture_windows {
                     biClrUsed: 0,
                     biClrImportant: 0,
                 },
-                bmiColors: [], // no palette needed for 32-bit DIB
+                bmiColors: [Default::default()], // 1-element array for 32-bit DIB
             };
 
             // Create DIB section
@@ -396,7 +398,7 @@ mod screen_capture_windows {
                 bitmap_handle,
                 0,
                 height as u32,
-                pixel_buffer.as_mut_ptr() as *mut _,
+                Some(pixel_buffer.as_mut_ptr() as *mut _),
                 &mut bitmap_info as *mut _,
                 DIB_RGB_COLORS,
             );
@@ -433,8 +435,7 @@ mod screen_capture_windows {
 
     /// Convert BGRA pixel buffer to PNG-encoded bytes using the image crate.
     fn bgra_to_png(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
-        use image::{Rgba, RgbaImage, ImageEncoder};
-        use std::io::Cursor;
+        use image::{ExtendedColorType, Rgba, RgbaImage};
 
         // BGRA to RGBA — create RgbaImage
         let mut rgba_image = RgbaImage::new(width, height);
@@ -452,15 +453,16 @@ mod screen_capture_windows {
             }
         }
 
-        // Encode to PNG in memory
-        let mut encoder = image::codecs::png::PngEncoder::new(Vec::new());
+        // Encode to PNG in memory using image 0.25 API
+        let mut data = Vec::new();
+        let mut encoder = image::codecs::png::PngEncoder::new(&mut data);
         match encoder.write_image(
             &rgba_image,
             width,
             height,
-            image::ColorType::Rgba8,
+            ExtendedColorType::Rgba8,
         ) {
-            Ok(_) => encoder.into_inner(),
+            Ok(_) => data,
             Err(e) => {
                 tracing::warn!("Failed to encode screenshot as PNG: {}", e);
                 Vec::new()
