@@ -33,7 +33,7 @@
     "resources": {
       "../src/skills": "skills/",
       "../src/engineering-foundations": "knowledge/",
-      "../assets": "assets/"
+      "assets": "assets/"
     },
     "icon": [
       "icons/32x32.png",
