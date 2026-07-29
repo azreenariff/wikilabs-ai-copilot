@@ -1,10 +1,10 @@
 # CHANGELOG
 
-## v1.1.115 — FIX: Chat window panic when sending message (nested tokio runtime)
+## v1.1.117 — FIX: Chat window panic when sending message (nested tokio runtime)
 
 - **Critical Fix:** Fixed chat window panic on message send. The `handle_send_message` function created a nested tokio runtime via `Runtime::new().block_on(...)` while already running inside axum's tokio runtime, causing "Cannot start a runtime from within a runtime" panic. Replaced with dedicated thread + separate runtime pattern.
 
-## v1.1.114 — FIX: Advice-chat blank window (router route mismatch)
+## v1.1.116 — FIX: Advice-chat blank window (router route mismatch)
 
 - **Critical Fix:** Fixed advice-chat floating window showing blank after preflight check. The advice-chat window loads at URL path `/advice-chat` but the React `BrowserRouter` had no route matching this path. The `Routes` element rendered nothing, making the entire window blank. Added `<Route path="/advice-chat" element={<ChatAssistant />} />` so the floating chat window renders correctly.
 
