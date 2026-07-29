@@ -519,8 +519,14 @@ fn handle_preflight_check(state: &ApiServerState, req_params: Value) -> (StatusC
                 Ok(entries) => {
                     let mut pack_count = 0;
                     for entry in entries.flatten() {
-                        if entry.path().extension().and_then(|e| e.to_str()) == Some("pack.json") {
-                            pack_count += 1;
+                        if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
+                            if ext == "yaml" || ext == "yml" || ext == "json" {
+                                // Check if it's a manifest (not any yaml/json file)
+                                let file_name = entry.file_name();
+                                if file_name == "manifest.yaml" || file_name == "manifest.yml" || file_name == "pack.json" {
+                                    pack_count += 1;
+                                }
+                            }
                         }
                     }
                     if pack_count > 0 {

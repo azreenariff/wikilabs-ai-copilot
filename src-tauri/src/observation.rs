@@ -83,11 +83,26 @@ pub async fn start_observation_engine(engine: Arc<ObservationEngine>) {
     }
     println!("[OBS] >>> All providers started — spawning polling loop");
 
-    // Start the polling loop in a background task
+    // Start the polling loop in a background task and block the thread until engine stops
+    // This ensures the tokio runtime stays alive while the polling loop runs
+    // Clone engine Arc for the blocking loop (spawn moves one Arc)
+    let engine_clone = engine.clone();
     tokio::spawn(async move {
         engine.run_loop().await;
         println!("[OBS] >>> Polling loop exited");
     });
+
+    // Block the observation thread so the tokio runtime stays alive
+    // and the polling loop continues running. The runtime will only
+    // be dropped (and the loop cancelled) when the app exits.
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        let running = engine_clone.is_running().await;
+        if !running {
+            break;
+        }
+    }
+    println!("[OBS] >>> Observation thread exiting");
 }
 
 /// Register all available providers with the engine.
