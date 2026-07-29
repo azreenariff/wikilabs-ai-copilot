@@ -255,8 +255,10 @@ use windows::Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, TRUE};
 // ── Visible text collection ─────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
+
+#[cfg(target_os = "windows")]
 fn collect_visible_text(hwnd: HWND) -> String {
-    use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
 
     // Collect text from ALL nested child windows, not just direct children.
     // Browser pages often have deeply nested iframes/UI layers.

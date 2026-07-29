@@ -318,7 +318,7 @@ mod terminal_windows {
     /// Enhanced to capture full buffer content, not just the last line.
     /// On Windows, recursively enumerates child windows to gather all text areas
     /// (including scrollable terminal buffer areas inside tab containers).
-    fn get_terminal_text(hwnd: &HWND, process_name: &str, class_name: &str) -> String {
+    fn get_terminal_text(hwnd: &HWND, _process_name: &str, _class_name: &str) -> String {
         use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
 
         let result: String = unsafe {

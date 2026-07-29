@@ -1,3 +1,14 @@
+## v1.1.126 — FIX: Observation engine compilation errors on Windows
+
+- **Fixed `PALENTRYSIZE` import error:** Removed deprecated `PALENTRYSIZE` constant from GDI imports (no longer exported in windows crate v0.58).
+- **Fixed `EnumChildWindows` scope error:** Moved `EnumChildWindows`/`GetClassNameW` imports to module level in `browser.rs` so they're accessible to recursive text collection functions.
+- **Fixed `bmiColors` type mismatch:** Changed from `[Default::default(); 3]` to `[]` for 32-bit DIB (no palette needed).
+- **Fixed `PngEncoder` API compatibility:** Updated to use `write_image()` / `ImageEncoder` trait instead of deprecated `encode_image()` / `into_inner()` (image crate v0.25).
+- **Fixed `base64::encode` deprecation:** Updated to `base64::engine::general_purpose::STANDARD.encode()`.
+- **Fixed `GetWindowTextW` type mismatch:** Switched to using a fixed-size `u16` buffer instead of `String` for the output parameter.
+- **Fixed dead code warnings:** Added underscore prefixes to unused variables (`heartbeat_count`, `process_name`, `class_name`).
+- **Fixed `SelectObject` ordering:** Moved bitmap restore after `GetDIBits` to ensure correct GDI state.
+
 ## v1.1.125 — ENH: Proactive AI guidance delivered to chat thread
 
 - **AI guidance now appears in chat:** Proactive copilot suggestions are sent as assistant messages in the AI chat thread, so users see them when they scroll up. No need to open the guidance panel.

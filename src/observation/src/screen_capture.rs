@@ -260,13 +260,12 @@ fn min(a: usize, b: usize) -> usize { if a < b { a } else { b } }
 
 #[cfg(target_os = "windows")]
 mod screen_capture_windows {
-    use windows::Win32::Foundation::{HWND, RECT};
+    use windows::Win32::Foundation::HWND;
     use windows::Win32::Graphics::Gdi::{
         BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC,
         DeleteObject, GetDC, GetDeviceCaps, GetObjectW, ReleaseDC,
         SelectObject, SRCCOPY, BITMAP, BITMAPINFO, BITMAPINFOHEADER,
-        DIB_RGB_COLORS, GetDIBits, SetDIBits, HORZRES, VERTRES,
-        PALETTEENTRY, PALENTRYSIZE,
+        DIB_RGB_COLORS, GetDIBits, HORZRES, VERTRES,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
         GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
@@ -275,19 +274,23 @@ mod screen_capture_windows {
         OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
     };
     use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
-    use std::ptr;
 
     use crate::screen_capture::{CapturedScreenshot, ScreenshotType, ScreenCaptureConfig};
 
     pub(super) fn screen_capture_windows(config: ScreenCaptureConfig) -> Option<CapturedScreenshot> {
         unsafe {
-            // Get the foreground window name
-            let foreground_hwnd = GetForegroundWindow();
-            let mut focused_window = String::new();
-            if !foreground_hwnd.0.is_null() {
-                let len = GetWindowTextW(foreground_hwnd, &mut focused_window);
-                if len == 0 { focused_window.clear(); }
-            }
+            // Get foreground window name
+                        let foreground_hwnd = GetForegroundWindow();
+                        let mut focused_window = String::new();
+                        if !foreground_hwnd.0.is_null() {
+                            let mut buf = vec![0u16; 512];
+                            let len = GetWindowTextW(foreground_hwnd, &mut buf);
+                            if len > 0 {
+                                focused_window = String::from_utf16_lossy(&buf[..len as usize]);
+                            } else {
+                                focused_window.clear();
+                            }
+                        }
 
             // Get process name for more detail
             let mut process_name = String::new();
@@ -363,7 +366,7 @@ mod screen_capture_windows {
                     biClrUsed: 0,
                     biClrImportant: 0,
                 },
-                bmiColors: [Default::default(); 3], // palette space for alignment
+                bmiColors: [], // no palette needed for 32-bit DIB
             };
 
             // Create DIB section
@@ -385,22 +388,8 @@ mod screen_capture_windows {
                 SRCCOPY,
             );
 
-            SelectObject(mem_dc, old_bitmap);
-
             // Encode the bitmap to PNG using the image crate
             // Extract pixel data from the DIB
-            let bitmap = BITMAP::default();
-            let _ = GetObjectW(bitmap_handle, std::mem::size_of::<BITMAP>() as i32, &bitmap as *const _ as *mut _);
-
-            // The image crate can load from a Windows bitmap handle using its win32 feature,
-            // but that requires an extra feature flag. Instead, let's save as BMP and let
-            // the image crate convert. Actually, simplest: use image::RgbaImage from raw pixels.
-
-            // For simplicity and reliability, save as BMP to a temp file, then convert to PNG.
-            // But we want to avoid filesystem I/O. Let's use a different approach:
-            // Create an image::RgbaImage and save directly to memory.
-
-            // Read the pixel data from the DIB section
             let mut pixel_buffer = vec![0u8; (width * height * 4) as usize];
             let bits_result = GetDIBits(
                 mem_dc,
@@ -415,6 +404,9 @@ mod screen_capture_windows {
             // Convert BGRA (from DIB) to RGB and create PNG
             let png_data = bgra_to_png(&pixel_buffer, width as u32, height as u32);
 
+            // Restore old bitmap and cleanup
+            SelectObject(mem_dc, old_bitmap);
+
             // Cleanup
             let _ = DeleteObject(bitmap_handle);
             let _ = SelectObject(mem_dc, old_bitmap);
@@ -426,7 +418,7 @@ mod screen_capture_windows {
             }
 
             // Encode PNG to base64
-            let data_base64 = base64::encode(&png_data);
+            let data_base64 = base64::engine::general_purpose::STANDARD.encode(&png_data);
 
             Some(CapturedScreenshot {
                 timestamp: chrono::Utc::now(),
@@ -441,11 +433,11 @@ mod screen_capture_windows {
 
     /// Convert BGRA pixel buffer to PNG-encoded bytes using the image crate.
     fn bgra_to_png(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
-        use image::Rgba;
+        use image::{Rgba, RgbaImage, ImageEncoder};
         use std::io::Cursor;
 
         // BGRA to RGBA — create RgbaImage
-        let mut rgba_image = image::RgbaImage::new(width, height);
+        let mut rgba_image = RgbaImage::new(width, height);
         for y in 0..height {
             for x in 0..width {
                 let idx = ((y * width + x) * 4) as usize;
@@ -460,10 +452,15 @@ mod screen_capture_windows {
             }
         }
 
-        // Encode to PNG in memory using PngEncoder
-        let mut encoder = image::codecs::png::PngEncoder::new(Cursor::new(Vec::new()));
-        match encoder.encode_image(&rgba_image) {
-            Ok(_) => encoder.into_inner().into_inner(),
+        // Encode to PNG in memory
+        let mut encoder = image::codecs::png::PngEncoder::new(Vec::new());
+        match encoder.write_image(
+            &rgba_image,
+            width,
+            height,
+            image::ColorType::Rgba8,
+        ) {
+            Ok(_) => encoder.into_inner(),
             Err(e) => {
                 tracing::warn!("Failed to encode screenshot as PNG: {}", e);
                 Vec::new()

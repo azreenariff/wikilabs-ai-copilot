@@ -163,7 +163,7 @@ impl ObservationEngine {
             let registry = self.registry.lock().await;
             let provider_count = registry.all_providers().len();
             let mut event_count = 0usize;
-            let mut heartbeat_count = 0usize;
+            let mut _heartbeat_count = 0usize;
 
             tracing::info!(
                 "[ObservationEngine] Poll tick #{} — polling {} providers",
@@ -256,7 +256,7 @@ impl ObservationEngine {
                         e
                     );
                 } else {
-                    heartbeat_count += 1;
+                    _heartbeat_count += 1;
                 }
             }
 
