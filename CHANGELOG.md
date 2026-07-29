@@ -1,3 +1,7 @@
+## v1.1.122 — FIX: App logging now captures all modules (api_server, observation, etc.)
+
+- **Critical Fix:** The `init_logging()` function was declared but never called, meaning ALL `tracing::info!()` / `debug!()` / `error!()` calls from the API server, observation engine, guidance panel, and other modules were silently dropped. Now `init_logging()` is called at process startup with debug level, capturing all module logs to the app log file. Log rotation (7-day cleanup) also runs at startup to prevent stale file accumulation.
+
 ## v1.1.121 — FIX: Startup timeout + Knowledge packs path + restart endpoint
 
 - **Critical Fix:** Fixed "Startup timeout — showing interface anyway" issue on Windows. The `/ready` marker was only set *after* knowledge packs loaded, causing the frontend's preflight check to timeout on slow systems. Now the ready marker fires immediately after the TCP listener binds — knowledge packs load in a background task afterwards. The server can serve API commands without knowledge packs loaded.

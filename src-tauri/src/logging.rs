@@ -29,6 +29,33 @@ use tracing_appender::non_blocking::WorkerGuard;
 static INIT: Once = Once::new();
 static mut LOGGER_GUARD: Option<WorkerGuard> = None;
 
+/// Rotate logs older than the configured number of days, then ensure the log
+/// directory exists. Returns the number of old log files deleted.
+pub fn rotate_stale_logs(log_dir: &Path, keep_days: u32) -> Result<usize, std::io::Error> {
+    let mut deleted = 0;
+    if !log_dir.exists() {
+        fs::create_dir_all(log_dir)?;
+        return Ok(0);
+    }
+    let cutoff = Utc::now() - chrono::Duration::days(keep_days as i64);
+    for entry in fs::read_dir(log_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            if let Ok(metadata) = path.metadata() {
+                if let Ok(modified) = metadata.modified() {
+                    let modified_dt = chrono::DateTime::<chrono::Utc>::from(modified);
+                    if modified_dt < cutoff {
+                        fs::remove_file(&path)?;
+                        deleted += 1;
+                    }
+                }
+            }
+        }
+    }
+    Ok(deleted)
+}
+
 /// Sensitive field patterns to redact in all log output.
 const SENSITIVE_PATTERNS: &[(&str, &str)] = &[
     ("password", "PASSWORD_REDACTED"),
@@ -90,6 +117,13 @@ pub fn init_logging(
 fn init_logging_inner(settings: &LoggingSettings, log_dir: &Path) -> Result<(), anyhow::Error> {
     // Ensure log directory exists
     fs::create_dir_all(log_dir)?;
+
+    // Pre-init housekeeping: rotate stale log files (keep last 7 days)
+    if let Ok(rotated) = rotate_stale_logs(log_dir, 7) {
+        if rotated > 0 {
+            eprintln!("Rotated {} old log files during startup", rotated);
+        }
+    }
 
     // Create environment filter from config
     let env_filter =

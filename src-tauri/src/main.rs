@@ -2,6 +2,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;
+use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 use tracing::{error, info};
 use uuid::Uuid;
@@ -502,11 +503,30 @@ fn main() {
     // ── Register panic hook (FIX #2: ensure cleanup on crash) ──
     windows_cleanup::register_panic_hook();
 
-    // Do NOT initialize a global logger here — tauri-plugin-log handles console
-    // output and init_logging() (called later during setup) handles file output.
-    // Calling both would cause "attempted to set a logger after the logging
-    // system was already initialized" panics.
     println!("Wiki Labs AI Copilot starting");
+
+    // Initialize logging BEFORE anything else — ensures ALL tracing::info!() calls
+    // from every module (api_server, observation, etc.) are captured to file.
+    // Uses debug level to capture everything; log rotation runs on startup
+    // to clean up stale log files (older than 7 days).
+    let log_dir = PathBuf::from(
+        std::env::var("XDG_DATA_HOME")
+            .ok()
+            .map(|d| format!("{}/wikilabs-ai-copilot/logs", d))
+            .unwrap_or_else(|| format!("{}/.local/share/wikilabs-ai-copilot/logs", std::env::var("HOME").unwrap_or_default())),
+    );
+    if let Err(e) = logging::init_logging(
+        &config::LoggingSettings {
+            level: "debug".to_string(),
+            file_logging: true,
+            max_log_size_mb: 10,
+            max_log_files: 3,
+            structured_logging: true,
+        },
+        &log_dir,
+    ) {
+        eprintln!("Failed to initialize logging: {}", e);
+    }
 
     let settings_load_start = Instant::now();
     let settings = AppSettingsStore::new();
