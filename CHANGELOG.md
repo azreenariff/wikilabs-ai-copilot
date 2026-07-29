@@ -1,3 +1,11 @@
+## v1.1.125 — ENH: Proactive AI guidance delivered to chat thread
+
+- **AI guidance now appears in chat:** Proactive copilot suggestions are sent as assistant messages in the AI chat thread, so users see them when they scroll up. No need to open the guidance panel.
+- **Confidence scores in recommendations:** Added confidence percentage to recommendation summaries shown in the AI context prompt.
+- **Confidence scores in vision analysis:** Added confidence percentage to AI Vision detected intent line.
+- **Enhanced AI guidance system prompt:** Added explicit confidence and command-verification instructions to the guidance loop prompt.
+- **Removed guidance panel storage:** AI suggestions no longer stored in the dead-end guidance panel — only sent to the chat thread.
+
 ## v1.1.124 — ENH: AI persona clarified — explicit copilot identity and purpose
 
 - **AI Persona update:** System prompt updated to explicitly state the AI's identity as the Wiki Labs AI Copilot with a clear purpose: to serve as the user's AI copilot — a companion that watches what they're doing and proactively offers helpful suggestions like a knowledgeable teammate.

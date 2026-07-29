@@ -163,6 +163,7 @@ impl ObservationEngine {
             let registry = self.registry.lock().await;
             let provider_count = registry.all_providers().len();
             let mut event_count = 0usize;
+            let mut heartbeat_count = 0usize;
 
             tracing::info!(
                 "[ObservationEngine] Poll tick #{} — polling {} providers",
@@ -255,7 +256,7 @@ impl ObservationEngine {
                         e
                     );
                 } else {
-                    event_count += 1;
+                    heartbeat_count += 1;
                 }
             }
 
@@ -651,6 +652,11 @@ impl ObservationEngine {
     /// Get the latest Vision analysis result from the intent analyzer.
     pub fn get_vision_result(&self) -> Option<crate::vision_analyzer::VisionAnalysisResult> {
         self.intent_analyzer.get_vision_result()
+    }
+
+    /// Get the last analyzed intent (highest-confidence UserIntent from recent analysis).
+    pub fn get_last_intent(&self) -> Option<crate::intent_analyzer::UserIntent> {
+        self.intent_analyzer.get_last_intent()
     }
 
     /// Check if the engine is running.

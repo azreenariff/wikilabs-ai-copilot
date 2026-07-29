@@ -34,6 +34,8 @@ pub struct GuidanceSuggestion {
     pub category: GuidanceCategory,
     /// Whether this is action-oriented (has specific steps).
     pub is_actionable: bool,
+    /// Confidence score (0.0 - 1.0) indicating how likely this suggestion is relevant.
+    pub confidence: f32,
     /// Suggested actions (if applicable).
     pub suggested_actions: Vec<String>,
     /// Related correlations that triggered this.
@@ -238,45 +240,47 @@ impl GuidanceEngine {
             message,
             category: GuidanceCategory::Infrastructure,
             is_actionable: !actions.is_empty(),
+            confidence: 0.7,
             suggested_actions: actions,
             correlated_context: correlated,
             dismissed: false,
         }
     }
 
-    /// Build suggestion for terminal matching browser content.
     fn build_match_suggestion(&self, record: &crate::correlation::CorrelationRecord) -> GuidanceSuggestion {
-        let id = format!("match-{}", uuid::Uuid::new_v4().simple());
+            let id = format!("match-{}", uuid::Uuid::new_v4().simple());
 
-        let message = if let (Some(url), Some(cmd)) = (&record.browser_url, &record.terminal_command) {
-            format!(
-                "Your terminal command '{}' aligns with the {} portal you're viewing. \
-                Good timing — let me check if everything looks healthy.",
-                cmd.split_whitespace().next().unwrap_or(""),
-                self.extract_infra_name(url)
-            )
-        } else {
-            "Your terminal activity aligns with the monitoring portal you're viewing. \
-            Consider checking the related dashboard for real-time status.".to_string()
-        };
+            let message = if let (Some(url), Some(cmd)) = (&record.browser_url, &record.terminal_command) {
+                format!(
+                    "Your terminal command '{}' aligns with the {} portal you're viewing. \
+                    Good timing — let me check if everything looks healthy.",
+                    cmd.split_whitespace().next().unwrap_or(""),
+                    self.extract_infra_name(url)
+                )
+            } else {
+                "Your terminal activity aligns with the monitoring portal you're viewing. \
+                Consider checking the related dashboard for real-time status."
+                    .to_string()
+            };
 
-        GuidanceSuggestion {
-            id,
-            generated_at: Utc::now(),
-            severity: GuidanceSeverity::Info,
-            message,
-            category: GuidanceCategory::Observation,
-            is_actionable: false,
-            suggested_actions: Vec::new(),
-            correlated_context: record.browser_url.iter()
-                .chain(record.terminal_command.iter())
-                .map(|s| s.chars().take(60).collect())
-                .collect(),
-            dismissed: false,
+            GuidanceSuggestion {
+                id,
+                generated_at: Utc::now(),
+                severity: GuidanceSeverity::Info,
+                message,
+                category: GuidanceCategory::Observation,
+                is_actionable: false,
+                confidence: 0.75,
+                suggested_actions: Vec::new(),
+                correlated_context: record.browser_url.iter()
+                    .chain(record.terminal_command.iter())
+                    .map(|s| s.chars().take(60).collect())
+                    .collect(),
+                dismissed: false,
+            }
         }
-    }
 
-    /// Build suggestion for multi-portal sessions.
+        /// Build suggestion for multi-portal sessions.
     fn build_multi_portal_suggestion(&self, record: &crate::correlation::CorrelationRecord) -> GuidanceSuggestion {
         let id = format!("multi-{}", uuid::Uuid::new_v4().simple());
 
@@ -299,6 +303,7 @@ impl GuidanceEngine {
             message,
             category: GuidanceCategory::BestPractice,
             is_actionable: !actions.is_empty(),
+            confidence: 0.65,
             suggested_actions: actions,
             correlated_context: record.browser_url.iter()
                 .chain(record.terminal_command.iter())
@@ -330,6 +335,7 @@ impl GuidanceEngine {
             message,
             category: GuidanceCategory::Observation,
             is_actionable: false,
+            confidence: 0.6,
             suggested_actions: Vec::new(),
             correlated_context: record.browser_url.iter()
                 .chain(record.terminal_command.iter())
@@ -354,6 +360,7 @@ impl GuidanceEngine {
             message,
             category: GuidanceCategory::Observation,
             is_actionable: false,
+            confidence: 0.5,
             suggested_actions: Vec::new(),
             correlated_context: record.browser_url.iter()
                 .chain(record.terminal_command.iter())
@@ -389,6 +396,7 @@ impl GuidanceEngine {
                     message: message.to_string(),
                     category: GuidanceCategory::PotentialIssue,
                     is_actionable: true,
+                    confidence: 0.8,
                     suggested_actions: vec![
                         format!("Run: {} status", self.extract_service_name(&cmd_lower, pattern)),
                         format!("Check logs: journalctl -xe --since '5 min ago'"),
@@ -524,7 +532,7 @@ mod tests {
     fn test_guidance_dismiss_all() {
         let engine = Arc::new(CorrelationEngine::new());
         let ge = GuidanceEngine::new(engine);
-        let suggestions = ge.generate_suggestions();
+        let _suggestions = ge.generate_suggestions();
         ge.dismiss_all();
         assert!(ge.get_active_suggestions().is_empty());
     }

@@ -64,6 +64,12 @@ pub fn get_vision_result() -> Option<wikilabs_observation::vision_analyzer::Visi
     get_observation_engine().and_then(|engine| engine.get_vision_result())
 }
 
+/// Get the last analyzed intent from the observation engine.
+/// Delegates to the global observation engine.
+pub fn get_last_intent() -> Option<wikilabs_observation::intent_analyzer::UserIntent> {
+    get_observation_engine().and_then(|engine| engine.get_last_intent())
+}
+
 /// Start the observation engine providers.
 pub async fn start_observation_engine(engine: Arc<ObservationEngine>) {
     tracing::info!("[Observation] Starting observation providers");

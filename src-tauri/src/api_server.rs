@@ -63,9 +63,10 @@ async fn build_context_system_prompt(
                 guidance_panel::RecommendationStatus::Dismissed => "❌ dismissed",
             };
             let next_step = r.recommended_next_step.as_deref().unwrap_or("");
+            let conf = format!("{:.0}%", r.confidence * 100.0);
             lines.push(format!(
-                "- **{}** ({}) — Reason: {} | Next: {}",
-                r.title, status_str, r.reason, next_step
+                "- **{}** ({}) — Reason: {} | Confidence: {} | Next: {}",
+                r.title, status_str, r.reason, conf, next_step
             ));
         }
         if !lines.is_empty() {
@@ -76,12 +77,54 @@ async fn build_context_system_prompt(
         }
     }
 
+    // ── Intent Summary (structured analysis from Observation Engine) ──
+    // Phase 4: Include structured intent data from the Observation Engine
+    // This provides a high-level synthesis of what the user is doing,
+    // their inferred intent, detected issues, and suggested actions
+    if let Some(intent) = crate::observation::get_last_intent() {
+        let mut intent_lines = Vec::new();
+        intent_lines.push(format!(
+            "🎯 **Detected intent**: {} (confidence: {:.0}%)",
+            intent.intent,
+            intent.confidence * 100.0
+        ));
+
+        // Infrastructure targets
+        if !intent.infrastructure_targets.is_empty() {
+            intent_lines.push(format!(
+                "🔗 **Systems involved**: {}",
+                intent.infrastructure_targets.iter().take(5).map(|s| s.chars().take(60).collect::<String>()).collect::<Vec<_>>().join(", ")
+            ));
+        }
+
+        // Suggested next steps from intent analysis
+        if !intent.suggested_next_steps.is_empty() {
+            for step in intent.suggested_next_steps.iter().take(3) {
+                intent_lines.push(format!("📋 **Next step**: {}", step.chars().take(150).collect::<String>()));
+            }
+        }
+
+        // Goal
+        if let Some(ref goal) = intent.goal {
+            intent_lines.push(format!("🎯 **Goal**: {}", goal.chars().take(200).collect::<String>()));
+        }
+
+        parts.push(format!(
+            "## Intent Summary (AI-driven analysis)\n{}\n",
+            intent_lines.join("\n")
+        ));
+    }
+
     // ── Screen Vision Analysis ──
     // Phase 4: Include the latest Vision analysis result in the AI prompt
     if let Some(vision_result) = crate::observation::get_vision_result() {
         let mut vision_lines = Vec::new();
+        let conf = format!("{:.0}%", vision_result.confidence * 100.0);
         if let Some(ref intent) = vision_result.inferred_intent {
-            vision_lines.push(format!("🔍 **AI Vision detected**: You appear to be {}", intent));
+            vision_lines.push(format!(
+                "🔍 **AI Vision detected**: You appear to be {} (confidence: {})",
+                intent, conf
+            ));
         }
         if !vision_result.errors_detected.is_empty() {
             for err in &vision_result.errors_detected {
@@ -1898,6 +1941,15 @@ pub fn start_api_server(
                                                                 Analyze the correlated session context and give ONE specific, actionable suggestion.\n\
                                                                 ## How to think\n\
                                                                 Connect dots across data sources. If they see an error on their screen, that's what they need help with most.\n\
+\n\
+                                                                ## Confidence matters:\n\
+                                                                - If you see an active error (red alert) — call it out confidently and immediately\n\
+                                                                - If you see terminal commands matching the dashboard context — suggest the next logical step\n\
+                                                                - If you see multi-portal activity — connect the dots across tools\n\
+                                                                - If you're uncertain, stay quiet rather than give generic advice\n\
+                                                                - Only speak up when you have something genuinely useful to say\n\
+                                                                - Match the confidence level of your suggestion to the evidence: high confidence when errors are visible, moderate when patterns align, low/uncertain when inferring\n\
+                                                                - When suggesting terminal commands, verify they match what the user is already doing (same service, same path, same context)\n
 
                                                                 ## Priority Order:\n\
                                                                 1. 🔴 Active errors or problems on their screen — fix that first\n\
@@ -1971,32 +2023,21 @@ pub fn start_api_server(
                                         continue;
                                     }
 
-                                    // Remove previous AI recommendation so each tick replaces it
-                                    let all = panel.all_recommendations().await;
-                                    for prev in &all {
-                                        if prev.title.starts_with("🧭") {
-                                            let _ = panel.dismiss_recommendation(&prev.id).await;
-                                        }
-                                    }
-
-                                    let title = if suggestion_content.len() > 60 {
-                                        format!("🧭 {}", &suggestion_content[..60].replace('\n', " ").trim())
-                                    } else {
-                                        format!("🧭 {}", suggestion_content.replace('\n', " ").trim())
-                                    };
-
-                                    let _ = panel.add_recommendation(
-                                        &title,
-                                        suggestion_content,
-                                        "AI analyzed correlated session context",
-                                        "AI Copilot",
-                                        "General",
-                                        0.8,
-                                        guidance_panel::CardRiskLevel::Low,
-                                        vec![],
-                                        None,
-                                    ).await;
                                     panel.record_suggestion(suggestion_content).await;
+
+                                    // Also send the suggestion into the AI chat thread so the user sees it
+                                    let chat_msg = crate::api_server::ChatMessage {
+                                        id: format!("suggestion-{}", chrono::Utc::now().timestamp_millis()),
+                                        role: "assistant".to_string(),
+                                        content: format!("[💡 AI Copilot Suggestion]\n\n{}", suggestion_content),
+                                        created_at: chrono::Utc::now().to_rfc3339(),
+                                        workspace_id: None,
+                                    };
+                                    let settings_clone = poll_settings.clone();
+                                    {
+                                        let mut settings = settings_clone.lock().unwrap();
+                                        settings.messages.lock().unwrap().push(chat_msg);
+                                    }
                                     
                                     // Open advice chat window if not already open
                                     if let Some(ref ah) = app_handle_for_loop {

@@ -485,6 +485,40 @@ fn build_observation_context() -> String {
         }
     }
 
+    // ── Command Correctness ──
+    // Phase 4: Include terminal command correctness checks
+    if !summary.command_correctness.is_empty() {
+        let correct_count = summary.command_correctness.iter().filter(|c| c.is_correct).count();
+        let incorrect_count = summary.command_correctness.len() - correct_count;
+        context.push_str(&format!(
+            "\n## Terminal Command Checks\n- {} correct, {} flagged for review\n",
+            correct_count, incorrect_count
+        ));
+        for cmd in &summary.command_correctness {
+            if !cmd.is_correct {
+                let icon = match cmd.confidence {
+                    c if c >= 0.9 => "🚨",
+                    c if c >= 0.7 => "⚠️",
+                    _ => "💡",
+                };
+                context.push_str(&format!(
+                    "- {} **{}**: {}\n",
+                    icon,
+                    cmd.explanation,
+                    cmd.command.chars().take(150).collect::<String>()
+                ));
+                if let Some(ref alt) = cmd.suggested_alternative {
+                    context.push_str(&format!("  → {}\n", alt.chars().take(400).collect::<String>()));
+                }
+            } else {
+                context.push_str(&format!(
+                    "- ✅ **OK**: {}\n",
+                    cmd.command.chars().take(120).collect::<String>()
+                ));
+            }
+        }
+    }
+
     // ── Correlated Insight ──
     // Help the AI connect the dots across browser + terminal + vision
     if !summary.issues.is_empty() && (!summary.current_activity.is_empty() || summary.intent.is_some()) {

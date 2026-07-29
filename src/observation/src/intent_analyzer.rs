@@ -13,12 +13,11 @@
 //! understanding, enabling proactive AI guidance.
 
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use crate::browser::{BrowserContext, BrowserErrorSeverity};
 use crate::correlation::CorrelationEngine;
 use crate::error_detector::{DetectedError, ErrorSeverity};
-use crate::semantic_analyzer::{CommandIntent, IntentCategory, SemanticAnalyzer};
+use crate::semantic_analyzer::{IntentCategory, SemanticAnalyzer};
 use crate::session_tracker::{SessionState, TroubleshootingSession};
 
 // ── Intent understanding structures ───────────────────────────────
@@ -78,6 +77,21 @@ pub struct UserIntent {
     pub suggested_next_steps: Vec<String>,
 }
 
+/// Represents a command correctness check result.
+#[derive(Debug, Clone)]
+pub struct CommandCorrectness {
+    /// The command that was checked.
+    pub command: String,
+    /// Whether the command is generally correct/best-practice.
+    pub is_correct: bool,
+    /// Confidence in this assessment (0.0-1.0).
+    pub confidence: f32,
+    /// If incorrect, what's the suggested correct approach.
+    pub suggested_alternative: Option<String>,
+    /// Additional context explaining the assessment.
+    pub explanation: String,
+}
+
 /// Structured intent summary for AI consumption.
 #[derive(Debug, Clone)]
 pub struct IntentSummary {
@@ -91,6 +105,8 @@ pub struct IntentSummary {
     pub infrastructure_context: Vec<String>,
     /// Suggested guidance.
     pub suggested_guidance: Vec<String>,
+    /// Command correctness check results for terminal commands.
+    pub command_correctness: Vec<CommandCorrectness>,
 }
 
 /// A reported issue found during observation analysis.
@@ -157,6 +173,7 @@ impl IntentAnalyzer {
             issues: Vec::new(),
             infrastructure_context: Vec::new(),
             suggested_guidance: Vec::new(),
+            command_correctness: Vec::new(),
         };
 
         // 1. Analyze browser activity
@@ -370,6 +387,21 @@ impl IntentAnalyzer {
                     intent.action
                 ));
             }
+
+            // Phase 4: Command correctness checking
+            let correctness = self.check_command_correctness(command, output);
+            if !correctness.is_correct {
+                // Add as a suggested guidance item
+                if let Some(ref alt) = correctness.suggested_alternative {
+                    summary.suggested_guidance.push(format!(
+                        "⚠️ Command check: '{}' — {}. Suggestion: {}",
+                        command.chars().take(80).collect::<String>(),
+                        correctness.explanation,
+                        alt.chars().take(300).collect::<String>()
+                    ));
+                }
+            }
+            summary.command_correctness.push(correctness);
         } else {
             // Unknown command — just note it
             summary.current_activity.push(UserActivity {
@@ -377,6 +409,10 @@ impl IntentAnalyzer {
                 category: ActivityCategory::Unknown,
                 confidence: 0.5,
             });
+
+            // Still run correctness check on unknown commands
+            let correctness = self.check_command_correctness(command, output);
+            summary.command_correctness.push(correctness);
         }
     }
 
@@ -723,6 +759,151 @@ impl IntentAnalyzer {
     /// Get the last analyzed intent.
     pub fn get_last_intent(&self) -> Option<UserIntent> {
         self.state.lock().unwrap().last_intent.clone()
+    }
+
+    /// Check command correctness — compare terminal commands against common patterns
+    /// and best practices. Returns structured results for each command.
+    /// This is Phase 4: command correctness checking.
+    pub fn check_command_correctness(&self, command: &str, output: Option<&str>) -> CommandCorrectness {
+        let cmd_lower = command.to_lowercase().trim().to_string();
+
+        // Check against common best-practice patterns
+        // These are heuristics for common sysadmin/developer commands
+
+        let mut is_correct = true;
+        let mut suggestion: Option<String> = None;
+        let mut confidence = 0.7;
+        let mut explanation = String::from("Command follows standard patterns");
+
+        // ── Dangerous commands without confirmation/safety ──
+        if cmd_lower.contains("rm -rf /") || cmd_lower.contains("rm -rf /*") {
+            is_correct = false;
+            confidence = 0.95;
+            suggestion = Some("⚠️ DANGEROUS: `rm -rf /` will delete EVERYTHING. Add a confirmation prompt or use `rm -i` to interactively confirm each file.".to_string());
+            explanation = "Destructive command without safety measures".to_string();
+        }
+
+        // ── Systemctl without checking if service exists ──
+        if cmd_lower.starts_with("systemctl restart ") || cmd_lower.starts_with("systemctl stop ") {
+            let service_name = cmd_lower.split_whitespace().nth(2).unwrap_or("");
+            if service_name.is_empty() {
+                is_correct = false;
+                confidence = 0.8;
+                suggestion = Some("Add the service name: e.g., `systemctl restart nginx`".to_string());
+                explanation = "Command missing service name argument".to_string();
+            } else {
+                // Best practice: check status first, then restart
+                if !cmd_lower.contains("try-reload") {
+                    suggestion = Some(format!(
+                        "Best practice: check status first with `systemctl status {}`, then restart. If it's not running, `systemctl start {}` is more appropriate than restart.",
+                        service_name, service_name
+                    ));
+                    is_correct = false;
+                    confidence = 0.75;
+                    explanation = "Missing pre-check — should verify status before restart".to_string();
+                }
+            }
+        }
+
+        // ── Docker without --force-recreate or restart ──
+        if cmd_lower.contains("docker run ") && !cmd_lower.contains("--force-recreate") {
+            // Not strictly wrong, but for idempotent deployments, --force-recreate is better
+            if cmd_lower.contains("restart") || cmd_lower.contains("update") {
+                suggestion = Some("For idempotent container updates, add `--force-recreate` to ensure the latest image is used.".to_string());
+                confidence = 0.65;
+                is_correct = false;
+                explanation = "Consider using --force-recreate for idempotent container updates".to_string();
+            }
+        }
+
+        // ── Nginx/Apache reload without testing config first ──
+        if (cmd_lower.contains("nginx") && cmd_lower.contains("reload"))
+            || (cmd_lower.contains("apache") || cmd_lower.contains("httpd"))
+            && cmd_lower.contains("reload") {
+            suggestion = Some("Test config first: run `nginx -t` or `apachectl configtest` before reloading to avoid downtime from bad configs.".to_string());
+            confidence = 0.8;
+            is_correct = false;
+            explanation = "Should test config before reloading to prevent downtime".to_string();
+        }
+
+        // ── MySQL commands without specifying database ──
+        if cmd_lower.starts_with("mysql") && !cmd_lower.contains("-e ") && !cmd_lower.contains("use ") {
+            suggestion = Some("Consider specifying the database: `mysql -D dbname` to avoid querying the wrong database.".to_string());
+            confidence = 0.6;
+            is_correct = false;
+            explanation = "No target database specified — risk of operating on wrong DB".to_string();
+        }
+
+        // ── Kubectl without namespace ──
+        if cmd_lower.starts_with("kubectl") && !cmd_lower.contains("namespace") && !cmd_lower.contains("-n ") {
+            // Not wrong, but missing namespace is common in multi-cluster environments
+            if !cmd_lower.starts_with("kubectl get nodes") && !cmd_lower.starts_with("kubectl cluster-info") {
+                suggestion = Some("Consider specifying a namespace: `kubectl -n <namespace> <command>` to avoid cross-namespace confusion.".to_string());
+                confidence = 0.55;
+                is_correct = false;
+                explanation = "No namespace specified — may operate on wrong context in multi-cluster env".to_string();
+            }
+        }
+
+        // ── General: commands that should use sudo ──
+        if !cmd_lower.starts_with("sudo")
+            && (cmd_lower.contains("systemctl")
+                || cmd_lower.contains("journalctl")
+                || cmd_lower.contains("iptables")
+                || cmd_lower.contains("ufw ")
+                || cmd_lower.contains("chmod 0")
+                || cmd_lower.contains("chown root")) {
+            suggestion = Some("This command typically requires elevated privileges. Consider using `sudo`.".to_string());
+            confidence = 0.7;
+            is_correct = false;
+            explanation = "Likely needs elevated privileges — use `sudo`".to_string();
+        }
+
+        // ── General: piping cat to commands (useless use of cat) ──
+        if cmd_lower.contains("cat ") && (cmd_lower.contains("| grep") || cmd_lower.contains("| awk") || cmd_lower.contains("| sed")) {
+            suggestion = Some("Use the command directly instead of piping from `cat`: e.g., `grep pattern file.log` instead of `cat file.log | grep pattern`.".to_string());
+            confidence = 0.85;
+            is_correct = false;
+            explanation = "Useless use of cat — use the command directly on the file".to_string();
+        }
+
+        // ── Check output for common warning patterns ──
+        if let Some(out) = output {
+            let out_lower = out.to_lowercase();
+            if out_lower.contains("deprecated") || out_lower.contains("will be removed") {
+                if !is_correct {
+                    // Add to existing suggestion
+                    if let Some(ref mut s) = suggestion {
+                        s.push_str(" Additionally: output contains deprecation warnings.");
+                    }
+                } else {
+                    is_correct = false;
+                    confidence = 0.7;
+                    suggestion = Some("⚠️ Output contains deprecation warnings — check if the command or flags are outdated.".to_string());
+                    explanation = "Command produces deprecation warnings".to_string();
+                }
+            }
+            if out_lower.contains("warning") || out_lower.contains("warn:") {
+                if !is_correct {
+                    if let Some(ref mut s) = suggestion {
+                        s.push_str(" Output also contains warnings.");
+                    }
+                } else {
+                    is_correct = false;
+                    confidence = 0.65;
+                    suggestion = Some("⚠️ Command output contains warnings — review for potential issues.".to_string());
+                    explanation = "Command produced warnings in output".to_string();
+                }
+            }
+        }
+
+        CommandCorrectness {
+            command: command.to_string(),
+            is_correct,
+            confidence,
+            suggested_alternative: suggestion,
+            explanation,
+        }
     }
 }
 
