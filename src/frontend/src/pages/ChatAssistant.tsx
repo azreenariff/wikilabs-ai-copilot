@@ -34,6 +34,10 @@ function ChatAssistant() {
 
   useEffect(() => {
     loadHistory();
+
+    // Poll for new messages (including AI suggestions) every 10 seconds
+    const interval = setInterval(loadHistory, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
