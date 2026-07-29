@@ -253,42 +253,8 @@ fn send_message(
         .insert(&user_id, &ws_id, "user", &request.message, "[]")
         .map_err(|e| e.to_string())?;
 
-    // Build system prompt — this is what gives the AI its identity and purpose
-    let system_prompt = r#"You are the Wiki Labs AI Copilot — an AI assistant built into the Wiki Labs AI Copilot desktop application.
-
-## Your Identity
-- You ARE the Wiki Labs AI Copilot app itself
-- You observe the user's environment (active apps, browser URLs, terminal commands, file activity) and provide contextual guidance and recommendations
-- You are a senior infrastructure engineer, technical advisor, enterprise consultant, and troubleshooting mentor
-- Your role is to watch "what a technical engineer is doing" and proactively suggest helpful actions
-
-## Your Behavior
-- Be conversational and like a helpful teammate giving natural suggestions ("you should also check MySQL status")
-- Provide actionable, specific recommendations — avoid vague statements or formal metadata cards
-- Explain your reasoning clearly and step-by-step
-- Prefer evidence-based recommendations over assumptions
-- Suggest verification steps so the engineer can confirm your advice
-- State your confidence level when making recommendations (HIGH/MEDIUM/LOW)
-- When suggesting commands or configuration changes, explain why each step matters
-
-## Knowledge Packs & Skills
-- You have access to knowledge packs and skills that contain specific technical expertise
-- When observations suggest the user is working with something related to a knowledge pack (e.g., Kubernetes, MySQL, Docker, AWS, networking, Linux sysadmin), proactively load and use that knowledge pack's content to provide targeted guidance
-- Skills are reusable procedures for recurring task types — reference them when the user's work matches the skill's domain
-- Use knowledge packs to provide specific, authoritative guidance rather than generic advice
-
-## What You Know
-- You are designed to observe and guide — you watch what users do in their work environment
-- You can recommend commands, suggest checking system status, flag potential issues
-- You understand infrastructure, systems engineering, databases, containers, networks, cloud platforms, Linux, Windows, networking
-- You cannot execute commands or directly interact with the user's system — you only suggest and guide
-- You receive observation context about what's happening in the user's environment with each message
-
-## Important Constraints
-- You are an AI assistant. The human engineer remains responsible for all actions.
-- You cannot observe the user's screen, filesystem, or running processes unless explicitly provided that information through observation context.
-- If asked about something you cannot see or know, clearly state your limitations.
-- Always recommend that critical changes be verified in a non-production environment first."#.to_string();
+    // Build system prompt from persona definition (loaded from assets/system_prompt.md)
+    let system_prompt = wikilabs_ai::persona::EngineeringPersona::default_system_prompt();
 
     // Build AI request — include system prompt + observation context + conversation history
     let mut messages = vec![
@@ -385,112 +351,137 @@ fn send_message(
     })
 }
 
-/// Build observation context from the observation engine.
-/// This tells the AI what has been observed about the user's environment
-/// so it can provide context-aware guidance and recommendations.
+/// Build observation context from the observation engine using the IntentAnalyzer.
+/// Produces a structured "intent summary" that tells the AI copilot what the user
+/// is doing, their likely intent, detected issues, and suggested actions —
+/// enabling context-aware proactive guidance instead of raw error dumps.
 fn build_observation_context() -> String {
-    use std::time::Duration;
     let start = std::time::Instant::now();
+
+    let engine = match observation::get_observation_engine() {
+        Some(e) => e,
+        None => return String::new(),
+    };
+
+    // Run the intent analyzer — this synthesizes all observations into a structured summary
+    let summary = engine.analyze_intent();
+
+    if summary.current_activity.is_empty() && summary.intent.is_none() && summary.issues.is_empty() {
+        return String::new();
+    }
 
     let mut context = String::new();
 
-    // Get observation engine
-    let engine = match observation::get_observation_engine() {
-        Some(e) => e,
-        None => {
-            return String::new();
-        }
-    };
-
-    // Get detected errors
-    let errors = engine.get_errors();
-    if !errors.is_empty() {
-        context.push_str("Detected issues:
+    // ── What the user is doing ──
+    context.push_str("## What the user is doing
 ");
-        for error in errors.iter().take(3) {
-            let severity_str = match error.severity {
-                wikilabs_observation::error_detector::ErrorSeverity::Low => "LOW",
-                wikilabs_observation::error_detector::ErrorSeverity::Medium => "MED",
-                wikilabs_observation::error_detector::ErrorSeverity::High => "HIGH",
-                wikilabs_observation::error_detector::ErrorSeverity::Critical => "CRIT",
+    for activity in &summary.current_activity {
+        let cat_label = match &activity.category {
+            wikilabs_observation::ActivityCategory::Troubleshooting => "🔧 troubleshooting",
+            wikilabs_observation::ActivityCategory::Deployment => "🚀 deployment",
+            wikilabs_observation::ActivityCategory::Monitoring => "📊 monitoring",
+            wikilabs_observation::ActivityCategory::Administration => "⚙️ administration",
+            wikilabs_observation::ActivityCategory::Development => "💻 development",
+            wikilabs_observation::ActivityCategory::Browsing => "🌐 browsing",
+            wikilabs_observation::ActivityCategory::Communication => "📬 communication",
+            wikilabs_observation::ActivityCategory::Unknown => "❓ unknown",
+        };
+        context.push_str(&format!(
+            "- **{}** (confidence: {:.0}%) — {}
+",
+            cat_label,
+            activity.confidence * 100.0,
+            activity.description.chars().take(200).collect::<String>()
+        ));
+    }
+
+    // ── Intent Analysis ──
+    if let Some(ref intent) = summary.intent {
+        let cat_label = match &intent.activity_category {
+            wikilabs_observation::ActivityCategory::Troubleshooting => "🔧 troubleshooting",
+            wikilabs_observation::ActivityCategory::Deployment => "🚀 deployment",
+            wikilabs_observation::ActivityCategory::Monitoring => "📊 monitoring",
+            wikilabs_observation::ActivityCategory::Administration => "⚙️ administration",
+            wikilabs_observation::ActivityCategory::Development => "💻 development",
+            wikilabs_observation::ActivityCategory::Browsing => "🌐 browsing",
+            wikilabs_observation::ActivityCategory::Communication => "📬 communication",
+            wikilabs_observation::ActivityCategory::Unknown => "❓ mixed activity",
+        };
+        context.push_str(&format!("
+## Intent Analysis
+- Detected intent: **{}**
+- Category: {}
+- Confidence: {:.0}%
+",
+            intent.intent, cat_label, intent.confidence * 100.0
+        ));
+        if let Some(ref goal) = intent.goal {
+            context.push_str(&format!("- Likely goal: {}
+", goal.chars().take(300).collect::<String>()));
+        }
+        if !intent.infrastructure_targets.is_empty() {
+            context.push_str("- Infrastructure involved:
+");
+            for target in &intent.infrastructure_targets {
+                context.push_str(&format!("  - {}
+", target.chars().take(200).collect::<String>()));
+            }
+        }
+        if !intent.related_actions.is_empty() {
+            context.push_str("- Related actions:
+");
+            for action in &intent.related_actions {
+                context.push_str(&format!("  - {}
+", action.chars().take(200).collect::<String>()));
+            }
+        }
+        if !intent.suggested_next_steps.is_empty() {
+            context.push_str("- Suggested next steps:
+");
+            for step in &intent.suggested_next_steps {
+                context.push_str(&format!("  - {}
+", step.chars().take(200).collect::<String>()));
+            }
+        }
+    }
+
+    // ── Detected Issues ──
+    if !summary.issues.is_empty() {
+        context.push_str("
+## Detected Issues
+");
+        for issue in &summary.issues {
+            let sev = match issue.severity {
+                wikilabs_observation::IssueSeverity::Low => "LOW",
+                wikilabs_observation::IssueSeverity::Medium => "MED",
+                wikilabs_observation::IssueSeverity::High => "HIGH",
+                wikilabs_observation::IssueSeverity::Critical => "CRIT",
             };
             context.push_str(&format!(
-                "  - [{}] {} (source: {:?})
+                "- [{}] {} — {}
 ",
-                severity_str, error.title, error.source
+                sev, issue.title, issue.description.chars().take(300).collect::<String>()
             ));
         }
     }
 
-    // Get session state
-    if let Some(session) = engine.get_session_state() {
-        let state_str = format!("{:?}", session.state);
-        let hypothesis = session.current_hypothesis
-            .as_ref()
-            .map(|h| h.chars().take(100).collect::<String>())
-            .unwrap_or_else(|| "none".to_string());
-        context.push_str(&format!(
-            "Troubleshooting session: {}
-  Hypothesis: {}
-  Steps so far: {}
-",
-            state_str,
-            hypothesis,
-            session.steps.len()
-        ));
-        if let Some(ref next) = session.suggested_next_step {
-            context.push_str(&format!("  Suggested action: {}
-", next.chars().take(150).collect::<String>()));
-        }
-    }
-
-    // Get correlation engine data
-    let correlation = engine.correlation_engine();
-
-    // Get terminal command
-    if let Some(cmd) = correlation.get_terminal_command() {
-        context.push_str(&format!("Terminal: {}
-", cmd.chars().take(200).collect::<String>()));
-    }
-
-    // Get browser context
-    if let Some(browser) = correlation.get_browser_context() {
-        context.push_str(&format!(
-            "Browser: {} {} ({})
-",
-            browser.browser_name,
-            browser.url.as_deref().unwrap_or("unknown"),
-            if browser.is_engineering_portal { "engineering portal" } else { "regular" }
-        ));
-
-        if let Some(text) = &browser.visible_text {
-            if !text.is_empty() {
-                let truncated = if text.len() > 300 { &text[..300] } else { text };
-                context.push_str(&format!("Page content snippet: {}
-", truncated));
-            }
-
-            if !browser.detected_errors.is_empty() {
-                context.push_str("Browser errors:
+    // ── Suggested Guidance ──
+    if !summary.suggested_guidance.is_empty() {
+        context.push_str("
+## Suggested Guidance
 ");
-                for err in &browser.detected_errors {
-                    context.push_str(&format!("  - {} ({})
-", err.description, err.pattern));
-                }
-            }
+        for guidance in &summary.suggested_guidance {
+            context.push_str(&format!("- {}
+", guidance.chars().take(300).collect::<String>()));
         }
-    }
-
-    // Check active app
-    if let Some(app) = correlation.get_active_app() {
-        context.push_str(&format!("Active app: {}
-", app));
     }
 
     tracing::debug!(
-        "Observation context built in {} µs, length: {} chars",
+        "Intent analysis produced context in {} µs, {} activities, {} issues, {} guidance items",
         start.elapsed().as_micros(),
-        context.len()
+        summary.current_activity.len(),
+        summary.issues.len(),
+        summary.suggested_guidance.len()
     );
 
     context

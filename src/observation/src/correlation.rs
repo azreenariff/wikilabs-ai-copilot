@@ -77,7 +77,9 @@ pub struct CorrelationState {
     pub last_browser_url: Option<String>,
     pub last_browser_title: Option<String>,
     pub last_browser_is_portal: bool,
+    pub last_browser_context: Option<crate::browser::BrowserContext>,
     pub last_terminal_command: Option<String>,
+    pub last_terminal_output: Option<String>,
     pub last_terminal_shell: Option<String>,
     pub last_active_app: Option<String>,
     pub correlations: Vec<CorrelationRecord>,
@@ -96,7 +98,9 @@ impl CorrelationState {
             last_browser_url: None,
             last_browser_title: None,
             last_browser_is_portal: false,
+            last_browser_context: None,
             last_terminal_command: None,
+            last_terminal_output: None,
             last_terminal_shell: None,
             last_active_app: None,
             correlations: Vec::new(),
@@ -143,6 +147,13 @@ impl CorrelationEngine {
         state.last_scan = Some(Instant::now());
     }
 
+    /// Update with terminal output.
+    pub fn update_terminal_output(&self, output: Option<String>) {
+        let mut state = self.state.lock().unwrap();
+        state.last_terminal_output = output;
+        state.last_scan = Some(Instant::now());
+    }
+
     /// Update with active application.
     pub fn update_active_app(&self, app: Option<String>) {
         let mut state = self.state.lock().unwrap();
@@ -156,7 +167,20 @@ impl CorrelationEngine {
         state.last_browser_url = context.url.clone();
         state.last_browser_title = context.title.clone();
         state.last_browser_is_portal = context.is_engineering_portal;
+        state.last_browser_context = Some(context);
         state.last_scan = Some(Instant::now());
+    }
+
+    /// Get the last-known full browser context (including visible_text and detected_errors).
+    pub fn get_full_browser_context(&self) -> Option<crate::browser::BrowserContext> {
+        let state = self.state.lock().unwrap();
+        state.last_browser_context.clone()
+    }
+
+    /// Get the last terminal output.
+    pub fn get_terminal_output(&self) -> Option<String> {
+        let state = self.state.lock().unwrap();
+        state.last_terminal_output.clone()
     }
 
     /// Get the last-known browser context as a full BrowserContext struct.

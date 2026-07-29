@@ -43,6 +43,7 @@ pub mod session_tracker;
 pub mod shell;
 pub mod terminal;
 pub mod ai_guidance;
+pub mod intent_analyzer;
 #[cfg(windows)]
 pub mod cdp_browser;
 #[cfg(windows)]
@@ -65,6 +66,10 @@ pub use guidance::{GuidanceEngine, GuidanceSuggestion, GuidanceSeverity, Guidanc
 pub use semantic_analyzer::{SemanticAnalyzer, CommandIntent, IntentCategory, AnalysisResult};
 pub use session_tracker::{SessionTracker, SessionState, Suggestion};
 pub use shell::{ShellObserver, ShellStatus, ShellCommand};
+pub use intent_analyzer::{
+    ActivityCategory, IntentAnalyzer, IntentSummary, IssueReport, IssueSeverity,
+    UserActivity, UserIntent,
+};
 
 use engine::{ObservationEngine, ObservationEngineConfig};
 use std::sync::OnceLock;

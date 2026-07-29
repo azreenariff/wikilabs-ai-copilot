@@ -20,6 +20,7 @@ use crate::error_detector::ErrorDetector;
 use crate::event::{ObservationEvent, ObservationPayload, ProviderType};
 use crate::event_bus::EventBus;
 use crate::session_tracker::SessionTracker;
+use crate::intent_analyzer::IntentAnalyzer;
 use crate::provider::{ObservationProvider, ProviderRegistry, ProviderState};
 
 /// Configuration for the observation engine.
@@ -54,6 +55,8 @@ pub struct ObservationEngine {
     correlation_engine: Arc<CorrelationEngine>,
     error_detector: Arc<ErrorDetector>,
     session_tracker: Arc<SessionTracker>,
+    /// Intent analyzer for synthesizing structured intent summaries.
+    intent_analyzer: Arc<IntentAnalyzer>,
     /// Whether the engine is running.
     running: Arc<Mutex<bool>>,
 }
@@ -67,6 +70,7 @@ impl ObservationEngine {
         let session_tracker = Arc::new(SessionTracker::new());
 
         let registry = Arc::new(Mutex::new(ProviderRegistry::new()));
+        let intent_analyzer = Arc::new(IntentAnalyzer::new());
 
         Self {
             config,
@@ -75,6 +79,7 @@ impl ObservationEngine {
             correlation_engine,
             error_detector,
             session_tracker,
+            intent_analyzer,
             running: Arc::new(Mutex::new(false)),
         }
     }
@@ -259,8 +264,56 @@ impl ObservationEngine {
                             .get("is_engineering_portal")
                             .and_then(|v| v.as_bool())
                             .unwrap_or(false);
+                        let browser_name = event
+                            .payload
+                            .data
+                            .get("browser")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(|| "Browser".to_string());
+                        let visible_text = event
+                            .payload
+                            .data
+                            .get("visible_text")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+                        let detected_errors: Vec<crate::browser::BrowserError> = event
+                            .payload
+                            .data
+                            .get("detected_errors")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| {
+                                arr.iter().filter_map(|e| {
+                                    e.as_object().and_then(|obj| {
+                                        let pattern = obj.get("pattern").and_then(|p| p.as_str()).map(|s| s.to_string())?;
+                                        let description = obj.get("description").and_then(|d| d.as_str()).map(|s| s.to_string())?;
+                                        let severity_str = obj.get("severity").and_then(|s| s.as_str()).unwrap_or("Low");
+                                        let severity = match severity_str {
+                                            "High" => crate::browser::BrowserErrorSeverity::High,
+                                            "Critical" => crate::browser::BrowserErrorSeverity::Critical,
+                                            "Medium" => crate::browser::BrowserErrorSeverity::Medium,
+                                            _ => crate::browser::BrowserErrorSeverity::Low,
+                                        };
+                                        Some(crate::browser::BrowserError { pattern, description, severity })
+                                    })
+                                }).collect()
+                            })
+                            .unwrap_or_default();
+
+                        // Update minimal state for quick access
                         self.correlation_engine
-                            .update_browser_context(Some(url.to_string()), title, is_portal);
+                            .update_browser_context(Some(url.to_string()), title.clone(), is_portal);
+
+                        // Also update full context for intent analysis
+                        let full_ctx = crate::browser::BrowserContext {
+                            browser_name,
+                            url: Some(url.to_string()),
+                            title,
+                            is_engineering_portal: is_portal,
+                            visible_text,
+                            detected_errors,
+                        };
+                        self.correlation_engine.update_browser_context_full(full_ctx);
                     }
                 }
                 ProviderType::Terminal => {
@@ -276,8 +329,17 @@ impl ObservationEngine {
                             .get("shell")
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string());
+                        let output = event
+                            .payload
+                            .data
+                            .get("output")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
                         self.correlation_engine
                             .update_terminal_context(Some(session_id.to_string()), shell);
+                        if let Some(out) = output {
+                            self.correlation_engine.update_terminal_output(Some(out));
+                        }
                     }
                 }
                 _ => {}
@@ -471,6 +533,36 @@ impl ObservationEngine {
     /// Get the error detector reference for external use.
     pub fn error_detector(&self) -> &Arc<ErrorDetector> {
         &self.error_detector
+    }
+
+    /// Run the intent analyzer on current observation state.
+    /// Produces a structured IntentSummary that the AI can use for proactive guidance.
+    pub fn analyze_intent(&self) -> crate::intent_analyzer::IntentSummary {
+        let errors = self.error_detector.get_errors();
+        let session = self.session_tracker.get_session();
+        let correlation = &self.correlation_engine;
+
+        // Get full browser context (includes visible_text and detected_errors)
+        let browser_ctx = correlation.get_full_browser_context();
+        let terminal_cmd = correlation.get_terminal_command();
+        let terminal_output = correlation.get_terminal_output();
+        let active_app = correlation.get_active_app();
+
+        // Get session state for intent analysis
+        let session_state = session.as_ref().map(|s| {
+            // Clone the TroubleshootingSession - it's a Clone type
+            s.clone()
+        });
+
+        self.intent_analyzer.analyze(
+            browser_ctx.as_ref(),
+            terminal_cmd.as_deref(),
+            terminal_output.as_deref(),
+            active_app.as_deref(),
+            &errors,
+            session_state.as_ref(),
+            correlation,
+        )
     }
 
     /// Check if the engine is running.

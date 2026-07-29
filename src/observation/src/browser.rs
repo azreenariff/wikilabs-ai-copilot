@@ -28,7 +28,7 @@ const ENGINEERING_PORTAL_PATTERNS: &[&str] = &[
 
 // ── HTML error page patterns ────────────────────────────────────────
 #[allow(dead_code)]
-const ERROR_PAGE_PATTERNS: &[(&str, &str)] = &[
+pub const ERROR_PAGE_PATTERNS: &[(&str, &str)] = &[
     ("500", "Internal Server Error"),
     ("502", "Bad Gateway"),
     ("503", "Service Unavailable"),
@@ -494,7 +494,9 @@ impl ObservationProvider for BrowserProvider {
                     "detected_errors": context.detected_errors.iter().map(|e| {
                         serde_json::json!({"pattern": e.pattern, "description": e.description, "severity": format!("{:?}", e.severity)})
                     }).collect::<Vec<_>>(),
-                    "visible_text_length": context.visible_text.as_ref().map(|t| t.len()),
+                    "visible_text": context.visible_text.as_ref().map(|t| {
+                        if t.len() > 2000 { &t[..2000] } else { t.as_str() }
+                    }),
                 });
 
                 Ok(vec![ObservationEvent::new(
