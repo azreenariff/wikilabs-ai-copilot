@@ -196,6 +196,12 @@ impl CorrelationEngine {
         state.last_terminal_command.clone()
     }
 
+    /// Get the last-known active application.
+    pub fn get_active_app(&self) -> Option<String> {
+        let state = self.state.lock().unwrap();
+        state.last_active_app.clone()
+    }
+
     /// Run correlation analysis on current state.
     pub fn scan(&self) -> CorrelationSet {
         let mut state = self.state.lock().unwrap();

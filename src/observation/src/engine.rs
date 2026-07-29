@@ -463,6 +463,16 @@ impl ObservationEngine {
         &self.event_bus
     }
 
+    /// Get the correlation engine reference for external use (e.g., AI guidance).
+    pub fn correlation_engine(&self) -> &Arc<CorrelationEngine> {
+        &self.correlation_engine
+    }
+
+    /// Get the error detector reference for external use.
+    pub fn error_detector(&self) -> &Arc<ErrorDetector> {
+        &self.error_detector
+    }
+
     /// Check if the engine is running.
     pub async fn is_running(&self) -> bool {
         *self.running.lock().await

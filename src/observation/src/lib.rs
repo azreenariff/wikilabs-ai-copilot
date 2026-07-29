@@ -65,3 +65,23 @@ pub use guidance::{GuidanceEngine, GuidanceSuggestion, GuidanceSeverity, Guidanc
 pub use semantic_analyzer::{SemanticAnalyzer, CommandIntent, IntentCategory, AnalysisResult};
 pub use session_tracker::{SessionTracker, SessionState, Suggestion};
 pub use shell::{ShellObserver, ShellStatus, ShellCommand};
+
+use engine::{ObservationEngine, ObservationEngineConfig};
+use std::sync::OnceLock;
+
+/// Global observation engine instance.
+static OBSERVATION_ENGINE: OnceLock<std::sync::Arc<ObservationEngine>> = OnceLock::new();
+
+/// Initialize the observation engine. Returns a reference to the global engine.
+pub fn init_observation_engine() -> std::sync::Arc<ObservationEngine> {
+    OBSERVATION_ENGINE.get_or_init(|| {
+        std::sync::Arc::new(ObservationEngine::new(ObservationEngineConfig::default()))
+    })
+    .clone()
+}
+
+/// Get the global observation engine instance.
+/// Returns `Some` if the engine has been initialized, `None` otherwise.
+pub fn get_observation_engine() -> Option<std::sync::Arc<ObservationEngine>> {
+    OBSERVATION_ENGINE.get().cloned()
+}

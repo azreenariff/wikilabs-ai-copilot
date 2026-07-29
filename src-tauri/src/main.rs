@@ -253,13 +253,80 @@ fn send_message(
         .insert(&user_id, &ws_id, "user", &request.message, "[]")
         .map_err(|e| e.to_string())?;
 
-    // Build AI request
+    // Build system prompt — this is what gives the AI its identity and purpose
+    let system_prompt = r#"You are the Wiki Labs AI Copilot — an AI assistant built into the Wiki Labs AI Copilot desktop application.
+
+## Your Identity
+- You ARE the Wiki Labs AI Copilot app itself
+- You observe the user's environment (active apps, browser URLs, terminal commands, file activity) and provide contextual guidance and recommendations
+- You are a senior infrastructure engineer, technical advisor, enterprise consultant, and troubleshooting mentor
+- Your role is to watch "what a technical engineer is doing" and proactively suggest helpful actions
+
+## Your Behavior
+- Be conversational and like a helpful teammate giving natural suggestions ("you should also check MySQL status")
+- Provide actionable, specific recommendations — avoid vague statements or formal metadata cards
+- Explain your reasoning clearly and step-by-step
+- Prefer evidence-based recommendations over assumptions
+- Suggest verification steps so the engineer can confirm your advice
+- State your confidence level when making recommendations (HIGH/MEDIUM/LOW)
+- When suggesting commands or configuration changes, explain why each step matters
+
+## Knowledge Packs & Skills
+- You have access to knowledge packs and skills that contain specific technical expertise
+- When observations suggest the user is working with something related to a knowledge pack (e.g., Kubernetes, MySQL, Docker, AWS, networking, Linux sysadmin), proactively load and use that knowledge pack's content to provide targeted guidance
+- Skills are reusable procedures for recurring task types — reference them when the user's work matches the skill's domain
+- Use knowledge packs to provide specific, authoritative guidance rather than generic advice
+
+## What You Know
+- You are designed to observe and guide — you watch what users do in their work environment
+- You can recommend commands, suggest checking system status, flag potential issues
+- You understand infrastructure, systems engineering, databases, containers, networks, cloud platforms, Linux, Windows, networking
+- You cannot execute commands or directly interact with the user's system — you only suggest and guide
+- You receive observation context about what's happening in the user's environment with each message
+
+## Important Constraints
+- You are an AI assistant. The human engineer remains responsible for all actions.
+- You cannot observe the user's screen, filesystem, or running processes unless explicitly provided that information through observation context.
+- If asked about something you cannot see or know, clearly state your limitations.
+- Always recommend that critical changes be verified in a non-production environment first."#.to_string();
+
+    // Build AI request — include system prompt + observation context + conversation history
+    let mut messages = vec![
+        wikilabs_ai::provider::AiMessage {
+            role: "system".to_string(),
+            content: system_prompt,
+        },
+    ];
+
+    // Add observation context as a system message — tells the AI what's happening
+    // in the user's environment so it can give context-aware guidance
+    let observation_context = build_observation_context();
+    if !observation_context.is_empty() {
+        messages.push(wikilabs_ai::provider::AiMessage {
+            role: "system".to_string(),
+            content: format!("[OBSERVATION CONTEXT]
+{}", observation_context),
+        });
+    }
+
+    // Add conversation history for context (last 20 messages)
+    let history = app_state
+        .repos
+        .chat_messages
+        .get_by_workspace(&ws_id, 20)
+        .map_err(|e| e.to_string())?;
+
+    for msg in &history {
+        messages.push(wikilabs_ai::provider::AiMessage {
+            role: msg.role.clone(),
+            content: msg.content.clone(),
+        });
+    }
+
+    // Create AI request with system prompt, observation context, and conversation history
     let ai_request = AiRequest {
         model: settings.ai_provider.model.clone(),
-        messages: vec![wikilabs_ai::provider::AiMessage {
-            role: "user".to_string(),
-            content: request.message.clone(),
-        }],
+        messages,
         tools: vec![],
         temperature: None,
         max_tokens: Some(settings.ai_provider.max_tokens),
@@ -316,6 +383,117 @@ fn send_message(
         content: response.message.content,
         created_at: assistant_created,
     })
+}
+
+/// Build observation context from the observation engine.
+/// This tells the AI what has been observed about the user's environment
+/// so it can provide context-aware guidance and recommendations.
+fn build_observation_context() -> String {
+    use std::time::Duration;
+    let start = std::time::Instant::now();
+
+    let mut context = String::new();
+
+    // Get observation engine
+    let engine = match observation::get_observation_engine() {
+        Some(e) => e,
+        None => {
+            return String::new();
+        }
+    };
+
+    // Get detected errors
+    let errors = engine.get_errors();
+    if !errors.is_empty() {
+        context.push_str("Detected issues:
+");
+        for error in errors.iter().take(3) {
+            let severity_str = match error.severity {
+                wikilabs_observation::error_detector::ErrorSeverity::Low => "LOW",
+                wikilabs_observation::error_detector::ErrorSeverity::Medium => "MED",
+                wikilabs_observation::error_detector::ErrorSeverity::High => "HIGH",
+                wikilabs_observation::error_detector::ErrorSeverity::Critical => "CRIT",
+            };
+            context.push_str(&format!(
+                "  - [{}] {} (source: {:?})
+",
+                severity_str, error.title, error.source
+            ));
+        }
+    }
+
+    // Get session state
+    if let Some(session) = engine.get_session_state() {
+        let state_str = format!("{:?}", session.state);
+        let hypothesis = session.current_hypothesis
+            .as_ref()
+            .map(|h| h.chars().take(100).collect::<String>())
+            .unwrap_or_else(|| "none".to_string());
+        context.push_str(&format!(
+            "Troubleshooting session: {}
+  Hypothesis: {}
+  Steps so far: {}
+",
+            state_str,
+            hypothesis,
+            session.steps.len()
+        ));
+        if let Some(ref next) = session.suggested_next_step {
+            context.push_str(&format!("  Suggested action: {}
+", next.chars().take(150).collect::<String>()));
+        }
+    }
+
+    // Get correlation engine data
+    let correlation = engine.correlation_engine();
+
+    // Get terminal command
+    if let Some(cmd) = correlation.get_terminal_command() {
+        context.push_str(&format!("Terminal: {}
+", cmd.chars().take(200).collect::<String>()));
+    }
+
+    // Get browser context
+    if let Some(browser) = correlation.get_browser_context() {
+        context.push_str(&format!(
+            "Browser: {} {} ({})
+",
+            browser.browser_name,
+            browser.url.as_deref().unwrap_or("unknown"),
+            if browser.is_engineering_portal { "engineering portal" } else { "regular" }
+        ));
+
+        if let Some(text) = &browser.visible_text {
+            if !text.is_empty() {
+                let truncated = if text.len() > 300 { &text[..300] } else { text };
+                context.push_str(&format!("Page content snippet: {}
+", truncated));
+            }
+
+            if !browser.detected_errors.is_empty() {
+                context.push_str("Browser errors:
+");
+                for err in &browser.detected_errors {
+                    context.push_str(&format!("  - {} ({})
+", err.description, err.pattern));
+                }
+            }
+        }
+    }
+
+    // Check active app
+    if let Some(app) = correlation.get_active_app() {
+        context.push_str(&format!("Active app: {}
+", app));
+    }
+
+    tracing::debug!(
+        "Observation context built in {} µs, length: {} chars",
+        start.elapsed().as_micros(),
+        context.len()
+    );
+
+    context
 }
 
 #[tauri::command]
