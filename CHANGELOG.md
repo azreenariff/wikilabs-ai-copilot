@@ -1,3 +1,13 @@
+## v1.1.133 — ACTIVE OBSERVATION: terminal monitoring, continuous AI reasoning, browser content
+
+- **Terminal provider registered** — `TerminalProvider` now active in observation engine, monitoring all terminal windows (MobaXterm, Windows Terminal, PuTTY, CMD, PowerShell, etc.) for command input and output
+- **Faster screen capture** — poll interval reduced from 30s to 5s for more frequent screen updates fed to vision analyzer
+- **Faster event polling** — event collection reduced from 5s to 3s for more responsive observation
+- **Faster AI reasoning** — reasoning interval reduced from 30s to 10s for quicker guidance generation
+- **Continuous AI reasoning** — no longer skips reasoning when user stays in one window; fires on terminal/screen activity even without ApplicationChanged events (e.g., working in MobaXterm terminal)
+- **Browser page content in AI context** — `visible_text` from browser provider now fed to AI prompt so it can see actual page content, not just URLs and error patterns
+- **Enhanced session narrative** — new "📄 PAGE CONTENT" section in AI prompt for browser contexts
+
 ## v1.1.132 — FIX: Chat assistant makes like natural chat; minimize-to-roll-up; auto-restore on advice
 
 - **Removed sender labels** ("🤖 Assistant", "👤 You") from chat messages — messages now render as clean conversation bubbles with only timestamps
