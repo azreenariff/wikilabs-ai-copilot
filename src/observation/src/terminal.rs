@@ -175,7 +175,7 @@ mod terminal_windows {
         OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        EnumChildWindows, EnumWindows, GetClassNameW,
+        EnumWindows, GetClassNameW,
         GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
     };
     use windows::Win32::Foundation::{BOOL, FALSE, LPARAM, TRUE};
