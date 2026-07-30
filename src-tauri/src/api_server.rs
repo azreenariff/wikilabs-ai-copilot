@@ -18,6 +18,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use wikilabs_observation;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 use tracing::{error, info, warn};
@@ -819,7 +820,7 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         if let Some(sys) = system_prompt {
             messages.push(wikilabs_ai::provider::AiMessage {
                 role: "system".to_string(),
-                content: sys,
+                content: serde_json::Value::String(sys),
             });
         }
 
@@ -827,14 +828,14 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         for msg in history.iter() {
             messages.push(wikilabs_ai::provider::AiMessage {
                 role: msg.role.clone(),
-                content: msg.content.clone(),
+                content: serde_json::Value::String(msg.content.clone()),
             });
         }
 
         // Add the current user message
         messages.push(wikilabs_ai::provider::AiMessage {
             role: "user".to_string(),
-            content: message.clone(),
+            content: serde_json::Value::String(message.clone()),
         });
 
         let ai_request = wikilabs_ai::provider::AiRequest {
@@ -860,7 +861,21 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
             Ok(response) => {
                 let aid = uuid::Uuid::new_v4().to_string();
                 let acreated = chrono::Utc::now().to_rfc3339();
-                (aid, acreated, response.message.content)
+                // Extract text from response content
+                let resp_text = match &response.message.content {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Array(parts) => {
+                        parts.iter().find_map(|p| {
+                            if let Some(obj) = p.as_object() {
+                                if obj.get("type").and_then(|t| t.as_str()) == Some("text") {
+                                    obj.get("text").and_then(|t| t.as_str()).map(String::from)
+                                } else { None }
+                            } else { None }
+                        }).unwrap_or_default()
+                    }
+                    _ => String::new(),
+                };
+                (aid, acreated, resp_text)
             }
             Err(e) => {
                 error!(error = %e, "AI chat failed");
@@ -2126,11 +2141,38 @@ pub fn start_api_server(
                             let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
                                 &provider_name, &endpoint, &api_key, &model, max_tokens, 128000
                             );
+
+                            // Try to get a fresh screenshot for direct LLM vision
+                            let user_message = if let Some(screenshot) = wikilabs_observation::get_last_screenshot() {
+                                // Build multi-modal user message with text + image
+                                wikilabs_ai::provider::AiMessage {
+                                    role: "user".to_string(),
+                                    content: serde_json::json!([
+                                        {
+                                            "type": "text",
+                                            "text": format!("Analyze the user's correlated session context and give specific, actionable recommendations. The current focused window is: {:?}. Here is a screenshot of what the user is looking at right now — use it to give precise, contextual guidance.", &screenshot.focused_window)
+                                        },
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {
+                                                "url": format!("data:image/png;base64,{}", screenshot.data_base64)
+                                            }
+                                        }
+                                    ])
+                                }
+                            } else {
+                                // No screenshot available — fall back to text-only
+                                wikilabs_ai::provider::AiMessage {
+                                    role: "user".to_string(),
+                                    content: serde_json::json!("Analyze the user's correlated session and give specific, actionable recommendations.")
+                                }
+                            };
+
                             let ai_request = wikilabs_ai::provider::AiRequest {
                                 model: model.clone(),
                                 messages: vec![
-                                    wikilabs_ai::provider::AiMessage { role: "system".to_string(), content: system_prompt },
-                                    wikilabs_ai::provider::AiMessage { role: "user".to_string(), content: "Analyze the user's correlated session and give specific, actionable recommendations.".to_string() },
+                                    wikilabs_ai::provider::AiMessage { role: "system".to_string(), content: serde_json::json!(system_prompt) },
+                                    user_message,
                                 ],
                                 tools: vec![],
                                 temperature: None,
@@ -2140,7 +2182,25 @@ pub fn start_api_server(
 
                             match provider.chat(ai_request).await {
                                 Ok(response) => {
-                                    let suggestion_content = &response.message.content;
+                                    // Extract text from the response content (may be string or array — take first text part)
+                                    let suggestion_content = match &response.message.content {
+                                        serde_json::Value::String(s) => s,
+                                        serde_json::Value::Array(parts) => {
+                                            // Multi-modal response: take first text part
+                                            parts.iter().find_map(|p| {
+                                                if let Some(obj) = p.as_object() {
+                                                    if obj.get("type").and_then(|t| t.as_str()) == Some("text") {
+                                                        obj.get("text").and_then(|t| t.as_str())
+                                                    } else {
+                                                        None
+                                                    }
+                                                } else {
+                                                    None
+                                                }
+                                            }).unwrap_or("")
+                                        }
+                                        _ => "",
+                                    };
 
                                     if panel.should_skip_suggestion(suggestion_content).await {
                                         tracing::debug!("Skipping repetitive AI suggestion");

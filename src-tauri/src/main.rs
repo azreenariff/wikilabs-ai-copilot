@@ -260,7 +260,7 @@ fn send_message(
     let mut messages = vec![
         wikilabs_ai::provider::AiMessage {
             role: "system".to_string(),
-            content: system_prompt,
+            content: serde_json::Value::String(system_prompt),
         },
     ];
 
@@ -270,8 +270,9 @@ fn send_message(
     if !observation_context.is_empty() {
         messages.push(wikilabs_ai::provider::AiMessage {
             role: "system".to_string(),
-            content: format!("[OBSERVATION CONTEXT]
-{}", observation_context),
+            content: serde_json::Value::String(format!(
+                "[OBSERVATION CONTEXT]\n{}", observation_context
+            )),
         });
     }
 
@@ -285,7 +286,7 @@ fn send_message(
     for msg in &history {
         messages.push(wikilabs_ai::provider::AiMessage {
             role: msg.role.clone(),
-            content: msg.content.clone(),
+            content: serde_json::Value::String(msg.content.clone()),
         });
     }
 
@@ -326,7 +327,22 @@ fn send_message(
     );
 
     // Format assistant response
-    let assistant_msg = ChatMessage::assistant(&response.message.content);
+    // Extract text from response content (Value → String)
+    let resp_content = match &response.message.content {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Array(parts) => {
+            parts.iter().find_map(|p| {
+                if let Some(obj) = p.as_object() {
+                    if obj.get("type").and_then(|t| t.as_str()) == Some("text") {
+                        obj.get("text").and_then(|t| t.as_str()).map(String::from)
+                    } else { None }
+                } else { None }
+            }).unwrap_or_default()
+        }
+        _ => String::new(),
+    };
+
+    let assistant_msg = ChatMessage::assistant(&resp_content);
     let assistant_id = assistant_msg.id.to_string();
     let assistant_created = assistant_msg.created_at.to_rfc3339();
 
@@ -338,7 +354,7 @@ fn send_message(
             &assistant_id,
             &ws_id,
             "assistant",
-            &response.message.content,
+            &resp_content,
             "[]",
         )
         .map_err(|e| e.to_string())?;
@@ -346,7 +362,7 @@ fn send_message(
     Ok(ChatResponse {
         id: assistant_id,
         role: "assistant".to_string(),
-        content: response.message.content,
+        content: resp_content,
         created_at: assistant_created,
     })
 }

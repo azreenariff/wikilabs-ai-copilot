@@ -96,3 +96,9 @@ pub fn get_observation_engine() -> Option<std::sync::Arc<ObservationEngine>> {
 pub fn get_vision_result() -> Option<crate::vision_analyzer::VisionAnalysisResult> {
     get_observation_engine().and_then(|engine| engine.get_vision_result())
 }
+
+/// Get the most recently captured screenshot from the global observation engine.
+/// Returns `None` if the engine hasn't been initialized or no screenshot is available.
+pub fn get_last_screenshot() -> Option<crate::screen_capture::CapturedScreenshot> {
+    get_observation_engine().and_then(|engine| engine.get_last_screenshot())
+}

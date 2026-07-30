@@ -19,10 +19,17 @@ pub struct ModelInfo {
 }
 
 /// An AI message (user/assistant/system) for API requests.
+/// `content` can be a plain text string or a multi-modal array (OpenAI format)
+/// with `text` and `image_url` items. When `content` is a string it serializes
+/// as a normal JSON string; when it's an array it serializes as the full
+/// multi-modal structure the API expects.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiMessage {
     pub role: String,
-    pub content: String,
+    /// Either a plain text string, or an array of content parts (text/image_url).
+    /// Use serde_json::json!("hello") for text, or
+    /// serde_json::json!([{ "type": "text", "text": "..." }, { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }]) for multi-modal.
+    pub content: serde_json::Value,
 }
 
 /// AI request payload sent to the provider.
@@ -233,7 +240,7 @@ impl AiProvider for OpenAICompatibleProvider {
 
         let message = AiMessage {
             role: choice.message.role.clone(),
-            content: choice.message.content.clone().unwrap_or_default(),
+            content: choice.message.content.clone().unwrap_or_default().into(),
         };
 
         let tool_calls: Vec<ToolCall> = choice.message.tool_calls.iter().map(|tc| {

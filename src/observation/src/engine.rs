@@ -678,4 +678,18 @@ impl ObservationEngine {
             }
         }
     }
+
+    /// Get the most recently captured screenshot from the screen capture provider.
+    /// Returns None if no screenshot is available yet.
+    pub fn get_last_screenshot(&self) -> Option<crate::screen_capture::CapturedScreenshot> {
+        let registry = self.registry.blocking_lock();
+        for provider in registry.all_providers() {
+            if provider.provider_type() == ProviderType::ScreenCapture {
+                if let Some(screen) = provider.as_any().downcast_ref::<crate::screen_capture::ScreenCaptureProvider>() {
+                    return screen.get_last_screenshot();
+                }
+            }
+        }
+        None
+    }
 }

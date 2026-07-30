@@ -136,6 +136,12 @@ impl ScreenCaptureProvider {
             None
         }
     }
+
+    /// Return the last captured screenshot, if any.
+    /// Used by the guidance loop to get a fresh screenshot for direct LLM vision.
+    pub fn get_last_screenshot(&self) -> Option<CapturedScreenshot> {
+        self.state.lock().unwrap().last_screenshot.clone()
+    }
 }
 
 impl Default for ScreenCaptureProvider {
