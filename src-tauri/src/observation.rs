@@ -129,15 +129,6 @@ async fn register_providers(engine: &ObservationEngine) {
         engine.register_provider(Box::new(provider)).await;
     }
 
-    // Clipboard provider — works on all platforms
-    {
-        let provider =
-            wikilabs_observation::clipboard::ClipboardProvider::new();
-        tracing::info!("[Observation] Registering clipboard provider");
-        println!("[OBS] >>> Registered clipboard provider");
-        engine.register_provider(Box::new(provider)).await;
-    }
-
     // Browser provider — Windows only (Win32 API for URL extraction)
     #[cfg(target_os = "windows")]
     {
@@ -177,7 +168,7 @@ async fn register_providers(engine: &ObservationEngine) {
     println!("[OBS] >>> Provider registration complete");
 
     let count = {
-        let mut c = 2; // active_window + clipboard (always)
+        let mut c = 2; // active_window + file_observer (always)
         c += 1; // vision_analyzer (always)
         #[cfg(target_os = "windows")]
         { c += 3; } // browser + terminal + screen_capture (Windows)

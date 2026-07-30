@@ -4,7 +4,7 @@
 //! - Profile management (primary + named profiles)
 //! - Import/Export/Backup/Restore settings
 //! - Validation with diagnostics
-//! - Privacy controls (screen observation, OCR, clipboard, telemetry)
+//! - Privacy controls (screen observation, OCR, telemetry)
 //! - Security (encrypted credential storage)
 //! - Version tracking and migration
 //!
@@ -30,9 +30,6 @@ pub struct PrivacySettings {
     /// Allow OCR on captured screen content.
     #[serde(default = "default_true")]
     pub ocr_enabled: bool,
-    /// Allow clipboard observation.
-    #[serde(default)]
-    pub clipboard_observation_enabled: bool,
     /// Allow diagnostic data collection (crash reports, usage stats).
     #[serde(default)]
     pub diagnostics_enabled: bool,
@@ -55,7 +52,6 @@ impl Default for PrivacySettings {
         Self {
             screen_observation_enabled: false,
             ocr_enabled: true,
-            clipboard_observation_enabled: false,
             diagnostics_enabled: true,
             telemetry_enabled: false,
             sensitive_logging_enabled: false,
@@ -68,7 +64,7 @@ impl Default for PrivacySettings {
 impl PrivacySettings {
     /// Returns true if ALL observation features are disabled.
     pub fn is_fully_observation_off(&self) -> bool {
-        !self.screen_observation_enabled && !self.clipboard_observation_enabled
+        !self.screen_observation_enabled
     }
 
     /// Returns true if telemetry/analytics are disabled.
@@ -81,7 +77,6 @@ impl PrivacySettings {
         self.privacy_mode = true;
         self.screen_observation_enabled = false;
         self.ocr_enabled = false;
-        self.clipboard_observation_enabled = false;
         self.diagnostics_enabled = false;
         self.telemetry_enabled = false;
         self.sensitive_logging_enabled = false;
@@ -92,7 +87,6 @@ impl PrivacySettings {
         self.privacy_mode = false;
         self.screen_observation_enabled = false;
         self.ocr_enabled = true;
-        self.clipboard_observation_enabled = false;
         self.diagnostics_enabled = true;
         self.telemetry_enabled = false;
     }
@@ -728,10 +722,6 @@ impl AppSettingsStore {
             settings.privacy.screen_observation_enabled
         ));
         features.push(format!("ocr={}", settings.privacy.ocr_enabled));
-        features.push(format!(
-            "clipboard_observation={}",
-            settings.privacy.clipboard_observation_enabled
-        ));
         features.push(format!("diagnostics={}", settings.privacy.diagnostics_enabled));
         features.push(format!("telemetry={}", settings.privacy.telemetry_enabled));
         features
@@ -769,8 +759,8 @@ impl AppSettingsStore {
     fn privacy_summary(&self) -> String {
         let s = self.get().privacy;
         format!(
-            "Screen obs: {}, OCR: {}, Clipboard: {}, Telemetry: {}, Privacy mode: {}",
-            s.screen_observation_enabled, s.ocr_enabled, s.clipboard_observation_enabled,
+            "Screen obs: {}, OCR: {}, Telemetry: {}, Privacy mode: {}",
+            s.screen_observation_enabled, s.ocr_enabled,
             s.telemetry_enabled, s.privacy_mode
         )
     }

@@ -48,8 +48,6 @@ pub struct PrivacyConfig {
     pub provider_overrides: HashMap<ProviderType, bool>,
     /// Maximum age of event data (0 = unlimited).
     pub retention_days: u64,
-    /// Whether to store clipboard content (default: false).
-    pub store_clipboard_content: bool,
     /// Whether to store file content (default: false, metadata only).
     pub store_file_content: bool,
     /// Maximum screenshot retention days (0 = don't store).
@@ -62,7 +60,6 @@ impl Default for PrivacyConfig {
             mode: ObservationMode::Enabled,
             provider_overrides: HashMap::new(),
             retention_days: 7,
-            store_clipboard_content: false,
             store_file_content: false,
             screenshot_retention_days: 1,
         }
@@ -82,11 +79,6 @@ impl PrivacyConfig {
                 }
             }
         }
-    }
-
-    /// Check if clipboard observation is allowed.
-    pub fn allows_clipboard(&self) -> bool {
-        matches!(self.mode, ObservationMode::Enabled) && self.store_clipboard_content
     }
 
     /// Check if file content observation is allowed.
@@ -252,18 +244,6 @@ impl PrivacyManager {
         indicator.last_activity = Some(timestamp);
     }
 
-    /// Enable clipboard observation.
-    pub fn enable_clipboard(&self) {
-        let mut cfg = self.config.lock().unwrap();
-        cfg.store_clipboard_content = true;
-    }
-
-    /// Disable clipboard observation.
-    pub fn disable_clipboard(&self) {
-        let mut cfg = self.config.lock().unwrap();
-        cfg.store_clipboard_content = false;
-    }
-
     /// Enable file content observation.
     pub fn enable_file_content(&self) {
         let mut cfg = self.config.lock().unwrap();
@@ -340,7 +320,6 @@ mod tests {
         let config = PrivacyConfig::default();
         assert_eq!(config.mode, ObservationMode::Enabled);
         assert_eq!(config.retention_days, 7);
-        assert!(!config.store_clipboard_content);
         assert!(!config.store_file_content);
         assert_eq!(config.screenshot_retention_days, 1);
     }
@@ -351,47 +330,6 @@ mod tests {
         assert!(config.is_provider_allowed(&ProviderType::ActiveWindow));
         assert!(config.is_provider_allowed(&ProviderType::Terminal));
         assert!(config.is_provider_allowed(&ProviderType::Browser));
-    }
-
-    #[test]
-    fn test_provider_disabled_by_config() {
-        let mut config = PrivacyConfig::default();
-        config
-            .provider_overrides
-            .insert(ProviderType::Clipboard, false);
-        assert!(config.is_provider_allowed(&ProviderType::ActiveWindow));
-        assert!(!config.is_provider_allowed(&ProviderType::Clipboard));
-    }
-
-    #[test]
-    fn test_mode_disabled_disallows_all() {
-        let config = PrivacyConfig {
-            mode: ObservationMode::Disabled,
-            ..Default::default()
-        };
-        assert!(!config.is_provider_allowed(&ProviderType::ActiveWindow));
-        assert!(!config.is_provider_allowed(&ProviderType::Clipboard));
-    }
-
-    #[test]
-    fn test_mode_paused_disallows_all() {
-        let config = PrivacyConfig {
-            mode: ObservationMode::Paused,
-            ..Default::default()
-        };
-        assert!(!config.is_provider_allowed(&ProviderType::ActiveWindow));
-    }
-
-    #[test]
-    fn test_clipboard_allowed() {
-        let config = PrivacyConfig::default();
-        assert!(!config.allows_clipboard());
-
-        let config = PrivacyConfig {
-            store_clipboard_content: true,
-            ..Default::default()
-        };
-        assert!(config.allows_clipboard());
     }
 
     #[test]
@@ -464,33 +402,6 @@ mod tests {
 
         manager.resume();
         assert!(manager.is_observing());
-    }
-
-    #[test]
-    fn test_privacy_manager_provider_toggle() {
-        let manager = PrivacyManager::new();
-
-        // Initially all providers allowed
-        assert!(manager.is_provider_allowed(&ProviderType::Clipboard));
-
-        // Disable clipboard
-        manager.set_provider_enabled(ProviderType::Clipboard, false);
-        assert!(!manager.is_provider_allowed(&ProviderType::Clipboard));
-
-        // Other providers still allowed
-        assert!(manager.is_provider_allowed(&ProviderType::ActiveWindow));
-    }
-
-    #[test]
-    fn test_privacy_manager_clipboard_toggle() {
-        let manager = PrivacyManager::new();
-        assert!(!manager.get_config().allows_clipboard());
-
-        manager.enable_clipboard();
-        assert!(manager.get_config().allows_clipboard());
-
-        manager.disable_clipboard();
-        assert!(!manager.get_config().allows_clipboard());
     }
 
     #[test]

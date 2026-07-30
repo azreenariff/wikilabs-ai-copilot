@@ -4,7 +4,6 @@
 mod provider_lifecycle_tests {
     use crate::app_monitor::ActiveWindowProvider;
     use crate::browser::BrowserProvider;
-    use crate::clipboard::ClipboardProvider;
     use crate::file_observer::FileObserverProvider;
     use crate::provider::{ObservationProvider, ProviderState};
     use crate::screen_capture::ScreenCaptureProvider;
@@ -50,11 +49,6 @@ mod provider_lifecycle_tests {
     #[test]
     fn test_browser_lifecycle() {
         test_provider_lifecycle::<BrowserProvider>("BrowserProvider");
-    }
-
-    #[test]
-    fn test_clipboard_lifecycle() {
-        test_provider_lifecycle::<ClipboardProvider>("ClipboardProvider");
     }
 
     #[test]
@@ -238,7 +232,6 @@ mod config_tests {
 mod registry_tests {
     use crate::app_monitor::ActiveWindowProvider;
     use crate::browser::BrowserProvider;
-    use crate::clipboard::ClipboardProvider;
     use crate::file_observer::FileObserverProvider;
     use crate::provider::ProviderRegistry;
     use crate::screen_capture::ScreenCaptureProvider;
@@ -251,12 +244,11 @@ mod registry_tests {
         registry.register(Box::new(ActiveWindowProvider::new()));
         registry.register(Box::new(TerminalProvider::new()));
         registry.register(Box::new(BrowserProvider::new()));
-        registry.register(Box::new(ClipboardProvider::new()));
         registry.register(Box::new(FileObserverProvider::new()));
         registry.register(Box::new(ScreenCaptureProvider::new()));
 
         let names = registry.provider_names();
-        assert_eq!(names.len(), 6);
+        assert_eq!(names.len(), 5);
     }
 
     #[test]
@@ -345,9 +337,9 @@ mod privacy_tests {
         let mut config = PrivacyConfig::default();
         config
             .provider_overrides
-            .insert(ProviderType::Clipboard, false);
-        assert!(config.is_provider_allowed(&ProviderType::ActiveWindow));
-        assert!(!config.is_provider_allowed(&ProviderType::Clipboard));
+            .insert(ProviderType::ActiveWindow, false);
+        assert!(!config.is_provider_allowed(&ProviderType::ActiveWindow));
+        assert!(config.is_provider_allowed(&ProviderType::Terminal));
     }
 
     #[test]
@@ -355,7 +347,7 @@ mod privacy_tests {
         let config = PrivacyConfig::default();
         let manager = PrivacyManager::new();
         manager.set_config(config);
-        assert!(manager.is_provider_allowed(&ProviderType::Clipboard));
+        assert!(manager.is_provider_allowed(&ProviderType::ActiveWindow));
     }
 
     #[test]
@@ -399,23 +391,23 @@ mod privacy_tests {
     fn test_provider_specific_toggle() {
         let manager = PrivacyManager::new();
 
-        // By default, clipboard is allowed
-        assert!(manager.is_provider_allowed(&ProviderType::Clipboard));
+        // By default, active window provider is allowed
+        assert!(manager.is_provider_allowed(&ProviderType::ActiveWindow));
 
-        // Disable clipboard specifically
-        manager.set_provider_enabled(ProviderType::Clipboard, false);
-        assert!(!manager.is_provider_allowed(&ProviderType::Clipboard));
+        // Disable active window specifically
+        manager.set_provider_enabled(ProviderType::ActiveWindow, false);
+        assert!(!manager.is_provider_allowed(&ProviderType::ActiveWindow));
 
         // Re-enable
-        manager.set_provider_enabled(ProviderType::Clipboard, true);
-        assert!(manager.is_provider_allowed(&ProviderType::Clipboard));
+        manager.set_provider_enabled(ProviderType::ActiveWindow, true);
+        assert!(manager.is_provider_allowed(&ProviderType::ActiveWindow));
     }
 
     #[test]
     fn test_default_privacy_config() {
         let config = PrivacyConfig::default();
         assert_eq!(config.retention_days, 7);
-        assert!(!config.store_clipboard_content);
+        assert!(!config.store_file_content);
     }
 
     #[test]

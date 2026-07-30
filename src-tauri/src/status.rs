@@ -12,7 +12,7 @@
 //! | Indicator                  | Purpose                                            |
 //! |---------------------------|----------------------------------------------------|
 //! | AI Backend Connection     | Whether the AI provider endpoint is reachable      |
-//! | Observation Engine        | Whether screen/clipboard observation is running    |
+//! | Observation Engine        | Whether screen observation is running              |
 //! | Skill Pack Loader         | Whether skill packs are loaded and active          |
 //! | Database                  | Whether the local database is connected            |
 //! | Knowledge Index           | Whether knowledge packs are indexed                |
@@ -97,8 +97,6 @@ pub struct ObservationEngineStatus {
     pub running: bool,
     /// Current screen capture status.
     pub screen_capture: bool,
-    /// Current clipboard monitoring status.
-    pub clipboard_monitoring: bool,
     /// Number of observations captured since start.
     pub observation_count: u64,
 }
@@ -217,7 +215,6 @@ impl StatusManager {
             observation_status: Arc::new(std::sync::RwLock::new(ObservationEngineStatus {
                 running: false,
                 screen_capture: false,
-                clipboard_monitoring: false,
                 observation_count: 0,
             })),
             skill_status: Arc::new(std::sync::RwLock::new(SkillPackStatus {
@@ -280,13 +277,11 @@ impl StatusManager {
         &self,
         running: bool,
         screen_capture: bool,
-        clipboard: bool,
         count: u64,
     ) {
         let mut status = self.observation_status.write().unwrap();
         status.running = running;
         status.screen_capture = screen_capture;
-        status.clipboard_monitoring = clipboard;
         status.observation_count = count;
         self.emit_status_change();
     }

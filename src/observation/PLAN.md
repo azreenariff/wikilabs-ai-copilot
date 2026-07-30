@@ -3,13 +3,13 @@
 ||## Project Status: Phase 1 ✓ Complete, Phase 2 ✓ Complete, Phase 3 ✓ Complete, Phase 4 ✓ Complete
 ||
 |### Background
-The Observation Framework has structural support for screen capture (`screen_capture.rs`, `capture.rs`, `ocr.rs`) but these are all **stubs**. The real gap is that structured data (Win32 API window text, clipboard, process names) can't reliably capture what's actually on screen — leading to the copilot missing critical context like browser error pages and terminal commands.
+The Observation Framework has structural support for screen capture (`screen_capture.rs`, `capture.rs`, `ocr.rs`) but these are all **stubs**. The real gap is that structured data (Win32 API window text, process names) can't reliably capture what's actually on screen — leading to the copilot missing critical context like browser error pages and terminal commands.
 
 ### Goal
 Build a true "copilot advisor" that can:
 1. See the full screen (via screen capture)
 2. Understand what's on screen (via Vision AI — GPT-4o / Claude / Gemini)
-3. Understand what the user is doing and their intent (terminal commands, browser pages, clipboard, errors)
+3. Understand what the user is doing and their intent (terminal commands, browser pages, errors)
 4. Check if the user's commands are correct
 5. Correlate all signals and provide proactive guidance/advice
 

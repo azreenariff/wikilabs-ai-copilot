@@ -13,7 +13,6 @@
 //! - **Active Window Provider** (`app_monitor`): Foreground app/window detection
 //! - **Terminal Provider** (`terminal`): Shell command observation
 //! - **Browser Provider** (`browser`): Browser context detection (URL extraction via Win32)
-//! - **Clipboard Provider** (`clipboard`): Clipboard content observation
 //! - **File Provider** (`file_observer`): File open/edit observation
 //! - **Screen Capture Provider** (`screen_capture`): Periodic screenshot capture
 //! - **Shell Integration** (`shell`): Shell command capture via polling
@@ -27,7 +26,7 @@
 
 pub mod app_monitor;
 pub mod browser;
-pub mod clipboard;
+
 pub mod correlation;
 pub mod engine;
 pub mod event;

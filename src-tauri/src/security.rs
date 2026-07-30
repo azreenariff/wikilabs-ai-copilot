@@ -679,7 +679,6 @@ Wiki Labs AI Copilot — Security Threat Model (v1.0)
 4. PRIVACY CONTROLS
    - Screen observation: opt-in
    - OCR: opt-in (can be disabled independently)
-   - Clipboard observation: opt-in
    - Telemetry/analytics: opt-out (disabled by default)
    - Diagnostics: opt-in (disabled by default)
    - Privacy Mode: single-toggle disables ALL observation
@@ -788,7 +787,6 @@ mod tests {
         assert!(privacy.privacy_mode);
         assert!(!privacy.screen_observation_enabled);
         assert!(!privacy.ocr_enabled);
-        assert!(!privacy.clipboard_observation_enabled);
         assert!(!privacy.telemetry_enabled);
     }
 

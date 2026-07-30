@@ -1,5 +1,5 @@
 //! Tier 1 — Instant observation (sub-ms latency).
-//! Shell integration, clipboard observer.
+//! Shell integration.
 
 pub struct Tier1Engine;
 

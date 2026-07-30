@@ -1791,7 +1791,6 @@ pub fn start_api_server(
                                     let importance = match event.event_type {
                                         wikilabs_observation::event::EventType::ApplicationChanged => "high",
                                         wikilabs_observation::event::EventType::ConfigurationFileOpened => "medium",
-                                        wikilabs_observation::event::EventType::ClipboardChanged => "low",
                                         _ => "low",
                                     };
                                     let panel = guidance_panel::GuidancePanel::instance();

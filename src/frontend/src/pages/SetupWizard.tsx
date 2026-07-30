@@ -390,7 +390,6 @@ function SetupWizard() {
               <ul style={{ paddingLeft: '20px', marginTop: '8px' }}>
                 <li>Active window tracking</li>
                 <li>File open events</li>
-                <li>Clipboard activity</li>
               </ul>
               <p style={{ marginTop: '12px' }}>You can always disable monitoring from Settings.</p>
             </div>

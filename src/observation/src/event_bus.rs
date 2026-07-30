@@ -219,7 +219,6 @@ impl EventBus {
                 "active_window" => ProviderType::ActiveWindow,
                 "terminal" => ProviderType::Terminal,
                 "browser" => ProviderType::Browser,
-                "clipboard" => ProviderType::Clipboard,
                 "file_observer" => ProviderType::FileObserver,
                 "screen_capture" => ProviderType::ScreenCapture,
                 _ => ProviderType::Custom(name.clone()),

@@ -25,8 +25,6 @@ pub enum ProviderType {
     Terminal,
     /// Browser context observation.
     Browser,
-    /// Clipboard content observation.
-    Clipboard,
     /// File open / edit observation.
     FileObserver,
     /// Screenshot capture.
@@ -43,7 +41,6 @@ impl std::fmt::Display for ProviderType {
             ProviderType::ActiveWindow => write!(f, "active_window"),
             ProviderType::Terminal => write!(f, "terminal"),
             ProviderType::Browser => write!(f, "browser"),
-            ProviderType::Clipboard => write!(f, "clipboard"),
             ProviderType::FileObserver => write!(f, "file_observer"),
             ProviderType::ScreenCapture => write!(f, "screen_capture"),
             ProviderType::VisionAnalysis => write!(f, "vision_analysis"),
@@ -67,8 +64,6 @@ pub enum EventType {
     VisionAnalysisResult,
     /// Browser context changed.
     BrowserContextChanged,
-    /// Clipboard content changed.
-    ClipboardChanged,
     /// Configuration file was opened or edited.
     ConfigurationFileOpened,
     /// General file activity.
@@ -87,7 +82,6 @@ impl std::fmt::Display for EventType {
             EventType::ScreenshotCaptured => write!(f, "screenshot_captured"),
             EventType::VisionAnalysisResult => write!(f, "vision_analysis_result"),
             EventType::BrowserContextChanged => write!(f, "browser_context_changed"),
-            EventType::ClipboardChanged => write!(f, "clipboard_changed"),
             EventType::ConfigurationFileOpened => write!(f, "configuration_file_opened"),
             EventType::FileActivity => write!(f, "file_activity"),
             EventType::ProviderStateChanged => write!(f, "provider_state_changed"),
@@ -241,7 +235,6 @@ mod tests {
         assert_eq!(ProviderType::ActiveWindow.to_string(), "active_window");
         assert_eq!(ProviderType::Terminal.to_string(), "terminal");
         assert_eq!(ProviderType::Browser.to_string(), "browser");
-        assert_eq!(ProviderType::Clipboard.to_string(), "clipboard");
         assert_eq!(ProviderType::FileObserver.to_string(), "file_observer");
         assert_eq!(ProviderType::ScreenCapture.to_string(), "screen_capture");
         assert_eq!(ProviderType::VisionAnalysis.to_string(), "vision_analysis");
@@ -270,7 +263,6 @@ mod tests {
             EventType::BrowserContextChanged.to_string(),
             "browser_context_changed"
         );
-        assert_eq!(EventType::ClipboardChanged.to_string(), "clipboard_changed");
         assert_eq!(
             EventType::ConfigurationFileOpened.to_string(),
             "configuration_file_opened"
