@@ -1,4 +1,4 @@
-## v1.1.137 — FIX: pass raw observation data to AI — page content, terminal buffers, window titles
+## v1.1.140 — FIX: pass raw observation data to AI — page content, terminal buffers, window titles
 
 - **AI now receives RAW PAGE CONTENT** — browser `visible_text` sent as-is (up to 3000 chars) alongside pattern-detected errors. The AI can analyze what's actually on the page, not just what hardcoded error patterns matched.
 - **AI now receives RAW TERMINAL OUTPUT** — full terminal buffer (up to 5000 chars) sent alongside the last command. The AI can see errors, status messages, and any terminal content — not just the command line.
