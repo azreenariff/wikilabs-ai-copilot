@@ -15,6 +15,7 @@ use tokio::sync::Semaphore;
 use crate::correlation::{CorrelationEngine, CorrelationSet};
 use crate::semantic_analyzer::SemanticAnalyzer;
 use crate::error_detector::{ErrorDetector, DetectedError, ErrorSeverity};
+use crate::browser::BrowserErrorSeverity;
 
 /// AI configuration for OpenRouter integration.
 #[derive(Debug, Clone)]
@@ -206,7 +207,13 @@ impl AiGuidanceProvider {
                 if !browser.detected_errors.is_empty() {
                     context.push_str("Pattern-detected errors (for reference — the AI should also verify against raw page content):\n");
                     for error in &browser.detected_errors {
-                        context.push_str(&format!("- {} ({}) [severity: {}]\n", error.description, error.pattern, format!("{:?}", error.severity)));
+                        let severity_str = match error.severity {
+                            BrowserErrorSeverity::Low => "LOW",
+                            BrowserErrorSeverity::Medium => "MED",
+                            BrowserErrorSeverity::High => "HIGH",
+                            BrowserErrorSeverity::Critical => "CRITICAL",
+                        };
+                        context.push_str(&format!("- {} ({}) [severity: {}]\n", error.description, error.pattern, severity_str));
                     }
                 }
             }
