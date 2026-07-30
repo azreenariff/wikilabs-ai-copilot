@@ -315,97 +315,26 @@ mod terminal_windows {
     }
 
     /// Get the visible text content from a terminal window.
-    /// Enhanced to capture full buffer content, not just the last line.
-    /// On Windows, recursively enumerates child windows to gather all text areas
-    /// (including scrollable terminal buffer areas inside tab containers).
+    /// Only reads the top-level window text — does NOT enumerate child windows.
+    /// Terminal emulators (MobaXterm, PuTTY, Windows Terminal, etc.) expose
+    /// their UI chrome (menu bars, toolbars, file managers, status bars) as
+    /// child windows. Terminal output is captured separately by the emulator
+    /// via other mechanisms (e.g. Windows Terminal's Console APIs, PuTTY's
+    /// PTY interface). The last non-empty line of the window title contains
+    /// the most recent command or prompt — that's all we need. The AI gets
+    /// the full terminal buffer from the screenshot anyway.
     fn get_terminal_text(hwnd: &HWND, _process_name: &str, _class_name: &str) -> String {
-        let result: String = unsafe {
-            // Strategy 1: Enumerate ALL child/grandchild windows and collect text from every
-            // text-bearing control (Edit, Static, RichEdit, msctls_statusbar32, SysListView32, etc.)
-            let mut all_texts: Vec<String> = Vec::new();
-            collect_terminal_text_recursive(hwnd, &mut all_texts);
-
-            if !all_texts.is_empty() {
-                // Join all collected text segments, de-duplicate empty lines, take the last 100 lines
-                let full_text = all_texts.join("\n");
-                let lines: Vec<&str> = full_text.lines().filter(|l| !l.trim().is_empty()).collect();
-                // Return last 100 lines (terminal scroll buffer size)
-                let start = if lines.len() > 100 { lines.len() - 100 } else { 0 };
-                lines[start..].join("\n").trim().to_string()
-            } else {
-                // Strategy 2: GetWindowTextW on top-level as fallback
-                let len = GetWindowTextLengthW(*hwnd);
-                if len == 0 {
-                    return String::new();
-                }
-                let mut buf = vec![0u16; (len + 1) as usize];
-                let text_len = GetWindowTextW(*hwnd, &mut buf);
-                if text_len == 0 {
-                    return String::new();
-                }
-                String::from_utf16_lossy(&buf[..text_len as usize])
-                    .lines()
-                    .last()
-                    .unwrap_or("")
-                    .trim()
-                    .to_string()
-            }
-        };
-        result
-    }
-
-    /// Recursively enumerate child/grandchild windows and collect text from all
-    /// text-bearing controls. Builds a comprehensive picture of terminal content.
-    fn collect_terminal_text_recursive(hwnd: &HWND, texts: &mut Vec<String>) {
-        unsafe {
-            // Get class name to determine if this is a text-bearing control
-            let mut class_buf = [0u16; 256];
-            let class_len = GetClassNameW(*hwnd, &mut class_buf);
-            let class_name = if class_len > 0 {
-                String::from_utf16_lossy(&class_buf[..class_len as usize])
-            } else {
-                String::new()
-            };
-
-            // Text-bearing window classes used by terminal emulators
-            let text_classes = [
-                "Edit", "RichEdit", "RichEdit20A", "RichEdit20W",
-                "msctls_statusbar32", "SysListView32", "DirectUIHWND",
-                "WorkerW", "Shell Embedding", "Shell DocObject View",
-                "TabWindowClass", "MDIClient", "Afx:", "Chrome_WidgetWin",
-            ];
-            let is_text_control = text_classes.iter().any(|tc| class_name.contains(tc));
-
-            // Also check: does the window have text? (terminal output areas)
-            let len = GetWindowTextLengthW(*hwnd);
-            if len > 0 && is_text_control {
-                let mut buf = vec![0u16; (len + 1) as usize];
-                let text_len = GetWindowTextW(*hwnd, &mut buf);
-                if text_len > 0 {
-                    let text = String::from_utf16_lossy(&buf[..text_len as usize]);
-                    if !text.trim().is_empty() {
-                        texts.push(text);
-                    }
-                }
-            } else if len > 0 && !is_text_control {
-                // Even non-typical classes may hold terminal text (MobaXterm tabs, etc.)
-                let mut buf = vec![0u16; (len + 1) as usize];
-                let text_len = GetWindowTextW(*hwnd, &mut buf);
-                if text_len > 0 {
-                    let text = String::from_utf16_lossy(&buf[..text_len as usize]);
-                    if !text.trim().is_empty() {
-                        texts.push(text);
-                    }
-                }
-            }
-
-            // Recurse into child windows (up to reasonable depth)
-            let mut child_hwnds: Vec<HWND> = Vec::new();
-            let _ = EnumChildWindows(*hwnd, Some(window_enumeration_callback), LPARAM(&mut child_hwnds as *mut _ as _));
-            for child in &child_hwnds {
-                collect_terminal_text_recursive(child, texts);
-            }
+        let mut buf = vec![0u16; 8192];
+        let text_len = unsafe { GetWindowTextW(*hwnd, &mut buf) };
+        if text_len == 0 {
+            return String::new();
         }
+        String::from_utf16_lossy(&buf[..text_len as usize])
+            .lines()
+            .last()
+            .unwrap_or("")
+            .trim()
+            .to_string()
     }
 
     /// Windows window enumeration callback.
@@ -606,10 +535,19 @@ impl ObservationProvider for TerminalProvider {
             // Check for commands in each session
             for session in &sessions {
                 let is_eng = Self::is_engineering_session(session);
-                // FIX: Send the full terminal buffer (last 100 lines) under BOTH
-                // "command_text" (legacy) and "output" (what the engine reads) keys.
-                // session.command_text contains the full visible terminal content
-                // collected from window text — not just the command line.
+                // Extract the last non-empty line as the "last command" — this is
+                // what the user most recently typed. The full terminal buffer is
+                // in "output" for context. This separation lets the AI reasoning
+                // loop pick up just the command line separately.
+                let last_command = session
+                    .command_text
+                    .lines()
+                    .rev()
+                    .find(|l| !l.trim().is_empty())
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+
                 let payload = serde_json::json!({
                     "session_id": session.session_id,
                     "terminal": session.terminal_name,
@@ -617,6 +555,7 @@ impl ObservationProvider for TerminalProvider {
                     "working_dir": session.working_dir,
                     "is_ssh": session.is_ssh,
                     "is_engineering": is_eng,
+                    "last_command": last_command,
                     "command_text": session.command_text,
                     "output": session.command_text,
                 });

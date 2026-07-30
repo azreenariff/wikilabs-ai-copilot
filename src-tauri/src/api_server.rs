@@ -1970,14 +1970,21 @@ pub fn start_api_server(
                                 .filter(|&t| !t.is_empty())
                                 .collect();
 
-                            // Terminal command_text — the last command line
+                            // Terminal command_text — the last command line (from last_command field)
+                            // Falls back to command_text if last_command is empty.
                             let terminal_cmds: Vec<&str> = last_events.iter()
                                 .filter(|e| e.provider == "terminal")
-                                .filter_map(|e| e.payload_json.get("command_text").and_then(|c| c.as_str()))
+                                .filter_map(|e| {
+                                    e.payload_json.get("last_command")
+                                        .or_else(|| e.payload_json.get("command_text"))
+                                        .and_then(|c| c.as_str())
+                                        .filter(|s| !s.trim().is_empty())
+                                })
                                 .collect();
 
                             // Terminal FULL OUTPUT — the complete visible terminal buffer (all output, errors, status)
-                            // This is the raw terminal content the AI needs to analyze
+                            // Now simplified: only gets top-level window text (not recursive child windows),
+                            // so it doesn't include MobaXterm menu bars, file managers, etc.
                             let terminal_outputs: Vec<&str> = last_events.iter()
                                 .filter(|e| e.provider == "terminal")
                                 .filter_map(|e| e.payload_json.get("output").and_then(|o| o.as_str()))
