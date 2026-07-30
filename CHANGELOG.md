@@ -1,3 +1,11 @@
+## v1.1.144 — FIX: simplified terminal text extraction — no more UI chrome noise
+
+- **Terminal text extraction simplified** — replaced recursive child window enumeration with simple `GetWindowTextW` on the top-level window only. Terminal emulators (MobaXterm, PuTTY, Windows Terminal, etc.) expose their UI chrome (menu bars, toolbars, file managers, status bars) as child windows; the old approach captured ALL of it as terminal content, causing the AI to report on irrelevant UI labels.
+- **Screenshot is the source of truth** — the AI already receives screenshots that show the full terminal buffer (colors, output, commands, errors). The text buffer's only added value was the last command line, which the window title already contains.
+- **Added `last_command` field** to terminal event payload for explicit last-command-line extraction in the AI reasoning loop.
+- **Removed 135 lines** of UI filtering blacklist code (no longer needed with the simplified approach).
+- Works generically for any terminal emulator — not MobaXterm-specific.
+
 ## v1.1.143 — FEATURE: multi-modal screenshot guidance loop
 
 - **AI now sees user's actual desktop** — suggestion loop captures screenshots and sends them to the LLM alongside text context (focused window, terminal output, browser errors). The AI analyzes the actual screen content to give precise, targeted advice.
