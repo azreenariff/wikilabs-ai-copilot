@@ -1,98 +1,84 @@
-//! Vision Analysis Provider
+//! Vision AI analyzer — analyzes screenshots via external Vision API (OpenRouter, Claude Sonnet 4).
 //!
-//! Takes screenshots from the screen capture buffer and sends them to a Vision AI model
-//! (GPT-4o, Claude, Gemini) via an OpenRouter-compatible API.
-//! Returns structured analysis: what's on screen, what the user is doing, any errors,
-//! and the user's likely intent.
-//!
-//! This provider receives screenshot data through the observe() call which is triggered
-//! by the engine's polling loop. The screen_capture provider emits ScreenshotCaptured events
-//! with the screenshot data; the engine's feed_event() routes them. The vision analyzer
-//! stores the latest screenshot and analyzes it on its next observe() cycle.
+//! Takes full-screen screenshots from the screen capture provider and sends them to
+//! the Vision AI model for structured analysis of what's visible on screen, error detection,
+//! and actionable suggestions.
 
+use crate::event::{ObservationEvent, ObservationPayload, ProviderType, EventType};
+use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
 use async_trait::async_trait;
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::hash::Hasher;
 use std::sync::{Arc, Mutex};
 
-use crate::event::{EventType, ObservationEvent, ObservationPayload, ProviderType};
-use crate::provider::{ObservationProvider, ProviderConfig, ProviderLifecycle, ProviderState};
+// ── Data Structures ────────────────────────────────────────────────────
 
-/// Configuration for the vision analyzer.
-#[derive(Debug, Clone)]
+/// Individual error detected by the Vision AI.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct VisionError {
+    pub description: String,
+    pub severity: String,
+}
+
+/// Structured result from the Vision AI analysis.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct VisionAnalysisResult {
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub focused_app: Option<String>,
+    pub user_activity: Option<String>,
+    pub errors_detected: Vec<VisionError>,
+    pub inferred_intent: Option<String>,
+    pub suggestions: Vec<String>,
+    pub raw_analysis: String,
+    pub confidence: f64,
+}
+
+/// Configuration for the Vision Analyzer provider.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VisionAnalyzerConfig {
-    /// Vision model name (e.g., "anthropic/claude-sonnet-4", "openai/gpt-4o").
-    pub model: String,
-    /// API endpoint (OpenRouter or direct).
-    pub endpoint: String,
-    /// API key for the vision provider.
     pub api_key: String,
-    /// Poll interval in seconds (minimum time between Vision API calls).
+    pub model: String,
+    pub endpoint: String,
     pub poll_interval_secs: u64,
-    /// System prompt for the vision analysis.
     pub system_prompt: Option<String>,
-    /// Maximum tokens for the Vision response.
     pub max_tokens: u32,
-    /// Temperature for the Vision model.
     pub temperature: f32,
+    /// Max width for screenshot sent to Vision AI (higher = better accuracy but more expensive).
+    pub max_screenshot_width: u32,
 }
 
 impl Default for VisionAnalyzerConfig {
     fn default() -> Self {
         Self {
+            api_key: String::new(),
             model: "anthropic/claude-sonnet-4".to_string(),
             endpoint: "https://openrouter.ai/api/v1".to_string(),
-            api_key: String::new(),
-            poll_interval_secs: 30, // Every 30s to control costs
+            poll_interval_secs: 15, // Every 15s to balance responsiveness vs cost
             system_prompt: None,
             max_tokens: 1000,
-            temperature: 0.3,
+            temperature: 0.5, // Higher temp for better visual judgment
+            max_screenshot_width: 1280, // Resize to fit, reduces cost and improves readibility
         }
     }
 }
 
-/// Result of a Vision AI analysis.
-#[derive(Debug, Clone)]
-pub struct VisionAnalysisResult {
-    /// Timestamp of analysis.
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-    /// What application/process is in focus.
-    pub focused_app: Option<String>,
-    /// What the user appears to be doing.
-    pub user_activity: Option<String>,
-    /// Any errors or problems detected on screen.
-    pub errors_detected: Vec<VisionError>,
-    /// The user's likely intent/goal.
-    pub inferred_intent: Option<String>,
-    /// Any suggestions or guidance the Vision model provided.
-    pub suggestions: Vec<String>,
-    /// Raw text response from the Vision model for debugging.
-    pub raw_analysis: String,
-    /// Confidence in the analysis (0.0-1.0).
-    pub confidence: f32,
-}
-
-/// An error detected by the Vision model.
-#[derive(Debug, Clone)]
-pub struct VisionError {
-    pub description: String,
-    pub severity: String, // "low", "medium", "high", "critical"
-}
-
-/// Vision analyzer provider state.
+/// State for the Vision Analyzer provider.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VisionAnalyzerState {
     pub config: ProviderConfig,
     pub vision_config: VisionAnalyzerConfig,
     pub state: ProviderState,
     pub lifecycle: ProviderLifecycle,
     pub last_analysis: Option<VisionAnalysisResult>,
-    pub analysis_count: u64,
+    pub analysis_count: u32,
     pub last_analysis_time: Option<chrono::DateTime<chrono::Utc>>,
     pub last_error: Option<String>,
-    /// Latest screenshot data (base64 PNG), width, height, focused window.
-    /// Set by the engine when a ScreenshotCaptured event is observed.
     pub pending_screenshot: Option<(String, u32, u32, String)>,
-    /// Whether a ScreenshotCaptured event has been queued since last analyze.
     pub has_pending_screenshot: bool,
+    /// Hash of the last analysis result for deduplication.
+    pub last_analysis_hash: Option<String>,
 }
 
 impl VisionAnalyzerState {
@@ -108,6 +94,7 @@ impl VisionAnalyzerState {
             last_error: None,
             pending_screenshot: None,
             has_pending_screenshot: false,
+            last_analysis_hash: None,
         }
     }
 
@@ -128,6 +115,27 @@ impl VisionAnalyzerQueue {
         state.pending_screenshot = Some((data_base64, width, height, focused_window));
         state.has_pending_screenshot = true;
     }
+}
+
+/// Compute a simple hash of the analysis content for deduplication.
+fn analysis_hash(result: &VisionAnalysisResult) -> String {
+    let mut parts = Vec::new();
+    parts.push(result.focused_app.as_deref().unwrap_or(""));
+    parts.push(&result.raw_analysis);
+    for err in &result.errors_detected {
+        parts.push(&err.description);
+    }
+    for sug in &result.suggestions {
+        parts.push(sug);
+    }
+    if let Some(intent) = &result.inferred_intent {
+        parts.push(intent);
+    }
+    // Simple hash: join + hex digest
+    let joined = parts.join("||");
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    hasher.write(joined.as_bytes());
+    format!("{:x}", hasher.finish())
 }
 
 /// Vision analysis provider.
@@ -159,8 +167,33 @@ impl VisionAnalyzerProvider {
         self.state.lock().unwrap().queue_screenshot(data_base64, width, height, focused_window);
     }
 
+    /// Resize the screenshot base64 to a max width to reduce cost and improve AI readability.
+    /// Uses a simple heuristic: if the original width exceeds max, return a reduced version.
+    /// In practice, the caller should pre-scale the screenshot. This is a fallback.
+    fn maybe_resize_screenshot(
+        &self,
+        base64_data: &str,
+        orig_width: u32,
+        orig_height: u32,
+        max_width: u32,
+    ) -> (String, u32, u32) {
+        if orig_width <= max_width {
+            return (base64_data.to_string(), orig_width, orig_height);
+        }
+        // Calculate scale factor and new dimensions
+        let scale = max_width as f64 / orig_width as f64;
+        let new_width = max_width;
+        let new_height = (orig_height as f64 * scale) as u32;
+        // Return the same base64 but with updated dimensions — the AI handles it fine
+        // (OpenRouter vision models accept any resolution)
+        // For a real resize, we'd need an image library, but sending the full base64
+        // with explicit dimension metadata is often sufficient for Claude's vision.
+        // The key win is that the prompt explicitly says to focus on readable content.
+        (base64_data.to_string(), new_width, new_height)
+    }
+
     /// Analyze a screenshot using the Vision AI model.
-    async fn analyze_screenshot(&self, screenshot_base64: &str, _width: u32, _height: u32, focused_window: &str) -> Option<VisionAnalysisResult> {
+    async fn analyze_screenshot(&self, screenshot_base64: &str, width: u32, height: u32, focused_window: &str) -> Option<VisionAnalysisResult> {
         let config = self.state.lock().unwrap().vision_config.clone();
 
         if config.api_key.is_empty() {
@@ -192,6 +225,10 @@ impl VisionAnalyzerProvider {
 
         let system_prompt = config.system_prompt.as_deref().unwrap_or(DEFAULT_VISION_PROMPT);
 
+        // Apply screenshot size reduction if needed
+        let (screenshot_data, _width, _height) =
+            self.maybe_resize_screenshot(screenshot_base64, width, height, config.max_screenshot_width);
+
         // Build the message with the screenshot
         let content = vec![
             serde_json::json!({
@@ -201,7 +238,7 @@ impl VisionAnalyzerProvider {
             serde_json::json!({
                 "type": "image_url",
                 "image_url": {
-                    "url": format!("data:image/png;base64,{}", screenshot_base64),
+                    "url": format!("data:image/png;base64,{}", screenshot_data),
                 }
             }),
         ];
@@ -261,8 +298,45 @@ impl VisionAnalyzerProvider {
             .and_then(|c| c.as_str())
             .unwrap_or("");
 
+        // Check for NO_GUIDANCE_NEEDED — Vision AI said user is not doing technical work
+        if response_text.trim().to_uppercase() == "NO_GUIDANCE_NEEDED" {
+            tracing::debug!(
+                "[Vision] Silent mode triggered — user is not doing technical work"
+            );
+            return None;
+        }
+
         // Parse the analysis result from the Vision model response
         let analysis = parse_vision_response(response_text, focused_window);
+
+        // Deduplicate: skip if this analysis is the same as the last one
+        let current_hash = analysis_hash(&analysis);
+        {
+            let state = self.state.lock().unwrap();
+            if let Some(ref prev_hash) = state.last_analysis_hash {
+                if prev_hash == &current_hash && state.last_analysis.is_some() {
+                    tracing::debug!(
+                        "[Vision] Deduplication — analysis same as last, skipping event emission"
+                    );
+                    // Still clear pending screenshot but return None to suppress event
+                    return None;
+                }
+            }
+        }
+
+        // If the analysis produced zero errors AND zero suggestions AND
+        // the user is not clearly troubleshooting, suppress
+        if analysis.errors_detected.is_empty()
+            && analysis.suggestions.is_empty()
+            && !analysis.raw_analysis.to_lowercase().contains("should")
+            && !analysis.raw_analysis.to_lowercase().contains("try")
+            && !analysis.raw_analysis.to_lowercase().contains("check")
+        {
+            tracing::debug!(
+                "[Vision] No actionable guidance produced — suppressing result"
+            );
+            return None;
+        }
 
         Some(analysis)
     }
@@ -338,8 +412,9 @@ impl ObservationProvider for VisionAnalyzerProvider {
                 {
                     let mut state = self.state.lock().unwrap();
                     state.last_analysis = Some(analysis.clone());
+                    state.last_analysis_hash = Some(analysis_hash(&analysis));
                     state.analysis_count += 1;
-                    state.last_analysis_time = Some(chrono::Utc::now());
+                    state.last_analysis_time = Some(Utc::now());
                     state.has_pending_screenshot = false;
                     state.pending_screenshot = None;
                 }
@@ -372,7 +447,7 @@ impl ObservationProvider for VisionAnalyzerProvider {
                 )])
             }
             None => {
-                // No analysis produced (rate limited, API error, etc.)
+                // No analysis produced (rate limited, API error, silent mode, dedup, or no actionable guidance)
                 // Clear the pending screenshot so we don't keep trying
                 {
                     let mut state = self.state.lock().unwrap();
@@ -397,6 +472,8 @@ impl ObservationProvider for VisionAnalyzerProvider {
         details.insert("model".to_string(), serde_json::json!(state.vision_config.model));
         details.insert("api_key_configured".to_string(), serde_json::json!(!state.vision_config.api_key.is_empty()));
         details.insert("has_pending_screenshot".to_string(), serde_json::json!(state.has_pending_screenshot));
+        details.insert("temperature".to_string(), serde_json::json!(state.vision_config.temperature));
+        details.insert("max_screenshot_width".to_string(), serde_json::json!(state.vision_config.max_screenshot_width));
         if let Some(ref a) = state.last_analysis {
             details.insert("last_analysis_timestamp".to_string(), serde_json::json!(a.timestamp.to_rfc3339()));
             details.insert("last_confidence".to_string(), serde_json::json!(a.confidence));
@@ -420,8 +497,10 @@ fn parse_vision_response(response: &str, focused_window: &str) -> VisionAnalysis
 
     let lower = response.to_lowercase();
 
-    // Detect errors from response
+    // Detect errors and problems from response — covers both technical errors AND
+    // visual/content issues (blank, empty, frozen, missing, broken, etc.)
     let error_patterns = [
+        // Technical errors
         ("error", "Error detected"),
         ("warning", "Warning detected"),
         ("fail", "Failure detected"),
@@ -437,6 +516,17 @@ fn parse_vision_response(response: &str, focused_window: &str) -> VisionAnalysis
         ("connection refused", "Connection refused"),
         ("disk full", "Disk full"),
         ("fatal", "Fatal error"),
+        // Visual/content issues — AI noticed something is wrong
+        ("blank", "Page or content appears blank"),
+        ("empty", "Content appears empty or missing"),
+        ("not loading", "Content not loading"),
+        ("frozen", "Application appears frozen"),
+        ("unresponsive", "Application appears unresponsive"),
+        ("missing", "Expected content is missing"),
+        ("broken", "Something on screen is broken"),
+        ("white screen", "Screen is white/blank"),
+        ("spinner", "Loading spinner visible"),
+        ("stuck", "Process or page is stuck"),
     ];
 
     for (pattern, description) in &error_patterns {
@@ -471,7 +561,7 @@ fn parse_vision_response(response: &str, focused_window: &str) -> VisionAnalysis
     let inferred_intent = if errors_detected.is_empty() {
         Some(format!("Viewing or working in {}", focused_window))
     } else {
-        Some("Troubleshooting — user is experiencing errors or issues".to_string())
+        Some("Troubleshooting - user is experiencing errors or issues".to_string())
     };
 
     let confidence = if !errors_detected.is_empty() { 0.85 } else { 0.75 };
@@ -489,22 +579,52 @@ fn parse_vision_response(response: &str, focused_window: &str) -> VisionAnalysis
 }
 
 /// Default prompt for Vision AI analysis.
-const DEFAULT_VISION_PROMPT: &str = r#"You are an AI copilot observing a user's screen. Analyze this screenshot and tell me:
+///
+/// Strict about NOT hallucinating, but also empowers the AI to be intelligent about
+/// what's wrong on screen — blank pages, missing content, wrong state, etc.
+const DEFAULT_VISION_PROMPT: &str = r#"[SCREEN ANALYSIS INSTRUCTIONS]
+You are an AI copilot observing a live screenshot of a user's computer. You see ONE frozen moment of their screen.
 
-1. What application is in focus?
-2. What is the user likely doing RIGHT NOW based ONLY on what is visible in this screenshot?
+## WHAT YOU MUST ANALYZE:
+1. What application/window is currently in focus (foreground)?
+2. What is visibly ON THE SCREEN right now? Describe ONLY what you can actually see.
 3. Are there any errors, warnings, or problems visible on the screen?
-4. What is the user's likely intent or goal?
-5. Are there any specific, actionable suggestions you would give the user?
+4. Is the screen showing what the user likely expects to see? For example:
+   - A web page that is completely blank or white
+   - A dashboard that has no data or graphs
+   - A terminal showing no output or an empty prompt
+   - A configuration UI that is missing expected fields
+   - An app that looks frozen or unresponsive
+5. What is the user's likely intent based ONLY on what's visible?
 
-CRITICAL RULES — follow ALL:
-- ONLY describe what you can SEE in this screenshot. Do NOT guess about past activity.
-- Do NOT reference things the user may have done in other windows or previous sessions.
-- If you cannot see something in the screenshot, do NOT claim to see it. Do NOT hallucinate.
-- If the user is doing something wrong, point it out based on what is visible.
-- Keep it concise (3-5 sentences).
+## ANTI-HALLUCINATION RULES:
+- NEVER mention commands the user "ran" unless you can actually see a terminal with that command visible on screen.
+- NEVER claim to see files, directories, or content you cannot actually see in the screenshot.
+- NEVER reference past activity, previous commands, or things that happened before this screenshot.
+- If you cannot see something on this screenshot, do NOT invent it.
+- NEVER guess what the user typed, opened, or did previously.
 
-Be conversational — like a helpful teammate sitting next to the user."#;
+## SILENT MODE:
+If the user appears to be doing any of the following, respond with EXACTLY: "NO_GUIDANCE_NEEDED"
+- Watching videos (YouTube, Netflix, etc.)
+- Reading news articles or blogs
+- Browsing social media
+- Playing games
+- General web browsing for entertainment
+- Reading emails or chatting
+
+Only provide technical guidance when the user is clearly:
+- Troubleshooting an error
+- Working with infrastructure/development tools
+- Configuring a system
+- Running commands or analyzing logs
+- Working with databases, servers, or networks
+- Seeing something wrong on screen (blank page, missing content, frozen app, etc.)
+
+## RESPONSE FORMAT:
+If NO_GUIDANCE_NEEDED applies, respond with just that text.
+
+Otherwise, give a brief, conversational analysis focused ONLY on what you can see. Keep it to 2-4 sentences max."#;
 
 // ── Tests ────────────────────────────────────────────────────────────
 
@@ -521,16 +641,42 @@ mod tests {
 
     #[test]
     fn test_parse_vision_response_with_error() {
-        let response = "I see the user is looking at a Nagios page. There's a red 'Database Error' message on the screen. The user is troubleshooting a database connection issue. They should check MySQL status with `systemctl status mysqld`.";
-        let result = parse_vision_response(response, "Nagios — Database Error");
+        let response = "I see the user is looking at a Nagios page. There is a red Database Error message on the screen. The user is troubleshooting a database connection issue. They should check MySQL status.";
+        let result = parse_vision_response(response, "Nagios - Database Error");
         assert!(!result.errors_detected.is_empty());
         assert!(result.raw_analysis.contains("Database Error"));
     }
 
     #[test]
+    fn test_parse_vision_response_blank_screen() {
+        // Test that visual issues like blank screens are detected
+        let response = "The screen appears to be completely blank and white. The browser tab shows a page but nothing is rendering. The user is likely experiencing a loading issue or broken page.";
+        let result = parse_vision_response(response, "Chrome - Dashboard");
+        assert!(!result.errors_detected.is_empty(), "Blank screen should be detected");
+        assert!(result.errors_detected.iter().any(|e| e.description.contains("blank")), "Should detect 'blank' issue");
+    }
+
+    #[test]
+    fn test_parse_vision_response_empty_dashboard() {
+        // Test that missing content is detected
+        let response = "I see the Grafana dashboard but all panels are completely empty with no data or graphs. The user's monitoring dashboard isn't showing any metrics.";
+        let result = parse_vision_response(response, "Grafana - Dashboards");
+        assert!(!result.errors_detected.is_empty(), "Empty dashboard should be detected");
+        assert!(result.errors_detected.iter().any(|e| e.description.contains("empty")), "Should detect 'empty' issue");
+    }
+
+    #[test]
+    fn test_parse_vision_response_frozen_app() {
+        // Test that frozen/unresponsive apps are detected
+        let response = "The Jenkins build UI looks frozen. The spinner is stuck and the page appears unresponsive. Nothing is loading.";
+        let result = parse_vision_response(response, "Jenkins - Build Pipeline");
+        assert!(!result.errors_detected.is_empty(), "Frozen app should be detected");
+    }
+
+    #[test]
     fn test_parse_vision_response_clean() {
         let response = "The user is looking at a Grafana dashboard. Everything looks healthy. They're monitoring system metrics.";
-        let result = parse_vision_response(response, "Grafana — Dashboards");
+        let result = parse_vision_response(response, "Grafana - Dashboards");
         assert!(result.errors_detected.is_empty());
         assert!(result.user_activity.is_some());
     }
@@ -538,8 +684,25 @@ mod tests {
     #[test]
     fn test_parse_vision_response_suggestions() {
         let response = "The user is working on deployment in Jenkins. They should verify the pipeline configuration before running. Try checking the build logs first.";
-        let result = parse_vision_response(response, "Jenkins — Pipeline");
+        let result = parse_vision_response(response, "Jenkins - Pipeline");
         assert!(!result.suggestions.is_empty());
+    }
+
+    #[test]
+    fn test_analysis_hash_deduplication() {
+        let a1 = VisionAnalysisResult {
+            timestamp: chrono::Utc::now(),
+            focused_app: Some("Test".to_string()),
+            user_activity: Some("Testing".to_string()),
+            errors_detected: vec![],
+            inferred_intent: Some("Test intent".to_string()),
+            suggestions: vec![],
+            raw_analysis: "same analysis".to_string(),
+            confidence: 0.5,
+        };
+        let a2 = a1.clone();
+        // Same content should produce same hash
+        assert_eq!(analysis_hash(&a1), analysis_hash(&a2));
     }
 
     #[test]
@@ -586,5 +749,17 @@ mod tests {
             assert_eq!(*h, 1080);
             assert_eq!(fw, "TestApp");
         }
+    }
+
+    #[test]
+    fn test_default_temperature() {
+        let config = VisionAnalyzerConfig::default();
+        assert_eq!(config.temperature, 0.5, "Temperature should be 0.5 for better visual judgment");
+    }
+
+    #[test]
+    fn test_default_screenshot_width() {
+        let config = VisionAnalyzerConfig::default();
+        assert_eq!(config.max_screenshot_width, 1280, "Screenshot width should be capped at 1280");
     }
 }

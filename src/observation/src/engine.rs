@@ -407,7 +407,7 @@ impl ObservationEngine {
                                     .unwrap_or_default();
                                 let focused_app = data_obj.get("focused_app").and_then(|v| v.as_str()).map(|s| s.to_string());
                                 let user_activity = data_obj.get("user_activity").and_then(|v| v.as_str()).map(|s| s.to_string());
-                                let confidence = data_obj.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
+                                let confidence = data_obj.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.0);
                                 let result = crate::vision_analyzer::VisionAnalysisResult {
                                     timestamp: chrono::Utc::now(),
                                     focused_app,
