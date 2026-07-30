@@ -150,6 +150,14 @@ async fn register_providers(engine: &ObservationEngine) {
         engine.register_provider(Box::new(provider)).await;
     }
 
+    // Terminal provider — observes terminal/shell activity across all terminals (Windows Terminal, MobaXterm, PuTTY, CMD, PowerShell, etc.)
+    {
+        let provider = wikilabs_observation::terminal::TerminalProvider::new();
+        tracing::info!("[Observation] Registering terminal provider");
+        println!("[OBS] >>> Registered terminal provider (Windows)");
+        engine.register_provider(Box::new(provider)).await;
+    }
+
     // Screen capture provider — captures screenshots, feeds to vision analyzer
     #[cfg(target_os = "windows")]
     {
@@ -172,7 +180,7 @@ async fn register_providers(engine: &ObservationEngine) {
         let mut c = 2; // active_window + clipboard (always)
         c += 1; // vision_analyzer (always)
         #[cfg(target_os = "windows")]
-        { c += 2; } // browser + screen_capture (Windows)
+        { c += 3; } // browser + terminal + screen_capture (Windows)
         c
     };
     tracing::info!("[Observation] {} providers registered", count);

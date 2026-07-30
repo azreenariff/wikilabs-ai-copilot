@@ -1411,6 +1411,18 @@ async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String)
     (StatusCode::OK, api_response(true, Some(serde_json::json!({"opened": true})), None))
 }
 
+/// Hide the advice chat window (minimize to desktop roll-up pill).
+/// This actually hides the OS window, not just the internal UI.
+async fn handle_hide_advice_window(state: &ApiServerState) -> (StatusCode, String) {
+    info!("Hiding advice chat window");
+    if let Some(ref app_handle) = state.app_handle {
+        if let Some(window) = (**app_handle).get_webview_window("advice-chat") {
+            let _ = window.hide();
+        }
+    }
+    (StatusCode::OK, api_response(true, Some(serde_json::json!({"hidden": true})), None))
+}
+
 async fn handle_observation_get_context() -> (StatusCode, String) {
     let panel = guidance_panel::GuidancePanel::instance();
     let active = panel.active_recommendations().await;
@@ -1666,8 +1678,10 @@ pub fn start_api_server(
             let skill_kb_for_loop = skill_kb_clone.clone();
             let ai_notify_flag = ai_has_notified.clone();
             rt.spawn(async move {
-                let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
-                let mut ai_interval = tokio::time::interval(std::time::Duration::from_secs(15));
+                // Event polling: every 3 seconds — collect fresh observation events
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(3));
+                // AI reasoning: every 10 seconds — much more responsive to user activity
+                let mut ai_interval = tokio::time::interval(std::time::Duration::from_secs(10));
 
                 // Structured event summaries (rich JSON payloads, not flat strings)
                 #[derive(Clone)]
@@ -1804,9 +1818,36 @@ pub fn start_api_server(
                             }
                         }
 
-                        // Phase 2: AI reasoning every 30 seconds
+                        // Phase 2: AI reasoning every 10 seconds
                         _ = ai_interval.tick() => {
-                            if last_events.is_empty() { continue; }
+                            // Check for NEW events from the last interval window
+                            let new_events_count = if let Some(ref rx) = event_rx {
+                                let mut count = 0u32;
+                                while let Ok(event) = rx.try_recv() {
+                                    count += 1;
+                                }
+                                count
+                            } else {
+                                0
+                            };
+
+                            // If there are new events from polling OR terminal/screencap activity, reason
+                            let has_new_events = new_events_count > 0 || !last_events.is_empty();
+                            // Also fire reasoning if there's been no activity for a while but terminal/screen events exist
+                            // This handles the case where user is working in a single window (e.g., MobaXterm)
+                            // and no ApplicationChanged event fires, but TerminalProvider or ScreenCapture
+                            // is still producing events.
+                            if !has_new_events && new_events_count == 0 {
+                                // Check if we have any terminal or screen events at all in last_events
+                                let has_terminal_or_screen = last_events.iter().any(|e| {
+                                    e.provider == "Terminal" || e.provider == "ScreenCapture"
+                                });
+                                if !has_terminal_or_screen {
+                                    continue;
+                                }
+                                // There ARE terminal/screen events but they were collected in a previous cycle
+                                // This is still worth reasoning about — user is actively doing something
+                            }
 
                             // Read AI config
                             let (api_key, model, endpoint, provider_name, max_tokens) = {
@@ -1880,6 +1921,12 @@ pub fn start_api_server(
                                 .filter(|&u| !u.contains("about:blank") && !u.contains("devtools"))
                                 .collect();
 
+                            let browser_visible_texts: Vec<&str> = last_events.iter()
+                                .filter(|e| e.provider == "Browser")
+                                .filter_map(|e| e.payload_json.get("visible_text").and_then(|v| v.as_str()))
+                                .filter(|&t| !t.is_empty())
+                                .collect();
+
                             let terminal_cmds: Vec<&str> = last_events.iter()
                                 .filter(|e| e.provider == "Terminal")
                                 .filter_map(|e| e.payload_json.get("command_text").and_then(|c| c.as_str()))
@@ -1894,13 +1941,22 @@ pub fn start_api_server(
 
                             // Build correlated session narrative — lead with browser errors (highest priority for actionable guidance)
                             let mut session_narrative = String::new();
-                            let has_any_context = !browser_urls.is_empty() || !terminal_cmds.is_empty() || !browser_errors.is_empty();
+                            let has_any_context = !browser_urls.is_empty() || !terminal_cmds.is_empty() || !browser_errors.is_empty() || !browser_visible_texts.is_empty();
                             if has_any_context {
                                 // Always lead with browser context — this is what the engineer is looking at
                                 if !browser_urls.is_empty() {
                                     session_narrative.push_str("🔴 BROWSER CONTEXT (HIGH PRIORITY — engineer is looking at this):\n");
                                     for &url in &browser_urls {
                                         session_narrative.push_str(&format!("  🌐 URL: {}\n", url));
+                                    }
+                                }
+                                // Include visible page text so AI can see actual content
+                                if !browser_visible_texts.is_empty() {
+                                    session_narrative.push_str("  📄 PAGE CONTENT (text visible on screen):\n");
+                                    for &text in &browser_visible_texts {
+                                        // Truncate long page text to ~500 chars
+                                        let display = if text.len() > 500 { &text[..500] } else { text };
+                                        session_narrative.push_str(&format!("    {}\n", display.replace('\n', " ")));
                                     }
                                 }
                                 // CRITICAL: Browser errors are the most actionable signal — the engineer is actively seeing these

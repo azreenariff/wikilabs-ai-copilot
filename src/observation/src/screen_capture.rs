@@ -39,7 +39,7 @@ pub struct ScreenCaptureConfig {
 impl Default for ScreenCaptureConfig {
     fn default() -> Self {
         Self {
-            poll_interval_secs: 30,
+            poll_interval_secs: 5,
             max_width: 1920,
             max_height: 1080,
             buffer_size: 5,

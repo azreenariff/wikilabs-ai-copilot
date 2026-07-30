@@ -15,13 +15,33 @@ interface Message {
   attachments?: string[]; // file paths/names
 }
 
+async function hideWindow() {
+  try {
+    await fetch('http://127.0.0.1:1420/api/commands/hide_advice_window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: {} }),
+    });
+  } catch {}
+}
+
+async function showWindow() {
+  try {
+    await fetch('http://127.0.0.1:1420/api/commands/advice_chat_open', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: {} }),
+    });
+  } catch {}
+}
+
 function ChatAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<string[]>([]);
-  const [minimized, setMinimized] = useState(false);
+  const [windowHidden, setWindowHidden] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,10 +54,9 @@ function ChatAssistant() {
     return () => clearInterval(interval);
   }, []);
 
-  // When minimized, poll more frequently (1s) to detect when to restore
-  const showBannerRef = useRef(false);
+  // When window is hidden, poll for new advice every 1s to auto-restore
   useEffect(() => {
-    if (!minimized || !showBannerRef.current) return;
+    if (!windowHidden) return;
     const iv = setInterval(async () => {
       try {
         const res = await fetch('http://127.0.0.1:1420/api/commands/guidance_get_active_recommendations', {
@@ -48,19 +67,13 @@ function ChatAssistant() {
         const data = await res.json();
         if (data.success && data.value && data.value.length > 0) {
           // New advice available — restore the window
-          showBannerRef.current = true;
-          try {
-            await fetch('http://127.0.0.1:1420/api/commands/advice_chat_open', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ params: {} }),
-            });
-          } catch {}
+          await showWindow();
+          setWindowHidden(false);
         }
       } catch {}
     }, 1000);
     return () => clearInterval(iv);
-  }, [minimized]);
+  }, [windowHidden]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -248,17 +261,12 @@ function ChatAssistant() {
 
   return (
     <>
-      {minimized ? (
-        /* ── Mini roll-up bar when minimized ── */
+      {windowHidden ? (
+        /* ── Desktop roll-up pill when OS window is hidden ── */
         <div
-          onClick={() => {
-            setMinimized(false);
-            // Tell backend to show+focus this window
-            fetch('http://127.0.0.1:1420/api/commands/advice_chat_open', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ params: {} }),
-            }).catch(() => {});
+          onClick={async () => {
+            await showWindow();
+            setWindowHidden(false);
           }}
           style={{
             position: 'fixed',
@@ -292,7 +300,7 @@ function ChatAssistant() {
           margin: '0 auto',
           width: '100%',
         }}>
-          {/* Header with close/minimize button */}
+          {/* Minimize button only — no close button */}
           <div style={{
             display: 'flex',
             justifyContent: 'flex-end',
@@ -300,7 +308,8 @@ function ChatAssistant() {
           }}>
             <button
               onClick={() => {
-                setMinimized(true);
+                setWindowHidden(true);
+                hideWindow();
               }}
               style={{
                 background: 'transparent',
@@ -311,7 +320,7 @@ function ChatAssistant() {
                 cursor: 'pointer',
                 fontSize: '11px',
               }}
-              title="Minimize to roll-up bar"
+              title="Minimize to roll-up pill"
             >
               ─ Minimize
             </button>
