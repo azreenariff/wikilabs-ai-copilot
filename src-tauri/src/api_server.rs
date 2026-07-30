@@ -2040,7 +2040,7 @@ pub fn start_api_server(
                                                                                                                             "You are Wiki Labs AI Copilot — a helpful teammate who watches what someone is doing and gives proactive, relevant guidance.\n\
                                                                                                                             You can see: applications they switch to, commands they type, browser tabs/URLs/errors, files they open, terminal activity.\n\
                                                                                                                             ## Your job\n\
-                                                                                                                            Analyze the correlated session context and give ONE specific, actionable suggestion.\n\
+                                                                                                                            Analyze the correlated session context and give specific, actionable suggestions.\n\
                                                                                                                             ## How to think\n\
                                                                                                                             Connect dots across data sources. If they see an error on their screen, that's what they need help with most.\n\n\
                                                                                                                             CRITICAL — READ THE RAW DATA FIRST:\n\
@@ -2114,7 +2114,7 @@ pub fn start_api_server(
                                                                 - User is browsing a docs page → then ran a command related to what they read? → Confirm they're on the right track or point them to the next section.\n\
                                                                 - User saw a database error → opened SSH → checked service status → service is dead? → Suggest how to start it and why it might be down.\n\
 
-                                                                Give ONE short piece of guidance (1-3 sentences). Be specific, actionable, and conversational — like a knowledgeable teammate sitting next to them.\n\
+                                                                Give short, actionable guidance (1-3 sentences each). Be specific, actionable, and conversational — like a knowledgeable teammate sitting next to them.\n\
                                                                 If you can connect the dots across what they're doing, do it. Never repeat the same type of suggestion.\"\n\
 
                                                                 If you truly can't tell what they're doing, stay quiet or ask a brief question.",
@@ -2130,7 +2130,7 @@ pub fn start_api_server(
                                 model: model.clone(),
                                 messages: vec![
                                     wikilabs_ai::provider::AiMessage { role: "system".to_string(), content: system_prompt },
-                                    wikilabs_ai::provider::AiMessage { role: "user".to_string(), content: "Analyze the user's correlated session and give ONE specific recommendation.".to_string() },
+                                    wikilabs_ai::provider::AiMessage { role: "user".to_string(), content: "Analyze the user's correlated session and give specific, actionable recommendations.".to_string() },
                                 ],
                                 tools: vec![],
                                 temperature: None,
