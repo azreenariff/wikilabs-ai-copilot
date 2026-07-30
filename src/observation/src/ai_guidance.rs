@@ -170,6 +170,11 @@ impl AiGuidanceProvider {
     }
 
     /// Build a context summary from all observation sources.
+    /// 
+    /// CRITICAL: Pass raw observation data to the AI alongside structured summaries.
+    /// The AI needs to see actual page content, terminal output, and window titles —
+    /// not just what hardcoded pattern detectors matched. It must be able to analyze
+    /// whatever is on screen, not just pre-classified signals.
     fn build_context_summary(
         &self,
         correlation_set: &CorrelationSet,
@@ -178,8 +183,10 @@ impl AiGuidanceProvider {
     ) -> String {
         let mut context = String::new();
 
-        // Add browser context
-        if let Some(browser) = self.correlation_engine.get_browser_context() {
+        // ── Browser: raw data first, then structured summary ──
+        // Use get_full_browser_context() which preserves visible_text and detected_errors
+        // (get_browser_context() discards them — it's a lightweight view)
+        if let Some(browser) = self.correlation_engine.get_full_browser_context() {
             context.push_str(&format!("Browser: {} - {} ({})\n",
                 browser.browser_name,
                 browser.url.as_deref().unwrap_or("unknown"),
@@ -188,31 +195,46 @@ impl AiGuidanceProvider {
 
             if let Some(text) = &browser.visible_text {
                 if !text.is_empty() {
-                    let truncated = if text.len() > 500 { &text[..500] } else { text };
-                    context.push_str(&format!("Page content snippet: {}\n", truncated));
+                    // Send more raw text so the AI can analyze actual page content,
+                    // not just what pattern detectors flagged
+                    let display = if text.len() > 3000 { &text[..3000] } else { text };
+                    context.push_str(&format!("RAW PAGE CONTENT (full visible text on screen — analyze what's actually there):\n{}\n\n", display));
                 }
 
+                // Still include structured error classifications as a hint,
+                // but the AI should also read the raw page content above
                 if !browser.detected_errors.is_empty() {
-                    context.push_str("Browser errors detected:\n");
+                    context.push_str("Pattern-detected errors (for reference — the AI should also verify against raw page content):\n");
                     for error in &browser.detected_errors {
-                        context.push_str(&format!("- {} ({})\n", error.description, error.pattern));
+                        context.push_str(&format!("- {} ({}) [severity: {}]\n", error.description, error.pattern, format!("{:?}", error.severity)));
                     }
                 }
             }
         }
 
-        // Add active app
+        // ── Active window: raw title and process, not just classification ──
         if let Some(app) = self.correlation_engine.get_active_app() {
-            context.push_str(&format!("Active app: {}\n", app));
+            context.push_str(&format!("Active window: {}\n", app));
         }
 
-        // Add terminal context
+        // ── Terminal: raw output (full buffer), not just last command ──
+        // Also get the last terminal command
         if let Some(cmd) = self.correlation_engine.get_terminal_command() {
-            context.push_str(&format!("Terminal command: {}\n", cmd));
+            context.push_str(&format!("Last terminal command: {}\n", cmd));
 
             // Add semantic analysis
             if let Some(intent) = self.semantic_analyzer.analyze_command(&cmd) {
                 context.push_str(&format!("Intent: {} ({})\n", intent.action, intent.target.as_deref().unwrap_or("unknown")));
+            }
+        }
+
+        // Send raw terminal output so the AI can analyze whatever is in the terminal window
+        // (errors, output, status — not just what the error detector matched)
+        if let Some(term_output) = self.correlation_engine.get_terminal_output() {
+            if !term_output.trim().is_empty() {
+                // Terminal output can be large; send up to 5000 chars
+                let display = if term_output.len() > 5000 { &term_output[..5000] } else { &term_output };
+                context.push_str(&format!("RAW TERMINAL OUTPUT (full visible terminal buffer — analyze errors, status, any content):\n{}\n\n", display));
             }
         }
 
@@ -256,25 +278,27 @@ impl AiGuidanceProvider {
     }
 
     /// Call OpenRouter API to generate guidance suggestions.
-    fn call_openrouter(&self, config: &AiConfig, context: &str) -> Result<Vec<AiGuidanceSuggestion>, String> {
-        let prompt = format!(
-            "You are a senior DevOps engineer providing proactive, conversational guidance to a user. \
-            Be helpful, technical but approachable — like a teammate giving you advice.\n\n\
-            Current observation context:\n{}\n\n\
-            CRITICAL RULES — follow ALL of them:\n\
-            1. ONLY give advice based on what is IN THIS context block above. Do NOT guess about past activity.\n\
-            2. Do NOT reference things the user may have done in previous sessions or windows.\n\
-            3. If you cannot see something in the context, do NOT claim to see it. Do NOT hallucinate.\n\
-            4. If the user is troubleshooting (you see errors + debug commands), focus on troubleshooting advice.\n\
-            5. If nothing specific is visible in context, say so — do NOT generate generic advice.\n\n\
-            Based on this context, provide up to 3 specific, actionable suggestions. \
-            Focus on:\n\
-            - Proactive advice (what the user should do next)\n\
-            - Warning about potential issues they might not see\n\
-            - Best practices for the infrastructure they're working with\n\
-            - Troubleshooting steps if errors are detected\n\n\
-            Format each suggestion as a JSON object with these fields:\n\
-            {{\"message\": \"conversational advice\", \"category\": \"Proactive|Warning|Explanation|BestPractice|Troubleshooting\", \"is_actionable\": true/false, \"suggested_actions\": [\"action1\", \"action2\"]}}\n\
+        fn call_openrouter(&self, config: &AiConfig, context: &str) -> Result<Vec<AiGuidanceSuggestion>, String> {
+            let prompt = format!(
+                "You are a senior DevOps engineer providing proactive, conversational guidance to a user. \
+                Be helpful, technical but approachable — like a teammate giving you advice.\n\n\
+                Current observation context:\n{}\n\n\
+                CRITICAL RULES — follow ALL of them:\n\
+                1. The RAW PAGE CONTENT and RAW TERMINAL OUTPUT sections contain unfiltered, raw observation data from the user's screen. Read and analyze this data directly — do NOT rely only on the structured summaries or error classifications.\n\
+                2. The AI should look at what's actually on the page, in the terminal, and in the window — not just what pattern detectors matched.\n\
+                3. Do NOT guess about past activity. Only give advice based on what is IN THIS context block above.\n\
+                4. Do NOT reference things the user may have done in previous sessions or windows.\n\
+                5. If you cannot see something in the context, do NOT claim to see it. Do NOT hallucinate.\n\
+                6. If the user is troubleshooting (you see errors + debug commands), focus on troubleshooting advice.\n\
+                7. If nothing specific is visible in context, say so — do NOT generate generic advice.\n\n\
+                Based on this context, provide up to 3 specific, actionable suggestions. \
+                Focus on:\n\
+                - Proactive advice (what the user should do next)\n\
+                - Warning about potential issues they might not see\n\
+                - Best practices for the infrastructure they're working with\n\
+                - Troubleshooting steps if errors are detected\n\n\
+                Format each suggestion as a JSON object with these fields:\n\
+                {{\\\"message\\\": \\\"conversational advice\\\", \\\"category\\\": \\\"Proactive|Warning|Explanation|BestPractice|Troubleshooting\\\", \\\"is_actionable\\\": true/false, \\\"suggested_actions\\\": [\\\"action1\\\", \\\"action2\\\"]}}\n\
             Return ONLY a JSON array of objects, no other text.",
             context
         );

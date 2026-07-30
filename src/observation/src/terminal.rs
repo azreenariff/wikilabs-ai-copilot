@@ -606,6 +606,10 @@ impl ObservationProvider for TerminalProvider {
             // Check for commands in each session
             for session in &sessions {
                 let is_eng = Self::is_engineering_session(session);
+                // FIX: Send the full terminal buffer (last 100 lines) under BOTH
+                // "command_text" (legacy) and "output" (what the engine reads) keys.
+                // session.command_text contains the full visible terminal content
+                // collected from window text — not just the command line.
                 let payload = serde_json::json!({
                     "session_id": session.session_id,
                     "terminal": session.terminal_name,
@@ -614,6 +618,7 @@ impl ObservationProvider for TerminalProvider {
                     "is_ssh": session.is_ssh,
                     "is_engineering": is_eng,
                     "command_text": session.command_text,
+                    "output": session.command_text,
                 });
 
                 events.push(ObservationEvent::new(

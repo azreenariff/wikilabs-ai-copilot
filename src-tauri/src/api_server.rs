@@ -1747,7 +1747,7 @@ pub fn start_api_server(
                     {
                         return true;
                     }
-                    if event.provider == "ActiveWindow" && (
+                    if event.provider == "active_window" && (
                         event.source == "inactive"
                         || summary_lower.contains("no_window_info_available")
                         || summary_lower.contains("platform:")
@@ -1869,7 +1869,7 @@ pub fn start_api_server(
                             if !has_new_events && new_events_count == 0 {
                                 // Check if we have any terminal or screen events at all in last_events
                                 let has_terminal_or_screen = last_events.iter().any(|e| {
-                                    e.provider == "Terminal" || e.provider == "ScreenCapture"
+                                    e.provider == "terminal" || e.provider == "screen_capture"
                                 });
                                 if !has_terminal_or_screen {
                                     continue;
@@ -1945,32 +1945,41 @@ pub fn start_api_server(
 
                             // Extract cross-context data (browser URLs, terminal commands, errors)
                             let browser_urls: Vec<&str> = last_events.iter()
-                                .filter(|e| e.provider == "Browser")
+                                .filter(|e| e.provider == "browser")
                                 .filter_map(|e| e.payload_json.get("url").and_then(|u| u.as_str()))
                                 .filter(|&u| !u.contains("about:blank") && !u.contains("devtools"))
                                 .collect();
 
                             let browser_visible_texts: Vec<&str> = last_events.iter()
-                                .filter(|e| e.provider == "Browser")
+                                .filter(|e| e.provider == "browser")
                                 .filter_map(|e| e.payload_json.get("visible_text").and_then(|v| v.as_str()))
                                 .filter(|&t| !t.is_empty())
                                 .collect();
 
+                            // Terminal command_text — the last command line
                             let terminal_cmds: Vec<&str> = last_events.iter()
-                                .filter(|e| e.provider == "Terminal")
+                                .filter(|e| e.provider == "terminal")
                                 .filter_map(|e| e.payload_json.get("command_text").and_then(|c| c.as_str()))
                                 .collect();
 
+                            // Terminal FULL OUTPUT — the complete visible terminal buffer (all output, errors, status)
+                            // This is the raw terminal content the AI needs to analyze
+                            let terminal_outputs: Vec<&str> = last_events.iter()
+                                .filter(|e| e.provider == "terminal")
+                                .filter_map(|e| e.payload_json.get("output").and_then(|o| o.as_str()))
+                                .filter(|&o| !o.trim().is_empty())
+                                .collect();
+
                             let browser_errors: Vec<&str> = last_events.iter()
-                                .filter(|e| e.provider == "Browser")
+                                .filter(|e| e.provider == "browser")
                                 .filter_map(|e| e.payload_json.get("detected_errors"))
                                 .filter_map(|e| e.as_array())
                                 .flat_map(|arr| arr.iter().filter_map(|er| er.get("description").and_then(|d| d.as_str())))
                                 .collect();
 
-                            // Build correlated session narrative — lead with browser errors (highest priority for actionable guidance)
+                            // Build correlated session narrative — lead with browser context (what the engineer is looking at)
                             let mut session_narrative = String::new();
-                            let has_any_context = !browser_urls.is_empty() || !terminal_cmds.is_empty() || !browser_errors.is_empty() || !browser_visible_texts.is_empty();
+                            let has_any_context = !browser_urls.is_empty() || !terminal_cmds.is_empty() || !terminal_outputs.is_empty() || !browser_errors.is_empty() || !browser_visible_texts.is_empty();
                             if has_any_context {
                                 // Always lead with browser context — this is what the engineer is looking at
                                 if !browser_urls.is_empty() {
@@ -1979,24 +1988,33 @@ pub fn start_api_server(
                                         session_narrative.push_str(&format!("  🌐 URL: {}\n", url));
                                     }
                                 }
-                                // Include visible page text so AI can see actual content
+                                // Include FULL raw page text — increase from 500 to 3000 chars so AI can actually analyze content
                                 if !browser_visible_texts.is_empty() {
-                                    session_narrative.push_str("  📄 PAGE CONTENT (text visible on screen):\n");
+                                    session_narrative.push_str("  📄 RAW PAGE CONTENT (full text visible on screen — analyze what's actually there):\n");
                                     for &text in &browser_visible_texts {
-                                        // Truncate long page text to ~500 chars
-                                        let display = if text.len() > 500 { &text[..500] } else { text };
-                                        session_narrative.push_str(&format!("    {}\n", display.replace('\n', " ")));
+                                        // Send much more raw text — the AI needs context, not a 500-char snippet
+                                        let display = if text.len() > 3000 { &text[..3000] } else { text };
+                                        session_narrative.push_str(&format!("    {}\n\n", display.replace('\n', " ")));
                                     }
                                 }
-                                // CRITICAL: Browser errors are the most actionable signal — the engineer is actively seeing these
+                                // CRITICAL: Browser errors are the most actionable signal
                                 if !browser_errors.is_empty() {
-                                    session_narrative.push_str("  ⚠️ ACTIVE ERRORS on the engineer's screen:\n");
+                                    session_narrative.push_str("  ⚠️ Pattern-detected errors (for reference):\n");
                                     for &err in &browser_errors {
                                         session_narrative.push_str(&format!("    🔴 {}\n", err));
                                     }
                                 }
+                                // Include raw terminal output (full buffer) so AI can analyze errors, status, any content
+                                if !terminal_outputs.is_empty() {
+                                    session_narrative.push_str("  💻 RAW TERMINAL OUTPUT (full visible terminal buffer — analyze errors, status, any content):\n");
+                                    for &output in &terminal_outputs {
+                                        let display = if output.len() > 5000 { &output[..5000] } else { output };
+                                        session_narrative.push_str(&format!("    {}\n\n", display));
+                                    }
+                                }
+                                // Also include last command line for quick reference
                                 if !terminal_cmds.is_empty() {
-                                    session_narrative.push_str("  💻 TERMINAL ACTIVITY (engineer is doing this):\n");
+                                    session_narrative.push_str("  💻 Last terminal command:\n");
                                     for &cmd in &terminal_cmds {
                                         session_narrative.push_str(&format!("    > {}\n", cmd));
                                     }
@@ -2019,14 +2037,18 @@ pub fn start_api_server(
                                                             };
 
                                                             // ── Build AI system prompt ──
-                                                            let system_prompt = format!(
-                                                                "You are Wiki Labs AI Copilot — a helpful teammate who watches what someone is doing and gives proactive, relevant guidance.\n\
-                                                                You can see: applications they switch to, commands they type, browser tabs/URLs/errors, files they open, terminal activity.\n\
-                                                                ## Your job\n\
-                                                                Analyze the correlated session context and give ONE specific, actionable suggestion.\n\
-                                                                ## How to think\n\
-                                                                Connect dots across data sources. If they see an error on their screen, that's what they need help with most.\n\
-\n\
+                                                                                                                        let system_prompt = format!(
+                                                                                                                            "You are Wiki Labs AI Copilot — a helpful teammate who watches what someone is doing and gives proactive, relevant guidance.\n\
+                                                                                                                            You can see: applications they switch to, commands they type, browser tabs/URLs/errors, files they open, terminal activity.\n\
+                                                                                                                            ## Your job\n\
+                                                                                                                            Analyze the correlated session context and give ONE specific, actionable suggestion.\n\
+                                                                                                                            ## How to think\n\
+                                                                                                                            Connect dots across data sources. If they see an error on their screen, that's what they need help with most.\n\n\
+                                                                                                                            CRITICAL — READ THE RAW DATA FIRST:\n\
+                                                                                                                            The CORRELATED SESSION CONTEXT section contains RAW observation data — full page text, full terminal buffers, actual window titles. Read and analyze this raw data directly. Do NOT rely only on the structured summaries or error classifications.\n\
+                                                                                                                            The AI should look at what's actually on the page, in the terminal, and in the window — not just what pattern detectors matched.\n\
+                                                                                                                            The pattern-detected errors are just a hint — the AI must verify against the raw page content and terminal output.\n\n\
+                                                                                                                            ## Confidence matters:\n\
                                                                 ## Confidence matters:\n\
                                                                 - If you see an active error (red alert) — call it out confidently and immediately\n\
                                                                 - If you see terminal commands matching the dashboard context — suggest the next logical step\n\

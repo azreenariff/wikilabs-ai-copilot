@@ -1,3 +1,13 @@
+## v1.1.137 — FIX: pass raw observation data to AI — page content, terminal buffers, window titles
+
+- **AI now receives RAW PAGE CONTENT** — browser `visible_text` sent as-is (up to 3000 chars) alongside pattern-detected errors. The AI can analyze what's actually on the page, not just what hardcoded error patterns matched.
+- **AI now receives RAW TERMINAL OUTPUT** — full terminal buffer (up to 5000 chars) sent alongside the last command. The AI can see errors, status messages, and any terminal content — not just the command line.
+- **Terminal provider sends full buffer under both keys** — `command_text` (legacy) and `output` (new) so the observation engine reads the complete terminal content.
+- **Guidance context uses full browser context** — `build_context_summary()` now uses `get_full_browser_context()` which preserves `visible_text` and `detected_errors` (the old `get_browser_context()` discarded them).
+- **System prompts updated** — both `ai_guidance.rs` and `api_server.rs` system prompts now instruct the AI to read raw data first, not just structured summaries. Pattern-detected errors are labeled as "hints."
+- **Session narrative includes raw terminal output** — `api_server.rs` session_narrative now extracts and includes raw terminal output alongside command_text.
+- **Fixed provider name casing** — `Browser` → `browser`, `Terminal` → `terminal`, `ActiveWindow` → `active_window`, `ScreenCapture` → `screen_capture` to match actual provider event names.
+
 ## v1.1.136 — FIX: AI hallucination prevention — grounding rules in AI guidance and vision prompts
 
 - **AI guidance now has strict grounding rules** — system prompt updated with 5 CRITICAL RULES: only use visible context, do NOT guess about past activity, do NOT reference other windows or previous sessions, focus on troubleshooting when errors detected, stay silent if nothing specific is visible
