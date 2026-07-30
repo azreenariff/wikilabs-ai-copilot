@@ -2046,6 +2046,24 @@ pub fn start_api_server(
                                                                 ## Recent observations:\n\
                                                                 {}\n\
 
+                                                                ## CRITICAL — HOW TO INTERPRET YOUR DATA:\n\
+                                                                Your data comes from multiple sources. Use them in this order of confidence:\n\
+                                                                1. TERMINAL COMMANDS (HIGHEST CONFIDENCE) — when you see a command the user typed in a terminal, that is VERIFIED what they're doing. Base your advice on this.\n\
+                                                                2. BROWSER PAGE CONTENT (HIGH CONFIDENCE) — text visible on a web page is what the user is actually reading. If they see an error message, that's the primary issue.\n\
+                                                                3. BROWSER URL (MEDIUM CONFIDENCE) — the URL tells you which site/app the user is on.\n\
+                                                                4. VISION ANALYSIS / SCREEN CAPTURE (LOW CONFIDENCE) — these are GUESSES about what's on screen. They often misinterpret terminal windows (e.g., seeing MobaXterm's sidebar and claiming the user is "configuring settings" when they're actually SSH'd into a server). IGNORE vision analysis that says the user is "configuring" or "navigating settings" when terminal commands show they're actually troubleshooting.\n\
+                                                                5. WINDOW TITLE (LOW CONFIDENCE) — the window name alone doesn't tell you what the user is doing inside it.\n\
+
+                                                                ## What to IGNORE:\n\
+                                                                If the vision analysis says the user is "configuring settings," "navigating menus," or "editing preferences" in a terminal app (MobaXterm, PuTTY, etc.) — this is almost certainly WRONG. When terminal commands are visible, trust the commands over the vision analysis.\n\
+                                                                If there are NO terminal commands and NO browser errors — and the vision analysis only describes generic "navigating" or "browsing" — STAY QUIET. Don't give advice for vague activity.\n\
+
+                                                                ## Correlate across time:\n\
+                                                                Connect the dots between browser and terminal activity:\n\
+                                                                - User opened a webpage with an error → then opened terminal → ran diagnostic commands? → Suggest the next diagnostic step or the fix.\n\
+                                                                - User is browsing a docs page → then ran a command related to what they read? → Confirm they're on the right track or point them to the next section.\n\
+                                                                - User saw a database error → opened SSH → checked service status → service is dead? → Suggest how to start it and why it might be down.\n\
+
                                                                 Give ONE short piece of guidance (1-3 sentences). Be specific, actionable, and conversational — like a knowledgeable teammate sitting next to them.\n\
                                                                 If you can connect the dots across what they're doing, do it. Never repeat the same type of suggestion.\"\n\
 

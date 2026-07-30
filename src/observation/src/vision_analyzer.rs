@@ -329,7 +329,25 @@ impl ObservationProvider for VisionAnalyzerProvider {
             state.pending_screenshot.as_ref().unwrap().clone()
         };
 
-        let (screenshot_data, width, height, focused_window) = pending;
+        let (screenshot_data, width, height, focused_window) = pending.clone();
+
+        // Skip vision analysis when the screen shows terminal/SSH content.
+        // Terminal sessions have text-based content that vision models
+        // often misinterpret (e.g., seeing MobaXterm UI chrome and
+        // hallucinating that the user is "configuring settings").
+        // The TerminalProvider already captures command text accurately.
+        let terminal_indicators = [
+            "terminal", "moba", "putty", "ssh", "bash", "zsh", "powershell",
+            "cmd.exe", "root@", "admin@", "ubuntu@", "debian@", "centos@",
+            "fedora@", "windows-terminal", "alacritty", "wezterm",
+        ];
+        let focused_lower = focused_window.to_lowercase();
+        for indicator in &terminal_indicators {
+            if focused_lower.contains(indicator) {
+                tracing::info!("[Vision] Skipping analysis — terminal window detected (focused: {})", focused_window);
+                return Ok(Vec::new());
+            }
+        }
 
         // Analyze the screenshot
         match self.analyze_screenshot(&screenshot_data, width, height, &focused_window).await {

@@ -1,0 +1,6 @@
+## v1.1.134 — FIX: Observation accuracy — vision skip on terminal, data priority, cross-context correlation
+
+- **Vision analysis now skips terminal windows** — when MobaXterm, PuTTY, or any terminal is in focus, the vision analyzer is bypassed. Terminal text is already captured accurately by the TerminalProvider. This eliminates the primary source of hallucinated advice (e.g., "you're configuring MobaXterm settings" when you're actually SSH'd into a server).
+- **AI reasoning now prioritizes verified data over vision guesses** — system prompt updated to explicitly rank data sources: terminal commands > browser content > URL > vision analysis > window title. Vision analysis is flagged as "GUESSES" that often misinterpret terminal UI chrome.
+- **Added "What to IGNORE" section** — explicit instruction to dismiss vision analysis claims about "configuring settings" or "navigating menus" in terminal apps, and to stay quiet when there's no concrete evidence.
+- **Added cross-time correlation instructions** — AI is now instructed to connect browser → terminal activity across the session (e.g., "user saw database error → opened SSH → checked service status → service is dead → suggest how to start it").
