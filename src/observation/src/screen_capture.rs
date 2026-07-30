@@ -398,7 +398,7 @@ mod screen_capture_windows {
             // Encode the bitmap to PNG using the image crate
             // Extract pixel data from the DIB
             let mut pixel_buffer = vec![0u8; (width * height * 4) as usize];
-            let _bits_result = GetDIBits(
+            let lines_copied = GetDIBits(
                 mem_dc,
                 bitmap_handle,
                 0,
@@ -407,6 +407,18 @@ mod screen_capture_windows {
                 &mut bitmap_info as *mut _,
                 DIB_RGB_COLORS,
             );
+            if lines_copied == 0 {
+                tracing::warn!(
+                    "GetDIBits failed for {}x{} screenshot — screen capture unavailable",
+                    width, height
+                );
+                SelectObject(mem_dc, old_bitmap);
+                let _ = DeleteObject(bitmap_handle);
+                let _ = DeleteDC(mem_dc);
+                let _ = ReleaseDC(HWND::default(), dc);
+                return None;
+            }
+            tracing::debug!(lines_copied, width, height, "Screenshot captured successfully");
 
             // Convert BGRA (from DIB) to RGB and create PNG
             let png_data = bgra_to_png(&pixel_buffer, width as u32, height as u32);
@@ -416,7 +428,6 @@ mod screen_capture_windows {
 
             // Cleanup
             let _ = DeleteObject(bitmap_handle);
-            let _ = SelectObject(mem_dc, old_bitmap);
             let _ = DeleteDC(mem_dc);
             let _ = ReleaseDC(HWND::default(), dc);
 
