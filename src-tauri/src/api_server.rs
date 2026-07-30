@@ -192,19 +192,19 @@ async fn build_context_system_prompt(
     };
 
     let session_context = if !chat_history.is_empty() {
-        // If there's conversation history, the AI should continue the conversation
-        // as the same agent that did the observations
-        format!(
-            "{}\n\nYou are the Wiki Labs AI Copilot. You've been actively observing the user's activity in real-time through terminal sessions, browser activity, window changes, and more. The observations and recommendations above are YOUR own — they're what you've noticed and suggested based on what you've seen. Continue your analysis and conversation with full awareness of your prior observations.",
-            context_block
-        )
-    } else {
-        // No conversation history yet — just set the context
-        format!(
-            "{}\n\nYou are the Wiki Labs AI Copilot assistant. You've been actively observing the user's activity in real-time. The observations and recommendations above are YOUR own — what you've noticed and suggested based on what you've seen.",
-            context_block
-        )
-    };
+            // If there's conversation history, the AI should continue the conversation
+            // as the same agent that did the observations
+            format!(
+                "{}\n\n## CORE RULES — DO NOT IGNORE THESE\n\n1. **Use only the data above.** The \"Recent Observations\", \"Intent Summary\", and \"Screen Vision Analysis\" sections contain REAL data you have collected. Base ALL your responses on that data.\n\n2. **Do NOT invent or hallucinate.** If the data above does not contain information about a specific file, command output, error message, or system state, do NOT make it up. Say \"I don't have that information\" instead of guessing.\n\n3. **If the observations section is empty, say so explicitly.** Do not pretend you are watching the user's screen if no observations have been recorded yet.\n\n4. **Connect the dots between what you actually see.** If you see a terminal command AND a browser error AND an application change, weave them together into a coherent analysis.\n\n5. **Be conversational and specific.** Talk like a teammate who is watching work happen. Say \"I see you're running...\" not \"The user may be...\"\n\nYou are the Wiki Labs AI Copilot. You've been actively observing the user's activity in real-time through terminal sessions, browser activity, window changes, and more. The observations and recommendations above are YOUR own — they're what you've noticed and suggested based on what you've seen. Continue your analysis and conversation with full awareness of your prior observations.",
+                context_block
+            )
+        } else {
+            // No conversation history yet — just set the context
+            format!(
+                "{}\n\n## CORE RULES — DO NOT IGNORE THESE\n\n1. **Use only the data above.** The \"Recent Observations\", \"Intent Summary\", and \"Screen Vision Analysis\" sections contain REAL data you have collected. Base ALL your responses on that data.\n\n2. **Do NOT invent or hallucinate.** If the data above does not contain information about a specific file, command output, error message, or system state, do NOT make it up. Say \"I don't have that information\" instead of guessing.\n\n3. **If the observations section is empty, say so explicitly.** Do not pretend you are watching the user's screen if no observations have been recorded yet.\n\n4. **Be conversational and specific.** Talk like a teammate who is watching work happen.\n\nYou are the Wiki Labs AI Copilot assistant. You've been actively observing the user's activity in real-time. The observations and recommendations above are YOUR own — what you've noticed and suggested based on what you've seen.",
+                context_block
+            )
+        };
 
     Some(session_context)
 }
@@ -1800,6 +1800,21 @@ pub fn start_api_server(
                                         &finding,
                                         &importance.to_string(),
                                         event.confidence as f64,
+                                    ).await;
+
+                                    // FIX #1: Also store the event in the timeline so
+                                    // build_context_system_prompt can read real observation
+                                    // data instead of an empty context block.
+                                    let event_type_str = format!("{:?}", event.event_type);
+                                    let tech = event.provider.to_string();
+                                    let _ = panel.add_timeline_event(
+                                        &event_type_str,
+                                        Some(&event.source),
+                                        Some(&tech),
+                                        None,
+                                        Some(&summary.chars().take(500).collect::<String>()),
+                                        Some(event.confidence as f64),
+                                        None,
                                     ).await;
 
                                     // Filter out noise events
