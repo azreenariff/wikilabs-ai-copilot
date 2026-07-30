@@ -315,59 +315,99 @@ impl SessionTracker {
             }
         }
 
+        // ── Cap narrative steps to prevent unbounded accumulation ──
+        // Keep only the last 50 steps. Older steps are stale by this point
+        // and no longer relevant to current user activity.
+        if session.steps.len() > 50 {
+            let cutoff = session.steps.len() - 50;
+            session.steps.drain(..cutoff);
+        }
+
         // ── Check if troubleshooting is complete ───────────────
-        if let Some(ref sess) = state.current_session {
-            if sess.state == SessionState::Troubleshooting {
-                // Check if we have enough data to form a hypothesis
-                let error_count = sess
+        // We hold a mutable borrow of `session` (line 165). To check the
+        // troubleshooting-completion condition without conflicting borrows,
+        // we first read the needed values, then drop state, re-acquire
+        // mutably, and apply the fix.
+        let needs_completion_check = session.state == SessionState::Troubleshooting
+            && session.current_hypothesis.is_none();
+
+        let (error_count, all_observations, last_intent) = if needs_completion_check {
+            let ec = session
+                .steps
+                .iter()
+                .flat_map(|s| &s.observations)
+                .filter(|o| o.contains("Error") || o.contains("Warning"))
+                .count();
+            let aobs: Vec<String> = session
+                .steps
+                .iter()
+                .flat_map(|s| s.observations.clone())
+                .collect();
+            let fallback_intent = CommandIntent {
+                command: "general".to_string(),
+                action: "general observation".to_string(),
+                target: None,
+                category: IntentCategory::General,
+                confidence: 0.5,
+                explanation: "General troubleshooting".to_string(),
+            };
+            let li = session
+                .steps
+                .last()
+                .and_then(|s| s.intent.as_ref())
+                .cloned()
+                .unwrap_or(fallback_intent);
+            (ec, aobs, li)
+        } else {
+            (0, Vec::new(), CommandIntent {
+                command: "general".to_string(),
+                action: "general observation".to_string(),
+                target: None,
+                category: IntentCategory::General,
+                confidence: 0.5,
+                explanation: "General troubleshooting".to_string(),
+            })
+        };
+
+        if error_count >= 2 && session.current_hypothesis.is_none() {
+            // Release state, re-acquire mutably for the state change
+            drop(session);
+            drop(state);
+            let mut state = self.state.lock().unwrap();
+            if let Some(ref mut session) = state.current_session {
+                session.state = SessionState::ProblemIdentified;
+                session.current_hypothesis = Some(
+                    "Multiple issues detected — likely a cascading failure".to_string(),
+                );
+                let mut sn = session.steps.len() as u32;
+                let li = session
+                    .steps
+                    .last()
+                    .and_then(|s| s.intent.as_ref())
+                    .cloned()
+                    .unwrap_or(CommandIntent {
+                        command: "general".to_string(),
+                        action: "general observation".to_string(),
+                        target: None,
+                        category: IntentCategory::General,
+                        confidence: 0.5,
+                        explanation: "General troubleshooting".to_string(),
+                    });
+                let ao: Vec<String> = session
                     .steps
                     .iter()
-                    .flat_map(|s| &s.observations)
-                    .filter(|o| o.contains("Error") || o.contains("Warning"))
-                    .count();
-
-                if error_count >= 2 && sess.current_hypothesis.is_none() {
-                    // Need to release the &ref and get mutable access
-                    drop(state);
-                    let mut state = self.state.lock().unwrap();
-                    if let Some(ref mut session) = state.current_session {
-                        session.state = SessionState::ProblemIdentified;
-                        session.current_hypothesis = Some(
-                            "Multiple issues detected — likely a cascading failure".to_string(),
-                        );
-                        step_num = session.steps.len() as u32;
-                        let fallback_intent = CommandIntent {
-                            command: "general".to_string(),
-                            action: "general observation".to_string(),
-                            target: None,
-                            category: IntentCategory::General,
-                            confidence: 0.5,
-                            explanation: "General troubleshooting".to_string(),
-                        };
-                        let last_intent = session
-                            .steps
-                            .last()
-                            .and_then(|s| s.intent.as_ref())
-                            .cloned()
-                            .unwrap_or(fallback_intent);
-                        let all_observations: Vec<String> = session
-                            .steps
-                            .iter()
-                            .flat_map(|s| s.observations.clone())
-                            .collect();
-                        suggestions.push(self.make_suggestion(
-                            &last_intent,
-                            &all_observations,
-                            Some("I've noticed multiple issues across your checks. This could be a cascading failure — one service failing causing others to fail. Try checking the most fundamental service first (often the database)."),
-                            &mut step_num,
-                        ));
-                    }
-                    // Re-acquire for the final result — `state` was dropped above
-                    let result = state.current_session.clone().unwrap();
-                    drop(state);
-                    return (result, suggestions);
-                }
+                    .flat_map(|s| s.observations.clone())
+                    .collect();
+                suggestions.push(self.make_suggestion(
+                    &li,
+                    &ao,
+                    Some("I've noticed multiple issues across your checks. This could be a cascading failure — one service failing causing others to fail. Try checking the most fundamental service first (often the database)."),
+                    &mut sn,
+                ));
             }
+            let result = state.current_session.clone().unwrap();
+            drop(state);
+            return (result, suggestions);
         }
 
         // Update the session in state
