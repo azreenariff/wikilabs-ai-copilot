@@ -381,7 +381,7 @@ mod screen_capture_windows {
             let old_bitmap = SelectObject(mem_dc, bitmap_handle);
 
             // BitBlt the screen into our DIB
-            let success = BitBlt(
+            let _success = BitBlt(
                 mem_dc,
                 0, 0, width, height,
                 dc,
@@ -392,7 +392,7 @@ mod screen_capture_windows {
             // Encode the bitmap to PNG using the image crate
             // Extract pixel data from the DIB
             let mut pixel_buffer = vec![0u8; (width * height * 4) as usize];
-            let bits_result = GetDIBits(
+            let _bits_result = GetDIBits(
                 mem_dc,
                 bitmap_handle,
                 0,
@@ -454,7 +454,7 @@ mod screen_capture_windows {
 
         // Encode to PNG in memory using image 0.25 API
         let mut data = Vec::new();
-        let mut encoder = image::codecs::png::PngEncoder::new(&mut data);
+        let encoder = image::codecs::png::PngEncoder::new(&mut data);
         match encoder.write_image(
             &rgba_image,
             width,
