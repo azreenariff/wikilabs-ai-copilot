@@ -1,3 +1,11 @@
+## v1.1.142 — IMPROVEMENTS: vision analyzer — resize, temp, error detection, dedup
+
+- **Screenshot size reduced** — screenshots sent to Vision AI are now capped at 1280px width (down from full resolution). Faster, cheaper, still readable.
+- **Temperature bumped to 0.5** — from 0.3 for better visual judgment. Higher temp reduces overconfidence and improves the AI's ability to detect real issues vs false alarms.
+- **Expanded error detection** — `parse_vision_response` now catches 23 patterns including visual/content issues: blank, empty, not loading, frozen, unresponsive, missing, broken, white screen, spinner, stuck.
+- **Deduplication of repeated guidance** — analysis results are hashed before emitting events. If the same analysis repeats on consecutive screenshots, only the first one fires guidance.
+- **Fixed confidence type mismatch** in observation engine.
+
 ## v1.1.140 — FIX: pass raw observation data to AI — page content, terminal buffers, window titles
 
 - **AI now receives RAW PAGE CONTENT** — browser `visible_text` sent as-is (up to 3000 chars) alongside pattern-detected errors. The AI can analyze what's actually on the page, not just what hardcoded error patterns matched.
