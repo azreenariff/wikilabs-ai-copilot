@@ -10,9 +10,13 @@
 
 - **AI now sees user's actual desktop** — suggestion loop captures screenshots and sends them to the LLM alongside text context (focused window, terminal output, browser errors). The AI analyzes the actual screen content to give precise, targeted advice.
 - **Multi-modal AiMessage** — `wikilabs_observation::get_last_screenshot()` returns base64-encoded PNGs that are embedded as `image_url` blocks in the AI message, alongside text describing the current context.
-- **Observation engine integration** — screen capture provider feeds screenshots into the suggestion loop which builds a rich prompt: current window, terminal buffer, browser errors, session narrative, correlated events.
-- **Chat message content→Value** — `AiMessage.content` changed from `String` to `serde_json::Value` to support both text-only and multi-modal (text + image) content. All callers updated (main.rs, api_server.rs).
-- **System prompt grounding** — updated to instruct the AI to analyze the actual screenshot first, connect dots across visible context (terminal errors → SSH → service status → suggest how to start), and stay quiet when nothing specific is visible.
+
+## [v1.1.145]
+
+- **Fixed:** `GetDIBits` return value discarded, causing silent failures on Windows DWM where pixel buffer stays all-zeros (black screenshots)
+- **Fixed:** duplicate GDI cleanup (SelectObject/DeleteDC/ReleaseDC called twice) that could corrupt GDI state
+- **Added:** warning logging when GetDIBits fails, debug logging on success
+- **Added:** graceful degradation (returns None instead of black image) when screen capture fails
 
 ## v1.1.142 — IMPROVEMENTS: vision analyzer — resize, temp, error detection, dedup
 
