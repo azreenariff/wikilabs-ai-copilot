@@ -1,3 +1,11 @@
+## v1.1.132 — FIX: Chat assistant makes like natural chat; minimize-to-roll-up; auto-restore on advice
+
+- **Removed sender labels** ("🤖 Assistant", "👤 You") from chat messages — messages now render as clean conversation bubbles with only timestamps
+- **Added minimize-to-roll-up** — "─ Minimize" button collapses the floating window into a small pill at bottom-right ("💬 AI Copilot Advice")
+- **Auto-restore on new advice** — when minimized, polls for guidance recommendations every 1s and automatically restores the window when new advice arrives
+- **Faster polling** — history polling reduced from 10s to 3s for near real-time advice updates
+- **Simplified message rendering** — both user and assistant messages use `marked` for consistent markdown rendering
+
 ## v1.1.131 — FIX: Resolve remaining clippy errors (unused vars and mut)
 
 - **Removed unused `success` variable** from `BitBlt` call in screen_capture.rs — prefix with `_`

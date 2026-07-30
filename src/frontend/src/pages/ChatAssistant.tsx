@@ -16,18 +16,12 @@ interface Message {
 }
 
 function ChatAssistant() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "I'm your Wiki Labs AI Copilot assistant. I'm ready to help!\n\nAvailable capabilities in this version:\n- Answer questions about your project\n- Help troubleshoot issues\n- Access workspace knowledge base\n- Execute guided workflows\n\nNote: Full AI responses require the app backend running.",
-      created_at: new Date().toISOString(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<string[]>([]);
+  const [minimized, setMinimized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,10 +29,38 @@ function ChatAssistant() {
   useEffect(() => {
     loadHistory();
 
-    // Poll for new messages (including AI suggestions) every 10 seconds
-    const interval = setInterval(loadHistory, 10000);
+    // Poll for new messages every 3 seconds for near real-time advice
+    const interval = setInterval(loadHistory, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  // When minimized, poll more frequently (1s) to detect when to restore
+  const showBannerRef = useRef(false);
+  useEffect(() => {
+    if (!minimized || !showBannerRef.current) return;
+    const iv = setInterval(async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:1420/api/commands/guidance_get_active_recommendations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ params: {} }),
+        });
+        const data = await res.json();
+        if (data.success && data.value && data.value.length > 0) {
+          // New advice available — restore the window
+          showBannerRef.current = true;
+          try {
+            await fetch('http://127.0.0.1:1420/api/commands/advice_chat_open', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ params: {} }),
+            });
+          } catch {}
+        }
+      } catch {}
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [minimized]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -224,400 +246,339 @@ function ChatAssistant() {
     }
   }
 
-  // Render an assistant message with markdown
-  function renderAssistantContent(content: string): React.ReactNode {
-    // Use marked for full markdown rendering (code blocks, lists, bold, italic, headings, tables, etc.)
-    try {
-      const html = marked.parse(content, { async: false }) as string;
-      return <div dangerouslySetInnerHTML={{ __html: html }} />;
-    } catch {
-      // Fallback: render with simple inline markdown
-      const parts: React.ReactNode[] = [];
-      const lines = content.split('\n');
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        // Empty lines become spacing
-        if (line.trim() === '') {
-          parts.push(<div key={i} style={{ height: '8px' }} />);
-          continue;
-        }
-        // Code blocks (simple fallback)
-        if (line.startsWith('```')) {
-          continue; // skip the fence line
-        }
-        // Process inline markdown: bold, italic, inline code
-        const processed = processInlineMarkdown(line);
-        parts.push(<div key={i}>{processed}</div>);
-      }
-      return <div>{parts}</div>;
-    }
-  }
-
-  function processInlineMarkdown(line: string): React.ReactNode[] {
-    const parts: React.ReactNode[] = [];
-    let remaining = line;
-    let partIdx = 0;
-
-    while (remaining.length > 0) {
-      // Check for inline code
-      const codeIdx = remaining.indexOf('`');
-      if (codeIdx !== -1) {
-        // Text before code
-        if (codeIdx > 0) {
-          parts.push(<span key={`text-${partIdx++}`}>{remaining.slice(0, codeIdx)}</span>);
-        }
-        const closeIdx = remaining.indexOf('`', codeIdx + 1);
-        if (closeIdx !== -1) {
-          const codeContent = remaining.slice(codeIdx + 1, closeIdx);
-          parts.push(
-            <code key={`code-inline-${partIdx++}`} style={{
-              background: 'rgba(99,102,241,0.15)',
-              padding: '1px 5px',
-              borderRadius: '4px',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontSize: '12px',
-              color: '#c7d2fe',
-            }}>
-              {codeContent}
-            </code>
-          );
-          remaining = remaining.slice(closeIdx + 1);
-        } else {
-          parts.push(<span key={`text-${partIdx++}`}>`</span>);
-          remaining = remaining.slice(codeIdx + 1);
-        }
-      } else {
-        // Check for bold (**text**)
-        const boldIdx = remaining.indexOf('**');
-        if (boldIdx !== -1) {
-          const closeBold = remaining.indexOf('**', boldIdx + 2);
-          if (closeBold !== -1) {
-            parts.push(<span key={`text-${partIdx++}`}>{remaining.slice(0, boldIdx)}</span>);
-            parts.push(
-              <strong key={`bold-${partIdx++}`}>
-                {remaining.slice(boldIdx + 2, closeBold)}
-              </strong>
-            );
-            remaining = remaining.slice(closeBold + 2);
-          } else {
-            parts.push(<span key={`text-${partIdx++}`}>{remaining}</span>);
-            remaining = '';
-          }
-        } else {
-          // Check for italic (*text*)
-          const italicIdx = remaining.indexOf('*');
-          if (italicIdx !== -1) {
-            const closeItalic = remaining.indexOf('*', italicIdx + 1);
-            if (closeItalic !== -1 && closeItalic !== italicIdx + 1) {
-              parts.push(<span key={`text-${partIdx++}`}>{remaining.slice(0, italicIdx)}</span>);
-              parts.push(
-                <em key={`italic-${partIdx++}`}>
-                  {remaining.slice(italicIdx + 1, closeItalic)}
-                </em>
-              );
-              remaining = remaining.slice(closeItalic + 1);
-            } else {
-              parts.push(<span key={`text-${partIdx++}`}>{remaining}</span>);
-              remaining = '';
-            }
-          } else {
-            parts.push(<span key={`text-${partIdx++}`}>{remaining}</span>);
-            remaining = '';
-          }
-        }
-      }
-    }
-
-    return parts;
-  }
-
-  // Render user message with markdown (simpler)
-  function renderUserContent(content: string): React.ReactNode[] {
-    return content.split('\n').map((line, i) => (
-      <span key={i}>
-        {i > 0 && <br />}
-        {processInlineMarkdown(line)}
-      </span>
-    ));
-  }
-
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      maxWidth: '900px',
-      margin: '0 auto',
-      width: '100%',
-    }}>
-      <div style={{
-        flex: 1,
-        overflow: 'auto',
-        padding: '20px',
-      }}>
-        {messages.map(msg => (
-          <div key={msg.id} style={{
+    <>
+      {minimized ? (
+        /* ── Mini roll-up bar when minimized ── */
+        <div
+          onClick={() => {
+            setMinimized(false);
+            // Tell backend to show+focus this window
+            fetch('http://127.0.0.1:1420/api/commands/advice_chat_open', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ params: {} }),
+            }).catch(() => {});
+          }}
+          style={{
+            position: 'fixed',
+            bottom: '16px',
+            right: '16px',
+            background: 'var(--color-bg-secondary)',
+            border: '1px solid var(--color-accent)',
+            borderRadius: '12px',
+            padding: '8px 14px',
             display: 'flex',
-            justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-            marginBottom: '16px',
-          }}>
-            <div style={{
-              maxWidth: '80%',
-              padding: '12px 16px',
-              borderRadius: '12px',
-              background: msg.role === 'user' ? 'var(--color-user-msg)' : 'var(--color-assistant-msg)',
-              color: msg.role === 'user' ? 'var(--color-user-text)' : 'var(--color-text-primary)',
-              border: '1px solid var(--color-border)',
-              fontSize: '14px',
-              lineHeight: '1.6',
-              wordBreak: 'break-word',
-            }}>
-              <div style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                marginBottom: '4px',
-                opacity: 0.7,
-              }}>
-                {msg.role === 'user' ? '👤 You' : '🤖 Assistant'}
-              </div>
-
-              {msg.role === 'assistant'
-                ? <div className="assistant-messages-content">{renderAssistantContent(msg.content)}</div>
-                : renderUserContent(msg.content)
-              }
-
-              {/* Render attached images for user messages */}
-              {msg.attachments && msg.role === 'user' && msg.attachments.map((att, idx) => {
-                if (att.startsWith('http') || att.startsWith('data:image')) {
-                  return (
-                    <img
-                      key={idx}
-                      src={att}
-                      alt="Attached image"
-                      style={{
-                        maxWidth: '240px',
-                        maxHeight: '180px',
-                        borderRadius: '8px',
-                        marginTop: '8px',
-                        display: 'block',
-                      }}
-                    />
-                  );
-                }
-                return null;
-              })}
-
-              <div style={{
-                fontSize: '10px',
-                marginTop: '6px',
-                opacity: 0.5,
-                textAlign: 'right',
-              }}>
-                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'flex-start',
-            marginBottom: '16px',
-          }}>
-            <div style={{
-              padding: '12px 16px',
-              borderRadius: '12px',
-              background: 'var(--color-assistant-msg)',
-              border: '1px solid var(--color-border)',
-            }}>
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input area */}
-      <div style={{
-        padding: '12px 20px',
-        borderTop: '1px solid var(--color-border)',
-        background: 'var(--color-bg-secondary)',
-      }}>
-        {/* Pending attachment preview */}
-        {pendingAttachments.length > 0 && (
-          <div style={{
-            display: 'flex',
+            alignItems: 'center',
             gap: '8px',
-            marginBottom: '8px',
-            flexWrap: 'wrap',
+            cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            zIndex: 10000,
+            transition: 'all 0.2s',
+            fontSize: '13px',
+            color: 'var(--color-text-primary)',
+          }}
+          title="Click to open advice chat"
+        >
+          <span style={{ fontSize: '16px' }}>💬</span>
+          <span>AI Copilot Advice</span>
+        </div>
+      ) : (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          maxWidth: '900px',
+          margin: '0 auto',
+          width: '100%',
+        }}>
+          {/* Header with close/minimize button */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            padding: '4px 4px 0',
           }}>
-            {pendingAttachments.map((att, idx) => (
-              <div
-                key={idx}
-                style={{
-                  position: 'relative',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'rgba(99,102,241,0.1)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                }}
-              >
-                {att.startsWith('image:') ? (
-                  <img
-                    src={att.substring(6)}
-                    alt="Preview"
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      objectFit: 'cover',
-                      borderRadius: '4px',
-                    }}
-                  />
-                ) : att.startsWith('file:') ? (
-                  <span style={{ color: 'var(--color-text-secondary)' }}>📄</span>
-                ) : null}
-                <span style={{ color: 'var(--color-text-primary)' }}>
-                  {att.startsWith('file:') ? att.split(':').slice(2, 3).join(':') : 'Image'}
-                </span>
-                <button
-                  onClick={() => removeAttachment(idx)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--color-text-secondary)',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    padding: '0 4px',
-                    lineHeight: 1,
-                  }}
-                >
-                  ✕
-                </button>
+            <button
+              onClick={() => {
+                setMinimized(true);
+              }}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-secondary)',
+                borderRadius: '6px',
+                padding: '2px 8px',
+                cursor: 'pointer',
+                fontSize: '11px',
+              }}
+              title="Minimize to roll-up bar"
+            >
+              ─ Minimize
+            </button>
+          </div>
+
+          <div style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '20px',
+          }}>
+            {messages.map(msg => (
+              <div key={msg.id} style={{
+                display: 'flex',
+                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                marginBottom: '16px',
+              }}>
+                <div style={{
+                  maxWidth: '80%',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  background: msg.role === 'user' ? 'var(--color-user-msg)' : 'var(--color-assistant-msg)',
+                  color: msg.role === 'user' ? 'var(--color-user-text)' : 'var(--color-text-primary)',
+                  border: 'none',
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  wordBreak: 'break-word',
+                  borderBottomLeftRadius: msg.role === 'assistant' ? '4px' : undefined,
+                  borderBottomRightRadius: msg.role === 'user' ? '4px' : undefined,
+                }}>
+                  {msg.role === 'assistant'
+                    ? <div dangerouslySetInnerHTML={{ __html: marked.parse(msg.content, { async: false }) as string }} />
+                    : <div dangerouslySetInnerHTML={{ __html: marked.parse(msg.content, { async: false }) as string }} />
+                  }
+
+                  {/* Render attached images for user messages */}
+                  {msg.attachments && msg.role === 'user' && msg.attachments.map((att, idx) => {
+                    if (att.startsWith('http') || att.startsWith('data:image')) {
+                      return (
+                        <img
+                          key={idx}
+                          src={att}
+                          alt="Attached image"
+                          style={{
+                            maxWidth: '240px',
+                            maxHeight: '180px',
+                            borderRadius: '8px',
+                            marginTop: '8px',
+                            display: 'block',
+                          }}
+                        />
+                      );
+                    }
+                    return null;
+                  })}
+
+                  <div style={{
+                    fontSize: '10px',
+                    marginTop: '6px',
+                    opacity: 0.4,
+                    textAlign: 'right',
+                  }}>
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
               </div>
             ))}
+            {loading && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-start',
+                marginBottom: '16px',
+              }}>
+                <div style={{
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  background: 'var(--color-assistant-msg)',
+                  border: '1px solid var(--color-border)',
+                }}>
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
-        )}
 
-        {/* Drag-over indicator */}
-        {dragOver && (
+          {/* Input area */}
           <div style={{
-            padding: '12px',
-            margin: '0 -20px 8px',
-            textAlign: 'center',
-            background: 'rgba(99,102,241,0.15)',
-            border: '2px dashed var(--color-accent)',
-            borderRadius: '8px',
-            fontSize: '13px',
-            color: 'var(--color-accent)',
+            padding: '12px 20px',
+            borderTop: '1px solid var(--color-border)',
+            background: 'var(--color-bg-secondary)',
           }}>
-            Drop files here to attach
-          </div>
-        )}
+            {/* Pending attachment preview */}
+            {pendingAttachments.length > 0 && (
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '8px',
+                flexWrap: 'wrap',
+              }}>
+                {pendingAttachments.map((att, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      position: 'relative',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(99,102,241,0.1)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                    }}
+                  >
+                    {att.startsWith('image:') ? (
+                      <img
+                        src={att.substring(6)}
+                        alt="Preview"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          objectFit: 'cover',
+                          borderRadius: '4px',
+                        }}
+                      />
+                    ) : att.startsWith('file:') ? (
+                      <span style={{ color: 'var(--color-text-secondary)' }}>📄</span>
+                    ) : null}
+                    <span style={{ color: 'var(--color-text-primary)' }}>
+                      {att.startsWith('file:') ? att.split(':').slice(2, 3).join(':') : 'Image'}
+                    </span>
+                    <button
+                      onClick={() => removeAttachment(idx)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--color-text-secondary)',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        padding: '0 4px',
+                        lineHeight: 1,
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-        <form onSubmit={handleSubmit} style={{
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'flex-end',
-        }}>
-          {/* File attachment button */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid var(--color-border)',
-              background: dragOver ? 'rgba(99,102,241,0.2)' : 'var(--color-bg-tertiary)',
-              color: 'var(--color-text-primary)',
-              fontSize: '18px',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
+            {/* Drag-over indicator */}
+            {dragOver && (
+              <div style={{
+                padding: '12px',
+                margin: '0 -20px 8px',
+                textAlign: 'center',
+                background: 'rgba(99,102,241,0.15)',
+                border: '2px dashed var(--color-accent)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: 'var(--color-accent)',
+              }}>
+                Drop files here to attach
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: '40px',
-            }}
-            title="Attach image or file"
-            onMouseEnter={e => {
-              if (!dragOver) e.currentTarget.style.borderColor = 'var(--color-accent)';
-            }}
-            onMouseLeave={e => {
-              if (!dragOver) e.currentTarget.style.borderColor = 'var(--color-border)';
-            }}
-          >
-            📎
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,.txt,.md,.json,.csv,.log,.xml,.html,.css,.js,.ts,.py,.sh"
-            multiple
-            onChange={e => handleFiles(e.target.files)}
-            style={{ display: 'none' }}
-          />
+              gap: '8px',
+              alignItems: 'flex-end',
+            }}>
+              {/* File attachment button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: dragOver ? 'rgba(99,102,241,0.2)' : 'var(--color-bg-tertiary)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '40px',
+                }}
+                title="Attach image or file"
+                onMouseEnter={e => {
+                  if (!dragOver) e.currentTarget.style.borderColor = 'var(--color-accent)';
+                }}
+                onMouseLeave={e => {
+                  if (!dragOver) e.currentTarget.style.borderColor = 'var(--color-border)';
+                }}
+              >
+                📎
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.txt,.md,.json,.csv,.log,.xml,.html,.css,.js,.ts,.py,.sh"
+                multiple
+                onChange={e => handleFiles(e.target.files)}
+                style={{ display: 'none' }}
+              />
 
-          {/* Textarea for message input */}
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask a question... (Shift+Enter for new line)"
-            rows={1}
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              borderRadius: '8px',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-bg-secondary)',
-              color: 'var(--color-text-primary)',
-              fontSize: '14px',
-              outline: 'none',
-              resize: 'none',
-              fontFamily: 'inherit',
-              lineHeight: '1.5',
-            }}
-            onFocus={e => e.target.style.borderColor = 'var(--color-accent)'}
-            onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={e => {
-              e.preventDefault();
-              setDragOver(false);
-              handleFiles(e.dataTransfer.files);
-            }}
-          />
+              {/* Textarea for message input */}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask a question... (Shift+Enter for new line)"
+                rows={1}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg-secondary)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '14px',
+                  outline: 'none',
+                  resize: 'none',
+                  fontFamily: 'inherit',
+                  lineHeight: '1.5',
+                }}
+                onFocus={e => e.target.style.borderColor = 'var(--color-accent)'}
+                onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  handleFiles(e.dataTransfer.files);
+                }}
+              />
 
-          <button
-            type="submit"
-            disabled={!input.trim() && pendingAttachments.length === 0 || loading}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '8px',
-              border: 'none',
-              background: (input.trim() || pendingAttachments.length > 0) && !loading ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-              color: (input.trim() || pendingAttachments.length > 0) && !loading ? 'white' : 'var(--color-text-secondary)',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: (input.trim() || pendingAttachments.length > 0) && !loading ? 'pointer' : 'not-allowed',
-              transition: 'all 0.15s',
-              minHeight: '40px',
-            }}
-          >
-            {loading ? '...' : 'Send'}
-          </button>
-        </form>
-      </div>
-    </div>
+              <button
+                type="submit"
+                disabled={!input.trim() && pendingAttachments.length === 0 || loading}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: (input.trim() || pendingAttachments.length > 0) && !loading ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+                  color: (input.trim() || pendingAttachments.length > 0) && !loading ? 'white' : 'var(--color-text-secondary)',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: (input.trim() || pendingAttachments.length > 0) && !loading ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.15s',
+                  minHeight: '40px',
+                }}
+              >
+                {loading ? '...' : 'Send'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
