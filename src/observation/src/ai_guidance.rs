@@ -201,6 +201,11 @@ impl AiGuidanceProvider {
             }
         }
 
+        // Add active app
+        if let Some(app) = self.correlation_engine.get_active_app() {
+            context.push_str(&format!("Active app: {}\n", app));
+        }
+
         // Add terminal context
         if let Some(cmd) = self.correlation_engine.get_terminal_command() {
             context.push_str(&format!("Terminal command: {}\n", cmd));
@@ -256,6 +261,12 @@ impl AiGuidanceProvider {
             "You are a senior DevOps engineer providing proactive, conversational guidance to a user. \
             Be helpful, technical but approachable — like a teammate giving you advice.\n\n\
             Current observation context:\n{}\n\n\
+            CRITICAL RULES — follow ALL of them:\n\
+            1. ONLY give advice based on what is IN THIS context block above. Do NOT guess about past activity.\n\
+            2. Do NOT reference things the user may have done in previous sessions or windows.\n\
+            3. If you cannot see something in the context, do NOT claim to see it. Do NOT hallucinate.\n\
+            4. If the user is troubleshooting (you see errors + debug commands), focus on troubleshooting advice.\n\
+            5. If nothing specific is visible in context, say so — do NOT generate generic advice.\n\n\
             Based on this context, provide up to 3 specific, actionable suggestions. \
             Focus on:\n\
             - Proactive advice (what the user should do next)\n\
@@ -278,11 +289,11 @@ impl AiGuidanceProvider {
             .json(&serde_json::json!({
                 "model": config.model,
                 "messages": [
-                    {"role": "system", "content": "You are a helpful DevOps engineer providing real-time, conversational guidance. Keep messages short and actionable like a teammate."},
+                    {"role": "system", "content": "You are a helpful DevOps engineer providing real-time, conversational guidance. Keep messages short and actionable like a teammate. NEVER hallucinate or guess about things not visible in the context."},
                     {"role": "user", "content": prompt}
                 ],
                 "max_tokens": config.max_tokens,
-                "temperature": 0.7,
+                "temperature": 0.3,
             }))
             .send()
             .map_err(|e| format!("HTTP request failed: {}", e))?;

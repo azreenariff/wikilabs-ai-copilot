@@ -1,3 +1,12 @@
+## v1.1.136 — FIX: AI hallucination prevention — grounding rules in AI guidance and vision prompts
+
+- **AI guidance now has strict grounding rules** — system prompt updated with 5 CRITICAL RULES: only use visible context, do NOT guess about past activity, do NOT reference other windows or previous sessions, focus on troubleshooting when errors detected, stay silent if nothing specific is visible
+- **Vision analyzer prompt tightened** — DEFAULT_VISION_PROMPT now includes same grounding rules: only describe what is visible in the current screenshot, do NOT speculate or hallucinate
+- **Temperature lowered from 0.7 to 0.3** — reduces creative hallucination in both AI guidance and vision analysis
+- **Active app name now included in AI context** — `last_active_app` (e.g., MobaXterm) is now forwarded to the AI prompt so it knows which window is actually in focus
+
+## v1.1.135 — FIX: escape double quotes in AI system prompt format string
+
 ## v1.1.134 — FIX: Observation accuracy — vision skip on terminal, data priority, cross-context correlation
 
 - **Vision analysis now skips terminal windows** — when MobaXterm, PuTTY, or any terminal is in focus, the vision analyzer is bypassed. Terminal text is already captured accurately by the TerminalProvider. This eliminates the primary source of hallucinated advice (e.g., "you're configuring MobaXterm settings" when you're actually SSH'd into a server).
