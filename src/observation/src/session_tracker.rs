@@ -331,47 +331,19 @@ impl SessionTracker {
         let needs_completion_check = session.state == SessionState::Troubleshooting
             && session.current_hypothesis.is_none();
 
-        let (error_count, all_observations, last_intent) = if needs_completion_check {
-            let ec = session
+        let error_count = if needs_completion_check {
+            session
                 .steps
                 .iter()
                 .flat_map(|s| &s.observations)
                 .filter(|o| o.contains("Error") || o.contains("Warning"))
-                .count();
-            let aobs: Vec<String> = session
-                .steps
-                .iter()
-                .flat_map(|s| s.observations.clone())
-                .collect();
-            let fallback_intent = CommandIntent {
-                command: "general".to_string(),
-                action: "general observation".to_string(),
-                target: None,
-                category: IntentCategory::General,
-                confidence: 0.5,
-                explanation: "General troubleshooting".to_string(),
-            };
-            let li = session
-                .steps
-                .last()
-                .and_then(|s| s.intent.as_ref())
-                .cloned()
-                .unwrap_or(fallback_intent);
-            (ec, aobs, li)
+                .count()
         } else {
-            (0, Vec::new(), CommandIntent {
-                command: "general".to_string(),
-                action: "general observation".to_string(),
-                target: None,
-                category: IntentCategory::General,
-                confidence: 0.5,
-                explanation: "General troubleshooting".to_string(),
-            })
+            0
         };
 
         if error_count >= 2 && session.current_hypothesis.is_none() {
             // Release state, re-acquire mutably for the state change
-            drop(session);
             drop(state);
             let mut state = self.state.lock().unwrap();
             if let Some(ref mut session) = state.current_session {

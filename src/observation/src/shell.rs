@@ -216,10 +216,9 @@ impl ShellObserver {
         let thirty_min = std::time::Duration::from_secs(1800);
         let mut state = self.state.lock().unwrap();
         // Prune commands older than 30 minutes — these are no longer relevant
-        let trimmed = state.commands.retain(|cmd| now.duration_since(cmd.captured_at) < thirty_min);
+        state.commands.retain(|cmd| now.duration_since(cmd.captured_at) < thirty_min);
         // Hard cap at 100 commands per session to prevent unbounded growth
-        let capped = state.commands.len();
-        let drop_count = if capped > 100 { capped - 100 } else { 0 };
+        let drop_count = state.commands.len().saturating_sub(100);
         if drop_count > 0 {
             state.commands.drain(..drop_count);
         }
