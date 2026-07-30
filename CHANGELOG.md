@@ -1,3 +1,9 @@
+## v1.1.131 — FIX: Resolve remaining clippy errors (unused vars and mut)
+
+- **Removed unused `success` variable** from `BitBlt` call in screen_capture.rs — prefix with `_`
+- **Removed unused `bits_result` variable** from `GetDIBits` call — prefix with `_`
+- **Removed unnecessary `mut`** from `PngEncoder` in screen_capture.rs
+
 ## v1.1.130 — FIX: Resolve remaining clippy errors preventing CI pass
 
 - **Removed unused import** `GetClassNameW` from terminal.rs `get_terminal_text()` function
