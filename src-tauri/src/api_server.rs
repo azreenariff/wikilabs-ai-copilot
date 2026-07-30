@@ -34,17 +34,31 @@ async fn build_context_system_prompt(
     let mut parts: Vec<String> = Vec::new();
 
     // ── Recent observation events ──
+    let now = chrono::Utc::now();
     let recent_events = panel.get_recent_events(60).await;
     if !recent_events.is_empty() {
         let mut lines = Vec::new();
         for e in recent_events.iter().take(30) {
             let desc = e.description.as_deref().unwrap_or("");
             let tech = e.technology.as_deref().unwrap_or(e.event_type.as_str());
-            lines.push(format!("- {} on {}: {}", e.event_type, tech, desc));
+            // Calculate how old this event is
+            let age_label = chrono::DateTime::parse_from_rfc3339(&e.timestamp)
+                .ok()
+                .and_then(|dt| now.signed_duration_since(dt).to_std().ok())
+                .map(|d| {
+                    if d.as_secs() < 60 {
+                        format!("({}s ago)", d.as_secs())
+                    } else {
+                        format!("({:.0}m ago)", d.as_secs_f64() / 60.0)
+                    }
+                })
+                .unwrap_or_else(|| "(unknown age)".to_string());
+            lines.push(format!("- {} on {}: {} {}", e.event_type, tech, desc, age_label));
         }
         if !lines.is_empty() {
             parts.push(format!(
-                "## Recent Observations (last 60 minutes)\n{}\n",
+                "## Recent Observations (last 60 minutes) — Data current as of {}\n{}\n",
+                now.format("%H:%M:%S UTC"),
                 lines.join("\n")
             ));
         }

@@ -554,6 +554,18 @@ impl GuidancePanel {
             confidence,
             recommendation_id,
         });
+        // Cap timeline events to prevent unbounded accumulation — keep last 200
+        // and prune events older than 2 hours (these are no longer relevant).
+        let two_hours_ago = chrono::Utc::now() - chrono::Duration::hours(2);
+        timeline.retain(|e| {
+            chrono::DateTime::parse_from_rfc3339(&e.timestamp)
+                .map(|dt| dt >= two_hours_ago)
+                .unwrap_or(false)
+        });
+        if timeline.len() > 200 {
+            let drop_count = timeline.len() - 200;
+            timeline.drain(..drop_count);
+        }
         Ok(())
     }
 
