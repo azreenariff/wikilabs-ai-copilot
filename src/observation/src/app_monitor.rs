@@ -141,6 +141,7 @@ impl WindowInfo {
 /// - Microsoft IME / Text Services Framework panels
 /// - Clipboard viewers / toast notifications
 /// - Generic dialog boxes, settings panels, progress dialogs
+#[allow(dead_code)]
 fn is_noise_window_title(title: &str) -> bool {
     if title.is_empty() {
         return true;
@@ -280,7 +281,7 @@ impl ActiveWindowProvider {
                 // Start from the foreground window, but climb up to the root/owner
                 // to avoid capturing transient child windows (Command Palette Toast,
                 // MSCTFIME UI, clipboard viewers, IME panels, etc.)
-                let mut candidate_hwnd: HWND = GetForegroundWindow();
+                let candidate_hwnd: HWND = GetForegroundWindow();
                 if candidate_hwnd.is_invalid() {
                     return None;
                 }
@@ -338,7 +339,6 @@ impl ActiveWindowProvider {
                             .to_string();
                         if !is_noise_window_title(&otitle) {
                             // Found a real window — use it
-                            let own_pid: u32 = 0;
                             let mut own_pid_val: u32 = 0;
                             let _ = GetWindowThreadProcessId(owner, Some(&mut own_pid_val));
                             let handle = if own_pid_val > 0 {
