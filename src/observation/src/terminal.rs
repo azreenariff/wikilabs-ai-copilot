@@ -324,6 +324,16 @@ mod terminal_windows {
     /// the most recent command or prompt — that's all we need. The AI gets
     /// the full terminal buffer from the screenshot anyway.
     fn get_terminal_text(hwnd: &HWND, _process_name: &str, _class_name: &str) -> String {
+        // Try enumerating child windows first — many terminal emulators (PuTTY,
+        // MobaXterm, Windows Terminal, Alacritty, WezTerm, ConEmu, etc.) store their
+        // terminal buffer text in child windows, not the parent window itself.
+        // If EnumChildWindows finds text, use it. If no children have text, fall back
+        // to GetWindowTextW on the parent (the old behavior).
+        if let Some(child_text) = get_terminal_child_text(hwnd) {
+            return child_text;
+        }
+
+        // Fallback: use the top-level window text
         let mut buf = vec![0u16; 8192];
         let text_len = unsafe { GetWindowTextW(*hwnd, &mut buf) };
         if text_len == 0 {
@@ -335,6 +345,48 @@ mod terminal_windows {
             .unwrap_or("")
             .trim()
             .to_string()
+    }
+
+    /// Enumerate child windows and collect text from them.
+    /// Returns Some(text) if any child window had text, None if no children found.
+    #[cfg(target_os = "windows")]
+    fn get_terminal_child_text(parent_hwnd: &HWND) -> Option<String> {
+        use windows::Win32::Foundation::BOOL;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            EnumChildWindows, GetWindowTextLengthW, GetWindowTextW, LPARAM,
+        };
+
+        let mut all_text: String = String::new();
+        let mut found_any = false;
+
+        unsafe {
+            let _ = EnumChildWindows(
+                *parent_hwnd,
+                Some(|child_hwnd, _| -> BOOL {
+                    let len = GetWindowTextLengthW(child_hwnd);
+                    if len == 0 { return TRUE; }
+
+                    let mut buf = vec![0u16; (len + 1) as usize];
+                    let text_len = GetWindowTextW(child_hwnd, &mut buf);
+                    if text_len > 0 {
+                        let text = String::from_utf16_lossy(&buf[..text_len as usize]);
+                        let trimmed = text.trim();
+                        if !trimmed.is_empty() {
+                            if !found_any {
+                                found_any = true;
+                            } else {
+                                all_text.push('\n');
+                            }
+                            all_text.push_str(&trimmed);
+                        }
+                    }
+                    TRUE
+                }),
+                LPARAM(0),
+            );
+        }
+
+        if found_any { Some(all_text) } else { None }
     }
 
     /// Windows window enumeration callback.

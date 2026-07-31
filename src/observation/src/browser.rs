@@ -103,7 +103,11 @@ pub struct BrowserState {
     pub config: ProviderConfig,
     pub state: ProviderState,
     pub lifecycle: ProviderLifecycle,
+    /// Last detected browser context (non-Windows or legacy fallback)
     pub last_context: Option<BrowserContext>,
+    /// All detected browser contexts on Windows (plural)
+    #[cfg(target_os = "windows")]
+    pub last_contexts: Option<Vec<BrowserContext>>,
 }
 
 impl BrowserState {
@@ -130,80 +134,141 @@ impl BrowserProvider {
         }
     }
 
+    /// Detect browser context. On Windows, enumerates ALL browser windows.
+    /// On other platforms, returns None (no implementation yet).
     fn detect_browser_context(&self) -> Option<BrowserContext> {
         #[cfg(target_os = "windows")]
         {
-            use windows::Win32::Foundation::{CloseHandle, HWND};
-            use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
-            use windows::Win32::System::Threading::{
-                OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
-            };
-            use windows::Win32::UI::WindowsAndMessaging::{
-                GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
-                GetWindowThreadProcessId,
-            };
+            // Enumerate ALL browser windows on the system, not just the foreground one.
+            // This ensures we detect browser context even when another window (terminal, IDE)
+            // is in the foreground. The AI gets the most relevant browser context from the
+            // foreground window, but also sees all other open browsers for correlation.
+            let mut all_contexts: Vec<BrowserContext> = Vec::new();
+            enumerate_all_browser_windows(&mut all_contexts);
 
-            unsafe {
-                let hwnd: HWND = GetForegroundWindow();
-                if hwnd.0.is_null() { return None; }
-
-                let len = GetWindowTextLengthW(hwnd);
-                if len == 0 { return None; }
-                let mut buf = vec![0u16; (len + 1) as usize];
-                GetWindowTextW(hwnd, &mut buf);
-                let title = String::from_utf16_lossy(&buf[..len as usize]).trim().to_string();
-                if title.is_empty() { return None; }
-
-                let mut pid: u32 = 0;
-                let _ = GetWindowThreadProcessId(hwnd, Some(&mut pid));
-                if pid == 0 { return None; }
-
-                let mut process_name = String::new();
-                let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
-                if let Ok(proc_handle) = handle {
-                    let mut exe_buf = [0u16; 260];
-                    let exe_len = GetModuleFileNameExW(proc_handle, None, &mut exe_buf);
-                    let _ = CloseHandle(proc_handle);
-                    if exe_len > 0 {
-                        let exe_path = String::from_utf16_lossy(&exe_buf[..exe_len as usize]);
-                        let path = std::path::Path::new(&exe_path);
-                        process_name = path.file_stem()
-                            .and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
-                    }
-                }
-
-                let is_browser = matches!(process_name.as_str(),
-                    "firefox" | "firefox-esr" | "chrome" | "chromium" | "msedge"
-                    | "brave" | "opera" | "vivaldi" | "safari" | "arc");
-                if !is_browser { return None; }
-
-                let url = extract_browser_url(hwnd, &process_name);
-                let visible_text = collect_visible_text(hwnd);
-                let is_engineering = ENGINEERING_PORTAL_PATTERNS.iter().any(|pattern| {
-                    title.to_lowercase().contains(pattern)
-                        || url.as_deref().map(|u| u.contains(pattern)).unwrap_or(false)
-                        || visible_text.to_lowercase().contains(pattern)
-                });
-                let detected_errors = analyze_visible_text(&visible_text, url.as_deref());
-
-                Some(BrowserContext {
-                    browser_name: process_name,
-                    url: url.clone(),
-                    title: Some(title),
-                    is_engineering_portal: is_engineering,
-                    visible_text: if visible_text.is_empty() { None } else { Some(visible_text) },
-                    detected_errors,
-                })
+            // Return the foreground browser context if available, otherwise return the first
+            // background browser. If no browsers at all, return None.
+            if all_contexts.is_empty() {
+                None
+            } else {
+                // Prefer foreground browser (index 0 if detected, otherwise first found)
+                Some(all_contexts.first().unwrap().clone())
             }
         }
 
         #[cfg(not(target_os = "windows"))]
-        None
+        {
+            // Non-Windows: no browser context detection yet
+            None
+        }
     }
 
     #[allow(dead_code)]
     fn looks_like_url(s: &str) -> bool {
         s.starts_with("http://") || s.starts_with("https://") || s.contains('.')
+    }
+}
+
+// ── Enumerate ALL browser windows on the system ──────────────────────
+
+/// Enumerate all browser windows across ALL processes (not just foreground).
+/// This is critical for detecting browser context when another window (terminal, IDE)
+/// is in the foreground. The AI needs to know about ALL open browser tabs, not just
+/// the one that happens to be on top.
+#[cfg(target_os = "windows")]
+fn enumerate_all_browser_windows(out: &mut Vec<BrowserContext>) {
+    use windows::Win32::Foundation::{CloseHandle, FALSE, TRUE, HWND};
+    use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
+    use windows::Win32::System::Threading::{
+        OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetClassNameW, GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
+        GetWindowThreadProcessId, IsWindowVisible,
+    };
+
+    unsafe {
+        // Collect all top-level windows first
+        let mut hwnds: Vec<HWND> = Vec::new();
+        let _ = EnumWindows(
+            Some(|hwnd, lparam: LPARAM| -> BOOL {
+                if !hwnd.0.is_null() {
+                    let ptr = lparam.0 as *mut Vec<HWND>;
+                    (*ptr).push(hwnd);
+                }
+                TRUE
+            }),
+            LPARAM(&mut hwnds as *mut _ as _),
+        );
+
+        let foreground_hwnd = GetForegroundWindow();
+        let mut foreground_index: usize = 0;
+
+        for hwnd in &hwnds {
+            if hwnd.0.is_null() { continue; }
+
+            // Get process name
+            let mut pid: u32 = 0;
+            let _ = GetWindowThreadProcessId(*hwnd, Some(&mut pid));
+            if pid == 0 { continue; }
+
+            let mut process_name = String::new();
+            let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid);
+            if let Ok(proc_handle) = handle {
+                let mut exe_buf = [0u16; 260];
+                let exe_len = GetModuleFileNameExW(proc_handle, None, &mut exe_buf);
+                let _ = CloseHandle(proc_handle);
+                if exe_len > 0 {
+                    let exe_path = String::from_utf16_lossy(&exe_buf[..exe_len as usize]);
+                    let path = std::path::Path::new(&exe_path);
+                    process_name = path.file_stem()
+                        .and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+                }
+            }
+
+            let is_browser = matches!(process_name.as_str(),
+                "firefox" | "firefox-esr" | "chrome" | "chromium" | "msedge"
+                | "brave" | "opera" | "vivaldi" | "safari" | "arc");
+            if !is_browser { continue; }
+
+            // Get window title
+            let len = GetWindowTextLengthW(*hwnd);
+            if len == 0 { continue; }
+            let mut buf = vec![0u16; (len + 1) as usize];
+            GetWindowTextW(*hwnd, &mut buf);
+            let title = String::from_utf16_lossy(&buf[..len as usize]).trim().to_string();
+            if title.is_empty() { continue; }
+
+            // Check if this is the foreground browser
+            if hwnd == &foreground_hwnd && !foreground_hwnd.0.is_null() {
+                foreground_index = out.len();
+            }
+
+            // Extract URL and visible text
+            let url = extract_browser_url(*hwnd, &process_name);
+            let visible_text = collect_visible_text(*hwnd);
+            let is_engineering = ENGINEERING_PORTAL_PATTERNS.iter().any(|pattern| {
+                title.to_lowercase().contains(pattern)
+                    || url.as_deref().map(|u| u.contains(pattern)).unwrap_or(false)
+                    || visible_text.to_lowercase().contains(pattern)
+            });
+            let detected_errors = analyze_visible_text(&visible_text, url.as_deref());
+
+            out.push(BrowserContext {
+                browser_name: process_name.clone(),
+                url: url.clone(),
+                title: Some(title),
+                is_engineering_portal: is_engineering,
+                visible_text: if visible_text.is_empty() { None } else { Some(visible_text) },
+                detected_errors,
+            });
+        }
+
+        // Reorder: foreground browser first
+        if foreground_index > 0 && foreground_index < out.len() {
+            let mut item = out.remove(foreground_index);
+            out.insert(0, item);
+        }
     }
 }
 
@@ -503,6 +568,59 @@ impl ObservationProvider for BrowserProvider {
     async fn observe(&self) -> Result<Vec<ObservationEvent>, String> {
         let mut state = self.state.lock().unwrap();
 
+        #[cfg(target_os = "windows")]
+        {
+            // Collect ALL browser contexts, not just one
+            let mut all_contexts: Vec<BrowserContext> = Vec::new();
+            enumerate_all_browser_windows(&mut all_contexts);
+
+            if !all_contexts.is_empty() {
+                // Check if ANY browser context changed (URL, title, errors)
+                let prev_count = state.last_contexts.as_ref().map(|c| c.len()).unwrap_or(0);
+                let new_count = all_contexts.len();
+                let changed = prev_count != new_count || all_contexts.iter().any(|ctx| {
+                    state.last_contexts.as_ref().map(|prev| {
+                        !prev.iter().any(|p| {
+                            p.url == ctx.url && p.browser_name == ctx.browser_name
+                        })
+                    }).unwrap_or(true)
+                });
+
+                state.last_contexts = Some(all_contexts.clone());
+
+                if !changed { return Ok(Vec::new()); }
+
+                // Build payload with ALL browser contexts
+                let all_names: Vec<String> = all_contexts.iter().map(|c| c.browser_name.clone()).collect();
+
+                let payload = serde_json::json!({
+                    "all_browsers": all_contexts.iter().map(|c| {
+                        serde_json::json!({
+                            "browser": c.browser_name,
+                            "url": c.url,
+                            "title": c.title,
+                            "is_engineering_portal": c.is_engineering_portal,
+                            "detected_errors": c.detected_errors.iter().map(|e| {
+                                serde_json::json!({"pattern": e.pattern, "description": e.description, "severity": format!("{:?}", e.severity)})
+                            }).collect::<Vec<_>>(),
+                            "visible_text": c.visible_text.as_ref().map(|t| {
+                                if t.len() > 2000 { &t[..2000] } else { t.as_str() }
+                            }),
+                        })
+                    }).collect::<Vec<_>>(),
+                });
+
+                return Ok(vec![ObservationEvent::new(
+                    EventType::BrowserContextChanged,
+                    ProviderType::Browser,
+                    all_names.first().unwrap().clone(),
+                    None,
+                    ObservationPayload::new(payload),
+                )]);
+            }
+        }
+
+        // Non-Windows fallback or no browser detected
         match self.detect_browser_context() {
             Some(context) => {
                 let changed = state.last_context.as_ref().map(|prev| {
@@ -554,11 +672,25 @@ impl ObservationProvider for BrowserProvider {
     fn status_details(&self) -> HashMap<String, serde_json::Value> {
         let state = self.state.lock().unwrap();
         let mut details = HashMap::new();
-        if let Some(ref ctx) = state.last_context {
-            details.insert("last_browser".to_string(), serde_json::json!(ctx.browser_name));
-            details.insert("last_url".to_string(), serde_json::json!(ctx.url));
-            details.insert("is_portal".to_string(), serde_json::json!(ctx.is_engineering_portal));
-            details.insert("errors_detected".to_string(), serde_json::json!(ctx.detected_errors.len()));
+        #[cfg(target_os = "windows")]
+        {
+            if let Some(ref contexts) = state.last_contexts {
+                details.insert("all_browsers".to_string(), serde_json::json!(contexts.iter().map(|c| c.browser_name.clone()).collect::<Vec<_>>()));
+                details.insert("all_urls".to_string(), serde_json::json!(contexts.iter().map(|c| c.url.clone()).collect::<Vec<_>>()));
+                details.insert("contexts_count".to_string(), serde_json::json!(contexts.len()));
+                // Count total errors across all contexts
+                let total_errors: usize = contexts.iter().map(|c| c.detected_errors.len()).sum();
+                details.insert("errors_detected".to_string(), serde_json::json!(total_errors));
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            if let Some(ref ctx) = state.last_context {
+                details.insert("last_browser".to_string(), serde_json::json!(ctx.browser_name));
+                details.insert("last_url".to_string(), serde_json::json!(ctx.url));
+                details.insert("is_portal".to_string(), serde_json::json!(ctx.is_engineering_portal));
+                details.insert("errors_detected".to_string(), serde_json::json!(ctx.detected_errors.len()));
+            }
         }
         details.insert("platform".to_string(), serde_json::json!(std::env::consts::OS));
         details

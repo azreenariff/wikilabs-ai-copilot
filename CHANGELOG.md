@@ -1,3 +1,10 @@
+## v1.1.147 — FIX: browser detects ALL windows, terminal child text for all emulators, no clipboard/IME noise in AI context
+
+- **Browser detection enumerates ALL windows** — no longer limited to the foreground browser window. Uses `EnumWindows` + `GetModuleFileNameExW` to scan all processes for Chrome, Firefox, and Edge instances. The AI now sees all open browser tabs across all windows for proper cross-context reasoning.
+- **Terminal text extraction via child windows** — `GetWindowTextW()` on the parent window only returns the window title (e.g. `"root@server - PuTTY"`), not the actual terminal buffer. Terminal emulators (PuTTY, MobaXterm, Windows Terminal, Alacritty, WezTerm, ConEmu, etc.) store their text content in child windows. `EnumChildWindows` now enumerates all children and collects their text, working generically for any terminal emulator with child windows.
+- **Clipboard and IME events filtered from AI context** — clipboard events (user just copied a password/URL) and IME events (input method editor noise) were polluting the AI reasoning loop with irrelevant data. Active_window events with trivial summaries (< 3 chars) are also filtered. The AI now only sees meaningful context events.
+- **Browser event payload updated** — browser events now carry an `all_browsers` array (with all browser contexts) instead of a single flat `url`/`visible_text`/`detected_errors`. The AI reasoning loop in `api_server.rs` handles both the new array format and the old flat format for backwards compatibility.
+
 ## v1.1.144 — FIX: simplified terminal text extraction — no more UI chrome noise
 
 - **Terminal text extraction simplified** — replaced recursive child window enumeration with simple `GetWindowTextW` on the top-level window only. Terminal emulators (MobaXterm, PuTTY, Windows Terminal, etc.) expose their UI chrome (menu bars, toolbars, file managers, status bars) as child windows; the old approach captured ALL of it as terminal content, causing the AI to report on irrelevant UI labels.

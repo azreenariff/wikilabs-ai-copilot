@@ -1950,6 +1950,35 @@ pub fn start_api_server(
 
                             // ── AI-powered cross-context reasoning ──
 
+                            // Filter out events that are too noisy for AI context:
+                            // - clipboard events (user just copied a URL/password, not meaningful context)
+                            // - IME events (input method editor noise)
+                            // - rapid active_window events with no meaningful change
+                            // Also filter out events with empty or trivial summaries
+                            let filtered_events: Vec<&StructuredEvent> = last_events.iter()
+                                .filter(|e| {
+                                    // Skip clipboard entirely — it's noise for AI reasoning
+                                    if e.provider == "clipboard" {
+                                        return false;
+                                    }
+                                    // Skip IME events — input method editor noise
+                                    if e.provider == "ime" {
+                                        return false;
+                                    }
+                                    // Skip active_window events that are just the same window repeatedly
+                                    // or have trivial summaries (e.g., empty window title)
+                                    if e.provider == "active_window" {
+                                        // Keep if the summary has useful content (non-empty window title)
+                                        let has_useful_content = !e.summary.trim().is_empty()
+                                            && e.summary.trim().chars().count() > 2;
+                                        return has_useful_content;
+                                    }
+                                    true
+                                })
+                                .collect();
+
+                            let last_events = filtered_events;
+
                             // Build per-event summaries for AI prompt
                             let events_for_ai: Vec<String> = last_events.iter().map(|e| {
                                 format!("[{}] {} on {}: {}",
@@ -1958,15 +1987,34 @@ pub fn start_api_server(
                             }).collect();
 
                             // Extract cross-context data (browser URLs, terminal commands, errors)
+                            // Handle both old format (flat url/visible_text) and new format (all_browsers array)
                             let browser_urls: Vec<&str> = last_events.iter()
                                 .filter(|e| e.provider == "browser")
-                                .filter_map(|e| e.payload_json.get("url").and_then(|u| u.as_str()))
+                                .filter_map(|e| {
+                                    // Try new all_browsers format first
+                                    if let Some(all_browsers) = e.payload_json.get("all_browsers").and_then(|a| a.as_array()) {
+                                        return Some(all_browsers.iter()
+                                            .filter_map(|b| b.get("url").and_then(|u| u.as_str()))
+                                            .collect::<Vec<_>>());
+                                    }
+                                    // Fall back to old flat format
+                                    e.payload_json.get("url").and_then(|u| u.as_str()).map(|u| vec![u])
+                                })
+                                .flatten()
                                 .filter(|&u| !u.contains("about:blank") && !u.contains("devtools"))
                                 .collect();
 
                             let browser_visible_texts: Vec<&str> = last_events.iter()
                                 .filter(|e| e.provider == "browser")
-                                .filter_map(|e| e.payload_json.get("visible_text").and_then(|v| v.as_str()))
+                                .filter_map(|e| {
+                                    if let Some(all_browsers) = e.payload_json.get("all_browsers").and_then(|a| a.as_array()) {
+                                        return Some(all_browsers.iter()
+                                            .filter_map(|b| b.get("visible_text").and_then(|v| v.as_str()))
+                                            .collect::<Vec<_>>());
+                                    }
+                                    e.payload_json.get("visible_text").and_then(|v| v.as_str()).map(|t| vec![t])
+                                })
+                                .flatten()
                                 .filter(|&t| !t.is_empty())
                                 .collect();
 
@@ -1993,9 +2041,25 @@ pub fn start_api_server(
 
                             let browser_errors: Vec<&str> = last_events.iter()
                                 .filter(|e| e.provider == "browser")
-                                .filter_map(|e| e.payload_json.get("detected_errors"))
-                                .filter_map(|e| e.as_array())
-                                .flat_map(|arr| arr.iter().filter_map(|er| er.get("description").and_then(|d| d.as_str())))
+                                .filter_map(|e| {
+                                    if let Some(all_browsers) = e.payload_json.get("all_browsers").and_then(|a| a.as_array()) {
+                                        // New all_browsers format: collect errors from each browser
+                                        let errs: Vec<&str> = all_browsers.iter().flat_map(|b| {
+                                            b.get("detected_errors").and_then(|d| d.as_array())
+                                        }).flatten().filter_map(|er| er.get("description").and_then(|d| d.as_str())).collect();
+                                        if errs.is_empty() { None } else { Some(errs) }
+                                    } else {
+                                        // Old flat format: detected_errors is at top level
+                                        let errs: Vec<&str> = e.payload_json.get("detected_errors")
+                                            .and_then(|d| d.as_array())
+                                            .into_iter()
+                                            .flat_map(|a| a.iter())
+                                            .filter_map(|er| er.get("description").and_then(|d| d.as_str()))
+                                            .collect();
+                                        if errs.is_empty() { None } else { Some(errs) }
+                                    }
+                                })
+                                .flatten()
                                 .collect();
 
                             // Build correlated session narrative — lead with browser context (what the engineer is looking at)
