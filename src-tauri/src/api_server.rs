@@ -2154,24 +2154,24 @@ pub fn start_api_server(
                                                                                                                                                                                         - Search for something + commands about it -> connect the search to the action\n\
                                                                                                                                                                                         - Multiple things happening at once -> figure out the underlying goal and help with that\n\
                                                                                                                         \n\
-                                                                                                                                                                                        ## Speak like a real person - GOOD examples:\n\
-                                                                                                                                                                                        - \"I see a database error on your monitoring page. Check MySQL first - `systemctl status mysqld` - most monitoring tools need a running database.\"\n\
-                                                                                                                                                                                        - \"You're editing Nginx config and ran `nginx -t`. Now reload with `systemctl reload nginx` and check. If it still breaks, `tail -f /var/log/nginx/error.log`.\"\n\
-                                                                                                                                                                                        - \"Docker container in CrashLoopBackOff + you ran `docker logs`. Also check exit code: `docker inspect <container> | grep ExitCode` to see WHY it crashed.\"\n\
-                                                                                                                                                                                        - \"Looking at K8s dashboard with pods failing + `kubectl get pods`. Run `kubectl describe pod <pod-name>` to see the actual error.\"\n\
-                                                                                                                                                                                        - \"You're checking MySQL status. If it's down, check the error log - `journalctl -u mysql --no-pager -n 50` - that usually tells you why it crashed.\"\n\
-                                                                                                                                                                                        - \"I see a database error on the Grafana page. Grafana uses SQLite/PostgreSQL - check the DB first: `systemctl status <db-service>` and `journalctl -u <db-service> -n 30`.\"\n\
-                                                                                                                                                                                        - \"You're looking at a 404 page - check if the URL is correct or if the server needs to be started.\"\n\
-                                                                                                                                                                                        - \"I see you're setting up a new project - have you considered using a package manager to handle dependencies instead of manual downloads?\"\n\
-                                                                                                                        \n\
-                                                                                                                                                                                        ## Don't sound robotic - BAD examples:\n\
-                                                                                                                                                                                        - \"You appear to be working on something.\"\n\
-                                                                                                                                                                                        - \"I observed activity in your browser.\"\n\
-                                                                                                                                                                                        - \"You're running bash commands repeatedly.\"\n\
-                                                                                                                                                                                        - \"I see you're busy with the terminal.\"\n\
-                                                                                                                                                                                        - Generic advice that doesn't reference what they're actually seeing\n\
-                                                                                                                                                                                        - Suggestions that ignore visible errors and focus on something else\n\
-                                                                                                                        \n\
+                                                                                                                                                                                        ## Speak like a real person:
+                                                                                                                                                                                        - Be specific about what you can SEE on the screen
+                                                                                                                                                                                        - Reference actual visible content (error messages, file names, terminal output)
+                                                                                                                                                                                        - Suggest next steps that logically follow what's visible
+                                                                                                                                                                                        - Like a knowledgeable teammate sitting next to them
+                                                                                                                                                                                        
+                                                                                                                                                                                        ## Don't sound robotic:
+                                                                                                                                                                                        - Avoid vague or generic statements that could apply to anything
+                                                                                                                                                                                        - Don't say things like "I observed activity" or "you appear to be working on something"
+                                                                                                                                                                                        - Don't give generic advice that doesn't reference what they're actually seeing
+                                                                                                                                                                                        - Never suggest specific commands or services unless they are actually visible on the screenshot
+                                                                                                                                                                                        
+                                                                                                                                                                                        ## CRITICAL ANTI-HALLUCINATION RULES:
+                                                                                                                                                                                        - NEVER mention specific commands, services, or tools (systemctl, docker, ansible, nginx, etc.) unless they are VISIBLE in the screenshot
+                                                                                                                                                                                        - NEVER claim the user ran a command you can't see
+                                                                                                                                                                                        - If you suggest a command, it must be because you can see evidence of that domain on screen (e.g., you see MySQL error -> suggesting MySQL checks is OK)
+                                                                                                                                                                                        - If you can't determine what domain the user is working in from the screenshot alone, stay quiet rather than guess
+                                                                                                                                                                                        
                                                                                                                                                                                         ## Relevant knowledge (from loaded skill/knowledge packs):\n\
                                                                                                                                                                                         {}\n\
                                                                                                                         \n\
@@ -2189,9 +2189,10 @@ pub fn start_api_server(
                                 &provider_name, &endpoint, &api_key, &model, max_tokens, 128000
                             );
 
-                            // Try to get a fresh screenshot for direct LLM vision
+                            // Get a fresh screenshot for the AI reasoning loop
+                            // If no screenshot is available (provider hasn't captured yet), skip this tick
+                            // to avoid hallucinations from text-only context
                             let user_message = if let Some(screenshot) = wikilabs_observation::get_last_screenshot() {
-                                // Build multi-modal user message with text + image
                                 wikilabs_ai::provider::AiMessage {
                                     role: "user".to_string(),
                                     content: serde_json::json!([
@@ -2208,11 +2209,9 @@ pub fn start_api_server(
                                     ])
                                 }
                             } else {
-                                // No screenshot available — fall back to text-only
-                                wikilabs_ai::provider::AiMessage {
-                                    role: "user".to_string(),
-                                    content: serde_json::json!("Look at your screen and give specific, actionable recommendations.")
-                                }
+                                // No screenshot available — skip AI reasoning entirely
+                                // Sending a generic prompt without a screenshot causes hallucinations
+                                continue;
                             };
 
                             let ai_request = wikilabs_ai::provider::AiRequest {
