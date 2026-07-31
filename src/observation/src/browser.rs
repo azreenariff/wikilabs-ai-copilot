@@ -394,8 +394,6 @@ fn collect_browser_text_recursive(hwnd: HWND, texts: &mut Vec<String>) {
     }
 
     unsafe {
-        use windows::Win32::Foundation::HWND as WinHWND;
-
         // Get class name for filtering
         let class_name = get_class_name(hwnd);
 
