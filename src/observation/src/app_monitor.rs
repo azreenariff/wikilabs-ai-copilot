@@ -133,6 +133,86 @@ impl WindowInfo {
     }
 }
 
+/// Noise patterns: window titles that are transient UI chrome / helper windows,
+/// not actual applications the user is doing technical work in.
+///
+/// These get detected by GetWindowTextW but have no real engineering value:
+/// - Windows Command Palette / Start Menu / Search overlay
+/// - Microsoft IME / Text Services Framework panels
+/// - Clipboard viewers / toast notifications
+/// - Generic dialog boxes, settings panels, progress dialogs
+fn is_noise_window_title(title: &str) -> bool {
+    if title.is_empty() {
+        return true;
+    }
+    let lower = title.to_lowercase();
+
+    // Windows 11/10 Command Palette, Search, Start Menu overlay
+    if lower.contains("command palette")
+        || lower.contains("command palette toast")
+        || lower.contains("start menu")
+        || lower.contains("search")
+        || lower.contains("windows key")
+    {
+        return true;
+    }
+
+    // Microsoft IME / Text Services Framework / Input Panel
+    if lower.contains("msctfime")
+        || lower.contains("ime ui")
+        || lower.contains("input panel")
+        || lower.contains("msctf_inputpane")
+        || lower.contains("ime")
+    {
+        return true;
+    }
+
+    // Clipboard viewer / toast
+    if lower.contains("clipboard")
+        || lower.contains("clipbrd")
+        || lower.contains("toast")
+        || lower.contains("notification")
+        || lower.contains("action center")
+        || lower.contains("notification area")
+    {
+        return true;
+    }
+
+    // Generic dialog/settings that don't represent the user's actual work app
+    if lower.contains("settings") && !lower.contains("configuration") {
+        // Only reject if it's a generic "Settings" not a specific app config
+        return true;
+    }
+    if lower.contains("about ")
+        || lower.contains("uninstall")
+        || lower.contains("sign in")
+        || lower.contains("login")
+        || lower.contains("updating")
+        || lower.contains("installing")
+        || lower.contains("progress")
+        || lower.contains("error report")
+        || lower.contains("crash")
+    {
+        return true;
+    }
+
+    // Short titles that are likely system dialogs (not useful for AI copilot)
+    // These are almost always transient helper windows
+    if title.len() < 15 {
+        let noise_kws = [
+            "properties", "security", "options", "preferences", "help",
+            "message", "warning", "confirm", "close", "cancel", "apply",
+            "ok", "save", "open", "file", "edit", "view", "tools",
+            "format", "window", "help", "about",
+        ];
+        if noise_kws.iter().any(|k| lower.contains(k)) {
+            return true;
+        }
+    }
+
+    false
+}
+
 /// Active window provider state.
 pub struct ActiveWindowState {
     pub config: ProviderConfig,
@@ -192,25 +272,102 @@ impl ActiveWindowProvider {
             };
 
             unsafe {
-                let hwnd: HWND = GetForegroundWindow();
-                if hwnd.is_invalid() {
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    GetParent, GetAncestor, IsWindowVisible,
+                    GA_ROOT,
+                };
+
+                // Start from the foreground window, but climb up to the root/owner
+                // to avoid capturing transient child windows (Command Palette Toast,
+                // MSCTFIME UI, clipboard viewers, IME panels, etc.)
+                let mut candidate_hwnd: HWND = GetForegroundWindow();
+                if candidate_hwnd.is_invalid() {
                     return None;
                 }
 
-                // Get window title
-                let len = GetWindowTextLengthW(hwnd);
+                // Climb to the ROOT ancestor (the real top-level window)
+                let root_hwnd: HWND = GetAncestor(candidate_hwnd, GA_ROOT);
+                if root_hwnd.is_invalid() {
+                    return None;
+                }
+
+                // Read the ROOT window title (not the transient child)
+                let len = GetWindowTextLengthW(root_hwnd);
                 if len == 0 {
                     return None;
                 }
                 let mut title_buf = vec![0u16; (len + 1) as usize];
-                let _ = GetWindowTextW(hwnd, &mut title_buf);
+                let _ = GetWindowTextW(root_hwnd, &mut title_buf);
                 let title = String::from_utf16_lossy(&title_buf[..len as usize])
                     .trim()
                     .to_string();
 
-                // Get process ID
+                // --- UI NOISE FILTER ---
+                // Reject titles that are clearly transient UI chrome / helper windows
+                // rather than actual applications the user is working with.
+                if is_noise_window_title(&title) {
+                    // Try the root of the foreground window's owner chain
+                    // If that also fails, skip this window entirely
+                    let parent_hwnd: HWND = GetParent(root_hwnd);
+                    if parent_hwnd.is_invalid() {
+                        // No owner to fall back to — skip silently
+                        // (don't emit an event with noise as the "active window")
+                        return None;
+                    }
+                    // Climb owner chain until we find a non-noise title or hit root
+                    let mut owner: HWND = parent_hwnd;
+                    loop {
+                        let ol = GetWindowTextLengthW(owner);
+                        if ol == 0 {
+                            break;
+                        }
+                        let mut obuf = vec![0u16; (ol + 1) as usize];
+                        let _ = GetWindowTextW(owner, &mut obuf);
+                        let otitle = String::from_utf16_lossy(&obuf[..ol as usize])
+                            .trim()
+                            .to_string();
+                        if !is_noise_window_title(&otitle) {
+                            // Found a real window — use it
+                            let own_pid: u32 = 0;
+                            let mut own_pid_val: u32 = 0;
+                            let _ = GetWindowThreadProcessId(owner, Some(&mut own_pid_val));
+                            let handle = if own_pid_val > 0 {
+                                OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, own_pid_val)
+                            } else {
+                                Err(windows::core::Error::from(windows::Win32::Foundation::ERROR_INVALID_PARAMETER))
+                            };
+                            if let Ok(h) = handle {
+                                let mut exe_buf = [0u16; 260];
+                                let exe_len = GetModuleFileNameExW(h, None, &mut exe_buf);
+                                let _ = CloseHandle(h);
+                                if exe_len > 0 {
+                                    let exe_path = String::from_utf16_lossy(&exe_buf[..exe_len as usize]);
+                                    let path = std::path::Path::new(&exe_path);
+                                    let process_name = path
+                                        .file_stem()
+                                        .and_then(|s| s.to_str())
+                                        .unwrap_or("unknown")
+                                        .to_string();
+                                    let mut info = WindowInfo::new(otitle, process_name);
+                                    info.executable = Some(exe_path);
+                                    info.pid = Some(own_pid_val);
+                                    return Some(info);
+                                }
+                            }
+                        }
+                        let parent_of_owner: HWND = GetParent(owner);
+                        if parent_of_owner.is_invalid() || parent_of_owner == root_hwnd {
+                            break; // Back at root
+                        }
+                        owner = parent_of_owner;
+                    }
+                    // Could not find a non-noise owner — skip
+                    return None;
+                }
+
+                // Get process ID for the root window
                 let mut pid: u32 = 0;
-                let _ = GetWindowThreadProcessId(hwnd, Some(&mut pid));
+                let _ = GetWindowThreadProcessId(root_hwnd, Some(&mut pid));
                 if pid == 0 {
                     return Some(WindowInfo::new(title, "unknown".to_string()));
                 }

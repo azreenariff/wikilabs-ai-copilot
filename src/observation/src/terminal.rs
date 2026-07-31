@@ -246,6 +246,15 @@ mod terminal_windows {
                 if is_terminal_process(&process_name, &class_name, &title) {
                     // Capture the visible text from the window
                     let command_text = get_terminal_text(hwnd, &process_name, &class_name);
+
+                    // Final filter: if the captured text looks like UI labels/dialogs
+                    // rather than real terminal output, clear it to avoid feeding noise
+                    // into the AI guidance context.
+                    let command_text = if is_terminal_ui_noise(&command_text) {
+                        String::new()
+                    } else {
+                        command_text
+                    };
                     let is_ssh = process_name.contains("ssh")
                         || title.to_lowercase().contains("ssh")
                         || title.to_lowercase().contains("remote");
@@ -312,6 +321,56 @@ mod terminal_windows {
             return "ssh".to_string();
         }
         process_name.to_string()
+    }
+
+    /// Check if captured terminal text is actually UI chrome noise
+    /// (labels from config dialogs, settings panels, etc.) rather than
+    /// real terminal output. Returns true if the text looks like noise.
+    fn is_terminal_ui_noise(text: &str) -> bool {
+        let text = text.trim();
+        if text.is_empty() {
+            return true;
+        }
+        let lower = text.to_lowercase();
+
+        // Empty or very short text — likely noise
+        if text.lines().filter(|l| !l.trim().is_empty()).count() <= 1 {
+            return true;
+        }
+
+        // If text matches known UI label patterns without any real terminal content
+        let ui_keywords = [
+            "configuration", "session settings", "settings", "preferences",
+            "options", "properties", "plugins", "extensions", "about",
+            "general", "advanced", "log in", "sign in",
+            "moba xterm", "unregistered version",
+        ];
+        let has_ui_keyword = ui_keywords.iter().any(|k| lower.contains(k));
+
+        // Check if there's NO real terminal content at all
+        let has_terminal_content = lower.contains('#')
+            || lower.contains('$')
+            || lower.contains('>')
+            || lower.contains('@')
+            || lower.contains("root")
+            || lower.contains("command")
+            || lower.contains("running")
+            || lower.contains("active:")
+            || lower.contains("status:")
+            || lower.contains("error")
+            || lower.contains("warning")
+            || lower.contains("load")
+            || lower.contains("http")
+            || lower.contains("https")
+            || lower.contains("ping")
+            || lower.contains("ssh");
+
+        // If it has UI keywords but no real terminal content, it's noise
+        if has_ui_keyword && !has_terminal_content {
+            return true;
+        }
+
+        false
     }
 
     /// Get the visible text content from a terminal window.
@@ -384,6 +443,15 @@ mod terminal_windows {
             "Edit", "ComboBox", "Button", "Static",
             // MobaXterm specific UI panels (not the terminal buffer)
             "MobaXtermFileBrowser", "MobaXtermSessions", "MobaXtermLog",
+            // Windows common dialog/control classes
+            "Windows.UI.Core.CorePage", "PopupService", "Windows.UI.Composition",
+            // Generic setting/dialog classes
+            "#32770", "Dialog", "Shell_TrayWnd", "Shell_SecondaryTrayWnd",
+            // Progress/notification overlays
+            "ToastMainWnd", "UserTileWindow", "SystemDialogWindow",
+            // Context menu / flyout classes
+            "FlyoutFrameWindowClass", "Windows.UI.Core.CoreWindow",
+            "HubWindowClass", "FlyoutWindow",
         ];
 
         /// Class names that are definitely terminal buffer text.
@@ -397,6 +465,7 @@ mod terminal_windows {
             "MobaXtermTerm",
             "MobaXtermTerminal",
             "WindowsTerminalHost",
+            "WindowsTerminal",
         ];
 
         fn is_rejected_class(class_name: &str) -> bool {
@@ -451,26 +520,40 @@ mod terminal_windows {
                     state.0.push_str(&text);
                 }
                 // Unknown class: fall back to newline heuristic
-                else if text.contains('\n') && text.lines().count() >= 2 {
-                    // Multi-line text with at least 2 lines — likely terminal buffer
-                    // Also require it looks like console output (has prompts, paths, or commands)
-                    let text_lower = text.to_lowercase();
-                    let looks_like_console = text_lower.contains("://")
-                        || text_lower.contains('@')
-                        || text_lower.contains('>')
-                        || text_lower.contains('$')
-                        || text_lower.contains("root")
-                        || text_lower.contains('#')
-                        || text_lower.contains("powershell")
-                        || text_lower.contains("windows")
-                        || text_lower.contains("system")
-                        || text_lower.contains("error")
-                        || text_lower.contains("warning")
-                        || text_lower.contains("info")
-                        || text_lower.contains("active:")
-                        || text_lower.contains("status:")
-                        || text_lower.contains(":")
-                        || text.lines().count() >= 3;
+                                else if text.contains('\n') && text.lines().count() >= 2 {
+                                    // Multi-line text with at least 2 lines — likely terminal buffer
+                                    // Also require it looks like console output (has prompts, paths, or commands)
+
+                                    // First reject content that looks like UI labels/settings dialogs
+                                    let ui_dialog_patterns = [
+                                        "configuration", "session settings", "settings",
+                                        "preferences", "options", "properties",
+                                        "general", "advanced", "plugins", "extensions",
+                                        "help", "about", "log in", "sign in",
+                                    ];
+                                    let looks_like_ui = ui_dialog_patterns.iter()
+                                        .any(|p| text_lower.contains(p))
+                                        && text.lines().filter(|l| !l.trim().is_empty()).count() <= 5;
+                                    if looks_like_ui {
+                                        return TRUE;
+                                    }
+
+                                    let looks_like_console = text_lower.contains("://")
+                                        || text_lower.contains('@')
+                                        || text_lower.contains('>')
+                                        || text_lower.contains('$')
+                                        || text_lower.contains("root")
+                                        || text_lower.contains('#')
+                                        || text_lower.contains("powershell")
+                                        || text_lower.contains("windows")
+                                        || text_lower.contains("system")
+                                        || text_lower.contains("error")
+                                        || text_lower.contains("warning")
+                                        || text_lower.contains("info")
+                                        || text_lower.contains("active:")
+                                        || text_lower.contains("status:")
+                                        || text_lower.contains(":")
+                                        || text.lines().count() >= 3;
 
                     if looks_like_console {
                         if !state.1 {

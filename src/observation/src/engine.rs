@@ -37,6 +37,10 @@ pub struct ObservationEngineConfig {
     pub enable_session_tracking: bool,
     /// Whether to enable correlation engine.
     pub enable_correlation: bool,
+    /// Delay in seconds before the first observation tick on startup.
+    /// Gives the user's desktop time to settle — avoids capturing
+    /// transient UI elements (splash screens, command palette, IME).
+    pub startup_delay_secs: u64,
 }
 
 impl Default for ObservationEngineConfig {
@@ -46,6 +50,7 @@ impl Default for ObservationEngineConfig {
             enable_error_detection: true,
             enable_session_tracking: true,
             enable_correlation: true,
+            startup_delay_secs: 5,
         }
     }
 }
@@ -143,9 +148,23 @@ impl ObservationEngine {
     }
 
     /// Run the observation polling loop (blocking). This runs in a background thread.
+    /// 
+    /// On startup, waits `startup_delay` before the first poll tick to give the user's
+    /// desktop time to settle — avoiding captures of transient UI elements like splash
+    /// screens, command palette, IME windows, etc. that appear briefly at launch.
     pub async fn run_loop(&self) {
         let interval = Duration::from_secs(self.config.poll_interval_secs);
         let mut tick = 0u64;
+
+        // Startup delay: wait before the first observation tick
+        let startup_delay = Duration::from_secs(self.config.startup_delay_secs);
+        if startup_delay.as_secs() > 0 {
+            tracing::info!(
+                "[ObservationEngine] Waiting {}s startup delay before first observation tick",
+                startup_delay.as_secs()
+            );
+            tokio::time::sleep(startup_delay).await;
+        }
 
         loop {
             tick += 1;
@@ -273,8 +292,16 @@ impl ObservationEngine {
         if self.config.enable_correlation {
             match &event.provider {
                 ProviderType::ActiveWindow => {
+                    // Filter out UI chrome noise before feeding to correlation engine.
+                    // The source here is the window title captured from the ActiveWindow provider.
+                    let source = event.source.clone();
+                    let filtered = if Self::is_active_window_noise(&source) {
+                        None
+                    } else {
+                        Some(source)
+                    };
                     self.correlation_engine
-                        .update_active_app(Some(event.source.clone()));
+                        .update_active_app(filtered);
                 }
                 ProviderType::Browser => {
                     if let Some(url) = event
@@ -598,6 +625,69 @@ impl ObservationEngine {
     pub async fn get_provider_status(&self) -> Vec<crate::provider::ProviderStatus> {
         let registry = self.registry.lock().await;
         registry.all_status()
+    }
+
+    /// Filter noise window titles from ActiveWindow events.
+    /// Returns true if the title is UI chrome noise and should be filtered out.
+    fn is_active_window_noise(title: &str) -> bool {
+        let title = title.trim();
+        if title.is_empty() {
+            return true;
+        }
+        let lower = title.to_lowercase();
+
+        // Matches the noise patterns from app_monitor.rs (Windows-side filter)
+        // but also catches any noise that slips through to the event bus
+        if lower.contains("command palette")
+            || lower.contains("start menu")
+            || lower.contains("windows key")
+        {
+            return true;
+        }
+        if lower.contains("msctfime")
+            || lower.contains("ime ui")
+            || lower.contains("ime")
+            || lower.contains("msctf_inputpane")
+        {
+            return true;
+        }
+        if lower.contains("clipboard")
+            || lower.contains("clipbrd")
+            || lower.contains("toast")
+            || lower.contains("notification")
+            || lower.contains("action center")
+            || lower.contains("notification area")
+        {
+            return true;
+        }
+        if lower.contains("settings") && !lower.contains("configuration") {
+            return true;
+        }
+        if lower.contains("about ")
+            || lower.contains("uninstall")
+            || lower.contains("sign in")
+            || lower.contains("login")
+            || lower.contains("updating")
+            || lower.contains("installing")
+            || lower.contains("progress")
+            || lower.contains("error report")
+            || lower.contains("crash")
+        {
+            return true;
+        }
+        if title.len() < 15 {
+            let noise_kws = [
+                "properties", "security", "options", "preferences", "help",
+                "message", "warning", "confirm", "close", "cancel", "apply",
+                "ok", "save", "open", "file", "edit", "view", "tools",
+                "format", "window", "about",
+            ];
+            if noise_kws.iter().any(|k| lower.contains(k)) {
+                return true;
+            }
+        }
+
+        false
     }
 
     /// Get the event bus reference for subscribing to events.
