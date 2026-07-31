@@ -331,14 +331,15 @@ use windows::Win32::UI::WindowsAndMessaging::EnumChildWindows;
 
 #[cfg(target_os = "windows")]
 fn collect_visible_text(hwnd: HWND) -> String {
-
-    // Collect text from ALL nested child windows, not just direct children.
-    // Browser pages often have deeply nested iframes/UI layers.
+    // Collect text from the browser's visible content only.
+    // Heuristic: only include text from windows containing newlines.
+    // Single-line text is browser UI chrome (address bar, toolbar, bookmarks).
+    // Multi-line text is actual page content (HTML rendered in child windows).
     let mut all_texts: Vec<String> = Vec::new();
     collect_browser_text_recursive(hwnd, &mut all_texts);
 
     if all_texts.is_empty() {
-        // Fallback: get the main window title/text
+        // Fallback: get the main window title/text (e.g., tab title)
         get_window_text_safe(hwnd).unwrap_or_default()
     } else {
         let all_text = all_texts.join(" ");
@@ -347,13 +348,14 @@ fn collect_visible_text(hwnd: HWND) -> String {
     }
 }
 
-/// Recursively enumerate all nested child windows and collect text from every control.
+/// Recursively enumerate nested child windows, collecting only multi-line text.
+/// Multi-line text = actual page content. Single-line text = browser chrome.
 #[cfg(target_os = "windows")]
 fn collect_browser_text_recursive(hwnd: HWND, texts: &mut Vec<String>) {
     unsafe {
-        // Collect text from this window
         if let Some(t) = get_window_text_safe(hwnd) {
-            if !t.is_empty() {
+            // Only accept text containing newlines — page content, not browser chrome
+            if !t.is_empty() && t.contains('\n') {
                 texts.push(t);
             }
         }

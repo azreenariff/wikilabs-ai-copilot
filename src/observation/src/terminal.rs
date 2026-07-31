@@ -348,7 +348,19 @@ mod terminal_windows {
     }
 
     /// Enumerate child windows and collect text from them.
-    /// Returns Some(text) if any child window had text, None if no children found.
+    ///
+    /// Terminal emulators (MobaXterm, PuTTY, Windows Terminal, etc.) expose their
+    /// UI chrome (menu bars, toolbars, file managers, status bars, title bar) as
+    /// child windows. The actual terminal buffer is also a child window but contains
+    /// newline-separated text (the real terminal content).
+    ///
+    /// Heuristic: only collect text from child windows that contain newlines.
+    /// Single-line text is UI chrome. Multi-line text is the terminal buffer.
+    /// This avoids hardcoding filters for specific window class names, making it
+    /// work generically with any terminal emulator.
+    ///
+    /// Returns Some(text) if any child window had multi-line (terminal buffer) text,
+    /// None if no terminal buffer text found (falls back to parent window text).
     #[cfg(target_os = "windows")]
     fn get_terminal_child_text(parent_hwnd: &HWND) -> Option<String> {
         use windows::Win32::Foundation::BOOL;
@@ -357,7 +369,8 @@ mod terminal_windows {
             EnumChildWindows, GetWindowTextLengthW, GetWindowTextW,
         };
 
-        /// Callback for EnumChildWindows — collects child window text via state pointer.
+        /// Callback for EnumChildWindows — collects ONLY multi-line text (terminal buffer)
+        /// from child windows. Single-line text is UI chrome and is skipped.
         unsafe extern "system" fn child_text_callback(
             child_hwnd: windows::Win32::Foundation::HWND,
             lparam: windows::Win32::Foundation::LPARAM,
@@ -371,14 +384,15 @@ mod terminal_windows {
             let text_len = GetWindowTextW(child_hwnd, &mut buf);
             if text_len > 0 {
                 let text = String::from_utf16_lossy(&buf[..text_len as usize]);
-                let trimmed = text.trim();
-                if !trimmed.is_empty() {
+                // Only accept text containing newlines — this is the terminal buffer.
+                // Single-line text is UI chrome (title bar, toolbar, sidebar, etc.)
+                if text.contains('\n') {
                     if !state.1 {
                         state.1 = true;
                     } else {
                         state.0.push('\n');
                     }
-                    state.0.push_str(trimmed);
+                    state.0.push_str(&text);
                 }
             }
             TRUE

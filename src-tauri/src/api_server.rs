@@ -1952,17 +1952,12 @@ pub fn start_api_server(
 
                             // Filter out events that are too noisy for AI context:
                             // - clipboard events (user just copied a URL/password, not meaningful context)
-                            // - IME events (input method editor noise)
                             // - rapid active_window events with no meaningful change
                             // Also filter out events with empty or trivial summaries
                             let filtered_events: Vec<&StructuredEvent> = last_events.iter()
                                 .filter(|e| {
                                     // Skip clipboard entirely — it's noise for AI reasoning
                                     if e.provider == "clipboard" {
-                                        return false;
-                                    }
-                                    // Skip IME events — input method editor noise
-                                    if e.provider == "ime" {
                                         return false;
                                     }
                                     // Skip active_window events that are just the same window repeatedly

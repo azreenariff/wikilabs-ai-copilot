@@ -1,3 +1,9 @@
+## v1.1.148 — FIX: eliminate terminal/browser UI chrome noise via newline heuristic
+
+- **Terminal child text now filters UI chrome** — `get_terminal_child_text()` no longer collects text from all child windows indiscriminately. Instead it only accepts text containing newlines (the actual terminal buffer). Single-line text is UI chrome (title bar, toolbar, file browser sidebar, MobaXterm quick-connect panel) and is skipped. This eliminates noise like `\"Non Client Input Sink Window\"`, `\"ReunionCaptionControlsWindow\"`, `\"MSCTFIME UI\"` from the AI context without hardcoding window class names — works generically for any terminal emulator.
+- **Browser visible text now filters UI chrome** — `collect_browser_text_recursive()` similarly only collects multi-line text from nested child windows. Single-line text is browser chrome (address bar, bookmarks bar, toolbar) and is skipped. Actual page content (HTML rendered text) is multi-line.
+- **Removed dead IME filter** — `api_server.rs` no longer filters `provider == "ime"` events. No provider ever emits that value, and the noise is now eliminated at the source (terminal and browser providers).
+
 ## v1.1.147 — FIX: browser detects ALL windows, terminal child text for all emulators, no clipboard/IME noise in AI context
 
 - **Browser detection enumerates ALL windows** — no longer limited to the foreground browser window. Uses `EnumWindows` + `GetModuleFileNameExW` to scan all processes for Chrome, Firefox, and Edge instances. The AI now sees all open browser tabs across all windows for proper cross-context reasoning.
