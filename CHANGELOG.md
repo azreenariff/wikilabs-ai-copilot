@@ -1,3 +1,10 @@
+## v1.1.153 — FIX: prevent AI hallucinations from system prompt examples and no-screenshot fallback
+
+- **Removed specific technical examples** from proactive guidance system prompt — examples like `systemctl status mysqld`, `nginx -t`, `docker inspect`, `kubectl describe` under \"Speak like a real person - GOOD examples\" were acting as strong priors, causing the AI to hallucinate infrastructure commands when the screenshot showed nothing related
+- **Added CRITICAL ANTI-HALLUCINATION RULES** to both the Vision AI prompt (`vision_analyzer.rs`) and the proactive guidance system prompt — never mention specific commands/services unless visible on screen
+- **Skip AI reasoning when no screenshot available** — instead of falling back to a generic text prompt that causes hallucinations, the guidance loop now skips the tick entirely
+- **Strengthened anti-hallucination rules** — explicit bans on mentioning commands (systemctl, docker, ansible, etc.) and services (MySQL, nginx, Kubernetes) unless actually visible in the screenshot
+
 ## v1.1.152 — FIX: Remove noisy text extraction from AI prompt — screenshot is the only data source
 
 - **Removed "## Recent observation events" section from AI system prompt** — the `events_for_ai` array was leaking window titles, UI labels, clipboard data, and browser visible_text into the AI's context, confusing it with garbage text alongside the clean screenshot
