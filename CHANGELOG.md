@@ -1,3 +1,9 @@
+## v1.1.151 — FIX: clippy warnings in app_monitor.rs
+
+- **Removed unused `mut`** on `candidate_hwnd` — variable is never reassigned after assignment from `GetForegroundWindow()`
+- **Removed dead variable** `own_pid` — was set to `0` and never used; `own_pid_val` is the actual variable in use
+- **Added `#[allow(dead_code)]`** to `is_noise_window_title()` — only called from `#[cfg(target_os = "windows")]` blocks; suppresses false dead-code warning on non-Windows build runners
+
 ## v1.1.150 — FIX: ActiveWindow noise filtering + terminal child window enhancements + guidance context noise filtering
 
 - **ActiveWindow root ancestor climb** — `app_monitor.rs` Windows provider now uses `GetAncestor(GA_ROOT)` instead of `GetForegroundWindow()` directly, avoiding transient child windows (Command Palette Toast, MSCTFIME UI, clipboard viewers, IME panels). If the root window title matches noise patterns, it climbs the owner chain to find a valid parent.
