@@ -354,23 +354,69 @@ mod terminal_windows {
     /// child windows. The actual terminal buffer is also a child window but contains
     /// newline-separated text (the real terminal content).
     ///
-    /// Heuristic: only collect text from child windows that contain newlines.
-    /// Single-line text is UI chrome. Multi-line text is the terminal buffer.
-    /// This avoids hardcoding filters for specific window class names, making it
-    /// work generically with any terminal emulator.
+    /// Heuristic: filter child windows by class name to only accept known terminal
+    /// buffer classes, and explicitly reject non-terminal classes like IME, clipboard,
+    /// toolbars, and status bars. If a class is unknown, fall back to the newline
+    /// heuristic (multi-line = terminal buffer).
     ///
-    /// Returns Some(text) if any child window had multi-line (terminal buffer) text,
+    /// Returns Some(text) if any child window had terminal buffer text,
     /// None if no terminal buffer text found (falls back to parent window text).
     #[cfg(target_os = "windows")]
     fn get_terminal_child_text(parent_hwnd: &HWND) -> Option<String> {
         use windows::Win32::Foundation::BOOL;
         use windows::Win32::Foundation::LPARAM;
         use windows::Win32::UI::WindowsAndMessaging::{
-            EnumChildWindows, GetWindowTextLengthW, GetWindowTextW,
+            EnumChildWindows, GetWindowTextLengthW, GetWindowTextW, GetClassNameW,
         };
 
-        /// Callback for EnumChildWindows — collects ONLY multi-line text (terminal buffer)
-        /// from child windows. Single-line text is UI chrome and is skipped.
+        /// Class names that are definitely NOT terminal buffer text.
+        const REJECTED_CLASSES: &[&str] = &[
+            // Microsoft IME / Text Services Framework
+            "MSCTFIME UI", "IME", "msctf_inputPane", "IME UI",
+            // Windows clipboard
+            "xwinclip", "CLIPBRD", "ClipboardViewer",
+            // Browser/UI chrome elements that can appear in terminals
+            "DirectUIHHost", "Windows.UI.Core.CoreWindow", "XamlExplorerHostIslandWindow",
+            // File manager / sidebar panes in MobaXterm
+            "THWindowClass", "CabinetWClass", "WorkerW",
+            // Generic UI chrome
+            "ToolbarWindow32", "SysStatusBar", "SysProgressBar",
+            "Edit", "ComboBox", "Button", "Static",
+            // MobaXterm specific UI panels (not the terminal buffer)
+            "MobaXtermFileBrowser", "MobaXtermSessions", "MobaXtermLog",
+        ];
+
+        /// Class names that are definitely terminal buffer text.
+        const ACCEPTED_CLASSES: &[&str] = &[
+            "ConsoleHost_HostAPI",
+            "Console",
+            "ConsoleHost",
+            "CascadiaConsole",
+            "CascadiaTerminal",
+            "PuTTY",
+            "MobaXtermTerm",
+            "MobaXtermTerminal",
+            "WindowsTerminalHost",
+        ];
+
+        fn is_rejected_class(class_name: &str) -> bool {
+            let cn = class_name.to_lowercase();
+            REJECTED_CLASSES.iter().any(|r| cn.contains(&r.to_lowercase()))
+        }
+
+        fn is_accepted_class(class_name: &str) -> bool {
+            let cn = class_name.to_lowercase();
+            ACCEPTED_CLASSES.iter().any(|a| cn.contains(&a.to_lowercase()))
+        }
+
+        /// Get the class name of a window.
+        unsafe fn get_class_name(hwnd: windows::Win32::Foundation::HWND) -> String {
+            let mut buf = [0u16; 256];
+            let len = GetClassNameW(hwnd, &mut buf);
+            if len > 0 { String::from_utf16_lossy(&buf[..len as usize]) } else { String::new() }
+        }
+
+        /// Callback for EnumChildWindows — filters by class name whitelist/blacklist.
         unsafe extern "system" fn child_text_callback(
             child_hwnd: windows::Win32::Foundation::HWND,
             lparam: windows::Win32::Foundation::LPARAM,
@@ -378,21 +424,62 @@ mod terminal_windows {
             use windows::Win32::Foundation::TRUE;
             let state_ptr = lparam.0 as *mut (String, bool);
             let state = &mut *state_ptr;
+
+            // Get class name for filtering
+            let class_name = get_class_name(child_hwnd);
+
+            // Reject known non-terminal classes immediately
+            if is_rejected_class(&class_name) {
+                return TRUE;
+            }
+
             let len = GetWindowTextLengthW(child_hwnd);
             if len == 0 { return TRUE; }
             let mut buf = vec![0u16; (len + 1) as usize];
             let text_len = GetWindowTextW(child_hwnd, &mut buf);
             if text_len > 0 {
                 let text = String::from_utf16_lossy(&buf[..text_len as usize]);
-                // Only accept text containing newlines — this is the terminal buffer.
-                // Single-line text is UI chrome (title bar, toolbar, sidebar, etc.)
-                if text.contains('\n') {
+                if text.trim().is_empty() { return TRUE; }
+
+                // If class is definitely a terminal buffer, accept it regardless of content
+                if is_accepted_class(&class_name) {
                     if !state.1 {
                         state.1 = true;
                     } else {
                         state.0.push('\n');
                     }
                     state.0.push_str(&text);
+                }
+                // Unknown class: fall back to newline heuristic
+                else if text.contains('\n') && text.lines().count() >= 2 {
+                    // Multi-line text with at least 2 lines — likely terminal buffer
+                    // Also require it looks like console output (has prompts, paths, or commands)
+                    let text_lower = text.to_lowercase();
+                    let looks_like_console = text_lower.contains("://")
+                        || text_lower.contains('@')
+                        || text_lower.contains('>')
+                        || text_lower.contains('$')
+                        || text_lower.contains("root")
+                        || text_lower.contains('#')
+                        || text_lower.contains("powershell")
+                        || text_lower.contains("windows")
+                        || text_lower.contains("system")
+                        || text_lower.contains("error")
+                        || text_lower.contains("warning")
+                        || text_lower.contains("info")
+                        || text_lower.contains("active:")
+                        || text_lower.contains("status:")
+                        || text_lower.contains(":")
+                        || text.lines().count() >= 3;
+
+                    if looks_like_console {
+                        if !state.1 {
+                            state.1 = true;
+                        } else {
+                            state.0.push('\n');
+                        }
+                        state.0.push_str(&text);
+                    }
                 }
             }
             TRUE

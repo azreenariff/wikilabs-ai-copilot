@@ -284,32 +284,93 @@ impl ConsoleOutputCapture {
         }
     }
 
-    /// Enumerate child windows of a console window.
+    /// Enumerate child windows of a console window with class name filtering.
     #[cfg(target_os = "windows")]
     fn enum_console_children(hwnd: windows::Win32::Foundation::HWND, texts: &mut Vec<String>) {
-        use windows::Win32::Foundation::{BOOL, FALSE, HWND as WinHWND, TRUE};
+        use windows::Win32::Foundation::{BOOL, FALSE, HWND as WinHWND};
         use windows::Win32::UI::WindowsAndMessaging::{
-            EnumChildWindows, GetWindowTextLengthW, GetWindowTextW,
+            EnumChildWindows, GetWindowTextLengthW, GetWindowTextW, GetClassNameW,
         };
+
+        /// Class names that are definitely NOT console buffer text.
+        const REJECTED_CLASSES: &[&str] = &[
+            // Microsoft IME / Text Services Framework
+            "MSCTFIME UI", "IME", "msctf_inputPane", "IME UI",
+            // Windows clipboard
+            "xwinclip", "CLIPBRD", "ClipboardViewer",
+            // Browser/UI chrome elements
+            "DirectUIHHost", "Windows.UI.Core.CoreWindow", "XamlExplorerHostIslandWindow",
+            // File manager / sidebar panes in MobaXterm
+            "THWindowClass", "CabinetWClass", "WorkerW",
+            // Generic UI chrome
+            "ToolbarWindow32", "SysStatusBar", "SysProgressBar",
+            "Edit", "ComboBox", "Button", "Static",
+            // MobaXterm specific UI panels (not the terminal buffer)
+            "MobaXtermFileBrowser", "MobaXtermSessions", "MobaXtermLog",
+        ];
+
+        /// Console buffer class names — accept these regardless of content structure.
+        const ACCEPTED_CLASSES: &[&str] = &[
+            "ConsoleHost_HostAPI",
+            "Console",
+            "ConsoleHost",
+            "CascadiaConsole",
+            "CascadiaTerminal",
+            "WindowsTerminalHost",
+        ];
+
+        fn is_rejected_class(class_name: &str) -> bool {
+            let cn = class_name.to_lowercase();
+            REJECTED_CLASSES.iter().any(|r| cn.contains(&r.to_lowercase()))
+        }
+
+        fn is_accepted_class(class_name: &str) -> bool {
+            let cn = class_name.to_lowercase();
+            ACCEPTED_CLASSES.iter().any(|a| cn.contains(&a.to_lowercase()))
+        }
+
+        /// Get the class name of a window.
+        unsafe fn get_class_name(hwnd: WinHWND) -> String {
+            let mut buf = [0u16; 256];
+            let len = GetClassNameW(hwnd, &mut buf);
+            if len > 0 { String::from_utf16_lossy(&buf[..len as usize]) } else { String::new() }
+        }
 
         unsafe extern "system" fn callback(
             hwnd: WinHWND,
             lparam: windows::Win32::Foundation::LPARAM,
         ) -> BOOL {
+            use windows::Win32::Foundation::TRUE;
+
             if lparam.0 == 0 { return FALSE; }
             let ptr = lparam.0 as *mut Vec<String>;
             unsafe {
                 let vec = &mut *ptr;
+
+                let class_name = get_class_name(hwnd);
+
+                // Reject known non-console classes immediately
+                if is_rejected_class(&class_name) {
+                    return TRUE;
+                }
+
                 let len = GetWindowTextLengthW(hwnd);
-                if len > 0 {
-                    let mut buf = vec![0u16; (len + 1) as usize];
-                    let text_len = GetWindowTextW(hwnd, &mut buf);
-                    if text_len > 0 {
-                        let text = String::from_utf16_lossy(&buf[..text_len as usize]);
-                        if !text.trim().is_empty() {
-                            vec.push(text.trim().to_string());
-                        }
-                    }
+                if len == 0 { return TRUE; }
+
+                let mut buf = vec![0u16; (len + 1) as usize];
+                let text_len = GetWindowTextW(hwnd, &mut buf);
+                if text_len > 0 {
+                    let text = String::from_utf16_lossy(&buf[..text_len as usize]);
+                    let trimmed = text.trim();
+                    if trimmed.is_empty() { return TRUE; }
+
+                    // If class is definitely a console buffer, accept it.
+                                        // Unknown class: fall back to newline heuristic.
+                                        let accept = is_accepted_class(&class_name)
+                                            || (trimmed.contains('\n') && trimmed.lines().count() >= 2);
+                                        if accept {
+                                            vec.push(trimmed.to_string());
+                                        }
                 }
             }
             TRUE

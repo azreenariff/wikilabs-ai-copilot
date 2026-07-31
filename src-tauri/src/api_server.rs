@@ -2138,10 +2138,13 @@ pub fn start_api_server(
                                                                 - Match the confidence level of your suggestion to the evidence: high confidence when errors are visible, moderate when patterns align, low/uncertain when inferring\n\
                                                                 - When suggesting terminal commands, verify they match what the user is already doing (same service, same path, same context)\n
 
-                                                                ## Priority Order:\n\
-                                                                1. 🔴 Active errors or problems on their screen — fix that first\n\
-                                                                2. 💻 Commands they're running — what are they trying to do?\n\
-                                                                3. 🖥️ What app has focus — what context are they in?\n\
+                                                                ## Priority Order:
+                                                                                                                                1. 🔴 VISIBLE ERRORS on the screenshot — what the user is seeing right now is their top priority
+                                                                                                                                2. 💻 Terminal commands — what they're actually typing (if visible in the screenshot or captured text)
+                                                                                                                                3. 🖥️ App context — what windows are open, what they're working on
+                                                                                                                                4. Browser URL / page errors — secondary confirmation of what they're viewing
+                                                                                                                                5. Knowledge/skill matching — supplementary context
+                                                                                                                                6. File activity — contextual but usually less urgent
 
                                                                 ## Connect the dots:\n\
                                                                 - Error on screen + terminal command → suggest next diagnostic step\n\
@@ -2177,17 +2180,18 @@ pub fn start_api_server(
                                                                 ## Recent observations:\n\
                                                                 {}\n\
 
-                                                                ## CRITICAL — HOW TO INTERPRET YOUR DATA:\n\
-                                                                Your data comes from multiple sources. Use them in this order of confidence:\n\
-                                                                1. TERMINAL COMMANDS (HIGHEST CONFIDENCE) — when you see a command the user typed in a terminal, that is VERIFIED what they're doing. Base your advice on this.\n\
-                                                                2. BROWSER PAGE CONTENT (HIGH CONFIDENCE) — text visible on a web page is what the user is actually reading. If they see an error message, that's the primary issue.\n\
-                                                                3. BROWSER URL (MEDIUM CONFIDENCE) — the URL tells you which site/app the user is on.\n\
-                                                                4. VISION ANALYSIS / SCREEN CAPTURE (LOW CONFIDENCE) — these are GUESSES about what's on screen. They often misinterpret terminal windows (e.g., seeing MobaXterm's sidebar and claiming the user is \"configuring settings\" when they're actually SSH'd into a server). IGNORE vision analysis that says the user is \"configuring\" or \"navigating settings\" when terminal commands show they're actually troubleshooting.\n\
-                                                                5. WINDOW TITLE (LOW CONFIDENCE) — the window name alone doesn't tell you what the user is doing inside it.\n\
+                                                                ## CRITICAL — HOW TO INTERPRET YOUR DATA:
+                                                                                                                                Your data comes from multiple sources. Use them in this order:
+                                                                                                                                1. SCREENSHOT / VISION ANALYSIS (HIGHEST CONFIDENCE) — this is what the user is ACTUALLY seeing on their screen right now. Read it first and let it drive your analysis. If you see an error on the screenshot, that's what the user needs help with. The screenshot captures the REAL state, not a broken heuristic.
+                                                                                                                                2. TERMINAL CAPTURED TEXT (HIGH CONFIDENCE) — commands and output captured from terminals. Use this to confirm what's visible on screen, suggest next steps, or provide context about what they're working on.
+                                                                                                                                3. BROWSER PAGE CONTENT (HIGH CONFIDENCE) — text extracted from web pages. Use this to confirm page content visible on screen, but if the screenshot shows something different, TRUST THE SCREENSHOT.
+                                                                                                                                4. BROWSER URL (MEDIUM CONFIDENCE) — confirms which site/app the user is on.
+                                                                                                                                5. WINDOW TITLE (LOW CONFIDENCE) — just a label, doesn't tell you what they're doing inside.
+                                                                                                                                6. FILE ACTIVITY / PROCESS DATA (LOW CONFIDENCE) — contextual signals, not proof of what's happening.
+                                                                                                                                The screenshot is the ground truth. Text extraction from Windows UI is a FALLBACK heuristic that can be wrong (IME overlays, clipboard windows, sidebar panes). If the screenshot shows something, BELIEVE IT.
 
-                                                                ## What to IGNORE:\n\
-                                                                If the vision analysis says the user is \"configuring settings,\" \"navigating menus,\" or \"editing preferences\" in a terminal app (MobaXterm, PuTTY, etc.) â this is almost certainly WRONG. When terminal commands are visible, trust the commands over the vision analysis.\n\
-                                                                If there are NO terminal commands and NO browser errors â and the vision analysis only describes generic \"navigating\" or \"browsing\" â STAY QUIET. Don't give advice for vague activity.\n\
+                                                                                                                                ## When to STAY QUIET:
+                                                                                                                                If the screenshot shows no errors, no active tasks, and no meaningful activity — and the captured text also has nothing interesting — then STAY QUIET. Don't give advice for vague activity.
 
                                                                 ## Correlate across time:\n\
                                                                 Connect the dots between browser and terminal activity:\n\

@@ -350,11 +350,79 @@ fn collect_visible_text(hwnd: HWND) -> String {
 
 /// Recursively enumerate nested child windows, collecting only multi-line text.
 /// Multi-line text = actual page content. Single-line text = browser chrome.
+///
+/// Now also filters by class name: known page content classes are accepted,
+/// known chrome classes are rejected. Unknown classes fall back to the newline
+/// heuristic.
 #[cfg(target_os = "windows")]
 fn collect_browser_text_recursive(hwnd: HWND, texts: &mut Vec<String>) {
+    /// Browser page content classes — accept these regardless of content structure.
+    const ACCEPTED_CLASSES: &[&str] = &[
+        "Internet Explorer_Server",  // MSHTML rendering engine (IE/Edge/Chrome legacy)
+        "Chrome_RenderWidgetHostHWND", // Chrome/Edge Blink renderer
+        "Mozilla-Ag" // Mozilla rendering (Firefox)
+    ];
+
+    /// Browser chrome classes — reject these even if they contain newlines.
+    const REJECTED_CLASSES: &[&str] = &[
+        // Browser UI elements
+        "Chrome_OmniboxView", "Chrome_AutocompleteEditView",
+        "MozillaURLBar", "MozillaLocationUI",
+        // Tab/UI chrome
+        "TabControl", "TabWindowClass", "RebarWindow32",
+        "ToolbarWindow32", "Address Band Root",
+        "DirectUIHHost", "Windows.UI.Core.CoreWindow",
+        // Bookmark / history panels
+        "BookmarkBar", "BookmarkMenu", "DropDown",
+    ];
+
+    fn is_accepted_class(class_name: &str) -> bool {
+        let cn = class_name.to_lowercase();
+        ACCEPTED_CLASSES.iter().any(|a| cn.contains(&a.to_lowercase()))
+    }
+
+    fn is_rejected_class(class_name: &str) -> bool {
+        let cn = class_name.to_lowercase();
+        REJECTED_CLASSES.iter().any(|r| cn.contains(&r.to_lowercase()))
+    }
+
+    /// Get the class name of a window.
+    unsafe fn get_class_name(hwnd: HWND) -> String {
+        let mut buf = [0u16; 256];
+        let len = GetClassNameW(hwnd, &mut buf);
+        if len > 0 { String::from_utf16_lossy(&buf[..len as usize]) } else { String::new() }
+    }
+
     unsafe {
+        use windows::Win32::Foundation::HWND as WinHWND;
+        use windows::Win32::UI::WindowsAndMessaging::GetClassNameW;
+
+        // Get class name for filtering
+        let class_name = get_class_name(hwnd);
+
+        // Reject known browser chrome classes immediately
+        if is_rejected_class(&class_name) {
+            return;
+        }
+
+        // If class is definitely a page renderer, accept its text regardless of content structure
+        if is_accepted_class(&class_name) {
+            if let Some(t) = get_window_text_safe(hwnd) {
+                if !t.is_empty() {
+                    texts.push(t);
+                }
+            }
+            // Still recurse into children (page content may have nested elements)
+            let mut children: Vec<HWND> = Vec::new();
+            let _ = EnumChildWindows(hwnd, Some(browser_child_callback), LPARAM(&mut children as *mut _ as _));
+            for child in &children {
+                collect_browser_text_recursive(*child, texts);
+            }
+            return;
+        }
+
+        // Unknown class: fall back to newline heuristic
         if let Some(t) = get_window_text_safe(hwnd) {
-            // Only accept text containing newlines — page content, not browser chrome
             if !t.is_empty() && t.contains('\n') {
                 texts.push(t);
             }
