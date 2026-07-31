@@ -1,3 +1,9 @@
+## v1.1.155 — FIX: Windows log path now uses %APPDATA%, removed orphaned settings store, added startup diagnostics
+
+- **Fixed Windows log path** — was using `$XDG_DATA_HOME` (Linux-only env var) which produced an invalid path on Windows (`C:\Users\user/.local/share/...`). Now uses `%APPDATA%/wikilabs-ai-copilot/logs` on Windows.
+- **Removed orphaned `AppSettingsStore::new()`** — created without a file path, managed by Tauri but never used by any command. Settings persistence already works via `AppState.settings` which is created with `with_path()`.
+- **Added startup diagnostics** — logs platform, PID, and log directory path on launch so blank-screen issues are easier to diagnose.
+
 ## v1.1.154 — FIX: repair broken screen-capture → vision-analyzer pipeline, remove dead AiGuidanceProvider
 
 - **Fixed screen-capture data flow** — engine was looking for `data_base64` in the event payload but the ScreenCapture provider emitted `data_base64_preview` (a truncated preview string). The field never matched, so `feed_screenshot_to_vision_analyzer()` was never called and the AI never received screenshot analysis. Now the engine downcasts to `ScreenCaptureProvider` directly and reads the full base64 from internal state.

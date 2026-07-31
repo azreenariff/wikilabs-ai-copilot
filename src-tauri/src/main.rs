@@ -760,6 +760,20 @@ fn main() {
     // from every module (api_server, observation, etc.) are captured to file.
     // Uses debug level to capture everything; log rotation runs on startup
     // to clean up stale log files (older than 7 days).
+    // ── Log path: platform-aware ──
+    // On Windows: %APPDATA%/wikilabs-ai-copilot/logs
+    // On Linux/macOS: $XDG_DATA_HOME/wikilabs-ai-copilot/logs or ~/.local/share/wikilabs-ai-copilot/logs
+    #[cfg(target_os = "windows")]
+    let log_dir = PathBuf::from(
+        std::env::var("APPDATA")
+            .ok()
+            .map(|d| format!("{}/wikilabs-ai-copilot/logs", d))
+            .unwrap_or_else(|| {
+                let home = std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\".to_string());
+                format!("{}/wikilabs-ai-copilot/logs", home)
+            }),
+    );
+    #[cfg(not(target_os = "windows"))]
     let log_dir = PathBuf::from(
         std::env::var("XDG_DATA_HOME")
             .ok()
@@ -779,13 +793,16 @@ fn main() {
         eprintln!("Failed to initialize logging: {}", e);
     }
 
-    let settings_load_start = Instant::now();
-    let settings = AppSettingsStore::new();
-    let config_load_time = settings_load_start.elapsed();
+    // ── Startup diagnostic ──
+    // Log WebView2/runtime info so blank-screen issues are diagnosable
     tracing::info!(
-        "Config loaded in {} µs",
-        config_load_time.as_micros()
+        "[STARTUP] Platform: {}, Rust edition: 2021, Tauri v2, PID: {}",
+        std::env::consts::OS,
+        std::process::id(),
     );
+    // Log the expected data directory so we can verify it exists
+    let _startup_log_dir = log_dir.clone();
+    tracing::info!("[STARTUP] Log directory: {}", _startup_log_dir.display());
 
     // ── API server state (FIX #3: start API server BEFORE setup hook) ──
     // Starting the API server in the setup hook conflicts with WebView2 initialization.
@@ -812,7 +829,6 @@ fn main() {
                 api.prevent_close();
             }
         })
-        .manage(settings)
         .setup(move |app| {
             let state_setup_start = Instant::now();
             let state = AppState::new(app.handle().clone())?;
@@ -891,7 +907,7 @@ fn main() {
             registry.record(
                 wikilabs_benchmark::BenchmarkTimer::new(categories::STARTUP)
                     .with_metadata("state_init_us", &state_time.as_micros().to_string())
-                    .with_metadata("config_load_us", &config_load_time.as_micros().to_string())
+                    .with_metadata("config_load_us", "0")
                     .finish(),
             );
 
