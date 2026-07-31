@@ -520,40 +520,41 @@ mod terminal_windows {
                     state.0.push_str(&text);
                 }
                 // Unknown class: fall back to newline heuristic
-                                else if text.contains('\n') && text.lines().count() >= 2 {
-                                    // Multi-line text with at least 2 lines — likely terminal buffer
-                                    // Also require it looks like console output (has prompts, paths, or commands)
+                else if text.contains('\n') && text.lines().count() >= 2 {
+                    // Multi-line text with at least 2 lines — likely terminal buffer
+                    // Also require it looks like console output (has prompts, paths, or commands)
 
-                                    // First reject content that looks like UI labels/settings dialogs
-                                    let ui_dialog_patterns = [
-                                        "configuration", "session settings", "settings",
-                                        "preferences", "options", "properties",
-                                        "general", "advanced", "plugins", "extensions",
-                                        "help", "about", "log in", "sign in",
-                                    ];
-                                    let looks_like_ui = ui_dialog_patterns.iter()
-                                        .any(|p| text_lower.contains(p))
-                                        && text.lines().filter(|l| !l.trim().is_empty()).count() <= 5;
-                                    if looks_like_ui {
-                                        return TRUE;
-                                    }
+                    // First reject content that looks like UI labels/settings dialogs
+                    let text_lower = text.to_lowercase();
+                    let ui_dialog_patterns = [
+                        "configuration", "session settings", "settings",
+                        "preferences", "options", "properties",
+                        "general", "advanced", "plugins", "extensions",
+                        "help", "about", "log in", "sign in",
+                    ];
+                    let looks_like_ui = ui_dialog_patterns.iter()
+                        .any(|p| text_lower.contains(p))
+                        && text.lines().filter(|l| !l.trim().is_empty()).count() <= 5;
+                    if looks_like_ui {
+                        return TRUE;
+                    }
 
-                                    let looks_like_console = text_lower.contains("://")
-                                        || text_lower.contains('@')
-                                        || text_lower.contains('>')
-                                        || text_lower.contains('$')
-                                        || text_lower.contains("root")
-                                        || text_lower.contains('#')
-                                        || text_lower.contains("powershell")
-                                        || text_lower.contains("windows")
-                                        || text_lower.contains("system")
-                                        || text_lower.contains("error")
-                                        || text_lower.contains("warning")
-                                        || text_lower.contains("info")
-                                        || text_lower.contains("active:")
-                                        || text_lower.contains("status:")
-                                        || text_lower.contains(":")
-                                        || text.lines().count() >= 3;
+                    let looks_like_console = text_lower.contains("://")
+                        || text_lower.contains('@')
+                        || text_lower.contains('>')
+                        || text_lower.contains('$')
+                        || text_lower.contains("root")
+                        || text_lower.contains('#')
+                        || text_lower.contains("powershell")
+                        || text_lower.contains("windows")
+                        || text_lower.contains("system")
+                        || text_lower.contains("error")
+                        || text_lower.contains("warning")
+                        || text_lower.contains("info")
+                        || text_lower.contains("active:")
+                        || text_lower.contains("status:")
+                        || text_lower.contains(":")
+                        || text.lines().count() >= 3;
 
                     if looks_like_console {
                         if !state.1 {

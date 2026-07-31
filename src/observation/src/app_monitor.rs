@@ -273,7 +273,7 @@ impl ActiveWindowProvider {
 
             unsafe {
                 use windows::Win32::UI::WindowsAndMessaging::{
-                    GetParent, GetAncestor, IsWindowVisible,
+                    GetParent, GetAncestor,
                     GA_ROOT,
                 };
 
@@ -308,7 +308,17 @@ impl ActiveWindowProvider {
                 if is_noise_window_title(&title) {
                     // Try the root of the foreground window's owner chain
                     // If that also fails, skip this window entirely
-                    let parent_hwnd: HWND = GetParent(root_hwnd);
+                    let parent_hwnd = GetParent(root_hwnd);
+                    // On Windows, GetParent returns Result<HWND>; on Linux it returns HWND directly.
+                    // Handle both: unwrap the Result if present, or use the HWND directly.
+                    let parent_hwnd = match parent_hwnd {
+                        #[cfg(target_os = "windows")]
+                        Ok(h) => h,
+                        #[cfg(target_os = "windows")]
+                        Err(_) => return None,
+                        #[cfg(not(target_os = "windows"))]
+                        h => h,
+                    };
                     if parent_hwnd.is_invalid() {
                         // No owner to fall back to — skip silently
                         // (don't emit an event with noise as the "active window")
@@ -355,7 +365,15 @@ impl ActiveWindowProvider {
                                 }
                             }
                         }
-                        let parent_of_owner: HWND = GetParent(owner);
+                        #[cfg(target_os = "windows")]
+                        let parent_of_owner = GetParent(owner);
+                        #[cfg(target_os = "windows")]
+                        let parent_of_owner = match parent_of_owner {
+                            Ok(h) => h,
+                            Err(_) => { break; }
+                        };
+                        #[cfg(not(target_os = "windows"))]
+                        let parent_of_owner = GetParent(owner);
                         if parent_of_owner.is_invalid() || parent_of_owner == root_hwnd {
                             break; // Back at root
                         }
