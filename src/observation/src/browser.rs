@@ -176,7 +176,7 @@ impl BrowserProvider {
 /// Callback for EnumWindows — collects HWNDs into a Vec passed via LPARAM.
 #[cfg(target_os = "windows")]
 unsafe extern "system" fn browser_hwnd_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
-    use windows::Win32::Foundation::{BOOL, TRUE};
+    use windows::Win32::Foundation::TRUE;
     if !hwnd.0.is_null() {
         let ptr = lparam.0 as *mut Vec<HWND>;
         (*ptr).push(hwnd);
@@ -190,14 +190,14 @@ unsafe extern "system" fn browser_hwnd_callback(hwnd: HWND, lparam: LPARAM) -> B
 /// the one that happens to be on top.
 #[cfg(target_os = "windows")]
 fn enumerate_all_browser_windows(out: &mut Vec<BrowserContext>) {
-    use windows::Win32::Foundation::{CloseHandle, FALSE, TRUE, HWND};
+    use windows::Win32::Foundation::{TRUE, HWND};
     use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
     use windows::Win32::System::Threading::{
         OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        EnumWindows, GetClassNameW, GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
-        GetWindowThreadProcessId, IsWindowVisible,
+        EnumWindows, GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW,
+        GetWindowThreadProcessId,
     };
 
     unsafe {
@@ -273,7 +273,7 @@ fn enumerate_all_browser_windows(out: &mut Vec<BrowserContext>) {
 
         // Reorder: foreground browser first
         if foreground_index > 0 && foreground_index < out.len() {
-            let mut item = out.remove(foreground_index);
+            let item = out.remove(foreground_index);
             out.insert(0, item);
         }
     }
