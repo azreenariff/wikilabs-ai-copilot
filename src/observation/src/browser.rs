@@ -327,7 +327,7 @@ use windows::Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, TRUE};
 // ── Visible text collection ─────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
-use windows::Win32::UI::WindowsAndMessaging::EnumChildWindows;
+use windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
 
 #[cfg(target_os = "windows")]
 fn collect_visible_text(hwnd: HWND) -> String {
@@ -395,7 +395,6 @@ fn collect_browser_text_recursive(hwnd: HWND, texts: &mut Vec<String>) {
 
     unsafe {
         use windows::Win32::Foundation::HWND as WinHWND;
-        use windows::Win32::UI::WindowsAndMessaging::GetClassNameW;
 
         // Get class name for filtering
         let class_name = get_class_name(hwnd);
