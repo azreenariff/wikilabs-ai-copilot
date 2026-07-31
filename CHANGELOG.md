@@ -1,3 +1,10 @@
+## v1.1.154 — FIX: repair broken screen-capture → vision-analyzer pipeline, remove dead AiGuidanceProvider
+
+- **Fixed screen-capture data flow** — engine was looking for `data_base64` in the event payload but the ScreenCapture provider emitted `data_base64_preview` (a truncated preview string). The field never matched, so `feed_screenshot_to_vision_analyzer()` was never called and the AI never received screenshot analysis. Now the engine downcasts to `ScreenCaptureProvider` directly and reads the full base64 from internal state.
+- **Fixed vision analyzer API endpoint** — default endpoint was `https://openrouter.ai/api/v1` (model list endpoint, no chat completions). Changed to `https://openrouter.ai/api/v1/chat/completions` so vision API calls actually work.
+- **Removed fake `maybe_resize_screenshot`** — the function computed new dimensions but returned the original base64 unchanged, lying about dimensions. Removed entirely since screen capture already scales down.
+- **Removed dead `AiGuidanceProvider`** — a completely separate text-only AI guidance path that used its own API key, model, and config, was disabled by default, and never used the screenshot. Dead code removed.
+
 ## v1.1.153 — FIX: prevent AI hallucinations from system prompt examples and no-screenshot fallback
 
 - **Removed specific technical examples** from proactive guidance system prompt — examples like `systemctl status mysqld`, `nginx -t`, `docker inspect`, `kubectl describe` under \"Speak like a real person - GOOD examples\" were acting as strong priors, causing the AI to hallucinate infrastructure commands when the screenshot showed nothing related

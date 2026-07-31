@@ -54,7 +54,7 @@ impl Default for VisionAnalyzerConfig {
         Self {
             api_key: String::new(),
             model: "anthropic/claude-sonnet-4".to_string(),
-            endpoint: "https://openrouter.ai/api/v1".to_string(),
+            endpoint: "https://openrouter.ai/api/v1/chat/completions".to_string(),
             poll_interval_secs: 15, // Every 15s to balance responsiveness vs cost
             system_prompt: None,
             max_tokens: 1000,
@@ -167,31 +167,6 @@ impl VisionAnalyzerProvider {
         self.state.lock().unwrap().queue_screenshot(data_base64, width, height, focused_window);
     }
 
-    /// Resize the screenshot base64 to a max width to reduce cost and improve AI readability.
-    /// Uses a simple heuristic: if the original width exceeds max, return a reduced version.
-    /// In practice, the caller should pre-scale the screenshot. This is a fallback.
-    fn maybe_resize_screenshot(
-        &self,
-        base64_data: &str,
-        orig_width: u32,
-        orig_height: u32,
-        max_width: u32,
-    ) -> (String, u32, u32) {
-        if orig_width <= max_width {
-            return (base64_data.to_string(), orig_width, orig_height);
-        }
-        // Calculate scale factor and new dimensions
-        let scale = max_width as f64 / orig_width as f64;
-        let new_width = max_width;
-        let new_height = (orig_height as f64 * scale) as u32;
-        // Return the same base64 but with updated dimensions — the AI handles it fine
-        // (OpenRouter vision models accept any resolution)
-        // For a real resize, we'd need an image library, but sending the full base64
-        // with explicit dimension metadata is often sufficient for Claude's vision.
-        // The key win is that the prompt explicitly says to focus on readable content.
-        (base64_data.to_string(), new_width, new_height)
-    }
-
     /// Analyze a screenshot using the Vision AI model.
     async fn analyze_screenshot(&self, screenshot_base64: &str, width: u32, height: u32, focused_window: &str) -> Option<VisionAnalysisResult> {
         let config = self.state.lock().unwrap().vision_config.clone();
@@ -225,9 +200,8 @@ impl VisionAnalyzerProvider {
 
         let system_prompt = config.system_prompt.as_deref().unwrap_or(DEFAULT_VISION_PROMPT);
 
-        // Apply screenshot size reduction if needed
-        let (screenshot_data, _width, _height) =
-            self.maybe_resize_screenshot(screenshot_base64, width, height, config.max_screenshot_width);
+        // Use the screenshot as-is — screen capture already scales down to max_screenshot_width
+        let (screenshot_data, _width, _height) = (screenshot_base64.to_string(), width, height);
 
         // Build the message with the screenshot
         let content = vec![

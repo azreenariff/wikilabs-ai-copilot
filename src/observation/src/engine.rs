@@ -401,16 +401,24 @@ impl ObservationEngine {
                     }
                 }
                 ProviderType::ScreenCapture => {
-                    // Feed screenshot to vision analyzer if available
-                    if let Some(data_base64) = event.payload.data.get("data_base64").and_then(|v| v.as_str()) {
-                        let width = event.payload.data.get("width").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        let height = event.payload.data.get("height").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        let focused_window = event.payload.data
-                            .get("focused_window")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string())
-                            .unwrap_or_else(|| "unknown".to_string());
-                        self.feed_screenshot_to_vision_analyzer(data_base64.to_string(), width, height, focused_window);
+                    // Feed screenshot to vision analyzer — get the full base64 from the
+                    // ScreenCaptureProvider's internal state, not from the event payload
+                    // (which only carries a truncated preview string).
+                    let registry = self.registry.blocking_lock();
+                    for provider in registry.all_providers() {
+                        if provider.provider_type() == ProviderType::ScreenCapture {
+                            if let Some(screen) = provider.as_any().downcast_ref::<crate::screen_capture::ScreenCaptureProvider>() {
+                                if let Some(screenshot) = screen.get_last_screenshot() {
+                                    let focused_window = screenshot.focused_window.clone().unwrap_or_else(|| "unknown".to_string());
+                                    self.feed_screenshot_to_vision_analyzer(
+                                        screenshot.data_base64.clone(),
+                                        screenshot.width,
+                                        screenshot.height,
+                                        focused_window,
+                                    );
+                                }
+                            }
+                        }
                     }
                 }
                 ProviderType::VisionAnalysis if event.event_type == crate::event::EventType::VisionAnalysisResult => {

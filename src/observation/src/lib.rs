@@ -41,7 +41,6 @@ pub mod semantic_analyzer;
 pub mod session_tracker;
 pub mod shell;
 pub mod terminal;
-pub mod ai_guidance;
 pub mod intent_analyzer;
 #[cfg(windows)]
 pub mod cdp_browser;
