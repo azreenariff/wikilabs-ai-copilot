@@ -81,6 +81,13 @@ jobs:
         run: npm ci && npm run build
         working-directory: src/frontend
 
+      - name: Clean old build artifacts
+        run: |
+          rm -rf target/release/bundle/msi
+          rm -rf target/release/bundle/nsis
+          mkdir -p target/release/bundle/msi
+          mkdir -p target/release/bundle/nsis
+
       - name: Build Tauri app (MSI + NSIS)
         run: cargo tauri build --verbose
         working-directory: src-tauri
