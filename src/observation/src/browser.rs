@@ -117,6 +117,8 @@ impl BrowserState {
             state: ProviderState::Disabled,
             lifecycle: ProviderLifecycle::new(),
             last_context: None,
+            #[cfg(target_os = "windows")]
+            last_contexts: None,
         }
     }
 }

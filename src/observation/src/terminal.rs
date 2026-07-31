@@ -352,8 +352,9 @@ mod terminal_windows {
     #[cfg(target_os = "windows")]
     fn get_terminal_child_text(parent_hwnd: &HWND) -> Option<String> {
         use windows::Win32::Foundation::BOOL;
+        use windows::Win32::Foundation::LPARAM;
         use windows::Win32::UI::WindowsAndMessaging::{
-            EnumChildWindows, GetWindowTextLengthW, GetWindowTextW, LPARAM,
+            EnumChildWindows, GetWindowTextLengthW, GetWindowTextW,
         };
 
         let mut all_text: String = String::new();
