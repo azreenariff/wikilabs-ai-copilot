@@ -190,7 +190,7 @@ unsafe extern "system" fn browser_hwnd_callback(hwnd: HWND, lparam: LPARAM) -> B
 /// the one that happens to be on top.
 #[cfg(target_os = "windows")]
 fn enumerate_all_browser_windows(out: &mut Vec<BrowserContext>) {
-    use windows::Win32::Foundation::{TRUE, HWND};
+    use windows::Win32::Foundation::{CloseHandle, HWND};
     use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
     use windows::Win32::System::Threading::{
         OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
