@@ -173,6 +173,17 @@ impl BrowserProvider {
 
 // ── Enumerate ALL browser windows on the system ──────────────────────
 
+/// Callback for EnumWindows — collects HWNDs into a Vec passed via LPARAM.
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn browser_hwnd_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    use windows::Win32::Foundation::{BOOL, TRUE};
+    if !hwnd.0.is_null() {
+        let ptr = lparam.0 as *mut Vec<HWND>;
+        (*ptr).push(hwnd);
+    }
+    TRUE
+}
+
 /// Enumerate all browser windows across ALL processes (not just foreground).
 /// This is critical for detecting browser context when another window (terminal, IDE)
 /// is in the foreground. The AI needs to know about ALL open browser tabs, not just
@@ -193,13 +204,7 @@ fn enumerate_all_browser_windows(out: &mut Vec<BrowserContext>) {
         // Collect all top-level windows first
         let mut hwnds: Vec<HWND> = Vec::new();
         let _ = EnumWindows(
-            Some(|hwnd, lparam: LPARAM| -> BOOL {
-                if !hwnd.0.is_null() {
-                    let ptr = lparam.0 as *mut Vec<HWND>;
-                    (*ptr).push(hwnd);
-                }
-                TRUE
-            }),
+            Some(browser_hwnd_callback),
             LPARAM(&mut hwnds as *mut _ as _),
         );
 

@@ -357,37 +357,44 @@ mod terminal_windows {
             EnumChildWindows, GetWindowTextLengthW, GetWindowTextW,
         };
 
-        let mut all_text: String = String::new();
-        let mut found_any = false;
+        /// Callback for EnumChildWindows — collects child window text via state pointer.
+        unsafe extern "system" fn child_text_callback(
+            child_hwnd: windows::Win32::Foundation::HWND,
+            lparam: windows::Win32::Foundation::LPARAM,
+        ) -> BOOL {
+            use windows::Win32::Foundation::TRUE;
+            let state_ptr = lparam.0 as *mut (String, bool);
+            let state = &mut *state_ptr;
+            let len = GetWindowTextLengthW(child_hwnd);
+            if len == 0 { return TRUE; }
+            let mut buf = vec![0u16; (len + 1) as usize];
+            let text_len = GetWindowTextW(child_hwnd, &mut buf);
+            if text_len > 0 {
+                let text = String::from_utf16_lossy(&buf[..text_len as usize]);
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    if !state.1 {
+                        state.1 = true;
+                    } else {
+                        state.0.push('\n');
+                    }
+                    state.0.push_str(trimmed);
+                }
+            }
+            TRUE
+        }
+
+        let mut state: (String, bool) = (String::new(), false);
 
         unsafe {
             let _ = EnumChildWindows(
                 *parent_hwnd,
-                Some(|child_hwnd, _| -> BOOL {
-                    let len = GetWindowTextLengthW(child_hwnd);
-                    if len == 0 { return TRUE; }
-
-                    let mut buf = vec![0u16; (len + 1) as usize];
-                    let text_len = GetWindowTextW(child_hwnd, &mut buf);
-                    if text_len > 0 {
-                        let text = String::from_utf16_lossy(&buf[..text_len as usize]);
-                        let trimmed = text.trim();
-                        if !trimmed.is_empty() {
-                            if !found_any {
-                                found_any = true;
-                            } else {
-                                all_text.push('\n');
-                            }
-                            all_text.push_str(&trimmed);
-                        }
-                    }
-                    TRUE
-                }),
-                LPARAM(0),
+                Some(child_text_callback),
+                LPARAM(&mut state as *mut _ as _),
             );
         }
 
-        if found_any { Some(all_text) } else { None }
+        if state.1 { Some(state.0) } else { None }
     }
 
     /// Windows window enumeration callback.
