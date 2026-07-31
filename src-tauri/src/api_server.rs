@@ -2057,51 +2057,50 @@ pub fn start_api_server(
                                 .flatten()
                                 .collect();
 
-                            // Build correlated session narrative — lead with browser context (what the engineer is looking at)
-                            let mut session_narrative = String::new();
-                            let has_any_context = !browser_urls.is_empty() || !terminal_cmds.is_empty() || !terminal_outputs.is_empty() || !browser_errors.is_empty() || !browser_visible_texts.is_empty();
-                            if has_any_context {
-                                // Always lead with browser context — this is what the engineer is looking at
-                                if !browser_urls.is_empty() {
-                                    session_narrative.push_str("🔴 BROWSER CONTEXT (HIGH PRIORITY — engineer is looking at this):\n");
-                                    for &url in &browser_urls {
-                                        session_narrative.push_str(&format!("  🌐 URL: {}\n", url));
+                            // ── Text extraction is still computed for ErrorDetector/EvidencePanel ──
+                            // but NOT sent to AI reasoning loop (screenshot is the only data source).
+                            // Keep variables with underscore prefix to avoid unused warnings.
+                            let _session_narrative = || -> String {
+                                let mut narrative = String::new();
+                                let has_any_context = !browser_urls.is_empty() || !terminal_cmds.is_empty() || !terminal_outputs.is_empty() || !browser_errors.is_empty() || !browser_visible_texts.is_empty();
+                                if has_any_context {
+                                    if !browser_urls.is_empty() {
+                                        narrative.push_str("🔴 BROWSER CONTEXT (HIGH PRIORITY):\n");
+                                        for &url in &browser_urls {
+                                            narrative.push_str(&format!("  🌐 URL: {}\n", url));
+                                        }
+                                    }
+                                    if !browser_visible_texts.is_empty() {
+                                        narrative.push_str("  📄 RAW PAGE CONTENT:\n");
+                                        for &text in &browser_visible_texts {
+                                            let display = if text.len() > 3000 { &text[..3000] } else { text };
+                                            narrative.push_str(&format!("    {}\n\n", display.replace('\n', " ")));
+                                        }
+                                    }
+                                    if !browser_errors.is_empty() {
+                                        narrative.push_str("  ⚠️ Pattern-detected errors:\n");
+                                        for &err in &browser_errors {
+                                            narrative.push_str(&format!("    🔴 {}\n", err));
+                                        }
+                                    }
+                                    if !terminal_outputs.is_empty() {
+                                        narrative.push_str("  💻 RAW TERMINAL OUTPUT:\n");
+                                        for &output in &terminal_outputs {
+                                            let display = if output.len() > 5000 { &output[..5000] } else { output };
+                                            narrative.push_str(&format!("    {}\n\n", display));
+                                        }
+                                    }
+                                    if !terminal_cmds.is_empty() {
+                                        narrative.push_str("  💻 Last terminal command:\n");
+                                        for &cmd in &terminal_cmds {
+                                            narrative.push_str(&format!("    > {}\n", cmd));
+                                        }
                                     }
                                 }
-                                // Include FULL raw page text — increase from 500 to 3000 chars so AI can actually analyze content
-                                if !browser_visible_texts.is_empty() {
-                                    session_narrative.push_str("  📄 RAW PAGE CONTENT (full text visible on screen — analyze what's actually there):\n");
-                                    for &text in &browser_visible_texts {
-                                        // Send much more raw text — the AI needs context, not a 500-char snippet
-                                        let display = if text.len() > 3000 { &text[..3000] } else { text };
-                                        session_narrative.push_str(&format!("    {}\n\n", display.replace('\n', " ")));
-                                    }
-                                }
-                                // CRITICAL: Browser errors are the most actionable signal
-                                if !browser_errors.is_empty() {
-                                    session_narrative.push_str("  ⚠️ Pattern-detected errors (for reference):\n");
-                                    for &err in &browser_errors {
-                                        session_narrative.push_str(&format!("    🔴 {}\n", err));
-                                    }
-                                }
-                                // Include raw terminal output (full buffer) so AI can analyze errors, status, any content
-                                if !terminal_outputs.is_empty() {
-                                    session_narrative.push_str("  💻 RAW TERMINAL OUTPUT (full visible terminal buffer — analyze errors, status, any content):\n");
-                                    for &output in &terminal_outputs {
-                                        let display = if output.len() > 5000 { &output[..5000] } else { output };
-                                        session_narrative.push_str(&format!("    {}\n\n", display));
-                                    }
-                                }
-                                // Also include last command line for quick reference
-                                if !terminal_cmds.is_empty() {
-                                    session_narrative.push_str("  💻 Last terminal command:\n");
-                                    for &cmd in &terminal_cmds {
-                                        session_narrative.push_str(&format!("    > {}\n", cmd));
-                                    }
-                                }
-                            }
+                                narrative
+                            }();
 
-                            // Keywords for knowledge/skill matching
+                            // Keywords for knowledge/skill matching (still needed)
                             let keywords_str = events_for_ai.join(" ").to_lowercase();
 
                             // Match against skills and knowledge packs
@@ -2116,7 +2115,11 @@ pub fn start_api_server(
                                 kp.format_for_prompt(&matched_packs).await
                                                             };
 
-                                                            // ── Build AI system prompt ──
+                                                            // ── Clean up: session_narrative is dead code since we send screenshot only ──
+                            // The text extraction pipeline still runs for ErrorDetector/EvidencePanel,
+                            // but we no longer build session_narrative for the AI prompt.
+
+                            // ── Build AI system prompt ──
                                                                                                                         let system_prompt = format!(
                                                                                                                                                                                         "You are Wiki Labs AI Copilot - a helpful teammate who watches what someone is doing and gives proactive, relevant guidance.\n\
                                                                                                                                                                                         ## How you see what the user is doing\n\
@@ -2172,9 +2175,6 @@ pub fn start_api_server(
                                                                                                                                                                                         ## Relevant knowledge (from loaded skill/knowledge packs):\n\
                                                                                                                                                                                         {}\n\
                                                                                                                         \n\
-                                                                                                                                                                                        ## Recent observation events:\n\
-                                                                                                                                                                                        {}\n\
-                                                                                                                        \n\
                                                                                                                                                                                         ## When to STAY QUIET:\n\
                                                                                                                                                                                         If the screenshot shows no errors, no active tasks, and no meaningful activity - then STAY QUIET. Don't give advice for vague activity.\n\
                                                                                                                         \n\
@@ -2182,9 +2182,8 @@ pub fn start_api_server(
                                                                                                                                                                                         If you can connect the dots across what they're doing, do it. Never repeat the same type of suggestion.\"\n\
                                                                                                                         \n\
                                                                                                                                                                                         If you truly can't tell what they're doing, stay quiet or ask a brief question.",
-                                                                                                                                                                                        skill_context,
-                                                                                                                                                                                        events_for_ai.join("\n"),
-                                                                                                                                                                                    );
+                                                                                                                                                                                        skill_context
+                                                            );
 
                             let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
                                 &provider_name, &endpoint, &api_key, &model, max_tokens, 128000
