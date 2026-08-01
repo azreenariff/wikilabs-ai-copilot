@@ -1,7 +1,8 @@
-## v1.1.161 — FIX: SetupWizard "Test Connection" timeout reduced from 75s to 8s for faster failure feedback
+## v1.1.161 — FIX: SetupWizard and Settings page "Test Connection" timeout reduced from 45-75s to 10-16s
 
 - **Reduced `retryFetch` timeout from 25s to 8s** — the wizard was waiting up to 25 seconds per retry attempt, with 3 retries = 75 seconds total before showing an error. Now it's 8s per attempt with 1 retry = 8-16s max.
 - **Reduced `/ready` poll retries in wizard** — the server is already confirmed ready by the time the wizard loads, so only 2 quick retries are needed.
+- **Same fix applied to Settings page** — `retryFetch` in `Settings.tsx` reduced from 3 retries × 15s to 1 retry × 10s. Backend `test_connection` timeout reduced from 20s to 10s to match.
 
 ## v1.1.160 — FIX: startup log file now resets on each launch, removed NSIS hook that didn't build
 

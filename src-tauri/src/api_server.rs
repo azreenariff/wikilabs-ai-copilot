@@ -412,7 +412,7 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
         .http1_only()
         .pool_idle_timeout(std::time::Duration::from_secs(0)) // disable connection pooling
         .pool_max_idle_per_host(0) // no persistent connections
-        .timeout(std::time::Duration::from_secs(20))
+        .timeout(std::time::Duration::from_secs(10))
         .build().unwrap_or_else(|_| reqwest::Client::new());
 
     match client

@@ -51,9 +51,9 @@ function Settings() {
   const retryFetch = async (
     url: string,
     options: RequestInit,
-    maxRetries: number = 3,
-    baseDelay: number = 1000,
-    timeoutMs: number = 15000,
+    maxRetries: number = 1,
+    baseDelay: number = 500,
+    timeoutMs: number = 10000,
   ): Promise<Response> => {
     let lastError: Error | undefined;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
