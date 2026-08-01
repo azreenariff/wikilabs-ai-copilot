@@ -166,24 +166,33 @@ function Settings() {
   async function handleTestConnection() {
     setStatus('Testing...');
     setTestResult('testing');
-    try {
-      const res = await fetch('http://127.0.0.1:1420/api/commands/test_connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ params: settings.ai_provider }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setStatus(data.value ? '✓ Connection successful' : '✗ Connection failed');
-        setTestResult(data.value ? 'success' : 'fail');
-      } else {
-        setStatus(`✗ ${data.error || 'Connection failed'}`);
+    // Use a timeout promise to ensure we don't hang forever
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    fetch('http://127.0.0.1:1420/api/commands/test_connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: settings.ai_provider }),
+      signal: controller.signal,
+    })
+      .then(res => {
+        clearTimeout(timeoutId);
+        return res.json();
+      })
+      .then(data => {
+        if (data.success) {
+          setStatus(data.value ? '✓ Connection successful' : '✗ Connection failed');
+          setTestResult(data.value ? 'success' : 'fail');
+        } else {
+          setStatus(`✗ ${data.error || 'Connection failed'}`);
+          setTestResult('fail');
+        }
+      })
+      .catch(err => {
+        clearTimeout(timeoutId);
+        setStatus(`✗ ${err.message || 'Connection failed — check your provider URL'}`);
         setTestResult('fail');
-      }
-    } catch (e: any) {
-      setStatus(`✗ ${e.message || 'Connection failed — check your provider URL and try again'}`);
-      setTestResult('fail');
-    }
+      });
   }
 
   async function handleRefreshModels() {

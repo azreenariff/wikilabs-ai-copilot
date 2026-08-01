@@ -1,3 +1,8 @@
+## v1.1.168 — FIX: Settings page Test Connection now uses .then() promise chain with 30s AbortController timeout
+
+- **Changed from `await fetch()` to `.then().catch()` promise chain** — the `await` pattern in the WebView2 runtime may have been causing the fetch to hang indefinitely when the backend handler took time to respond. Using `.then().catch()` with an explicit `AbortController` (30s timeout) ensures the request either completes or fails within 30 seconds.
+- **No other changes** — the AI copilot observation pipeline, startup flow, and all other features remain the same.
+
 ## v1.1.167 — FIX: revert Tauri IPC approach, use simple HTTP fetch without AbortController
 
 - **Reverted Tauri IPC `invoke()` approach** — `window.__TAURI__.invoke()` is not available in Tauri v2's global scope in the same way as v1. The error `"ee.invoke is not a function"` occurred because `__TAURI__` exists but `invoke` is not a direct property on it.
