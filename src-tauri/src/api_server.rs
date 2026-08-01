@@ -1675,20 +1675,8 @@ pub fn start_api_server(
         if let Ok(rt) = rt {
             println!("[API] >>> Tokio multi-threaded runtime created OK");
             tracing::info!("[API] >>> Tokio multi-threaded runtime created OK");
-            // Initialize knowledge packs inside the tokio runtime
-            if let Some(ref kdir_path) = kdir_str {
-                info!(dir = %kdir_path, "Loading knowledge packs");
-                let panel = KnowledgePanel::instance();
-                let kdir = kdir_path.clone();
-                rt.block_on(async {
-                    if let Err(e) = panel.initialize(&kdir).await {
-                        error!(error = %e, "Failed to load knowledge packs");
-                        println!("[API] >>> Knowledge packs load FAILED: {}", e);
-                    } else {
-                        println!("[API] >>> Knowledge packs loaded OK");
-                    }
-                });
-            }
+            // Knowledge packs are loaded AFTER the server starts listening
+            // (see the axum::serve block below). This avoids blocking startup.
 
             // Initialize observation engine — providers already registered in main.rs
             // via observation::init_observation_engine(). We reuse the shared engine here.

@@ -1,3 +1,13 @@
+## v1.1.156 — Startup overhaul: lifecycle logging, self-diagnostic HTML, removed 3s sleep + duplicate knowledge pack load, consolidated preflight
+
+- **Added [LIFECYCLE] logging throughout startup** — every phase in `main.rs` (setup hook, AppState creation, observation engine spawn, API server thread) now logs with `[LIFECYCLE]` prefix. Frontend logs use `[UI]` prefix. API server logs use `[API]` prefix.
+- **Self-diagnostic HTML page** — `index.html` now includes an inline script that shows an error message after 10 seconds if React never mounts (`window.__react_ready__`), turning blank screens into informative error pages.
+- **Removed 3-second startup sleep** — the `setup()` hook no longer sleeps waiting for the observation engine. Both engines run independently. The API server handles missing events gracefully.
+- **Removed duplicate knowledge pack load** — knowledge packs were being loaded TWICE: once before the TCP listener bound (blocking startup), and once after. Removed the pre-bind duplicate.
+- **Consolidated preflight checks** — `App.tsx` no longer runs its own redundant preflight check. The single `/ready` poll + settings fetch is sufficient; `PreflightCheck` fetches its own results.
+- **Improved frontend diagnostics** — `main.tsx` logs Tauri API availability and root element presence. All frontend logs use structured `[UI]` prefix.
+- **Added shutdown logging** — `main.rs` logs when `tauri::Builder::run()` exits.
+
 ## v1.1.155 — FIX: Windows log path now uses %APPDATA%, removed orphaned settings store, added startup diagnostics
 
 - **Fixed Windows log path** — was using `$XDG_DATA_HOME` (Linux-only env var) which produced an invalid path on Windows (`C:\Users\user/.local/share/...`). Now uses `%APPDATA%/wikilabs-ai-copilot/logs` on Windows.

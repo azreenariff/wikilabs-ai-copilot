@@ -8,6 +8,29 @@
       html, body, #root { height: 100%; margin: 0; }
       body { font-family: sans-serif; background: #0f0f23; color: #a1a1aa; }
     </style>
+    <script>
+      // ── Self-diagnostic: if WebView2 loaded this page but React never mounts,
+      //     show an error message after 10s instead of a blank screen ──
+      window.__startup_diagnostic = setTimeout(() => {
+        if (!window.__react_ready__) {
+          var root = document.getElementById('root');
+          if (root) {
+            root.innerHTML =
+              '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;padding:20px;text-align:center;background:#0f0f23;color:#a1a1aa;font-family:sans-serif">' +
+              '<div style="font-size:48px;margin-bottom:16px">⚠️</div>' +
+              '<h2 style="font-size:18px;color:#e4e4e7;margin-bottom:8px">Application did not load</h2>' +
+              '<p style="font-size:13px;max-width:400px;line-height:1.5">' +
+              'The React frontend failed to mount within 10 seconds. ' +
+              'This usually means the WebView2 renderer is running but the JavaScript bundle failed to execute. ' +
+              'Check the log file for errors.' +
+              '</p>' +
+              '<button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;border-radius:6px;border:1px solid #6366f1;background:transparent;color:#6366f1;font-size:14px;cursor:pointer">Reload</button>' +
+              '</div>';
+          }
+        }
+      }, 10000);
+      console.log('[DIAG] Self-diagnostic installed — timeout 10s for React mount');
+    </script>
   </head>
   <body>
     <div id="root"></div>

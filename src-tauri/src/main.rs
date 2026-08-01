@@ -831,17 +831,18 @@ fn main() {
         })
         .setup(move |app| {
             let state_setup_start = Instant::now();
+            info!("[LIFECYCLE] setup() hook entered — creating AppState");
             let state = AppState::new(app.handle().clone())?;
             let state_time = state_setup_start.elapsed();
             info!(
-                "Application state initialized in {} µs",
+                "[LIFECYCLE] AppState initialized in {} µs",
                 state_time.as_micros()
             );
 
             // Construct config path for API server persistence
             let data_dir = app.handle().path().app_data_dir()?;
             let config_path = data_dir.join("settings.json");
-            tracing::info!(path = %config_path.display(), "Wiring config path to API server");
+            tracing::info!("[LIFECYCLE] Config path: {}", config_path.display());
 
             // Start the HTTP API server — NOW OUTSIDE the setup hook to avoid WebView2 conflicts
             // FIX #3: Previously this was in the setup hook, which caused "Access is denied"
@@ -858,23 +859,21 @@ fn main() {
                 .map(|rd| rd.join("knowledge"))
                 .ok();
 
-            // Clone app_handle BEFORE the thread spawn to avoid capturing &mut tauri::App
-            let app_handle_for_thread = app.handle().clone();
-            let skills_path_thread = skills_path.clone();
-            let knowledge_path_thread = knowledge_path.clone();
-
+            // Spawn observation engine on its own thread (non-blocking)
+            let obs_app_handle = app.handle().clone();
             std::thread::spawn(move || {
+                info!("[LIFECYCLE] Observation engine thread started");
                 let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
                 rt.block_on(async {
                     let engine = observation::init_observation_engine().await;
+                    info!("[LIFECYCLE] Observation engine initialized");
                     observation::start_observation_engine(engine).await;
                 });
             });
 
-            // Wait for the observation engine to initialize before starting the API server.
-            // The API server's event drain needs get_event_receiver() to return Some.
-            std::thread::sleep(std::time::Duration::from_secs(3));
-            tracing::info!("[MAIN] Observation engine initialization wait complete — now starting API server");
+            // No longer wait 3s for observation engine — it runs independently.
+            // The API server handles missing events gracefully (returns empty).
+            info!("[LIFECYCLE] Spawning API server thread (no delay)");
 
             // Clone app_handle BEFORE the thread spawn to avoid capturing &mut tauri::App
             let app_handle_for_thread = app.handle().clone();
@@ -882,19 +881,18 @@ fn main() {
             let knowledge_path_thread = knowledge_path.clone();
 
             std::thread::spawn(move || {
-                // Diagnostic marker: thread has started
-                tracing::info!("[MAIN] API server thread spawned — calling start_api_server(port=1420)");
+                info!("[LIFECYCLE] API server thread spawned — calling start_api_server(port=1420)");
                 println!("=== [Wiki Labs] Starting API server on port 1420 ===");
                 api_server::set_shared_app_handle(app_handle_for_thread.clone());
-                tracing::info!("[MAIN] set_shared_app_handle done");
+                info!("[LIFECYCLE] set_shared_app_handle done");
                 match api_server::start_api_server(1420, Some(config_path_clone), skills_path_thread, knowledge_path_thread, Some(Arc::new(app_handle_for_thread))) {
                     Ok(_) => {
-                        tracing::info!("[MAIN] API server started successfully in background thread");
+                        info!("[LIFECYCLE] API server started successfully in background thread");
                         println!("=== [Wiki Labs] API server STARTED OK ===");
                         *api_state_clone.lock().unwrap() = Some(true);
                     }
                     Err(e) => {
-                        tracing::error!("[MAIN] Failed to start API server: {}", e);
+                        error!("[LIFECYCLE] Failed to start API server: {}", e);
                         println!("=== [Wiki Labs] API server FAILED: {} ===", e);
                         *api_state_clone.lock().unwrap() = None;
                     }
@@ -1026,4 +1024,5 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+    info!("[LIFECYCLE] Tauri run() exited — application shutting down");
 }
