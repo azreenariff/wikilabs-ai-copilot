@@ -44,35 +44,6 @@ function Settings() {
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [testResult, setTestResult] = useState<'idle' | 'testing' | 'success' | 'fail'>('idle');
-
-  // Retry helper: retry a fetch with backoff, useful when the API server
-  // hasn't finished initializing yet (tokio runtime + knowledge packs take a few seconds).
-  // Each individual fetch attempt has a timeout to prevent hanging indefinitely.
-  const retryFetch = async (
-    url: string,
-    options: RequestInit,
-    maxRetries: number = 1,
-    baseDelay: number = 500,
-    timeoutMs: number = 10000,
-  ): Promise<Response> => {
-    let lastError: Error | undefined;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        const res = await fetch(url, { ...options, signal: controller.signal });
-        clearTimeout(timeoutId);
-        return res;
-      } catch (e: any) {
-        clearTimeout(timeoutId);
-        lastError = e;
-        if (attempt < maxRetries) {
-          await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
-        }
-      }
-    }
-    throw lastError!;
-  };
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
   // Fetch models from the endpoint's /v1/models API
