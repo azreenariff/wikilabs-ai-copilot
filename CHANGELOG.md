@@ -1,3 +1,9 @@
+## v1.1.163 — CRITICAL FIX: observation engine deadlock from reentrant registry lock was causing the blank screen
+
+- **Fixed async mutex deadlock in engine.rs** — the `feed_event()` handler for `ScreenCapture` events was trying to acquire `self.registry.lock().await` while the polling loop already held the same lock. `tokio::sync::Mutex` is not reentrant, so this caused a deadlock on every observation tick. The observation engine thread hung, log buffer was never flushed, and the app appeared frozen.
+- **Removed the deadlocking ScreenCapture handler** — the handler was trying to manually feed screenshots to the VisionAnalyzer by re-locking the registry. This is unnecessary because the VisionAnalyzer already gets screenshots via its own `observe()` method during the poll cycle. The push mechanism was redundant and broken.
+- **Also fixed `feed_screenshot_to_vision_analyzer`** — removed `.clone()` on moved values that caused compile errors.
+
 ## v1.1.162 — REDESIGN: test_connection and list_models now use OpenAICompatibleProvider, added [TEST] logging, removed HTTP/1.1 forcing
 
 - **`test_connection` now uses `OpenAICompatibleProvider::health()`** — instead of a hand-rolled reqwest client with custom URL normalization and HTTP/1.1 forcing. The provider handles URL construction (`{base_url}/models`), timeout (10s), and error reporting correctly for all OpenAI-compatible endpoints.

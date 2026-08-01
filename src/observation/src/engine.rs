@@ -401,25 +401,11 @@ impl ObservationEngine {
                     }
                 }
                 ProviderType::ScreenCapture => {
-                    // Feed screenshot to vision analyzer — get the full base64 from the
-                    // ScreenCaptureProvider's internal state, not from the event payload
-                    // (which only carries a truncated preview string).
-                    let registry = self.registry.lock().await;
-                    for provider in registry.all_providers() {
-                        if provider.provider_type() == ProviderType::ScreenCapture {
-                            if let Some(screen) = provider.as_any().downcast_ref::<crate::screen_capture::ScreenCaptureProvider>() {
-                                if let Some(screenshot) = screen.get_last_screenshot() {
-                                    let focused_window = screenshot.focused_window.clone().unwrap_or_else(|| "unknown".to_string());
-                                    self.feed_screenshot_to_vision_analyzer(
-                                        screenshot.data_base64.clone(),
-                                        screenshot.width,
-                                        screenshot.height,
-                                        focused_window,
-                                    ).await;
-                                }
-                            }
-                        }
-                    }
+                    // Screenshots are handled by the vision analyzer's own poll cycle.
+                    // No action needed here — the provider stores screenshots internally
+                    // and the VisionAnalyzer accesses them via its own observe() method.
+                    // We must NOT try to acquire the registry lock here because the
+                    // polling loop already holds it (would deadlock).
                 }
                 ProviderType::VisionAnalysis if event.event_type == crate::event::EventType::VisionAnalysisResult => {
                     // Phase 3: Capture VisionAnalysisResult event and feed to IntentAnalyzer
@@ -766,6 +752,9 @@ impl ObservationEngine {
         height: u32,
         focused_window: String,
     ) {
+        // Queue the screenshot directly to the VisionAnalyzer provider.
+        // We get the registry lock briefly to find the provider, queue,
+        // and release — no reentrant deadlock since we only lock once.
         let registry = self.registry.lock().await;
         for provider in registry.all_providers() {
             if provider.provider_type() == ProviderType::VisionAnalysis {
@@ -775,6 +764,7 @@ impl ObservationEngine {
                 }
             }
         }
+        // Registry lock released here
     }
 
     /// Get the most recently captured screenshot from the screen capture provider.
