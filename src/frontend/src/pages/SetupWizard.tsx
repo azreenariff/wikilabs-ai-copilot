@@ -66,76 +66,42 @@ function SetupWizard() {
     setError('');
     setFetchedModels([]);
     try {
-      // Pre-check: verify backend is reachable and ready before attempting list_models.
-      // Uses retryFetch so it survives early startup when the API server
-      // hasn't bound to the port yet (the server can take ~30s to init).
-      const readyRes = await retryFetch(
-        'http://127.0.0.1:1420/ready',
-        { method: 'GET' },
-        2,   // max 2 retries (server should already be ready)
-        500, // start with 500ms delay
-      );
-      let readyData = await readyRes.json();
-      if (!readyData.ready) {
-        // Server is up but not fully initialized yet — retry a few more times
-        let attempts = 0;
-        while (!readyData.ready && attempts < 6) {
-          await new Promise(r => setTimeout(r, 1500));
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const retryRes = await fetch('http://127.0.0.1:1420/ready', {
-              signal: controller.signal,
-              headers: { Connection: 'close' },
-            });
-            clearTimeout(timeoutId);
-            const retryData = await retryRes.json();
-            if (retryData.ready) {
-              readyData = retryData;
-              break;
-            }
-            readyData = retryData;
-          } catch {
-            // Timeout or network error — continue polling
-          }
-          attempts++;
-        }
-        if (!readyData.ready) {
-          setTestResult('fail');
-          setError('API server is still initializing — please wait a moment and try again');
-          return;
-        }
-      }
-
-      const res = await retryFetch(
-        'http://127.0.0.1:1420/api/commands/list_models',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
+      // Use Tauri IPC invoke for the test connection — this bypasses the HTTP layer
+      // and calls the native Rust command directly. More reliable than HTTP fetch.
+      const result: any = await (window as any).__TAURI__?.invoke('test_connection', {
+        config: {
+          name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
+          endpoint,
+          api_key: apiKey,
+          model: model || 'gpt-4o',
+          max_tokens: parseInt(maxTokens) || 4096,
+          context_window: parseInt(contextWindow) || 128000,
         },
-        1,   // max 1 retry (backend already has 5s timeout)
-        500, // start with 500ms delay
-      );
-      const data = await res.json();
-      if (data.success && Array.isArray(data.value) && data.value.length > 0) {
-        setFetchedModels(data.value);
-        setModel(data.value[0]);
+      });
+      if (result) {
         setTestResult('success');
-      } else if (data.success && Array.isArray(data.value) && data.value.length === 0) {
-        setFetchedModels([]);
-        setTestResult('success');
+        // On success, try to fetch models too via Tauri IPC
+        try {
+          const modelList: string[] = await (window as any).__TAURI__?.invoke('list_models', {
+            config: {
+              endpoint,
+              api_key: apiKey,
+            },
+          });
+          if (modelList && modelList.length > 0) {
+            setFetchedModels(modelList);
+            setModel(modelList[0]);
+          }
+        } catch {
+          // Model listing is optional — user can type model manually
+        }
       } else {
         setTestResult('fail');
-        setError(data.error || 'Connection failed — check URL and key');
+        setError('Connection failed — check URL and key');
       }
     } catch (e: any) {
       setTestResult('fail');
-      if (e.name === 'AbortError') {
-        setError('Test timed out after 15s — the endpoint may be slow or unreachable');
-      } else {
-        setError('Cannot reach backend');
-      }
+      setError(e.message || 'Connection failed — check URL and key');
     }
   };
 

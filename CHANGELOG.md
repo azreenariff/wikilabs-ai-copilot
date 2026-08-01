@@ -1,3 +1,9 @@
+## v1.1.166 — REDESIGN: Test Connection and SetupWizard now use Tauri IPC instead of HTTP API server
+
+- **Test Connection now uses Tauri IPC `invoke()`** — both the Settings page and SetupWizard now call `window.__TAURI__.invoke('test_connection', ...)` instead of making an HTTP `fetch()` to the API server. This bypasses the HTTP layer entirely, avoiding AbortController timeouts, network stack issues, and the API server's request handling overhead.
+- **SetupWizard simplified** — removed the redundant `/ready` polling and `list_models` HTTP calls. Now uses Tauri IPC for test connection and model listing directly, which is faster and more reliable.
+- **The AI copilot observation pipeline is untouched** — screenshots still flow from ScreenCapture → VisionAnalyzer via the observation engine's poll cycle.
+
 ## v1.1.165 — FIX: Test Connection now uses direct fetch instead of retryFetch, added 15s timeout to provider health check
 
 - **Settings page "Test Connection" now uses direct fetch** — removed the `retryFetch` wrapper that had a 10s timeout which was aborting before the backend could respond (backend's default reqwest timeout was 30s). Now uses a simple fetch with 35s timeout to match the backend.

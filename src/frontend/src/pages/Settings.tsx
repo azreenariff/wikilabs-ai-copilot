@@ -167,27 +167,28 @@ function Settings() {
     setStatus('Testing...');
     setTestResult('testing');
     try {
-      // Use a simple fetch without retryFetch — the API server is localhost
-      // and always responsive. The backend handles the actual LLM endpoint timeout.
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 35000);
-      const res = await fetch('http://127.0.0.1:1420/api/commands/test_connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ params: settings.ai_provider }),
-        signal: controller.signal,
+      // Use Tauri IPC invoke for the test connection — this bypasses the API server
+      // HTTP layer entirely and uses the native Rust command directly.
+      // This is more reliable than an HTTP fetch to localhost.
+      const result: any = await (window as any).__TAURI__?.invoke('test_connection', {
+        config: {
+          name: settings.ai_provider.name,
+          endpoint: settings.ai_provider.endpoint,
+          api_key: settings.ai_provider.api_key,
+          model: settings.ai_provider.model,
+          max_tokens: settings.ai_provider.max_tokens,
+          context_window: settings.ai_provider.context_window,
+        },
       });
-      clearTimeout(timeoutId);
-      const data = await res.json();
-      if (data.success) {
-        setStatus(data.value ? '✓ Connection successful' : '✗ Connection failed');
-        setTestResult(data.value ? 'success' : 'fail');
+      if (result) {
+        setStatus('✓ Connection successful');
+        setTestResult('success');
       } else {
-        setStatus(`✗ ${data.error || 'Connection failed'}`);
+        setStatus('✗ Connection failed');
         setTestResult('fail');
       }
-    } catch {
-      setStatus('⚠ Cannot reach endpoint — check your provider URL and try again');
+    } catch (e: any) {
+      setStatus(`✗ ${e.message || 'Connection failed — check your provider URL and try again'}`);
       setTestResult('fail');
     }
   }
