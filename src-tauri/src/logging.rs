@@ -125,6 +125,23 @@ fn init_logging_inner(settings: &LoggingSettings, log_dir: &Path) -> Result<(), 
         }
     }
 
+    // Truncate the current daily log file so each launch starts fresh
+    // (tracing_appender appends by default, which causes confusion when
+    // users see old log entries mixed with new ones)
+    let current_log = log_dir.join("wikilabs-copilot.log");
+    if current_log.exists() {
+        // Rename old log to include date, so it's rotated out
+        let yesterday = chrono::Utc::now() - chrono::Duration::days(1);
+        let rotated_name = format!("wikilabs-copilot.{}.log", yesterday.format("%Y-%m-%d"));
+        let rotated_path = log_dir.join(&rotated_name);
+        if !rotated_path.exists() {
+            let _ = fs::rename(&current_log, &rotated_path);
+        } else {
+            // If rotated file already exists, just truncate the current one
+            let _ = fs::write(&current_log, "");
+        }
+    }
+
     // Create environment filter from config
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&settings.level));

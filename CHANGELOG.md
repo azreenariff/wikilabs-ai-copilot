@@ -1,7 +1,11 @@
-## v1.1.159 — FIX: removed PreflightCheck from startup flow (caused UI hang), added NSIS uninstall cleanup hook
+## v1.1.160 — FIX: startup log file now resets on each launch, removed NSIS hook that didn't build
+
+- **Log file resets on each launch** — the current `wikilabs-copilot.log` is renamed to include the date on startup, so each app launch starts with a fresh log file. Old logs are automatically cleaned after 7 days via the existing rotation.
+- **Removed NSIS uninstall hook** — the Tauri v2 installed version doesn't support the `installer-hooks` field in the schema. App data folders (`%APPDATA%\com.wikilabs.copilot\`, `%LOCALAPPDATA%\com.wikilabs.copilot\`) can be manually deleted after uninstall if needed.
+
+## v1.1.159 — FIX: removed PreflightCheck from startup flow (caused UI hang), added startup log rotation
 
 - **Removed PreflightCheck from startup flow** — the `PreflightCheck` component was showing a "Verifying system health" screen that never transitioned because the fetch completed but the 2.5s auto-transition timer could fail if React re-rendered. Now the app goes directly from loading → SetupWizard/main UI with no intermediate check screen, reducing startup time by ~5 seconds.
-- **Added NSIS uninstall cleanup** — new `uninstall-cleanup.nsh` hook removes `%APPDATA%\com.wikilabs.copilot`, `%LOCALAPPDATA%\com.wikilabs.copilot`, and `%APPDATA%\wikilabs-ai-copilot` directories on uninstall, ensuring logs and cached data are cleaned up.
 
 ## v1.1.158 — CRITICAL FIX: panic in observation engine caused blank screen (blocking_lock inside async runtime)
 
