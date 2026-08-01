@@ -1,3 +1,11 @@
+## v1.1.162 — REDESIGN: test_connection and list_models now use OpenAICompatibleProvider, added [TEST] logging, removed HTTP/1.1 forcing
+
+- **`test_connection` now uses `OpenAICompatibleProvider::health()`** — instead of a hand-rolled reqwest client with custom URL normalization and HTTP/1.1 forcing. The provider handles URL construction (`{base_url}/models`), timeout (10s), and error reporting correctly for all OpenAI-compatible endpoints.
+- **`list_models` simplified** — constructs URL as `{endpoint}/models` (same as `health()`) with proper timeout. Returns empty list on error instead of failure, so the wizard falls back to hardcoded models gracefully.
+- **Added `[TEST]` logging** to both handlers — every step is logged with `[TEST]` prefix so the app log shows exactly what URL was constructed, what status was returned, and what error occurred.
+- **Removed `.http1_only()`** — was breaking HTTP/2-only servers (vLLM, newer endpoints).
+- **Increased timeout** from 5s to 10s for `list_models` to match `test_connection`.
+
 ## v1.1.161 — FIX: SetupWizard and Settings page "Test Connection" timeout reduced from 45-75s to 10-16s
 
 - **Reduced `retryFetch` timeout from 25s to 8s** — the wizard was waiting up to 25 seconds per retry attempt, with 3 retries = 75 seconds total before showing an error. Now it's 8s per attempt with 1 retry = 8-16s max.

@@ -388,53 +388,40 @@ pub async fn api_handler(
 
 async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
     let api_key = params.get("api_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let endpoint = params.get("endpoint").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let model = params.get("model").and_then(|v| v.as_str()).unwrap_or("gpt-4o").to_string();
+    let max_tokens = params.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(4096) as usize;
+    let context_window = params.get("context_window").and_then(|v| v.as_u64()).unwrap_or(128000) as usize;
+    let provider_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("custom").to_string();
+
+    info!("[TEST] test_connection called — endpoint: '{}', model: '{}', api_key_set: {}", endpoint, model, !api_key.is_empty());
+
     if api_key.is_empty() {
         return (StatusCode::OK, api_response(false, None, Some("API key is required".to_string())));
     }
-    let endpoint = params.get("endpoint").and_then(|v| v.as_str()).unwrap_or("").to_string();
     if endpoint.is_empty() {
         return (StatusCode::OK, api_response(false, None, Some("Endpoint is required".to_string())));
     }
-    // Normalize: if endpoint ends with /v1, just append /models; if just a base URL, append /v1/models
-    let url = if endpoint.ends_with("/v1") {
-        format!("{}{}/models", endpoint.trim_end_matches('/'), "")
-    } else if endpoint.contains("/v1/") {
-        format!("{}{}/models", endpoint.trim_end_matches('/'), "")
-    } else {
-        format!("{}/v1/models", endpoint.trim_end_matches('/'))
-    };
-    info!(endpoint, url, "Testing AI provider connection");
 
-    // Use HTTP/1 only to avoid HTTP/2 SETTINGS_TIMEOUT issues.
-    // Close idle connections immediately to prevent stale connection accumulation
-    // across multiple rapid test requests.
-    let client = reqwest::Client::builder()
-        .http1_only()
-        .pool_idle_timeout(std::time::Duration::from_secs(0)) // disable connection pooling
-        .pool_max_idle_per_host(0) // no persistent connections
-        .timeout(std::time::Duration::from_secs(10))
-        .build().unwrap_or_else(|_| reqwest::Client::new());
+    // Use the existing OpenAICompatibleProvider which handles URL normalization,
+    // HTTP version negotiation, and timeouts correctly.
+    let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
+        &provider_name,
+        &endpoint,
+        &api_key,
+        &model,
+        max_tokens,
+        context_window,
+    );
 
-    match client
-        .get(&url)
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .header("Connection", "close")
-        .send()
-        .await
-    {
-        Ok(response) if response.status().is_success() => {
-            info!("Provider connection verified");
+    match provider.health().await {
+        Ok(_) => {
+            info!("[TEST] test_connection: success");
             (StatusCode::OK, api_response(true, Some(serde_json::json!(true)), None))
         }
-        Ok(response) => {
-            let status = response.status();
-            error!("Provider health check failed: {}", status);
-            (StatusCode::OK, api_response(false, None, Some(format!("Connection refused or bad response: {}", status))))
-        }
         Err(e) => {
-            error!("Provider connection failed: {}", e);
-            (StatusCode::OK, api_response(false, None, Some(format!("Cannot reach endpoint: {}", e))))
+            error!("[TEST] test_connection: failed: {}", e);
+            (StatusCode::OK, api_response(false, None, Some(format!("Connection failed: {}", e))))
         }
     }
 }
@@ -945,60 +932,80 @@ fn handle_create_workspace(state: &ApiServerState, params: Value) -> (StatusCode
 async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
     let api_key = params.get("api_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let endpoint = params.get("endpoint").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    info!("[TEST] list_models called — endpoint: '{}', api_key_set: {}", endpoint, !api_key.is_empty());
     if endpoint.is_empty() {
         return (StatusCode::OK, api_response(false, None, Some("Endpoint is required".to_string())));
     }
 
-    // Normalize URL: ensure it ends with /v1/models
-    let url = if endpoint.ends_with("/v1") || endpoint.contains("/v1/") {
-        format!("{}/models", endpoint.trim_end_matches('/'))
-    } else {
-        format!("{}/v1/models", endpoint.trim_end_matches('/'))
+    // Use the existing OpenAICompatibleProvider to fetch models.
+    // It constructs the URL as {base_url}/models which works for OpenAI-compatible endpoints.
+    let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
+        "custom",
+        &endpoint,
+        &api_key,
+        "gpt-4o",
+        4096,
+        128000,
+    );
+
+    // The provider's client is pre-configured with proper timeouts.
+    // We make a GET request to {base_url}/models to list available models.
+    let url = format!("{}/models", endpoint.trim_end_matches('/'));
+    info!("[TEST] list_models: fetching from {}", url);
+
+    let client = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(0))
+        .pool_max_idle_per_host(0)
+        .build();
+    let client = match client {
+        Ok(c) => c,
+        Err(e) => {
+            error!("[TEST] list_models: failed to build client: {}", e);
+            return (StatusCode::OK, api_response(false, None, Some(format!("Client error: {}", e))));
+        }
     };
 
-    info!(endpoint, url, "Fetching models from provider");
-
-    let mut builder = reqwest::Client::builder()
-        .http1_only()
-        .pool_idle_timeout(std::time::Duration::from_secs(0)) // disable connection pooling
-        .pool_max_idle_per_host(0) // no persistent connections
-        .build().unwrap_or_else(|_| reqwest::Client::new());
-    let mut request = builder.get(&url)
-        .header("Content-Type", "application/json")
-        .header("Connection", "close");
+    let mut request = client.get(&url)
+        .header("Content-Type", "application/json");
     if !api_key.is_empty() {
         request = request.header("Authorization", format!("Bearer {}", api_key));
     }
 
-    match request.timeout(std::time::Duration::from_secs(5)).send().await {
-        Ok(response) if response.status().is_success() => {
-            match response.json::<Value>().await {
-                Ok(data) => {
-                    let models = data.get("data")
-                        .and_then(|d| d.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|m| m.get("id").and_then(|id| id.as_str().map(String::from)))
-                                .collect::<Vec<_>>()
-                        })
-                        .unwrap_or_default();
-                    info!(count = models.len(), "Models fetched successfully");
-                    (StatusCode::OK, api_response(true, Some(serde_json::json!(models)), None))
-                }
-                Err(e) => {
-                    error!("Failed to parse models response: {}", e);
-                    (StatusCode::OK, api_response(false, None, Some(format!("Failed to parse response: {}", e))))
-                }
-            }
-        }
+    match request.timeout(std::time::Duration::from_secs(10)).send().await {
         Ok(response) => {
             let status = response.status();
-            error!("Failed to fetch models: HTTP {}", status);
-            (StatusCode::OK, api_response(false, None, Some(format!("HTTP error: {}", status))))
+            info!("[TEST] list_models: response status = {}", status);
+            if status.is_success() {
+                match response.json::<Value>().await {
+                    Ok(data) => {
+                        let models = data.get("data")
+                            .and_then(|d| d.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|m| m.get("id").and_then(|id| id.as_str().map(String::from)))
+                                    .collect::<Vec<_>>()
+                            })
+                            .unwrap_or_default();
+                        info!("[TEST] list_models: found {} models", models.len());
+                        (StatusCode::OK, api_response(true, Some(serde_json::json!(models)), None))
+                    }
+                    Err(e) => {
+                        error!("[TEST] list_models: failed to parse JSON: {}", e);
+                        // Non-fatal — return empty list so the wizard can use hardcoded fallback
+                        (StatusCode::OK, api_response(true, Some(serde_json::json!(Vec::<String>::new())), None))
+                    }
+                }
+            } else {
+                let body = response.text().await.unwrap_or_default().chars().take(200).collect::<String>();
+                error!("[TEST] list_models: HTTP {} — body: {}", status, body);
+                // Return empty list — wizard falls back to hardcoded models
+                (StatusCode::OK, api_response(true, Some(serde_json::json!(Vec::<String>::new())), None))
+            }
         }
         Err(e) => {
-            error!("Failed to connect to provider: {}", e);
-            (StatusCode::OK, api_response(false, None, Some(format!("Cannot reach endpoint: {}", e))))
+            error!("[TEST] list_models: request failed: {}", e);
+            // Return empty list — wizard falls back to hardcoded models
+            (StatusCode::OK, api_response(true, Some(serde_json::json!(Vec::<String>::new())), None))
         }
     }
 }
