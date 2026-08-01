@@ -10,23 +10,20 @@ import Knowledge from './pages/Knowledge';
 import Activity from './pages/Activity';
 import Settings from './pages/Settings';
 import About from './pages/About';
-import PreflightCheck from './pages/PreflightCheck';
 import './App.css';
 
 export default function App() {
   console.log('[UI] App component rendered');
   const [needsSetup, setNeedsSetup] = useState(true);
-  const [preflightDone, setPreflightDone] = useState(false);
-  const [showingMain, setShowingMain] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState('Initializing...');
-
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     // Total startup timeout: 30 seconds. If everything hangs, this ensures
     // the app never stays on the loading screen forever.
     const totalTimeout = setTimeout(() => {
       console.error('[UI] Total startup timeout reached (30s) — forcing main UI');
       setLoadingPhase('Startup timeout — showing interface anyway');
-      setShowingMain(true);
+      setReady(true);
     }, 30000);
 
     const checkSetup = async () => {
@@ -66,7 +63,7 @@ export default function App() {
         if (!serverReady) {
           console.warn('[UI] Server never became ready. First error:', firstError?.message || firstError);
           setLoadingPhase('Interface ready (server unavailable)');
-          setPreflightDone(true);
+          setReady(true);
           return;
         }
 
@@ -100,9 +97,8 @@ export default function App() {
           }
         }
 
-        // Step 3: Mark preflight as done — the PreflightCheck component will
-        // fetch its own check results async from the backend
-        setPreflightDone(true);
+        // Step 3: Mark as ready — go straight to SetupWizard or main UI
+        setReady(true);
 
         if (settingsData && settingsData.ai_provider?.api_key) {
           console.log('[UI] AI key found, showing main UI');
@@ -132,13 +128,15 @@ export default function App() {
     checkSetup();
   }, []);
 
-  // Show pre-flight check screen briefly, then transition to SetupWizard or main UI
-  if (preflightDone && !showingMain) {
-    return <PreflightCheck onComplete={() => setShowingMain(true)} />;
+  // Preflight done — go straight to SetupWizard or main UI
+  // Skip PreflightCheck component entirely — it adds unnecessary delay
+  // and the backend already verified everything during /ready polling.
+  if (needsSetup) {
+    return <SetupWizard />;
   }
 
-  // Show loading while preflight is running
-  if (!preflightDone) {
+  // Show loading while startup checks run
+  if (!ready) {
     return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',

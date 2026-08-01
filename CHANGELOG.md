@@ -1,3 +1,8 @@
+## v1.1.159 — FIX: removed PreflightCheck from startup flow (caused UI hang), added NSIS uninstall cleanup hook
+
+- **Removed PreflightCheck from startup flow** — the `PreflightCheck` component was showing a "Verifying system health" screen that never transitioned because the fetch completed but the 2.5s auto-transition timer could fail if React re-rendered. Now the app goes directly from loading → SetupWizard/main UI with no intermediate check screen, reducing startup time by ~5 seconds.
+- **Added NSIS uninstall cleanup** — new `uninstall-cleanup.nsh` hook removes `%APPDATA%\com.wikilabs.copilot`, `%LOCALAPPDATA%\com.wikilabs.copilot`, and `%APPDATA%\wikilabs-ai-copilot` directories on uninstall, ensuring logs and cached data are cleaned up.
+
 ## v1.1.158 — CRITICAL FIX: panic in observation engine caused blank screen (blocking_lock inside async runtime)
 
 - **Fixed `blocking_lock()` panic in engine.rs** — the `feed_event()` handler for `ScreenCapture` events used `self.registry.blocking_lock()` which panics with "Cannot block the current thread from within a runtime" because it's called from inside the async polling loop. This panic killed the observation engine thread and caused the blank screen. Changed to async `self.registry.lock().await` and made `feed_event()` and `feed_screenshot_to_vision_analyzer()` async.
