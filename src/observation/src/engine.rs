@@ -178,10 +178,11 @@ impl ObservationEngine {
                 drop(running);
             }
 
-            // Poll all providers
+            // Poll all providers — collect events first, then process them
+            // after releasing the registry lock to avoid reentrant deadlocks.
             let registry = self.registry.lock().await;
             let provider_count = registry.all_providers().len();
-            let mut event_count = 0usize;
+            let mut all_events: Vec<ObservationEvent> = Vec::new();
             let mut _heartbeat_count = 0usize;
 
             tracing::info!(
@@ -214,19 +215,15 @@ impl ObservationEngine {
                         );
 
                         for event in &events {
-                            event_count += 1;
-
-                            // Publish to event bus
+                            // Publish to event bus (safe while holding lock)
                             if let Err(e) = self.event_bus.publish(event.clone()) {
                                 tracing::warn!(
                                     "[ObservationEngine] Failed to publish event: {}",
                                     e
                                 );
                             }
-
-                            // Feed to downstream consumers
-                            self.feed_event(event).await;
                         }
+                        all_events.extend(events);
                     }
                     Err(e) => {
                         tracing::debug!(
@@ -238,8 +235,15 @@ impl ObservationEngine {
                 }
             }
 
+            // Release the registry lock BEFORE feeding events downstream
             drop(registry);
 
+            // Now feed all collected events (safe — no registry lock held)
+            for event in &all_events {
+                self.feed_event(event).await;
+            }
+
+            let event_count = all_events.len();
             if event_count > 0 {
                 tracing::info!(
                     "[ObservationEngine] Poll tick #{} returned {} events — publishing to event bus",
@@ -401,11 +405,29 @@ impl ObservationEngine {
                     }
                 }
                 ProviderType::ScreenCapture => {
-                    // Screenshots are handled by the vision analyzer's own poll cycle.
-                    // No action needed here — the provider stores screenshots internally
-                    // and the VisionAnalyzer accesses them via its own observe() method.
-                    // We must NOT try to acquire the registry lock here because the
-                    // polling loop already holds it (would deadlock).
+                    // Feed screenshot to vision analyzer.
+                    // Safe to acquire the registry lock here because the polling loop
+                    // released it before calling feed_event (see run_loop: drop then feed).
+                    // We queue the screenshot directly to avoid the reentrant lock
+                    // that would happen if we called feed_screenshot_to_vision_analyzer.
+                    let screen_registry = self.registry.lock().await;
+                    for provider in screen_registry.all_providers() {
+                        if provider.provider_type() == ProviderType::ScreenCapture {
+                            if let Some(screen) = provider.as_any().downcast_ref::<crate::screen_capture::ScreenCaptureProvider>() {
+                                if let Some(screenshot) = screen.get_last_screenshot() {
+                                    let focused_window = screenshot.focused_window.clone().unwrap_or_else(|| "unknown".to_string());
+                                    let data = screenshot.data_base64.clone();
+                                    let w = screenshot.width;
+                                    let h = screenshot.height;
+                                    // Release registry lock before queuing to VisionAnalyzer
+                                    drop(screen_registry);
+                                    // Queue the screenshot directly
+                                    self.feed_screenshot_to_vision_analyzer(data, w, h, focused_window).await;
+                                    break; // found it, done
+                                }
+                            }
+                        }
+                    }
                 }
                 ProviderType::VisionAnalysis if event.event_type == crate::event::EventType::VisionAnalysisResult => {
                     // Phase 3: Capture VisionAnalysisResult event and feed to IntentAnalyzer
@@ -745,7 +767,6 @@ impl ObservationEngine {
 
     /// Feed a screenshot from the screen capture provider to the vision analyzer.
     /// This is called by feed_event() when a ScreenshotCaptured event is received.
-    #[allow(dead_code)]
     async fn feed_screenshot_to_vision_analyzer(
         &self,
         data_base64: String,

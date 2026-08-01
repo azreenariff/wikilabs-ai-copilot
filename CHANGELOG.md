@@ -1,3 +1,8 @@
+## v1.1.164 — FIX: polling loop restructured to release registry lock before feeding events (no deadlock, vision analyzer works)
+
+- **Restructured the observation polling loop** — instead of calling `feed_event()` while holding the registry lock (which caused a reentrant deadlock when the ScreenCapture handler tried to lock it again), events are now collected first, the lock is dropped, then events are fed downstream. This preserves the screenshot → vision analyzer pipeline without deadlocking.
+- **ScreenCapture handler restored** — now safely acquires the registry lock (the polling loop has already released it), reads the screenshot data, drops the lock, then queues it to the VisionAnalyzer. The AI copilot will continue to receive screenshots and provide guidance.
+
 ## v1.1.163 — CRITICAL FIX: observation engine deadlock from reentrant registry lock was causing the blank screen
 
 - **Fixed async mutex deadlock in engine.rs** — the `feed_event()` handler for `ScreenCapture` events was trying to acquire `self.registry.lock().await` while the polling loop already held the same lock. `tokio::sync::Mutex` is not reentrant, so this caused a deadlock on every observation tick. The observation engine thread hung, log buffer was never flushed, and the app appeared frozen.
