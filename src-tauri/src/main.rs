@@ -668,11 +668,23 @@ fn open_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
     // The API server (port 1420) serves advice-chat.html at /advice-chat
     let url = tauri::WebviewUrl::External("http://localhost:1420/advice-chat".parse::<url::Url>().map_err(|e| e.to_string())?);
     
+    #[cfg(target_os = "windows")]
     let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
         .title("AI Copilot — Live Advice")
         .inner_size(400.0, 520.0)
         .resizable(true)
-        .decorations(true)  // proper window controls (close, minimize)
+        .decorations(true)
+        .always_on_top(true)
+        .additional_browser_args("--disable-gpu --no-sandbox --disable-software-rasterizer")
+        .build()
+        .map_err(|e| e.to_string())?;
+    
+    #[cfg(not(target_os = "windows"))]
+    let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
+        .title("AI Copilot — Live Advice")
+        .inner_size(400.0, 520.0)
+        .resizable(true)
+        .decorations(true)
         .always_on_top(true)
         .build()
         .map_err(|e| e.to_string())?;

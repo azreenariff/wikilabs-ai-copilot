@@ -1,3 +1,7 @@
+## v1.1.171 — FIX: advice chat window now has GPU-disabling browser args (same fix as main window)
+
+- **Added `additional_browser_args("--disable-gpu --no-sandbox --disable-software-rasterizer")`** to the advice chat `WebviewWindowBuilder` on Windows. The floating advice chat window was blank white because the WebView2 renderer failed to initialize GPU acceleration — the same issue that affected the main window before v1.1.157.
+
 ## v1.1.170 — FIX: SetupWizard Save now uses Tauri IPC instead of HTTP fetch (fixes "Cannot reach backend" error after successful test)
 
 - **SetupWizard "Save & Minimize" now uses Tauri IPC** — the `handleSave` function was using `retryFetch` with HTTP calls to `127.0.0.1:1420` which hung just like the Test Connection did. Now uses `__TAURI_INTERNALS__.invoke()` for `update_settings`, `set_first_run_complete`, `hide_main_window`, and `open_advice_chat_window`.
