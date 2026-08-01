@@ -745,6 +745,7 @@ impl ObservationEngine {
 
     /// Feed a screenshot from the screen capture provider to the vision analyzer.
     /// This is called by feed_event() when a ScreenshotCaptured event is received.
+    #[allow(dead_code)]
     async fn feed_screenshot_to_vision_analyzer(
         &self,
         data_base64: String,
