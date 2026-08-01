@@ -167,24 +167,17 @@ function Settings() {
     setStatus('Testing...');
     setTestResult('testing');
     try {
-      // Use Tauri IPC invoke for the test connection — this bypasses the API server
-      // HTTP layer entirely and uses the native Rust command directly.
-      // This is more reliable than an HTTP fetch to localhost.
-      const result: any = await (window as any).__TAURI__?.invoke('test_connection', {
-        config: {
-          name: settings.ai_provider.name,
-          endpoint: settings.ai_provider.endpoint,
-          api_key: settings.ai_provider.api_key,
-          model: settings.ai_provider.model,
-          max_tokens: settings.ai_provider.max_tokens,
-          context_window: settings.ai_provider.context_window,
-        },
+      const res = await fetch('http://127.0.0.1:1420/api/commands/test_connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: settings.ai_provider }),
       });
-      if (result) {
-        setStatus('✓ Connection successful');
-        setTestResult('success');
+      const data = await res.json();
+      if (data.success) {
+        setStatus(data.value ? '✓ Connection successful' : '✗ Connection failed');
+        setTestResult(data.value ? 'success' : 'fail');
       } else {
-        setStatus('✗ Connection failed');
+        setStatus(`✗ ${data.error || 'Connection failed'}`);
         setTestResult('fail');
       }
     } catch (e: any) {

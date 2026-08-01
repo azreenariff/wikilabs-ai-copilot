@@ -66,38 +66,22 @@ function SetupWizard() {
     setError('');
     setFetchedModels([]);
     try {
-      // Use Tauri IPC invoke for the test connection — this bypasses the HTTP layer
-      // and calls the native Rust command directly. More reliable than HTTP fetch.
-      const result: any = await (window as any).__TAURI__?.invoke('test_connection', {
-        config: {
-          name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
-          endpoint,
-          api_key: apiKey,
-          model: model || 'gpt-4o',
-          max_tokens: parseInt(maxTokens) || 4096,
-          context_window: parseInt(contextWindow) || 128000,
-        },
+      const res = await fetch('http://127.0.0.1:1420/api/commands/list_models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
       });
-      if (result) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.value) && data.value.length > 0) {
+        setFetchedModels(data.value);
+        setModel(data.value[0]);
         setTestResult('success');
-        // On success, try to fetch models too via Tauri IPC
-        try {
-          const modelList: string[] = await (window as any).__TAURI__?.invoke('list_models', {
-            config: {
-              endpoint,
-              api_key: apiKey,
-            },
-          });
-          if (modelList && modelList.length > 0) {
-            setFetchedModels(modelList);
-            setModel(modelList[0]);
-          }
-        } catch {
-          // Model listing is optional — user can type model manually
-        }
+      } else if (data.success && Array.isArray(data.value) && data.value.length === 0) {
+        setFetchedModels([]);
+        setTestResult('success');
       } else {
         setTestResult('fail');
-        setError('Connection failed — check URL and key');
+        setError(data.error || 'Connection failed — check URL and key');
       }
     } catch (e: any) {
       setTestResult('fail');

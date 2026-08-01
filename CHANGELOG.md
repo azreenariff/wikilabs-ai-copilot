@@ -1,3 +1,9 @@
+## v1.1.167 — FIX: revert Tauri IPC approach, use simple HTTP fetch without AbortController
+
+- **Reverted Tauri IPC `invoke()` approach** — `window.__TAURI__.invoke()` is not available in Tauri v2's global scope in the same way as v1. The error `"ee.invoke is not a function"` occurred because `__TAURI__` exists but `invoke` is not a direct property on it.
+- **Back to simple HTTP fetch** — both Settings page and SetupWizard now use `fetch()` without `AbortController` or `retryFetch`. The browser's built-in timeout handles long-running requests. The backend already has a 15s timeout on `health()` calls, so the request will complete in at most ~15 seconds.
+- **No retries, no AbortController** — the simplest possible fetch that either succeeds or fails. The error message tells the user to check their URL and try again.
+
 ## v1.1.166 — REDESIGN: Test Connection and SetupWizard now use Tauri IPC instead of HTTP API server
 
 - **Test Connection now uses Tauri IPC `invoke()`** — both the Settings page and SetupWizard now call `window.__TAURI__.invoke('test_connection', ...)` instead of making an HTTP `fetch()` to the API server. This bypasses the HTTP layer entirely, avoiding AbortController timeouts, network stack issues, and the API server's request handling overhead.
