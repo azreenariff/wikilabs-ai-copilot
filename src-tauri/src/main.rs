@@ -832,6 +832,43 @@ fn main() {
         .setup(move |app| {
             let state_setup_start = Instant::now();
             info!("[LIFECYCLE] setup() hook entered — creating AppState");
+
+            // ── Create the main webview window with additional browser args ──
+            // On Windows, some systems fail to render the WebView2 due to GPU driver issues.
+            // We pass --disable-gpu and --no-sandbox to ensure the renderer starts.
+            // This is especially important for users with older GPUs or virtual machines.
+            #[cfg(target_os = "windows")]
+            {
+                let window_config = &app.config().app.windows[0];
+                let builder = tauri::webview::WebviewWindowBuilder::from_config(app.handle(), window_config)
+                    .map_err(|e| {
+                        error!("[LIFECYCLE] Failed to create WebviewWindowBuilder from config: {}", e);
+                        e
+                    })?;
+                // Apply GPU-disabling browser args to fix blank screen on some Windows systems
+                let builder = builder.additional_browser_args("--disable-gpu --no-sandbox --disable-software-rasterizer");
+                let window = builder.build().map_err(|e| {
+                    error!("[LIFECYCLE] Failed to build main webview window: {}", e);
+                    e
+                })?;
+                info!("[LIFECYCLE] Main webview window created with GPU-disabling args");
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                // Non-Windows: also create the window manually since config has create=false
+                let window_config = &app.config().app.windows[0];
+                let builder = tauri::webview::WebviewWindowBuilder::from_config(app.handle(), window_config)
+                    .map_err(|e| {
+                        error!("[LIFECYCLE] Failed to create WebviewWindowBuilder from config: {}", e);
+                        e
+                    })?;
+                let _window = builder.build().map_err(|e| {
+                    error!("[LIFECYCLE] Failed to build main webview window: {}", e);
+                    e
+                })?;
+                info!("[LIFECYCLE] Main webview window created (non-Windows)");
+            }
+
             let state = AppState::new(app.handle().clone())?;
             let state_time = state_setup_start.elapsed();
             info!(

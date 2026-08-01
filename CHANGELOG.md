@@ -1,3 +1,9 @@
+## v1.1.157 — FIX: WebView2 blank screen on Windows — disable GPU acceleration, manual window creation with browser args
+
+- **Added `--disable-gpu --no-sandbox --disable-software-rasterizer` browser args** to the main webview window on Windows. This fixes the blank white screen caused by WebView2 failing to initialize its GPU renderer on some systems (older GPUs, VMs, remote desktop).
+- **Manual window creation** — set `create: false` in `tauri.conf.json` and now create the main window programmatically in `setup()` via `WebviewWindowBuilder::from_config()`. This allows passing `additional_browser_args()` which is not supported via config file.
+- **Error logging on window creation failure** — if `WebviewWindowBuilder::from_config()` or `build()` fails, the error is logged with `[LIFECYCLE]` prefix so it appears in the app log.
+
 ## v1.1.156 — Startup overhaul: lifecycle logging, self-diagnostic HTML, removed 3s sleep + duplicate knowledge pack load, consolidated preflight
 
 - **Added [LIFECYCLE] logging throughout startup** — every phase in `main.rs` (setup hook, AppState creation, observation engine spawn, API server thread) now logs with `[LIFECYCLE]` prefix. Frontend logs use `[UI]` prefix. API server logs use `[API]` prefix.

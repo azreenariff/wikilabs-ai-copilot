@@ -1,6 +1,6 @@
 {
   "productName": "Wiki Labs AI Copilot",
-  "version": "1.1.156",
+  "version": "1.1.157",
   "identifier": "com.wikilabs.copilot",
   "build": {
     "frontendDist": "../src/frontend/dist"
@@ -20,7 +20,8 @@
         "center": true,
         "decorations": true,
         "transparent": false,
-        "devtools": true
+        "devtools": true,
+        "create": false
       }
     ]
   },
