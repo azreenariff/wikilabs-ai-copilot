@@ -196,16 +196,17 @@ function Settings() {
     setStatus('Testing...');
     setTestResult('testing');
     try {
-      const res = await retryFetch(
-        'http://127.0.0.1:1420/api/commands/test_connection',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ params: settings.ai_provider }),
-        },
-        3,  // max 3 retries
-        1000, // start with 1s delay
-      );
+      // Use a simple fetch without retryFetch — the API server is localhost
+      // and always responsive. The backend handles the actual LLM endpoint timeout.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 35000);
+      const res = await fetch('http://127.0.0.1:1420/api/commands/test_connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: settings.ai_provider }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
       const data = await res.json();
       if (data.success) {
         setStatus(data.value ? '✓ Connection successful' : '✗ Connection failed');
@@ -215,7 +216,7 @@ function Settings() {
         setTestResult('fail');
       }
     } catch {
-      setStatus('⚠ Cannot reach backend — API server may still be starting up, please retry');
+      setStatus('⚠ Cannot reach endpoint — check your provider URL and try again');
       setTestResult('fail');
     }
   }

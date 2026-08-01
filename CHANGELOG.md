@@ -1,3 +1,9 @@
+## v1.1.165 — FIX: Test Connection now uses direct fetch instead of retryFetch, added 15s timeout to provider health check
+
+- **Settings page "Test Connection" now uses direct fetch** — removed the `retryFetch` wrapper that had a 10s timeout which was aborting before the backend could respond (backend's default reqwest timeout was 30s). Now uses a simple fetch with 35s timeout to match the backend.
+- **Added 15s timeout to `OpenAICompatibleProvider::health()`** — the `health()` method used `reqwest::Client::new()` default timeout of 30s. Added an explicit 15s per-request timeout so the test connection responds faster when the endpoint is unreachable.
+- **Better error message** — when the test connection fails, the error now says "Cannot reach endpoint — check your provider URL and try again" instead of the misleading "API server may still be starting up" message.
+
 ## v1.1.164 — FIX: polling loop restructured to release registry lock before feeding events (no deadlock, vision analyzer works)
 
 - **Restructured the observation polling loop** — instead of calling `feed_event()` while holding the registry lock (which caused a reentrant deadlock when the ScreenCapture handler tried to lock it again), events are now collected first, the lock is dropped, then events are fed downstream. This preserves the screenshot → vision analyzer pipeline without deadlocking.

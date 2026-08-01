@@ -366,12 +366,13 @@ impl AiProvider for OpenAICompatibleProvider {
     }
 
     async fn health(&self) -> anyhow::Result<()> {
-        // Health check: ping the models endpoint
+        // Health check: ping the models endpoint with a 15s timeout
         let url = format!("{}/models", self.base_url);
         let response = self
             .client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
+            .timeout(std::time::Duration::from_secs(15))
             .send()
             .await?;
 
