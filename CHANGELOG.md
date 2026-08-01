@@ -1,3 +1,8 @@
+## v1.1.172 — FIX: strip Windows long-path prefix from assets_dir that broke ServeDir for advice chat JS/CSS
+
+- **Stripped `\\?\` prefix from assets directory path** — the `canonicalize()` call on Windows returns paths with the `\\?\` extended-length prefix. When this path was passed to `tower_http::services::ServeDir`, it couldn't find the JS/CSS files, causing the advice chat window to load the HTML but not the frontend bundle — resulting in a blank white window. The prefix is now stripped before passing to ServeDir.
+- **AI copilot observation pipeline untouched** — no changes to engine, vision analyzer, or screenshot flow.
+
 ## v1.1.171 — FIX: advice chat window now has GPU-disabling browser args (same fix as main window)
 
 - **Added `additional_browser_args("--disable-gpu --no-sandbox --disable-software-rasterizer")`** to the advice chat `WebviewWindowBuilder` on Windows. The floating advice chat window was blank white because the WebView2 renderer failed to initialize GPU acceleration — the same issue that affected the main window before v1.1.157.

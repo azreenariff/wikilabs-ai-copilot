@@ -1583,6 +1583,8 @@ pub fn start_api_server(
             String::new()
         })
     };
+    // Strip Windows long-path prefix (\\?\) which can cause issues with ServeDir
+    let assets_dir = assets_dir.trim_start_matches("\\\\?\\").to_string();
     info!(assets_dir = %assets_dir, "Resolved assets directory");
 
     // Initialize knowledge packs from multiple possible locations:
