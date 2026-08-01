@@ -30,37 +30,6 @@ function SetupWizard() {
     setError('');
   };
 
-  // Retry helper: retry a fetch with backoff, useful when the API server
-  // hasn't finished initializing yet (tokio runtime + knowledge packs take a few seconds).
-  // Each individual fetch attempt has a timeout to prevent hanging indefinitely
-  // if the server accepts the connection but never responds.
-  const retryFetch = async (
-    url: string,
-    options: RequestInit,
-    maxRetries: number = 2,
-    baseDelay: number = 500,
-    timeoutMs: number = 8000,
-  ): Promise<Response> => {
-    let lastError: Error | undefined;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        const res = await fetch(url, { ...options, signal: controller.signal });
-        clearTimeout(timeoutId);
-        return res;
-      } catch (e: any) {
-        clearTimeout(timeoutId);
-        lastError = e;
-        if (attempt < maxRetries) {
-          // Exponential backoff: 1s, 2s, 4s
-          await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
-        }
-      }
-    }
-    throw lastError!;
-  };
-
   const handleTestConnection = async () => {
     setTestResult('testing');
     setError('');
@@ -112,78 +81,49 @@ function SetupWizard() {
     setSaving(true);
     setError('');
     try {
-      const res = await retryFetch(
-        'http://127.0.0.1:1420/api/commands/update_settings',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            params: {
-              ai_provider: {
-                name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
-                endpoint,
-                api_key: apiKey,
-                model,
-                max_tokens: parseInt(maxTokens) || 4096,
-                context_window: parseInt(contextWindow) || 128000,
-              },
-            },
-          }),
+      const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      if (!tauriInvoke) {
+        setError('Tauri IPC not available');
+        setSaving(false);
+        return;
+      }
+      // Save settings via Tauri IPC (update_settings Tauri command)
+      await tauriInvoke('update_settings', {
+        settings: {
+          ai_provider: {
+            name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
+            endpoint,
+            api_key: apiKey,
+            model,
+            max_tokens: parseInt(maxTokens) || 4096,
+            context_window: parseInt(contextWindow) || 128000,
+          },
         },
-        3,  // max 3 retries
-        1000, // start with 1s delay
-      );
-      const data = await res.json();
-      if (data.success) {
-        // Explicitly mark first run as complete
-        const firstRunRes = await retryFetch(
-          'http://127.0.0.1:1420/api/commands/set_first_run_complete',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ params: {} }),
-          },
-          2, 2000,
-        );
-        if (!firstRunRes.ok) {
-          // Non-fatal: log but continue
-        }
-        setStep(5);
-        // Minimize main window to tray after setup
-        const hideRes = await retryFetch(
-          'http://127.0.0.1:1420/api/commands/hide_main_window',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ params: {} }),
-          },
-          2, 2000,
-        );
-        if (!hideRes.ok) {
+      });
+      // Mark first run as complete
+      try {
+        await tauriInvoke('set_first_run_complete', {});
+      } catch {
+        // Non-fatal
+      }
+      setStep(5);
+      // Minimize main window
+      try {
+        await tauriInvoke('hide_main_window', {});
+      } catch {
+        // Non-fatal
+      }
+      // Open advice chat after a short delay
+      setTimeout(() => {
+        try {
+          const ah = (window as any).__TAURI_INTERNALS__?.invoke;
+          if (ah) ah('open_advice_chat_window', {});
+        } catch {
           // Non-fatal
         }
-        // Open the floating advice chat window right after setup
-        // Add a small delay to ensure API server is ready
-        setTimeout(async () => {
-          try {
-            await retryFetch(
-              'http://127.0.0.1:1420/api/commands/advice_chat_open',
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ params: {} }),
-              },
-              2, 2000,
-            );
-          } catch {
-            // Non-fatal
-          }
-        }, 1500);
-      } else {
-        setError(data.error || 'Failed to save');
-      }
-    } catch {
-      setError('Cannot reach backend');
+      }, 1500);
+    } catch (e: any) {
+      setError(e.message || 'Cannot reach backend');
     }
     setSaving(false);
   };

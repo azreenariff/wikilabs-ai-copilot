@@ -1,3 +1,8 @@
+## v1.1.170 — FIX: SetupWizard Save now uses Tauri IPC instead of HTTP fetch (fixes "Cannot reach backend" error after successful test)
+
+- **SetupWizard "Save & Minimize" now uses Tauri IPC** — the `handleSave` function was using `retryFetch` with HTTP calls to `127.0.0.1:1420` which hung just like the Test Connection did. Now uses `__TAURI_INTERNALS__.invoke()` for `update_settings`, `set_first_run_complete`, `hide_main_window`, and `open_advice_chat_window`.
+- **Removed unused `retryFetch` from SetupWizard** — no longer needed since all API calls use Tauri IPC.
+
 ## v1.1.169 — REDESIGN: Test Connection now uses Tauri IPC (__TAURI_INTERNALS__.invoke) instead of HTTP fetch
 
 - **Changed from HTTP `fetch()` to Tauri IPC `__TAURI_INTERNALS__.invoke()`** — the root cause of the "Testing..." hang was that the WebView2 runtime's `fetch()` to `http://127.0.0.1:1420` was hanging indefinitely when the backend handler took time to respond (up to 15s for the health check). Tauri IPC bypasses the HTTP layer entirely and calls the Rust `test_connection` command directly — no port, no AbortController, no fetch timeout issues.
