@@ -1,3 +1,8 @@
+## v1.1.161 — FIX: SetupWizard "Test Connection" timeout reduced from 75s to 8s for faster failure feedback
+
+- **Reduced `retryFetch` timeout from 25s to 8s** — the wizard was waiting up to 25 seconds per retry attempt, with 3 retries = 75 seconds total before showing an error. Now it's 8s per attempt with 1 retry = 8-16s max.
+- **Reduced `/ready` poll retries in wizard** — the server is already confirmed ready by the time the wizard loads, so only 2 quick retries are needed.
+
 ## v1.1.160 — FIX: startup log file now resets on each launch, removed NSIS hook that didn't build
 
 - **Log file resets on each launch** — the current `wikilabs-copilot.log` is renamed to include the date on startup, so each app launch starts with a fresh log file. Old logs are automatically cleaned after 7 days via the existing rotation.

@@ -37,9 +37,9 @@ function SetupWizard() {
   const retryFetch = async (
     url: string,
     options: RequestInit,
-    maxRetries: number = 3,
-    baseDelay: number = 1000,
-    timeoutMs: number = 25000,
+    maxRetries: number = 2,
+    baseDelay: number = 500,
+    timeoutMs: number = 8000,
   ): Promise<Response> => {
     let lastError: Error | undefined;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -72,13 +72,12 @@ function SetupWizard() {
       const readyRes = await retryFetch(
         'http://127.0.0.1:1420/ready',
         { method: 'GET' },
-        5,   // max 5 retries
-        1000, // start with 1s delay
+        2,   // max 2 retries (server should already be ready)
+        500, // start with 500ms delay
       );
       let readyData = await readyRes.json();
       if (!readyData.ready) {
         // Server is up but not fully initialized yet — retry a few more times
-        // with a short delay before giving up
         let attempts = 0;
         while (!readyData.ready && attempts < 6) {
           await new Promise(r => setTimeout(r, 1500));
@@ -115,8 +114,8 @@ function SetupWizard() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
         },
-        3,   // max 3 retries
-        1000, // start with 1s delay
+        1,   // max 1 retry (backend already has 5s timeout)
+        500, // start with 500ms delay
       );
       const data = await res.json();
       if (data.success && Array.isArray(data.value) && data.value.length > 0) {
