@@ -1,3 +1,9 @@
+## v1.1.174 — FIX: startup loop bug, main window resized to slim right-side panel for advice chat
+
+- **Fixed startup loop** — "Open Copilot" button on Setup Complete page now navigates to `/advice-chat` instead of calling `window.location.reload()` which restarted the React app and triggered the wizard again.
+- **Main window resized to slim right-side panel** — `open_advice_chat_window` now shows the main window, positions it as a 420px-wide panel on the right side of the screen, and navigates to the advice chat. This creates the desired slim "AI Copilot Live Advice" layout without creating a second WebView2 window.
+- **Show window before navigating** — fixed the order: window is shown and positioned first, then navigated to the advice chat URL.
+
 ## v1.1.173 — FIX: advice chat now navigates the existing main window instead of creating a second WebView2
 
 - **Changed `open_advice_chat_window` to navigate the main window** — instead of creating a separate WebView2 window (which causes blank white windows on systems where WebView2 can't handle multiple instances), the main window is navigated to `http://localhost:1420/advice-chat`. This reuses the existing WebView2 process that's already working correctly.

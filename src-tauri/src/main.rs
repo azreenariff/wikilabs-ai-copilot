@@ -662,14 +662,22 @@ fn open_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
     // on some Windows systems), we navigate the existing main window to the advice chat
     // page served by the API server.
     if let Some(main_window) = app.get_webview_window("main") {
+        // Show the main window first (it was hidden after setup)
+        let _ = main_window.show();
+        let _ = main_window.set_focus();
+        // Position the window as a slim right-side panel
+        if let Ok(Some(m)) = main_window.current_monitor() {
+            let panel_width = 420.0;
+            let height = m.size().height as f64;
+            let x = m.size().width as f64 - panel_width;
+            let _ = main_window.set_position(tauri::PhysicalPosition::new(x as i32, 0));
+            let _ = main_window.set_size(tauri::PhysicalSize::new(panel_width as u32, height as u32));
+        }
         let url = "http://localhost:1420/advice-chat";
         main_window
             .navigate(url.parse::<url::Url>().map_err(|e| e.to_string())?)
             .map_err(|e| e.to_string())?;
         info!("Main window navigated to advice chat: {}", url);
-        // Show the main window (it was hidden after setup)
-        let _ = main_window.show();
-        let _ = main_window.set_focus();
         Ok(())
     } else {
         // Fallback: try to create a separate window (original behavior)

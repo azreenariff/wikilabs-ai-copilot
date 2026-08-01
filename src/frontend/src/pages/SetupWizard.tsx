@@ -368,7 +368,10 @@ function SetupWizard() {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
               The copilot is now running in the background. You can access it from the system tray.
             </p>
-            <button onClick={() => window.location.reload()} style={{
+            <button onClick={() => {
+              // Navigate to advice chat instead of reloading (which causes a loop)
+              window.location.href = 'http://localhost:1420/advice-chat';
+            }} style={{
               padding: '10px 20px', borderRadius: '6px', border: '1px solid var(--color-accent)',
               background: 'transparent', color: 'var(--color-accent)', fontSize: '14px', cursor: 'pointer',
             }}>Open Copilot</button>
