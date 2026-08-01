@@ -1,3 +1,9 @@
+## v1.1.169 — REDESIGN: Test Connection now uses Tauri IPC (__TAURI_INTERNALS__.invoke) instead of HTTP fetch
+
+- **Changed from HTTP `fetch()` to Tauri IPC `__TAURI_INTERNALS__.invoke()`** — the root cause of the "Testing..." hang was that the WebView2 runtime's `fetch()` to `http://127.0.0.1:1420` was hanging indefinitely when the backend handler took time to respond (up to 15s for the health check). Tauri IPC bypasses the HTTP layer entirely and calls the Rust `test_connection` command directly — no port, no AbortController, no fetch timeout issues.
+- **Both Settings page and SetupWizard now use Tauri IPC** — the `__TAURI_INTERNALS__.invoke` API is the standard way to call Rust commands from the frontend in Tauri v2.
+- **AI copilot observation pipeline untouched** — screenshots still flow correctly through the observation engine.
+
 ## v1.1.168 — FIX: Settings page Test Connection now uses .then() promise chain with 30s AbortController timeout
 
 - **Changed from `await fetch()` to `.then().catch()` promise chain** — the `await` pattern in the WebView2 runtime may have been causing the fetch to hang indefinitely when the backend handler took time to respond. Using `.then().catch()` with an explicit `AbortController` (30s timeout) ensures the request either completes or fails within 30 seconds.

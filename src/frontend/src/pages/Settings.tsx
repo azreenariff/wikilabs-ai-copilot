@@ -166,33 +166,37 @@ function Settings() {
   async function handleTestConnection() {
     setStatus('Testing...');
     setTestResult('testing');
-    // Use a timeout promise to ensure we don't hang forever
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    fetch('http://127.0.0.1:1420/api/commands/test_connection', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ params: settings.ai_provider }),
-      signal: controller.signal,
-    })
-      .then(res => {
-        clearTimeout(timeoutId);
-        return res.json();
-      })
-      .then(data => {
-        if (data.success) {
-          setStatus(data.value ? '✓ Connection successful' : '✗ Connection failed');
-          setTestResult(data.value ? 'success' : 'fail');
-        } else {
-          setStatus(`✗ ${data.error || 'Connection failed'}`);
-          setTestResult('fail');
-        }
-      })
-      .catch(err => {
-        clearTimeout(timeoutId);
-        setStatus(`✗ ${err.message || 'Connection failed — check your provider URL'}`);
+    try {
+      // Use Tauri IPC directly via __TAURI_INTERNALS__.invoke() — this bypasses
+      // the HTTP API server entirely and calls the Rust command directly.
+      // This is more reliable than HTTP fetch which can hang in WebView2.
+      const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      if (!tauriInvoke) {
+        setStatus('✗ Tauri IPC not available');
         setTestResult('fail');
+        return;
+      }
+      const result: any = await tauriInvoke('test_connection', {
+        config: {
+          name: settings.ai_provider.name,
+          endpoint: settings.ai_provider.endpoint,
+          api_key: settings.ai_provider.api_key,
+          model: settings.ai_provider.model,
+          max_tokens: settings.ai_provider.max_tokens,
+          context_window: settings.ai_provider.context_window,
+        },
       });
+      if (result) {
+        setStatus('✓ Connection successful');
+        setTestResult('success');
+      } else {
+        setStatus('✗ Connection failed');
+        setTestResult('fail');
+      }
+    } catch (e: any) {
+      setStatus(`✗ ${e.message || 'Connection failed — check your provider URL'}`);
+      setTestResult('fail');
+    }
   }
 
   async function handleRefreshModels() {

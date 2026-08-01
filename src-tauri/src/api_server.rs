@@ -389,12 +389,7 @@ pub async fn api_handler(
 async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
     let api_key = params.get("api_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let endpoint = params.get("endpoint").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let model = params.get("model").and_then(|v| v.as_str()).unwrap_or("gpt-4o").to_string();
-    let max_tokens = params.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(4096) as usize;
-    let context_window = params.get("context_window").and_then(|v| v.as_u64()).unwrap_or(128000) as usize;
-    let provider_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("custom").to_string();
-
-    info!("[TEST] test_connection called — endpoint: '{}', model: '{}', api_key_set: {}", endpoint, model, !api_key.is_empty());
+    info!("[TEST] test_connection called — endpoint: '{}', api_key_set: {}", endpoint, !api_key.is_empty());
 
     if api_key.is_empty() {
         return (StatusCode::OK, api_response(false, None, Some("API key is required".to_string())));
@@ -403,15 +398,48 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
         return (StatusCode::OK, api_response(false, None, Some("Endpoint is required".to_string())));
     }
 
-    // Use the existing OpenAICompatibleProvider which handles URL normalization,
-    // HTTP version negotiation, and timeouts correctly.
+    // Step 1: Try a simple TCP connection to see if the host is reachable at all.
+    // This bypasses HTTP entirely and tells us if the server is up.
+    let url_for_tcp = endpoint.trim_end_matches('/');
+    let host_port = if let Some(rest) = url_for_tcp.strip_prefix("https://") {
+        rest.split('/').next().unwrap_or(rest)
+    } else if let Some(rest) = url_for_tcp.strip_prefix("http://") {
+        rest.split('/').next().unwrap_or(rest)
+    } else {
+        url_for_tcp.split('/').next().unwrap_or(url_for_tcp)
+    };
+
+    let (host, port) = if let Some(idx) = host_port.rfind(':') {
+        let h = &host_port[..idx];
+        let p: u16 = host_port[idx+1..].parse().unwrap_or(80);
+        (h.to_string(), p)
+    } else {
+        // Default port based on scheme
+        let default_port = if endpoint.starts_with("https://") { 443 } else { 80 };
+        (host_port.to_string(), default_port)
+    };
+
+    info!("[TEST] TCP check: host='{}' port={}", host, port);
+    match tokio::net::TcpStream::connect((host.as_str(), port)).await {
+        Ok(_) => info!("[TEST] TCP connection succeeded"),
+        Err(e) => {
+            error!("[TEST] TCP connection failed: {}", e);
+            let msg = if e.to_string().contains("timed out") {
+                format!("Cannot reach {}:{} — connection timed out. Check the IP address and ensure the LLM server is running.", host, port)
+            } else if e.to_string().contains("refused") {
+                format!("Connection refused at {}:{}. The LLM server may not be running or the port is wrong.", host, port)
+            } else if e.to_string().contains("Temporary failure in name resolution") || e.to_string().contains("not found") {
+                format!("Cannot resolve hostname '{}'. Check that the IP address or hostname is correct.", host)
+            } else {
+                format!("Cannot connect to {}:{} — {}", host, port, e)
+            };
+            return (StatusCode::OK, api_response(false, None, Some(msg)));
+        }
+    }
+
+    // Step 2: TCP worked — now try the HTTP health check
     let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
-        &provider_name,
-        &endpoint,
-        &api_key,
-        &model,
-        max_tokens,
-        context_window,
+        "custom", &endpoint, &api_key, "gpt-4o", 4096, 128000,
     );
 
     match provider.health().await {
@@ -420,8 +448,8 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
             (StatusCode::OK, api_response(true, Some(serde_json::json!(true)), None))
         }
         Err(e) => {
-            error!("[TEST] test_connection: failed: {}", e);
-            (StatusCode::OK, api_response(false, None, Some(format!("Connection failed: {}", e))))
+            error!("[TEST] test_connection: health check failed: {}", e);
+            (StatusCode::OK, api_response(false, None, Some(format!("Connected to server but health check failed: {}", e))))
         }
     }
 }

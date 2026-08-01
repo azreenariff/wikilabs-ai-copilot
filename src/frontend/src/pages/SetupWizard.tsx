@@ -66,22 +66,41 @@ function SetupWizard() {
     setError('');
     setFetchedModels([]);
     try {
-      const res = await fetch('http://127.0.0.1:1420/api/commands/list_models', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ params: { endpoint, api_key: apiKey } }),
+      // Use Tauri IPC directly via __TAURI_INTERNALS__.invoke()
+      // This bypasses HTTP fetch which can hang in WebView2
+      const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+      if (!tauriInvoke) {
+        setTestResult('fail');
+        setError('Tauri IPC not available');
+        return;
+      }
+      const result: any = await tauriInvoke('test_connection', {
+        config: {
+          name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
+          endpoint,
+          api_key: apiKey,
+          model: model || 'gpt-4o',
+          max_tokens: parseInt(maxTokens) || 4096,
+          context_window: parseInt(contextWindow) || 128000,
+        },
       });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.value) && data.value.length > 0) {
-        setFetchedModels(data.value);
-        setModel(data.value[0]);
+      if (result) {
         setTestResult('success');
-      } else if (data.success && Array.isArray(data.value) && data.value.length === 0) {
-        setFetchedModels([]);
-        setTestResult('success');
+        // On success, also try to list models via Tauri IPC
+        try {
+          const modelList: string[] = await tauriInvoke('list_models', {
+            config: { endpoint, api_key: apiKey },
+          });
+          if (modelList && modelList.length > 0) {
+            setFetchedModels(modelList);
+            setModel(modelList[0]);
+          }
+        } catch {
+          // Model listing is optional — user can type model manually
+        }
       } else {
         setTestResult('fail');
-        setError(data.error || 'Connection failed — check URL and key');
+        setError('Connection failed — check URL and key');
       }
     } catch (e: any) {
       setTestResult('fail');
