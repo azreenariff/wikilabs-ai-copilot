@@ -994,44 +994,7 @@ async fn handle_list_models(_state: &ApiServerState, params: Value) -> (StatusCo
         Ok(response) => {
             let status = response.status();
             error!("Failed to fetch models: HTTP {}", status);
-            // Try fallback: /models (without /v1)
-            let base_url = endpoint.trim_end_matches('/').trim_end_matches("/v1");
-            let fallback_url = format!("{}/models", base_url);
-            info!("Trying fallback URL: {}", fallback_url);
-            let mut fb_builder = reqwest::Client::builder()
-                .http1_only()
-                .pool_idle_timeout(std::time::Duration::from_secs(0))
-                .pool_max_idle_per_host(0)
-                .build().unwrap_or_else(|_| reqwest::Client::new())
-                .get(&fallback_url)
-                .header("Content-Type", "application/json")
-                .header("Connection", "close");
-            if !api_key.is_empty() {
-                fb_builder = fb_builder.header("Authorization", format!("Bearer {}", api_key));
-            }
-            match fb_builder.timeout(std::time::Duration::from_secs(10)).send().await {
-                Ok(fb_resp) if fb_resp.status().is_success() => {
-                    match fb_resp.json::<Value>().await {
-                        Ok(data) => {
-                            let models = data.get("data")
-                                .and_then(|d| d.as_array())
-                                .map(|arr| {
-                                    arr.iter()
-                                        .filter_map(|m| m.get("id").and_then(|id| id.as_str().map(String::from)))
-                                        .collect::<Vec<_>>()
-                                })
-                                .unwrap_or_default();
-                            (StatusCode::OK, api_response(true, Some(serde_json::json!(models)), None))
-                        }
-                        Err(e) => {
-                            (StatusCode::OK, api_response(false, None, Some(format!("Fallback parse failed: {}", e))))
-                        }
-                    }
-                }
-                _ => {
-                    (StatusCode::OK, api_response(false, None, Some(format!("HTTP error: {}", status))))
-                }
-            }
+            (StatusCode::OK, api_response(false, None, Some(format!("HTTP error: {}", status))))
         }
         Err(e) => {
             error!("Failed to connect to provider: {}", e);
