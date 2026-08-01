@@ -1,3 +1,9 @@
+## v1.1.175 — FIX: advice chat uses React Router navigation instead of WebView2 navigate, main window restored to original size
+
+- **Advice chat now uses React Router `pushState`** — instead of `main_window.navigate()` which causes a full WebView2 page reload and triggers HTTP fetch hangs, the app now uses `window.history.pushState()` to change the route to `/advice-chat` within the already-loaded React app. The ChatAssistant component renders without the sidebar.
+- **Main window restored to original centered size (1400x900)** — removed the slim right-side panel resize. Window now stays centered as configured in `tauri.conf.json`.
+- **Removed dead separate-window fallback code** — cleaned up the orphaned code from v1.1.173.
+
 ## v1.1.174 — FIX: startup loop bug, main window resized to slim right-side panel for advice chat
 
 - **Fixed startup loop** — "Open Copilot" button on Setup Complete page now navigates to `/advice-chat` instead of calling `window.location.reload()` which restarted the React app and triggered the wizard again.

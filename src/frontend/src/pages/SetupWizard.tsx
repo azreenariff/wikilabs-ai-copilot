@@ -107,21 +107,13 @@ function SetupWizard() {
         // Non-fatal
       }
       setStep(5);
-      // Minimize main window
-      try {
-        await tauriInvoke('hide_main_window', {});
-      } catch {
-        // Non-fatal
-      }
-      // Open advice chat after a short delay
+      // Use React Router to navigate to advice chat view after a short delay
       setTimeout(() => {
-        try {
-          const ah = (window as any).__TAURI_INTERNALS__?.invoke;
-          if (ah) ah('open_advice_chat_window', {});
-        } catch {
-          // Non-fatal
-        }
-      }, 1500);
+        // Navigate using window.location hash or React Router
+        // By changing the URL, the React Router will pick it up and render ChatAssistant
+        window.history.pushState({}, '', '/advice-chat');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }, 500);
     } catch (e: any) {
       setError(e.message || 'Cannot reach backend');
     }

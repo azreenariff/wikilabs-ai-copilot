@@ -658,21 +658,14 @@ fn get_logs(_limit: Option<usize>) -> Result<Vec<String>, String> {
 #[tauri::command]
 fn open_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
     info!("Opening advice chat in main window");
-    // Instead of creating a separate WebView2 window (which causes blank/blank issues
-    // on some Windows systems), we navigate the existing main window to the advice chat
-    // page served by the API server.
     if let Some(main_window) = app.get_webview_window("main") {
-        // Show the main window first (it was hidden after setup)
+        // Show and focus the main window (it was hidden after setup)
         let _ = main_window.show();
         let _ = main_window.set_focus();
-        // Position the window as a slim right-side panel
-        if let Ok(Some(m)) = main_window.current_monitor() {
-            let panel_width = 420.0;
-            let height = m.size().height as f64;
-            let x = m.size().width as f64 - panel_width;
-            let _ = main_window.set_position(tauri::PhysicalPosition::new(x as i32, 0));
-            let _ = main_window.set_size(tauri::PhysicalSize::new(panel_width as u32, height as u32));
-        }
+        // Reset to original centered size (1400x900 from tauri.conf.json)
+        let _ = main_window.set_position(tauri::PhysicalPosition::new(0, 0));
+        let _ = main_window.set_size(tauri::PhysicalSize::new(1400, 900));
+        // Navigate to the advice chat URL served by the API server
         let url = "http://localhost:1420/advice-chat";
         main_window
             .navigate(url.parse::<url::Url>().map_err(|e| e.to_string())?)
@@ -680,41 +673,7 @@ fn open_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
         info!("Main window navigated to advice chat: {}", url);
         Ok(())
     } else {
-        // Fallback: try to create a separate window (original behavior)
-        info!("Main window not found, creating separate advice chat window");
-        let url = tauri::WebviewUrl::External("http://localhost:1420/advice-chat".parse::<url::Url>().map_err(|e| e.to_string())?);
-        
-        #[cfg(target_os = "windows")]
-        let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
-            .title("AI Copilot — Live Advice")
-            .inner_size(400.0, 520.0)
-            .resizable(true)
-            .decorations(true)
-            .always_on_top(true)
-            .additional_browser_args("--disable-gpu --no-sandbox --disable-software-rasterizer")
-            .build()
-            .map_err(|e| e.to_string())?;
-        
-        #[cfg(not(target_os = "windows"))]
-        let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
-            .title("AI Copilot — Live Advice")
-            .inner_size(400.0, 520.0)
-            .resizable(true)
-            .decorations(true)
-            .always_on_top(true)
-            .build()
-            .map_err(|e| e.to_string())?;
-        
-        // Position on the right side
-        if let Some(w) = app.get_webview_window("advice-chat") {
-            if let Ok(Some(m)) = w.current_monitor() {
-                let width = 400.0;
-                let height = 520.0;
-                let x = m.size().width as f64 - width - 10.0;
-                let y = (m.size().height as f64 - height) / 2.0;
-                let _ = w.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
-            }
-        }
+        info!("Main window not found, cannot open advice chat");
         Ok(())
     }
 }
