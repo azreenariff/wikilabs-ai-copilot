@@ -1,3 +1,9 @@
+## v1.1.173 — FIX: advice chat now navigates the existing main window instead of creating a second WebView2
+
+- **Changed `open_advice_chat_window` to navigate the main window** — instead of creating a separate WebView2 window (which causes blank white windows on systems where WebView2 can't handle multiple instances), the main window is navigated to `http://localhost:1420/advice-chat`. This reuses the existing WebView2 process that's already working correctly.
+- **Fallback kept** — if the main window is not found, the original separate-window creation is used as a fallback.
+- **AI copilot observation pipeline untouched** — no changes to engine, vision analyzer, or screenshot flow.
+
 ## v1.1.172 — FIX: strip Windows long-path prefix from assets_dir that broke ServeDir for advice chat JS/CSS
 
 - **Stripped `\\?\` prefix from assets directory path** — the `canonicalize()` call on Windows returns paths with the `\\?\` extended-length prefix. When this path was passed to `tower_http::services::ServeDir`, it couldn't find the JS/CSS files, causing the advice chat window to load the HTML but not the frontend bundle — resulting in a blank white window. The prefix is now stripped before passing to ServeDir.

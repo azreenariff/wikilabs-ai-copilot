@@ -657,50 +657,58 @@ fn get_logs(_limit: Option<usize>) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 fn open_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
-    info!("Opening advice chat window (right side)");
-    if let Some(window) = app.get_webview_window("advice-chat") {
-        window.show().map_err(|e| e.to_string())?;
-        window.set_focus().map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-    
-    // Load the embedded advice chat HTML via the API server endpoint
-    // The API server (port 1420) serves advice-chat.html at /advice-chat
-    let url = tauri::WebviewUrl::External("http://localhost:1420/advice-chat".parse::<url::Url>().map_err(|e| e.to_string())?);
-    
-    #[cfg(target_os = "windows")]
-    let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
-        .title("AI Copilot — Live Advice")
-        .inner_size(400.0, 520.0)
-        .resizable(true)
-        .decorations(true)
-        .always_on_top(true)
-        .additional_browser_args("--disable-gpu --no-sandbox --disable-software-rasterizer")
-        .build()
-        .map_err(|e| e.to_string())?;
-    
-    #[cfg(not(target_os = "windows"))]
-    let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
-        .title("AI Copilot — Live Advice")
-        .inner_size(400.0, 520.0)
-        .resizable(true)
-        .decorations(true)
-        .always_on_top(true)
-        .build()
-        .map_err(|e| e.to_string())?;
-    
-    // Position on the right side of the screen (vertically centered)
-    if let Some(w) = app.get_webview_window("advice-chat") {
-        if let Ok(Some(m)) = w.current_monitor() {
-            let width = 400.0;
-            let height = 520.0;
-            let x = m.size().width as f64 - width - 10.0; // 10px from right edge
-            let y = (m.size().height as f64 - height) / 2.0;
-            let _ = w.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+    info!("Opening advice chat in main window");
+    // Instead of creating a separate WebView2 window (which causes blank/blank issues
+    // on some Windows systems), we navigate the existing main window to the advice chat
+    // page served by the API server.
+    if let Some(main_window) = app.get_webview_window("main") {
+        let url = "http://localhost:1420/advice-chat";
+        main_window
+            .navigate(url.parse::<url::Url>().map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
+        info!("Main window navigated to advice chat: {}", url);
+        // Show the main window (it was hidden after setup)
+        let _ = main_window.show();
+        let _ = main_window.set_focus();
+        Ok(())
+    } else {
+        // Fallback: try to create a separate window (original behavior)
+        info!("Main window not found, creating separate advice chat window");
+        let url = tauri::WebviewUrl::External("http://localhost:1420/advice-chat".parse::<url::Url>().map_err(|e| e.to_string())?);
+        
+        #[cfg(target_os = "windows")]
+        let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
+            .title("AI Copilot — Live Advice")
+            .inner_size(400.0, 520.0)
+            .resizable(true)
+            .decorations(true)
+            .always_on_top(true)
+            .additional_browser_args("--disable-gpu --no-sandbox --disable-software-rasterizer")
+            .build()
+            .map_err(|e| e.to_string())?;
+        
+        #[cfg(not(target_os = "windows"))]
+        let window = tauri::WebviewWindowBuilder::new(&app, "advice-chat", url)
+            .title("AI Copilot — Live Advice")
+            .inner_size(400.0, 520.0)
+            .resizable(true)
+            .decorations(true)
+            .always_on_top(true)
+            .build()
+            .map_err(|e| e.to_string())?;
+        
+        // Position on the right side
+        if let Some(w) = app.get_webview_window("advice-chat") {
+            if let Ok(Some(m)) = w.current_monitor() {
+                let width = 400.0;
+                let height = 520.0;
+                let x = m.size().width as f64 - width - 10.0;
+                let y = (m.size().height as f64 - height) / 2.0;
+                let _ = w.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+            }
         }
+        Ok(())
     }
-    
-    Ok(())
 }
 
 #[tauri::command]
