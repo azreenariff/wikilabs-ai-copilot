@@ -225,7 +225,7 @@ impl ObservationEngine {
                             }
 
                             // Feed to downstream consumers
-                            self.feed_event(event);
+                            self.feed_event(event).await;
                         }
                     }
                     Err(e) => {
@@ -287,7 +287,7 @@ impl ObservationEngine {
     }
 
     /// Feed an observation event to downstream consumers.
-    fn feed_event(&self, event: &ObservationEvent) {
+    async fn feed_event(&self, event: &ObservationEvent) {
         // 1. Update correlation engine based on provider type
         if self.config.enable_correlation {
             match &event.provider {
@@ -404,7 +404,7 @@ impl ObservationEngine {
                     // Feed screenshot to vision analyzer — get the full base64 from the
                     // ScreenCaptureProvider's internal state, not from the event payload
                     // (which only carries a truncated preview string).
-                    let registry = self.registry.blocking_lock();
+                    let registry = self.registry.lock().await;
                     for provider in registry.all_providers() {
                         if provider.provider_type() == ProviderType::ScreenCapture {
                             if let Some(screen) = provider.as_any().downcast_ref::<crate::screen_capture::ScreenCaptureProvider>() {
@@ -415,7 +415,7 @@ impl ObservationEngine {
                                         screenshot.width,
                                         screenshot.height,
                                         focused_window,
-                                    );
+                                    ).await;
                                 }
                             }
                         }
@@ -759,14 +759,14 @@ impl ObservationEngine {
 
     /// Feed a screenshot from the screen capture provider to the vision analyzer.
     /// This is called by feed_event() when a ScreenshotCaptured event is received.
-    pub fn feed_screenshot_to_vision_analyzer(
+    async fn feed_screenshot_to_vision_analyzer(
         &self,
         data_base64: String,
         width: u32,
         height: u32,
         focused_window: String,
     ) {
-        let registry = self.registry.blocking_lock();
+        let registry = self.registry.lock().await;
         for provider in registry.all_providers() {
             if provider.provider_type() == ProviderType::VisionAnalysis {
                 if let Some(vision) = provider.as_any().downcast_ref::<VisionAnalyzerProvider>() {

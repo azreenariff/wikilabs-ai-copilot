@@ -1,3 +1,8 @@
+## v1.1.158 — CRITICAL FIX: panic in observation engine caused blank screen (blocking_lock inside async runtime)
+
+- **Fixed `blocking_lock()` panic in engine.rs** — the `feed_event()` handler for `ScreenCapture` events used `self.registry.blocking_lock()` which panics with "Cannot block the current thread from within a runtime" because it's called from inside the async polling loop. This panic killed the observation engine thread and caused the blank screen. Changed to async `self.registry.lock().await` and made `feed_event()` and `feed_screenshot_to_vision_analyzer()` async.
+- **This was the actual root cause of the blank screen** — the GPU-disabling browser args from v1.1.157 were a secondary fix. The primary blocker was the observation engine panicking silently on the first screenshot capture tick.
+
 ## v1.1.157 — FIX: WebView2 blank screen on Windows — disable GPU acceleration, manual window creation with browser args
 
 - **Added `--disable-gpu --no-sandbox --disable-software-rasterizer` browser args** to the main webview window on Windows. This fixes the blank white screen caused by WebView2 failing to initialize its GPU renderer on some systems (older GPUs, VMs, remote desktop).
