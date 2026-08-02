@@ -1,3 +1,12 @@
+## v1.1.180 — FIX: test_connection timeout diagnosis — comprehensive logging + debug defaults
+
+- **Backend: `handle_test_connection` in `api_server.rs` now logs every step** — `[TEST] test_connection request received`, TCP check, HTTP health check, success/failure with elapsed time. Error messages include port numbers and diagnostic hints.
+- **Backend: `provider.rs` health() method now logs at debug level** — endpoint URL, request failure, response status, response body on failure, health OK. Visible when `log_level: debug`.
+- **Frontend: `SetupWizard.tsx` and `Settings.tsx` now send detailed console logs** — request start, response receipt, and failure with elapsed time. Timeout error explains (1) API server not running, (2) Windows Firewall blocking, (3) backend unresponsive. Network error distinguishes "Cannot reach app's backend" from other failures.
+- **Frontend: `SetupWizard.tsx` now passes backend `result.error` message to UI** instead of generic "Connection failed".
+- **Default `log_level` changed from `"info"` to `"debug"`** in both config default and `get_log_level()` function, ensuring diagnostic logs are on by default for troubleshooting.
+- **Installer: added defensive Windows Firewall rule for port 1420** in `custom.nsi` (likely not the real issue since loopback is usually allowed, but included as a precaution).
+
 ## v1.1.179 — FIX: test_connection fetch timeout prevents 'Testing...' stall
 
 - **Added 10s timeout to backend TCP connect** — `tokio::time::timeout()` wraps the TCP connection attempt so unreachable hosts fail fast instead of blocking until the OS TCP timeout (30-120s on Windows). A clear timeout error message is returned to the frontend.

@@ -21,7 +21,7 @@ use std::sync::{Arc, Mutex};
 use wikilabs_observation;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use wikilabs_ai::AiProvider;
 use tauri::AppHandle;
 
@@ -387,25 +387,36 @@ pub async fn api_handler(
 }
 
 async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
+    let start_time = std::time::Instant::now();
     let api_key = params.get("api_key").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let endpoint = params.get("endpoint").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    info!("[TEST] test_connection called — endpoint: '{}', api_key_set: {}", endpoint, !api_key.is_empty());
+    let model = params.get("model").and_then(|v| v.as_str()).unwrap_or("gpt-4o");
+    let max_tokens = params.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(4096);
+    let context_window = params.get("context_window").and_then(|v| v.as_u64()).unwrap_or(128000);
+
+    debug!("[TEST] >>> test_connection called — endpoint: '{}', api_key_set: {}, model: '{}', max_tokens: {}, context_window: {}",
+        endpoint, !api_key.is_empty(), model, max_tokens, context_window);
+    info!("[TEST] test_connection request received");
 
     if api_key.is_empty() {
+        warn!("[TEST] API key is empty — rejecting");
         return (StatusCode::OK, api_response(false, None, Some("API key is required".to_string())));
     }
     if endpoint.is_empty() {
+        warn!("[TEST] Endpoint is empty — rejecting");
         return (StatusCode::OK, api_response(false, None, Some("Endpoint is required".to_string())));
     }
 
-    // Step 1: Try a simple TCP connection to see if the host is reachable at all.
-    // This bypasses HTTP entirely and tells us if the server is up.
+    // Parse and validate the endpoint URL
     let url_for_tcp = endpoint.trim_end_matches('/');
     let host_port = if let Some(rest) = url_for_tcp.strip_prefix("https://") {
+        debug!("[TEST] Detected HTTPS scheme");
         rest.split('/').next().unwrap_or(rest)
     } else if let Some(rest) = url_for_tcp.strip_prefix("http://") {
+        debug!("[TEST] Detected HTTP scheme");
         rest.split('/').next().unwrap_or(rest)
     } else {
+        warn!("[TEST] No scheme detected in endpoint — defaulting to HTTP");
         url_for_tcp.split('/').next().unwrap_or(url_for_tcp)
     };
 
@@ -419,45 +430,61 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
         (host_port.to_string(), default_port)
     };
 
-    info!("[TEST] TCP check: host='{}' port={}", host, port);
+    debug!("[TEST] Parsed host='{}' port={} from endpoint '{}'", host, port, endpoint);
+    info!("[TEST] Step 1/2: TCP check — connecting to {}:{} (timeout: 10s)", host, port);
+
+    // Step 1: Try a simple TCP connection to see if the host is reachable at all.
+    // This bypasses HTTP entirely and tells us if the server is up.
     match tokio::time::timeout(
         std::time::Duration::from_secs(10),
         tokio::net::TcpStream::connect((host.as_str(), port))
     ).await {
-        Ok(Ok(_)) => info!("[TEST] TCP connection succeeded"),
+        Ok(Ok(_stream)) => {
+            info!("[TEST] TCP connection succeeded — {}:{} is reachable", host, port);
+            _stream
+        }
         Ok(Err(e)) => {
-            error!("[TEST] TCP connection failed: {}", e);
+            error!("[TEST] TCP connection FAILED to {}:{} — error: {} (type: {})", host, port, e, e.kind());
             let msg = if e.to_string().contains("timed out") || e.to_string().contains("deadline") {
-                format!("Cannot reach {}:{} — connection timed out. Check the IP address and ensure the LLM server is running.", host, port)
+                format!("Cannot reach {}:{} — connection timed out after 10s. Check the IP address and ensure the LLM server is running and accessible from this machine.", host, port)
             } else if e.to_string().contains("refused") {
                 format!("Connection refused at {}:{}. The LLM server may not be running or the port is wrong.", host, port)
             } else if e.to_string().contains("Temporary failure in name resolution") || e.to_string().contains("not found") {
                 format!("Cannot resolve hostname '{}'. Check that the IP address or hostname is correct.", host)
             } else {
-                format!("Cannot connect to {}:{} — {}", host, port, e)
+                format!("Cannot connect to {}:{} — {}: {}", host, port, e, e.kind())
             };
+            warn!("[TEST] Returning early (TCP failed): {}", msg);
             return (StatusCode::OK, api_response(false, None, Some(msg)));
         }
         Err(_) => {
-            error!("[TEST] TCP connection timed out");
-            let msg = format!("Cannot reach {}:{} — connection timed out. Check the IP address and ensure the LLM server is running.", host, port);
+            error!("[TEST] TCP connection TOOK >10s to {}:{} — aborting", host, port);
+            let msg = format!("Cannot reach {}:{} — connection timed out after 10s. The host may be unreachable from this machine (check firewall, routing, or VPN settings).", host, port);
+            warn!("[TEST] Returning early (TCP timeout): {}", msg);
             return (StatusCode::OK, api_response(false, None, Some(msg)));
         }
-    }
+    };
 
     // Step 2: TCP worked — now try the HTTP health check
+    info!("[TEST] Step 2/2: HTTP health check — GET {}/models (timeout: 15s)", endpoint);
+
     let provider = wikilabs_ai::provider::OpenAICompatibleProvider::new(
         "custom", &endpoint, &api_key, "gpt-4o", 4096, 128000,
     );
 
     match provider.health().await {
         Ok(_) => {
-            info!("[TEST] test_connection: success");
+            let elapsed = start_time.elapsed();
+            info!("[TEST] test_connection SUCCESS — total elapsed: {:.2}s", elapsed.as_secs_f64());
             (StatusCode::OK, api_response(true, Some(serde_json::json!(true)), None))
         }
         Err(e) => {
-            error!("[TEST] test_connection: health check failed: {}", e);
-            (StatusCode::OK, api_response(false, None, Some(format!("Connected to server but health check failed: {}", e))))
+            let elapsed = start_time.elapsed();
+            error!("[TEST] test_connection FAILED — HTTP health check error after {:.2}s: {}", elapsed.as_secs_f64(), e);
+            (StatusCode::OK, api_response(false, None, Some(format!(
+                "TCP connection succeeded but HTTP health check failed after {:.2}s: {}",
+                elapsed.as_secs_f64(), e
+            ))))
         }
     }
 }

@@ -166,6 +166,9 @@ function Settings() {
   async function handleTestConnection() {
     setStatus('Testing...');
     setTestResult('testing');
+    const requestStart = Date.now();
+    console.log('[Settings] Starting test connection...', { endpoint: settings.ai_provider.endpoint, model: settings.ai_provider.model });
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -182,8 +185,19 @@ function Settings() {
         }}),
         signal: controller.signal,
       });
+      const elapsed = Date.now() - requestStart;
       clearTimeout(timeoutId);
+
+      console.log(`[Settings] test_connection response: ${result.status} in ${elapsed}ms`);
+
+      if (!result.ok) {
+        const errorText = await result.text();
+        throw new Error(`HTTP ${result.status}: ${errorText}`);
+      }
+
       const data = await result.json();
+      console.log('[Settings] test_connection data:', data);
+
       if (data.success || data.value === true) {
         setStatus('✓ Connection successful');
         setTestResult('success');
@@ -192,9 +206,15 @@ function Settings() {
         setTestResult('fail');
       }
     } catch (e: any) {
+      const elapsed = Date.now() - requestStart;
+      console.error(`[Settings] test_connection FAILED after ${elapsed}ms:`, e);
+
       let errMsg = e.message || 'Connection failed — check your provider URL';
       if (e.name === 'AbortError') {
-        errMsg = 'Test timed out after 60s — check that the LLM server is reachable';
+        errMsg = `Test timed out after 60s after ${elapsed}ms. This usually means: (1) the app's API server is not running, (2) Windows Firewall is blocking localhost connections, or (3) the LLM backend is unresponsive. Check the app's system tray icon.`;
+      }
+      if (e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))) {
+        errMsg = 'Cannot reach the app\'s backend at http://127.0.0.1:1420. The Wiki Labs AI Copilot app may have crashed or the API server failed to start.';
       }
       setStatus(`✗ ${errMsg}`);
       setTestResult('fail');

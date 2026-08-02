@@ -261,7 +261,7 @@ pub struct LoggingSettings {
 impl Default for LoggingSettings {
     fn default() -> Self {
         Self {
-            level: "info".to_string(),
+            level: "debug".to_string(),
             file_logging: true,
             max_log_size_mb: 10,
             max_log_files: 3,
@@ -271,7 +271,7 @@ impl Default for LoggingSettings {
 }
 
 fn default_log_level() -> String {
-    "info".to_string()
+    "debug".to_string()
 }
 
 fn default_max_log_size() -> u32 {

@@ -116,6 +116,13 @@ Section "Main Application" SecMain
   ; Set output path
   SetOutPath "$INSTDIR"
   
+  ; ── Windows Firewall Rule ────────────────────────────────────────────────
+  ; Create a firewall rule for the API server (port 1420) during installation.
+  ; One-liner PowerShell: checks if rule exists, creates if not.
+  ; Note: This requires admin privileges. If it fails silently, the app may
+  ; still work on systems without strict firewalls.
+  nsExec::ExecToStack 'powershell -NoProfile -Command "if(-not(Get-NetFirewallRule -Name ' + '"' + 'Wiki Labs AI Copilot API' + '"' + ' -ErrorAction SilentlyContinue)){New-NetFirewallRule -Name ' + '"' + 'Wiki Labs AI Copilot API' + '"' + ' -DisplayName ' + '"' + 'Wiki Labs AI Copilot API' + '"' + ' -Direction Inbound -LocalPort 1420 -Protocol TCP -Action Allow -Program ' + '"' + '$INSTDIR\wikilabs-copilot.exe' + '"' + ' -Profile Any -ErrorAction SilentlyContinue;Write-Output ' + '"' + 'OK' + '"' + '}"'
+  
   ; ── Desktop Shortcut ─────────────────────────────────────────────────
   !if "${INSTALL_MODE}" == "currentUser"
     CreateShortCut "$DESKTOP\Wiki Labs AI Copilot.lnk" "$INSTDIR\wikilabs-copilot.exe" "$INSTDIR\icons\icon.ico" 0

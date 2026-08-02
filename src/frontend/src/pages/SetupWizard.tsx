@@ -35,6 +35,9 @@ function SetupWizard() {
   async function httpPost(action: string, params: any, timeoutMs: number = 60000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const requestStart = Date.now();
+    console.log(`[SetupWizard] POST /${action} → ${API}/${action}`, { timeoutMs, params: { ...params, api_key: params.api_key ? '[REDACTED]' : '' } });
+
     try {
       const res = await fetch(`${API}/${action}`, {
         method: 'POST',
@@ -42,12 +45,26 @@ function SetupWizard() {
         body: JSON.stringify({ params }),
         signal: controller.signal,
       });
+      const elapsed = Date.now() - requestStart;
+      console.log(`[SetupWizard] /${action} response: ${res.status} in ${elapsed}ms`);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+
       clearTimeout(timeoutId);
       return res.json();
     } catch (e: any) {
       clearTimeout(timeoutId);
+      const elapsed = Date.now() - requestStart;
+      console.error(`[SetupWizard] /${action} FAILED after ${elapsed}ms:`, e);
+
       if (e.name === 'AbortError') {
-        throw new Error(`Request timed out after ${timeoutMs / 1000}s — the backend may still be processing`);
+        throw new Error(`Request to ${API}/${action} timed out after ${timeoutMs / 1000}s. This usually means: (1) the app's API server is not running, (2) a Windows Firewall is blocking localhost connections, or (3) the LLM backend is unresponsive. Check the app's system tray icon.`);
+      }
+      if (e.message && (e.message.includes('Failed to fetch') || e.message.includes('NetworkError'))) {
+        throw new Error(`Cannot reach the app's backend at ${API}. The Wiki Labs AI Copilot app may have crashed or the API server failed to start. Check the system tray icon.`);
       }
       throw e;
     }
@@ -57,6 +74,8 @@ function SetupWizard() {
     setTestResult('testing');
     setError('');
     setFetchedModels([]);
+    console.log('[SetupWizard] Starting test connection...', { endpoint, model });
+
     try {
       const result: any = await httpPost('test_connection', {
         name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
@@ -66,6 +85,8 @@ function SetupWizard() {
         max_tokens: parseInt(maxTokens) || 4096,
         context_window: parseInt(contextWindow) || 128000,
       });
+      console.log('[SetupWizard] test_connection result:', result);
+
       if (result.success || result.value === true) {
         setTestResult('success');
         // On success, fetch model list via HTTP
@@ -84,7 +105,7 @@ function SetupWizard() {
         }
       } else {
         setTestResult('fail');
-        setError('Connection failed — check URL and key');
+        setError(result.error || 'Connection failed — check URL and key');
       }
     } catch (e: any) {
       setTestResult('fail');

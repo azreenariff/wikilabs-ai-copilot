@@ -3,6 +3,7 @@
 //! Supports OpenAI, vLLM, and Ollama via a unified interface.
 
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderInfo {
@@ -367,6 +368,7 @@ impl AiProvider for OpenAICompatibleProvider {
 
     async fn health(&self) -> anyhow::Result<()> {
         // Health check: ping the models endpoint with a 15s timeout
+        debug!("[Provider::health] Health checking endpoint: {}/models", self.base_url);
         let url = format!("{}/models", self.base_url);
         let response = self
             .client
@@ -374,15 +376,26 @@ impl AiProvider for OpenAICompatibleProvider {
             .header("Authorization", format!("Bearer {}", self.api_key))
             .timeout(std::time::Duration::from_secs(15))
             .send()
-            .await?;
+            .await
+            .map_err(|e| {
+                debug!("[Provider::health] HTTP request FAILED: {}", e);
+                anyhow::anyhow!("Failed to send health check request to {}: {}", url, e)
+            })?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        debug!("[Provider::health] Response status: {}", status);
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            debug!("[Provider::health] Response body: {}", body);
             return Err(anyhow::anyhow!(
-                "Provider health check failed: {}",
-                response.status()
+                "Provider health check failed: {} — body: {}",
+                status,
+                body
             ));
         }
 
+        debug!("[Provider::health] Health check OK");
         Ok(())
     }
 }
