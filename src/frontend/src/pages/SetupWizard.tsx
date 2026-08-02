@@ -58,7 +58,8 @@ function SetupWizard() {
         // On success, also try to list models via Tauri IPC
         try {
           const modelList: string[] = await tauriInvoke('list_models', {
-            config: { endpoint, api_key: apiKey },
+            endpoint,
+            api_key: apiKey,
           });
           if (modelList && modelList.length > 0) {
             setFetchedModels(modelList);

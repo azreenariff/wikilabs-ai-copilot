@@ -717,12 +717,10 @@ fn open_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
         // Reset to original centered size (1400x900 from tauri.conf.json)
         let _ = main_window.set_position(tauri::PhysicalPosition::new(0, 0));
         let _ = main_window.set_size(tauri::PhysicalSize::new(1400, 900));
-        // Navigate to the advice chat URL served by the API server
-        let url = "http://localhost:1420/advice-chat";
-        main_window
-            .navigate(url.parse::<url::Url>().map_err(|e| e.to_string())?)
-            .map_err(|e| e.to_string())?;
-        info!("Main window navigated to advice chat: {}", url);
+        // Navigate to the advice-chat route using the main app's React Router
+        // This keeps the same SPA loaded — no full page reload needed
+        let _ = main_window.eval("window.history.pushState({}, '', '/advice-chat'); window.dispatchEvent(new PopStateEvent('popstate'));");
+        info!("Main window navigated to advice-chat route via React Router");
         Ok(())
     } else {
         info!("Main window not found, cannot open advice chat");
