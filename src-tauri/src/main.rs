@@ -14,6 +14,7 @@ use wikilabs_persistence::{schema::INIT_SQL, Database, RepositoryFactory};
 
 mod api_ready;
 mod api_server;
+mod guidance_loop;
 mod config;
 mod error_handling;
 mod guidance_panel;
@@ -933,17 +934,48 @@ fn main() {
                 .map(|rd| rd.join("knowledge"))
                 .ok();
 
-            // Spawn observation engine on its own thread (non-blocking)
-            let obs_app_handle = app.handle().clone();
-            std::thread::spawn(move || {
-                info!("[LIFECYCLE] Observation engine thread started");
-                let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-                rt.block_on(async {
-                    let engine = observation::init_observation_engine().await;
-                    info!("[LIFECYCLE] Observation engine initialized");
-                    observation::start_observation_engine(engine).await;
+            // Lazy-start observation engine: only begin observation + AI reasoning
+            // when the user has already configured an API key (i.e., not the first-run
+            // setup wizard). This prevents the observation/AI loop from starving the
+            // API server's Tokio runtime before the user finishes configuring their AI provider.
+            let config_path_for_check = config_path.clone();
+            let should_start_observation = std::fs::read_to_string(&config_path_for_check)
+                .map(|content| {
+                    let parsed = serde_json::from_str::<serde_json::Value>(&content);
+                    if let Ok(parsed_val) = parsed {
+                        parsed_val.get("ai_provider")
+                            .and_then(|p| p.get("api_key"))
+                            .and_then(|k| k.as_str())
+                            .map(|key| !key.is_empty())
+                            .unwrap_or(false)
+                    } else {
+                        false
+                    }
+                })
+                .unwrap_or(false);
+
+            let obs_should_run = should_start_observation;
+            info!(
+                obs_should_run,
+                "Observation engine launch condition checked (api_key configured: {})",
+                should_start_observation
+            );
+
+            if obs_should_run {
+                // Spawn observation engine on its own thread (non-blocking)
+                let obs_app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    info!("[LIFECYCLE] Observation engine thread started (lazy start — api_key configured)");
+                    let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+                    rt.block_on(async {
+                        let engine = observation::init_observation_engine().await;
+                        info!("[LIFECYCLE] Observation engine initialized");
+                        observation::start_observation_engine(engine).await;
+                    });
                 });
-            });
+            } else {
+                info!("[LIFECYCLE] Observation engine LAUNCHED LAZILY — waiting until api_key is configured");
+            }
 
             // No longer wait 3s for observation engine — it runs independently.
             // The API server handles missing events gracefully (returns empty).

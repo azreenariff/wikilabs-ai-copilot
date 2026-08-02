@@ -1,3 +1,9 @@
+## v1.1.181 — FIX: integrate guidance_loop module into API server, fix app_handle ownership
+
+- **Backend: integrated `guidance_loop` module into `api_server.rs`** — the AI guidance loop (screenshot→vision→intent→prompt chain) now properly spawns inside the API server thread via `crate::guidance_loop::spawn_ai_guidance_loop()`. The module was declared in `main.rs` but api_server.rs couldn't reference it — added `use crate::guidance_loop;` to api_server.rs.
+- **Backend: fixed `app_handle` ownership in `start_api_server`** — `app_handle` was moved into `ApiServerState` then reused inside the `move` closure for `spawn_ai_guidance_loop()`. Fixed by cloning before the move (`app_handle_for_guidance`) and using the clone inside the closure.
+- **Backend: no longer blocks API server on slow LLM** — AI guidance loop runs on an isolated Tokio runtime separate from the API server's HTTP handlers, preventing unresponsive UI when the LLM backend is slow.
+
 ## v1.1.180 — FIX: test_connection timeout diagnosis — comprehensive logging + debug defaults
 
 - **Backend: `handle_test_connection` in `api_server.rs` now logs every step** — `[TEST] test_connection request received`, TCP check, HTTP health check, success/failure with elapsed time. Error messages include port numbers and diagnostic hints.
