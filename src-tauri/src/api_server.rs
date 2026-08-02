@@ -1436,6 +1436,8 @@ async fn handle_hide_main_window(state: &ApiServerState) -> (StatusCode, String)
 
 /// Open the floating advice chat window on the right side.
 /// Creates the window if it doesn't exist (lazy init), then shows and focuses it.
+/// The window has no close (X) button — clicking X will minimize to a roll-up pill.
+/// Minimize button rolls up the window into just the title bar at bottom-right.
 async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String) {
     info!("Opening advice chat floating window");
     if let Some(ref app_handle) = state.app_handle {
@@ -1453,7 +1455,7 @@ async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String)
             .title("AI Copilot — Live Advice")
             .inner_size(400.0, 520.0)
             .resizable(true)
-            .decorations(true)
+            .decorations(false)  // No native title bar — no X button, no minimize
             .always_on_top(true)
             .build();
         if let Ok(window) = result {
@@ -1465,6 +1467,15 @@ async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String)
                 let y = (monitor.size().height as f64 - height) / 2.0;
                 let _ = window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
             }
+            // Prevent the window from being closed (X button is hidden via decorations=false)
+            let w_clone = window.clone();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    // Hide instead of close — the app stays running
+                    let _ = w_clone.hide();
+                    api.prevent_close();
+                }
+            });
             let _ = window.show();
             let _ = window.set_focus();
         } else {
@@ -1484,6 +1495,23 @@ async fn handle_hide_advice_window(state: &ApiServerState) -> (StatusCode, Strin
         }
     }
     (StatusCode::OK, api_response(true, Some(serde_json::json!({"hidden": true})), None))
+}
+
+/// Drag the advice chat window (move it by dx, dy from HTTP API).
+/// Called from frontend title bar drag-to-move via periodic flush.
+async fn handle_drag_advice_window(state: &ApiServerState, params: Value) -> (StatusCode, String) {
+    if let Some(ref app_handle) = state.app_handle {
+        let dx = params.get("dx").and_then(|v| v.as_i64()).unwrap_or(0) as f64;
+        let dy = params.get("dy").and_then(|v| v.as_i64()).unwrap_or(0) as f64;
+        if let Some(window) = (**app_handle).get_webview_window("advice-chat") {
+            if let Ok(current_pos) = window.outer_position() {
+                let new_x = current_pos.x as f64 + dx;
+                let new_y = current_pos.y as f64 + dy;
+                let _ = window.set_position(tauri::PhysicalPosition::new(new_x as i32, new_y as i32));
+            }
+        }
+    }
+    (StatusCode::OK, api_response(true, None, None))
 }
 
 async fn handle_observation_get_context() -> (StatusCode, String) {

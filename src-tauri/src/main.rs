@@ -737,6 +737,14 @@ fn close_advice_chat_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Start dragging the advice-chat window (for custom title bar).
+/// Uses the tauri://move-drag-start IPC event to trigger window drag.
+#[tauri::command]
+fn drag_advice_window(window: tauri::Window) -> Result<(), String> {
+    window.emit("tauri://move-drag-start", ()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 fn open_guidance_page() -> Result<(), String> {
     // Navigation is handled by the main app's router
@@ -1128,6 +1136,7 @@ fn main() {
             // Advice chat window management
             open_advice_chat_window,
             close_advice_chat_window,
+            drag_advice_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,8 +1,17 @@
-## v1.1.181 — FIX: integrate guidance_loop module into API server, fix app_handle ownership
+## v1.1.182 — FIX: setup flow "Save & Minimize" hides window, "Open Copilot" button works
+
+- **Fixed "Save & Minimize" not hiding the main window** — the `handleSave` function in `SetupWizard.tsx` was only calling `update_settings` and setting the step to 5 (Setup Complete screen). It did NOT call `set_first_run_complete` or `hide_main_window`. Now it calls all three in sequence: update_settings → set_first_run_complete → setStep(5) → hide_main_window (with a 2s delay so the user sees the "Setup Complete!" confirmation first).
+- **Fixed "Open Copilot" button not working** — the button was using `window.history.pushState()` to navigate within the React SPA, but SetupWizard renders outside of `BrowserRouter` so React Router never processes the navigation change. Now it calls `httpPost('hide_main_window', {})` then `httpPost('advice_chat_open', {})` which properly creates/shows the floating advice chat window via the `handle_advice_chat_open` handler in `api_server.rs`.
+- **Fixed `set_first_run_complete` never being called** — the setup wizard never persisted the "first run complete" flag, which could cause the setup wizard to reappear on restart.
 
 - **Backend: integrated `guidance_loop` module into `api_server.rs`** — the AI guidance loop (screenshot→vision→intent→prompt chain) now properly spawns inside the API server thread via `crate::guidance_loop::spawn_ai_guidance_loop()`. The module was declared in `main.rs` but api_server.rs couldn't reference it — added `use crate::guidance_loop;` to api_server.rs.
 - **Backend: fixed `app_handle` ownership in `start_api_server`** — `app_handle` was moved into `ApiServerState` then reused inside the `move` closure for `spawn_ai_guidance_loop()`. Fixed by cloning before the move (`app_handle_for_guidance`) and using the clone inside the closure.
 - **Backend: no longer blocks API server on slow LLM** — AI guidance loop runs on an isolated Tokio runtime separate from the API server's HTTP handlers, preventing unresponsive UI when the LLM backend is slow.
+
+- **Advice chat floating window: removed native decorations (no X/close button)** — `handle_advice_chat_open` now creates the window with `decorations(false)` so there's no native title bar or close button. Added `on_window_event` handler that prevents close and hides the window instead.
+- **Advice chat: custom title bar with drag-to-move + minimize** — added a custom title bar with a 🤖 icon, title text, and a minimize button (`-`). Dragging the title bar moves the window via HTTP-based offset accumulation (50ms flush interval). Minimize rolls up the window into a desktop pill at bottom-right.
+- **Advice chat: minimize-to-roll-up pill** — clicking minimize calls `hide_advice_window` API (hides OS window) and sets `windowHidden=true` which shows a clickable pill overlay at bottom-right. Clicking the pill restores the window via `advice_chat_open` API.
+- **ChatAssistant scroll fix: no more auto-scroll when user reads above** — replaced unconditional `scrollIntoView` on every message change with an `isUserAtBottom` state. Auto-scrolls only when user is at the bottom; reading old messages won't push them away.
 
 ## v1.1.180 — FIX: test_connection timeout diagnosis — comprehensive logging + debug defaults
 

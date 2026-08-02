@@ -127,7 +127,14 @@ function SetupWizard() {
           context_window: parseInt(contextWindow) || 128000,
         },
       });
+      // Mark first-run as complete
+      await httpPost('set_first_run_complete', {});
+      // Show Setup Complete screen first so user sees confirmation
       setStep(5);
+      // Brief delay then hide main window (minimize to tray)
+      setTimeout(async () => {
+        try { await httpPost('hide_main_window', {}); } catch {}
+      }, 2000);
     } catch (e: any) {
       setError(e.message || 'Cannot reach backend');
       setSaving(false);
@@ -374,10 +381,11 @@ function SetupWizard() {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
               The copilot is now running in the background. You can access it from the system tray.
             </p>
-            <button onClick={() => {
-              // Navigate within the already-loaded React app — same approach as main.rs
-              window.history.pushState({}, '', '/advice-chat');
-              window.dispatchEvent(new PopStateEvent('popstate'));
+            <button onClick={async () => {
+              // Hide the main window (minimize to tray)
+              try { await httpPost('hide_main_window', {}); } catch {}
+              // Open the floating advice chat window via HTTP API
+              try { await httpPost('advice_chat_open', {}); } catch {}
             }} style={{
               padding: '10px 20px', borderRadius: '6px', border: '1px solid var(--color-accent)',
               background: 'transparent', color: 'var(--color-accent)', fontSize: '14px', cursor: 'pointer',

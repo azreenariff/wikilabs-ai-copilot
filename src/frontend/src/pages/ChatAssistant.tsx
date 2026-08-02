@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { marked } from 'marked';
 
+// Extend Window interface for drag state
+declare global {
+  interface Window {
+    __TAURI_DRAG_START?: boolean;
+    __TAURI_DRAG_START_X?: number;
+    __TAURI_DRAG_START_Y?: number;
+  }
+}
+
 // Configure marked: disable global highlight to avoid XSS, use DOMPurify if available
 marked.setOptions({
   breaks: true,
@@ -33,6 +42,53 @@ async function showWindow() {
       body: JSON.stringify({ params: {} }),
     });
   } catch {}
+}
+
+// Drag-to-move handlers for the custom title bar
+let dragInterval: ReturnType<typeof setInterval> | null = null;
+let dragDx = 0;
+let dragDy = 0;
+
+function handleDragMove(e: MouseEvent) {
+  if (!(window as any).__TAURI_DRAG_START) return;
+  dragDx += e.movementX || 0;
+  dragDy += e.movementY || 0;
+}
+
+function handleDragEnd() {
+  (window as any).__TAURI_DRAG_START = false;
+  window.removeEventListener('mousemove', handleDragMove);
+  window.removeEventListener('mouseup', handleDragEnd);
+  // Flush remaining offset via HTTP request
+  if (dragDx !== 0 || dragDy !== 0) {
+    const adx = dragDx;
+    const ady = dragDy;
+    dragDx = 0;
+    dragDy = 0;
+    fetch('http://127.0.0.1:1420/api/commands/drag_advice_window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: { dx: adx, dy: ady } }),
+    }).catch(() => {});
+  }
+}
+
+// Periodically flush accumulated drag offset to the backend
+function flushDragOffset() {
+  if (dragDx !== 0 || dragDy !== 0) {
+    const adx = dragDx;
+    const ady = dragDy;
+    dragDx = 0;
+    dragDy = 0;
+    fetch('http://127.0.0.1:1420/api/commands/drag_advice_window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params: { dx: adx, dy: ady } }),
+    }).catch(() => {});
+  }
+  if ((window as any).__TAURI_DRAG_START) {
+    dragInterval = setTimeout(flushDragOffset, 50);
+  }
 }
 
 function ChatAssistant() {
@@ -75,9 +131,30 @@ function ChatAssistant() {
     return () => clearInterval(iv);
   }, [windowHidden]);
 
+  // Track whether user has manually scrolled up so we don't auto-scroll
+  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
+
+  // Detect user scrolling: track if user is at the bottom of the messages container
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, pendingAttachments]);
+    const container = messagesEndRef.current?.parentElement;
+    if (!container) return;
+
+    const checkAtBottom = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // If within 50px of bottom, consider the user "at bottom"
+      setIsUserAtBottom(scrollHeight - scrollTop - clientHeight < 50);
+    };
+
+    container.addEventListener('scroll', checkAtBottom);
+    return () => container.removeEventListener('scroll', checkAtBottom);
+  }, []);
+
+  // Only auto-scroll to bottom when new messages arrive if user was already at bottom
+  useEffect(() => {
+    if (isUserAtBottom && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, pendingAttachments, isUserAtBottom]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -260,72 +337,106 @@ function ChatAssistant() {
   }
 
   return (
-    <>
-      {windowHidden ? (
-        /* ── Desktop roll-up pill when OS window is hidden ── */
-        <div
-          onClick={async () => {
-            await showWindow();
-            setWindowHidden(false);
-          }}
-          style={{
-            position: 'fixed',
-            bottom: '16px',
-            right: '16px',
-            background: 'var(--color-bg-secondary)',
-            border: '1px solid var(--color-accent)',
-            borderRadius: '12px',
-            padding: '8px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-            zIndex: 10000,
-            transition: 'all 0.2s',
-            fontSize: '13px',
-            color: 'var(--color-text-primary)',
-          }}
-          title="Click to open advice chat"
-        >
-          <span style={{ fontSize: '16px' }}>💬</span>
-          <span>AI Copilot Advice</span>
-        </div>
-      ) : (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          maxWidth: '900px',
-          margin: '0 auto',
-          width: '100%',
-        }}>
-          {/* Minimize button only — no close button */}
+      <>
+        {/* ── Desktop roll-up pill when OS window is hidden ── */}
+        {windowHidden && (
+          <div
+            onClick={async () => {
+              await showWindow();
+              setWindowHidden(false);
+            }}
+            style={{
+              position: 'fixed',
+              bottom: '16px',
+              right: '16px',
+              background: 'var(--color-bg-secondary)',
+              border: '1px solid var(--color-accent)',
+              borderRadius: '12px',
+              padding: '8px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+              zIndex: 10000,
+              transition: 'all 0.2s',
+              fontSize: '13px',
+              color: 'var(--color-text-primary)',
+            }}
+            title="Click to open advice chat"
+          >
+            <span style={{ fontSize: '16px' }}>💬</span>
+            <span>AI Copilot Advice</span>
+          </div>
+        )}
+
+        {/* ── Main window content (only shown when window is NOT hidden) ── */}
+        {!windowHidden && (
           <div style={{
             display: 'flex',
-            justifyContent: 'flex-end',
-            padding: '4px 4px 0',
+            flexDirection: 'column',
+            height: '100%',
+            maxWidth: '900px',
+            margin: '0 auto',
+            width: '100%',
           }}>
-            <button
-              onClick={() => {
-                setWindowHidden(true);
-                hideWindow();
+            {/* ── Custom title bar (no native decorations) ── */}
+            <div
+              onMouseDown={(e) => {
+                // Only start drag on left side of title bar (not buttons)
+                if ((e.target as HTMLElement).closest('.tb-no-drag')) return;
+                // Start drag
+                (window as any).__TAURI_DRAG_START = true;
+                window.addEventListener('mousemove', handleDragMove);
+                window.addEventListener('mouseup', handleDragEnd);
+                // Start periodic flush
+                dragInterval = setTimeout(flushDragOffset, 50);
               }}
               style={{
-                background: 'transparent',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text-secondary)',
-                borderRadius: '6px',
-                padding: '2px 8px',
-                cursor: 'pointer',
-                fontSize: '11px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '6px 10px',
+                background: 'var(--color-bg-primary)',
+                borderBottom: '1px solid var(--color-border)',
+                cursor: 'move',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                MozUserSelect: 'none',
+                msUserSelect: 'none',
+                flexShrink: 0,
               }}
-              title="Minimize to roll-up pill"
             >
-              ─ Minimize
-            </button>
-          </div>
-
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px' }}>🤖</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                  AI Copilot — Live Advice
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }} className="tb-no-drag">
+                {/* Minimize button — rolls up to desktop pill */}
+                <button
+                  onClick={() => {
+                    setWindowHidden(true);
+                    hideWindow();
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text-secondary)',
+                    borderRadius: '6px',
+                    padding: '2px 8px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    lineHeight: 1,
+                  }}
+                  title="Minimize to roll-up pill"
+                >
+                  ─
+                </button>
+              </div>
+            </div>
+          {/* ── Messages area ── */}
           <div style={{
             flex: 1,
             overflow: 'auto',
