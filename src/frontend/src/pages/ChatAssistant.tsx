@@ -34,15 +34,7 @@ async function hideWindow() {
   } catch {}
 }
 
-async function showWindow() {
-  try {
-    await fetch('http://127.0.0.1:1420/api/commands/advice_chat_open', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ params: {} }),
-    });
-  } catch {}
-}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 // Drag-to-move handlers for the custom title bar
 const dragState = { interval: null as ReturnType<typeof setTimeout> | null };
@@ -97,7 +89,6 @@ function ChatAssistant() {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<string[]>([]);
-  const [windowHidden, setWindowHidden] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -109,27 +100,6 @@ function ChatAssistant() {
     const interval = setInterval(loadHistory, 3000);
     return () => clearInterval(interval);
   }, []);
-
-  // When window is hidden, poll for new advice every 1s to auto-restore
-  useEffect(() => {
-    if (!windowHidden) return;
-    const iv = setInterval(async () => {
-      try {
-        const res = await fetch('http://127.0.0.1:1420/api/commands/guidance_get_active_recommendations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ params: {} }),
-        });
-        const data = await res.json();
-        if (data.success && data.value && data.value.length > 0) {
-          // New advice available — restore the window
-          await showWindow();
-          setWindowHidden(false);
-        }
-      } catch {}
-    }, 1000);
-    return () => clearInterval(iv);
-  }, [windowHidden]);
 
   // Track whether user has manually scrolled up so we don't auto-scroll
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
@@ -337,105 +307,69 @@ function ChatAssistant() {
   }
 
   return (
-      <>
-        {/* ── Desktop roll-up pill when OS window is hidden ── */}
-        {windowHidden && (
-          <div
-            onClick={async () => {
-              await showWindow();
-              setWindowHidden(false);
-            }}
-            style={{
-              position: 'fixed',
-              bottom: '16px',
-              right: '16px',
-              background: 'var(--color-bg-secondary)',
-              border: '1px solid var(--color-accent)',
-              borderRadius: '12px',
-              padding: '8px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-              zIndex: 10000,
-              transition: 'all 0.2s',
-              fontSize: '13px',
-              color: 'var(--color-text-primary)',
-            }}
-            title="Click to open advice chat"
-          >
-            <span style={{ fontSize: '16px' }}>💬</span>
-            <span>AI Copilot Advice</span>
-          </div>
-        )}
-
-        {/* ── Main window content (only shown when window is NOT hidden) ── */}
-        {!windowHidden && (
-          <div style={{
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        maxWidth: '900px',
+        margin: '0 auto',
+        width: '100%',
+      }}>
+        {/* ── Custom title bar (no native decorations) ── */}
+        <div
+          onMouseDown={(e) => {
+            // Only start drag on left side of title bar (not buttons)
+            if ((e.target as HTMLElement).closest('.tb-no-drag')) return;
+            // Start drag
+            (window as any).__TAURI_DRAG_START = true;
+            window.addEventListener('mousemove', handleDragMove);
+            window.addEventListener('mouseup', handleDragEnd);
+            // Start periodic flush
+            dragState.interval = setTimeout(flushDragOffset, 50);
+          }}
+          style={{
             display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-            maxWidth: '900px',
-            margin: '0 auto',
-            width: '100%',
-          }}>
-            {/* ── Custom title bar (no native decorations) ── */}
-            <div
-              onMouseDown={(e) => {
-                // Only start drag on left side of title bar (not buttons)
-                if ((e.target as HTMLElement).closest('.tb-no-drag')) return;
-                // Start drag
-                (window as any).__TAURI_DRAG_START = true;
-                window.addEventListener('mousemove', handleDragMove);
-                window.addEventListener('mouseup', handleDragEnd);
-                // Start periodic flush
-                dragState.interval = setTimeout(flushDragOffset, 50);
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '6px 10px',
+            background: 'var(--color-bg-primary)',
+            borderBottom: '1px solid var(--color-border)',
+            cursor: 'move',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+            msUserSelect: 'none',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px' }}>🤖</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              AI Copilot — Live Advice
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '4px' }} className="tb-no-drag">
+            {/* Minimize button — minimizes OS window to tray */}
+            <button
+              onClick={() => {
+                hideWindow();
               }}
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '6px 10px',
-                background: 'var(--color-bg-primary)',
-                borderBottom: '1px solid var(--color-border)',
-                cursor: 'move',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                MozUserSelect: 'none',
-                msUserSelect: 'none',
-                flexShrink: 0,
+                background: 'transparent',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-secondary)',
+                borderRadius: '6px',
+                padding: '2px 8px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                lineHeight: 1,
               }}
+              title="Minimize to system tray"
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '14px' }}>🤖</span>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  AI Copilot — Live Advice
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '4px' }} className="tb-no-drag">
-                {/* Minimize button — rolls up to desktop pill */}
-                <button
-                  onClick={() => {
-                    setWindowHidden(true);
-                    hideWindow();
-                  }}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--color-text-secondary)',
-                    borderRadius: '6px',
-                    padding: '2px 8px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    lineHeight: 1,
-                  }}
-                  title="Minimize to roll-up pill"
-                >
-                  ─
-                </button>
-              </div>
-            </div>
+              ─
+            </button>
+          </div>
+        </div>
           {/* ── Messages area ── */}
           <div style={{
             flex: 1,
@@ -697,9 +631,7 @@ function ChatAssistant() {
             </form>
           </div>
         </div>
-      )}
-    </>
-  );
+    );
 }
 
 export default ChatAssistant;

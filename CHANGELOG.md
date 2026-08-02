@@ -1,3 +1,10 @@
+## v1.1.185 — FIX: minimize to tray, post-setup observation engine start, setup-complete flow
+
+- **Fixed minimize behavior** — removed the in-app pill button; clicking the minimize button (─) in the custom title bar now calls `hide_main_window` to minimize the OS window to the system tray
+- **Fixed observation engine not starting after setup** — added `lazy_start_observation_engine()` that initializes and starts the observation engine dynamically after the user completes the setup wizard and configures an API key. Called automatically via `observation_start` API endpoint after settings are saved
+- **Fixed post-setup flow** — "Setup Complete" screen now shows for 3 seconds, then calls `hide_main_window` AND reloads to the sidebar layout. The sidebar's `App.tsx` detects the AI key and automatically opens the floating advice chat window
+- **Cleaned up dead code** — removed unused `showWindow`, `useEffect` imports; fixed JSX return structure in `ChatAssistant.tsx`
+
 ## v1.1.183 — FIX: advice chat window not appearing on Windows (missing GPU-disabling browser args)
 
 - **Fixed floating advice chat window not appearing after clicking "Open Copilot"** — the advice-chat WebView2 window was created without the `--disable-gpu --no-sandbox --disable-software-rasterizer` browser args that the main window requires. On some Windows systems, WebView2 fails to render a second window without these args, resulting in a window that is "created" but visually invisible/blank. Applied the same `additional_browser_args()` call used by the main window.

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const API = 'http://127.0.0.1:1420/api/commands';
 
@@ -22,12 +22,9 @@ function SetupWizard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Auto-open advice chat window when wizard completes (step 5)
-  useEffect(() => {
-    if (step === 5) {
-      httpPost('advice_chat_open', {}).catch(() => {});
-    }
-  }, [step]);
+  // Auto-open advice chat from sidebar after setup completes (step 5)
+  // The advice chat is now opened via the sidebar button, not from the setup wizard itself.
+  // The useEffect just polls for AI advice availability.
 
   const handleSelectProvider = (p: typeof PROVIDERS[0]) => {
     setSelectedProvider(p);
@@ -136,12 +133,15 @@ function SetupWizard() {
       });
       // Mark first-run as complete
       await httpPost('set_first_run_complete', {});
+      // Trigger observation engine start now that API key is configured
+      await httpPost('observation_start', {});
       // Show Setup Complete screen first so user sees confirmation
       setStep(5);
-      // Brief delay then hide main window (minimize to tray)
+      // After 3 seconds: hide to tray AND reload to sidebar layout
       setTimeout(async () => {
         try { await httpPost('hide_main_window', {}); } catch {}
-      }, 2000);
+        try { window.location.reload(); } catch {}
+      }, 3000);
     } catch (e: any) {
       setError(e.message || 'Cannot reach backend');
       setSaving(false);

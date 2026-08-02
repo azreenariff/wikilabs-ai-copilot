@@ -1415,9 +1415,37 @@ async fn handle_observation_get_status(_state: &ApiServerState) -> (StatusCode, 
     (StatusCode::OK, api_response(true, Some(status_value), None))
 }
 
-async fn handle_observation_start(_state: &ApiServerState) -> (StatusCode, String) {
+async fn handle_observation_start(state: &ApiServerState) -> (StatusCode, String) {
     info!("Observation start requested");
-    (StatusCode::OK, api_response(true, Some(serde_json::json!({"status": "started"})), None))
+
+    // Check if API key is configured before starting
+    let settings = state.settings.lock().unwrap();
+    let has_api_key = settings.settings.get("ai_provider")
+        .and_then(|p| p.get("api_key"))
+        .and_then(|k| k.as_str())
+        .map(|key| !key.is_empty())
+        .unwrap_or(false);
+    drop(settings);
+
+    if !has_api_key {
+        info!("Observation start skipped — no API key configured");
+    }
+
+    // Spawn lazy init on a background thread to avoid tokio::Send issues
+    // with the ApiServerState's Arc<Mutex<HashMap<...>>> internals
+    std::thread::spawn(|| {
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio rt for lazy obs");
+        rt.block_on(async {
+            let started = crate::observation::lazy_start_observation_engine().await;
+            if started {
+                tracing::info!("Observation engine started successfully (post-setup)");
+            } else {
+                tracing::error!("Failed to start observation engine (post-setup)");
+            }
+        });
+    });
+
+    (StatusCode::OK, api_response(true, Some(serde_json::json!({ "status": "starting" })), None))
 }
 
 async fn handle_observation_stop(_state: &ApiServerState) -> (StatusCode, String) {

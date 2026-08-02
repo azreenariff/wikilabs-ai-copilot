@@ -117,6 +117,86 @@ pub async fn start_observation_engine(engine: Arc<ObservationEngine>) {
     println!("[OBS] >>> Observation thread exiting");
 }
 
+/// Lazily initialize and start the observation engine.
+/// Called after the user completes the setup wizard and configures an API key.
+/// This allows the observation loop to start dynamically without requiring the
+/// API key to be present at app startup.
+pub async fn lazy_start_observation_engine() -> bool {
+    // Check if already initialized
+    if get_observation_engine().is_some() {
+        tracing::info!("[OBS] Observation engine already initialized, skipping lazy start");
+        return true;
+    }
+
+    tracing::info!("[OBS] Lazily initializing observation engine (post-setup)");
+    println!("[OBS] >>> Lazily starting observation engine (post-setup)");
+
+    // Initialize the engine — same as main.rs init but in API server context
+    let config = ObservationEngineConfig::default();
+    let engine = Arc::new(ObservationEngine::new(config));
+    println!("[OBS] >>> ObservationEngine created");
+
+    // Register providers
+    register_providers(&engine).await;
+    println!("[OBS] >>> Providers registered");
+
+    // Subscribe to event bus
+    let bus = engine.event_bus().clone();
+    let (sub, rx) = bus.subscribe_all();
+    unsafe {
+        EVENT_RECEIVER = Some(rx);
+    }
+    tracing::info!("[Observation] Event subscription created: {}", sub.id);
+
+    // Store engine as global
+    unsafe {
+        OBSERVATION_ENGINE = Some(engine.clone());
+    }
+
+    tracing::info!("[Observation] Observation engine initialized with providers (lazy start)");
+    println!("[OBS] >>> Observation engine initialized OK — global store set (lazy)");
+
+    // Start providers
+    let results = engine.start().await;
+    for (name, result) in &results {
+        match result {
+            Ok(_) => {
+                tracing::info!("[Observation] Provider {} started (lazy)", name);
+                println!("[OBS] >>> Provider {} started OK (lazy)", name);
+            }
+            Err(e) => {
+                tracing::error!("[Observation] Provider {} failed (lazy): {}", name, e);
+                println!("[OBS] >>> Provider {} FAILED: {}", name, e);
+            }
+        }
+    }
+
+    // Spawn the polling loop — runs independently on the tokio runtime
+    // The guidance_loop.rs runs on its own isolated runtime, so this doesn't starve the API server
+    let engine_clone = engine.clone();
+    tokio::spawn(async move {
+        engine.run_loop().await;
+        println!("[OBS] >>> Polling loop exited (lazy)");
+    });
+
+    // Also spawn a tokio runtime for the blocking observation loop
+    // (same pattern as main.rs: spawn on a thread, then block)
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime for lazy obs");
+        rt.block_on(async {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                if !engine_clone.is_running().await {
+                    break;
+                }
+            }
+        });
+        println!("[OBS] >>> Observation thread exiting (lazy)");
+    });
+
+    true
+}
+
 /// Register all available providers with the engine.
 async fn register_providers(engine: &ObservationEngine) {
     println!("[OBS] >>> Starting provider registration");
