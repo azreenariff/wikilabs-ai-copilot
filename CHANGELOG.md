@@ -1,3 +1,10 @@
+## v1.1.178 — FIX: replaced `__TAURI_INTERNALS__` Tauri IPC with HTTP API calls in SetupWizard & Settings, model dropdown appears after test connection, "Open Copilot" button works
+
+- **Replaced `__TAURI_INTERNALS__.invoke()` with HTTP fetch to `localhost:1420`** — the SetupWizard and Settings pages were using `window.__TAURI_INTERNALS__?.invoke()` which is unreliable in production WebView2. All four operations (test_connection, list_models, update_settings, open_advice_chat_window) now use the same `fetch('http://127.0.0.1:1420/api/commands/...')` pattern as the rest of the app (App.tsx, ChatAssistant).
+- **Model dropdown now appears after "Test Connection"** — the `list_models` call now goes through the HTTP API server (which correctly returns `data.value` as a model list), so the select dropdown renders instead of the text input after a successful connection test.
+- **"Open Copilot" button now works** — uses `window.history.pushState({}, '', '/advice-chat')` with `popstate` dispatch, matching the same approach in `main.rs:open_advice_chat_window()`. This navigates within the already-loaded React SPA instead of trying to invoke a Tauri command that doesn't exist in production.
+- **Fixed API request/response format** — the old code sent `{config: {...}}` for `test_connection` but the Rust handler reads from `params` directly. Now all calls send `{params: {...}}` consistently, matching the API server's expected format.
+
 ## v1.1.176 — FIX: model selection dropdown in SetupWizard, "Open Copilot" button now launches properly
 
 - **Added `list_models` Tauri IPC command** — the SetupWizard's AI provider step now correctly fetches available models from the configured endpoint and renders a dropdown instead of a text input. Previously `list_models` only existed in the API server, so the frontend call to `tauriInvoke('list_models')` failed silently and the dropdown never rendered.

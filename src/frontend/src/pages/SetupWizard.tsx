@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+const API = 'http://127.0.0.1:1420/api/commands';
+
 const PROVIDERS = [
   { name: 'OpenAI', defaultEndpoint: 'https://api.openai.com/v1', needsKey: true },
   { name: 'OpenRouter', defaultEndpoint: 'https://openrouter.ai/api/v1', needsKey: true },
@@ -30,38 +32,38 @@ function SetupWizard() {
     setError('');
   };
 
+  async function httpPost(action: string, params: any) {
+    const res = await fetch(`${API}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ params }),
+    });
+    return res.json();
+  }
+
   const handleTestConnection = async () => {
     setTestResult('testing');
     setError('');
     setFetchedModels([]);
     try {
-      // Use Tauri IPC directly via __TAURI_INTERNALS__.invoke()
-      // This bypasses HTTP fetch which can hang in WebView2
-      const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
-      if (!tauriInvoke) {
-        setTestResult('fail');
-        setError('Tauri IPC not available');
-        return;
-      }
-      const result: any = await tauriInvoke('test_connection', {
-        config: {
-          name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
-          endpoint,
-          api_key: apiKey,
-          model: model || 'gpt-4o',
-          max_tokens: parseInt(maxTokens) || 4096,
-          context_window: parseInt(contextWindow) || 128000,
-        },
+      const result: any = await httpPost('test_connection', {
+        name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
+        endpoint,
+        api_key: apiKey,
+        model: model || 'gpt-4o',
+        max_tokens: parseInt(maxTokens) || 4096,
+        context_window: parseInt(contextWindow) || 128000,
       });
-      if (result) {
+      if (result.success || result.value === true) {
         setTestResult('success');
-        // On success, also try to list models via Tauri IPC
+        // On success, fetch model list via HTTP
         try {
-          const modelList: string[] = await tauriInvoke('list_models', {
+          const modelResp: any = await httpPost('list_models', {
             endpoint,
             api_key: apiKey,
           });
-          if (modelList && modelList.length > 0) {
+          const modelList: string[] = modelResp.success ? (modelResp.value || []) : [];
+          if (modelList.length > 0) {
             setFetchedModels(modelList);
             setModel(modelList[0]);
           }
@@ -82,47 +84,21 @@ function SetupWizard() {
     setSaving(true);
     setError('');
     try {
-      const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
-      if (!tauriInvoke) {
-        setError('Tauri IPC not available');
-        setSaving(false);
-        return;
-      }
-      // Save settings via Tauri IPC (update_settings Tauri command)
-      await tauriInvoke('update_settings', {
-        settings: {
-          ai_provider: {
-            name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
-            endpoint,
-            api_key: apiKey,
-            model,
-            max_tokens: parseInt(maxTokens) || 4096,
-            context_window: parseInt(contextWindow) || 128000,
-          },
+      await httpPost('update_settings', {
+        ai_provider: {
+          name: selectedProvider.name.toLowerCase().replace(/\s+/g, '_'),
+          endpoint,
+          api_key: apiKey,
+          model,
+          max_tokens: parseInt(maxTokens) || 4096,
+          context_window: parseInt(contextWindow) || 128000,
         },
       });
-      // Mark first run as complete
-      try {
-        await tauriInvoke('set_first_run_complete', {});
-      } catch {
-        // Non-fatal
-      }
       setStep(5);
-      // Open copilot window via Tauri IPC (the proper way for WebView2)
-      try {
-        const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
-        if (tauriInvoke) {
-          setTimeout(async () => {
-            try { await tauriInvoke('open_advice_chat_window', {}); } catch {}
-          }, 500);
-        }
-      } catch {
-        // Non-fatal — user can click "Open Copilot" manually
-      }
     } catch (e: any) {
       setError(e.message || 'Cannot reach backend');
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const renderStep = () => {
@@ -365,20 +341,10 @@ function SetupWizard() {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
               The copilot is now running in the background. You can access it from the system tray.
             </p>
-            <button onClick={async () => {
-              try {
-                const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
-                if (tauriInvoke) {
-                  await tauriInvoke('open_advice_chat_window', {});
-                } else {
-                  // Fallback: try window.location as last resort
-                  window.location.href = 'http://localhost:1420/advice-chat';
-                }
-              } catch (e) {
-                console.error('[SetupWizard] Failed to open copilot:', e);
-                // Last resort fallback
-                window.location.href = 'http://localhost:1420/advice-chat';
-              }
+            <button onClick={() => {
+              // Navigate within the already-loaded React app — same approach as main.rs
+              window.history.pushState({}, '', '/advice-chat');
+              window.dispatchEvent(new PopStateEvent('popstate'));
             }} style={{
               padding: '10px 20px', borderRadius: '6px', border: '1px solid var(--color-accent)',
               background: 'transparent', color: 'var(--color-accent)', fontSize: '14px', cursor: 'pointer',

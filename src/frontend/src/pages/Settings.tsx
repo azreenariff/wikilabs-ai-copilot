@@ -167,26 +167,20 @@ function Settings() {
     setStatus('Testing...');
     setTestResult('testing');
     try {
-      // Use Tauri IPC directly via __TAURI_INTERNALS__.invoke() — this bypasses
-      // the HTTP API server entirely and calls the Rust command directly.
-      // This is more reliable than HTTP fetch which can hang in WebView2.
-      const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
-      if (!tauriInvoke) {
-        setStatus('✗ Tauri IPC not available');
-        setTestResult('fail');
-        return;
-      }
-      const result: any = await tauriInvoke('test_connection', {
-        config: {
+      const result: any = await fetch('http://127.0.0.1:1420/api/commands/test_connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params: {
           name: settings.ai_provider.name,
           endpoint: settings.ai_provider.endpoint,
           api_key: settings.ai_provider.api_key,
           model: settings.ai_provider.model,
           max_tokens: settings.ai_provider.max_tokens,
           context_window: settings.ai_provider.context_window,
-        },
+        }}),
       });
-      if (result) {
+      const data = await result.json();
+      if (data.success || data.value === true) {
         setStatus('✓ Connection successful');
         setTestResult('success');
       } else {
