@@ -1,3 +1,10 @@
+## v1.1.187 — FIX: lazy observation engine — only start after wizard completion, auto-start on subsequent launches
+
+- **Fixed observation engine not starting on app launch after first setup** — when `first_run_complete` is already `true` on disk (subsequent launches), `start_api_server()` now auto-starts the observation engine and guidance loop immediately after loading settings. On the very first launch, observation engine remains off until the user completes the setup wizard (no background polling during configuration).
+- **Fixed `handle_set_first_run_complete` using wrong type for skill_kb** — was passing `Arc<Mutex<Option<PathBuf>>>` directly; now properly creates `SkillKnowledgeBaseArc` via `create_skill_knowledge_base()`.
+- **Fixed module path for observation engine** — `observation::init_observation_engine()` was not in scope; changed to `crate::observation::` from `observation::`.
+- **Fixed `Arc<AppHandle>` type mismatch** — `app_handle` in `ApiServerState` is `Arc<AppHandle>`, so wrapped it in `Arc::new()` correctly.
+
 ## v1.1.185 — FIX: minimize to tray, post-setup observation engine start, setup-complete flow
 
 - **Fixed minimize behavior** — removed the in-app pill button; clicking the minimize button (─) in the custom title bar now calls `hide_main_window` to minimize the OS window to the system tray

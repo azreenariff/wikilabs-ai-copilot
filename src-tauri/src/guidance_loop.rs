@@ -45,7 +45,6 @@ struct StructuredEvent {
 pub fn spawn_ai_guidance_loop(
     poll_settings: Arc<Mutex<crate::api_server::ApiServerSettings>>,
     skill_kb: SkillKnowledgeBaseArc,
-    ai_notify_flag: Arc<Mutex<bool>>,
     app_handle: Option<Arc<AppHandle>>,
 ) {
     info!("[GUIDE] Spawning AI guidance loop on isolated Tokio runtime");
@@ -62,7 +61,6 @@ pub fn spawn_ai_guidance_loop(
             run_guidance_loop_inner(
                 poll_settings,
                 skill_kb,
-                ai_notify_flag,
                 app_handle,
             ).await;
         });
@@ -73,7 +71,6 @@ pub fn spawn_ai_guidance_loop(
 async fn run_guidance_loop_inner(
     poll_settings: Arc<Mutex<crate::api_server::ApiServerSettings>>,
     skill_kb: SkillKnowledgeBaseArc,
-    ai_notify_flag: Arc<Mutex<bool>>,
     app_handle: Option<Arc<AppHandle>>,
 ) {
     // Event polling: every 3 seconds — collect fresh observation events
@@ -273,38 +270,11 @@ async fn run_guidance_loop_inner(
                 let panel = GuidancePanel::instance();
 
                 if api_key.is_empty() {
-                    // No AI key configured — notify user once, then skip
-                    let mut notified = ai_notify_flag.lock().unwrap();
-                    if !*notified {
-                        // Set status so frontend can display it
-                        {
-                            let mut settings = poll_settings.lock().unwrap();
-                            if let Some(ai) = settings.settings.get_mut("ai_provider") {
-                                if let Some(obj) = ai.as_object_mut() {
-                                    obj.insert("ai_connection_status".to_string(), serde_json::json!("not_configured"));
-                                }
-                            }
-                        }
-                        // Show toast notification
-                        {
-                            let flag_clone = ai_notify_flag.clone();
-                            let mut flag_guard = flag_clone.lock().unwrap();
-                            *flag_guard = true;
-                        }
-                        if let Some(ref ah) = app_handle {
-                            let handle_clone = (**ah).clone();
-                            tokio::task::spawn_blocking(move || {
-                                if let Some(w) = handle_clone.get_webview_window("main") {
-                                    let _ = w.show();
-                                }
-                            });
-                            // Send notification event to frontend
-                            let _ = ah.emit("ai-connection-status", serde_json::json!({
-                                "status": "not_configured",
-                                "message": "AI Copilot is not connected — no API key configured. Go to Settings to connect your AI provider for intelligent guidance."
-                            }));
-                        }
-                    }
+                    // No AI key configured — skip AI reasoning for this tick.
+                    // Observation events are still collected by the engine and stored
+                    // in the guidance panel evidence/timeline stores. Once the user
+                    // configures an API key, the guidance loop picks it up on the
+                    // next 10-second tick.
                     continue;
                 }
 

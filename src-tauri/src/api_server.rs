@@ -773,6 +773,46 @@ async fn handle_set_first_run_complete(state: &ApiServerState) -> (StatusCode, S
         }
     }
     
+    // Start observation engine and guidance loop NOW that the wizard is complete.
+    // This ensures no background polling (screenshots, window enumeration) runs
+    // while the user is still configuring their AI provider.
+    {
+        let app_handle_clone = state.app_handle.clone();
+        let poll_settings = state.settings.clone();
+        let knowledge_dir = {
+            let guard = state.knowledge_dir.lock().unwrap();
+            guard.clone()
+        };
+        
+        // Create skill knowledge base from the knowledge directory
+        let skill_kb: crate::skill_knowledge::SkillKnowledgeBaseArc = if let Some(ref dir) = knowledge_dir {
+            crate::skill_knowledge::create_skill_knowledge_base(&dir.to_string_lossy())
+        } else {
+            crate::skill_knowledge::create_skill_knowledge_base("")
+        };
+        
+        // Spawn observation engine on its own thread with isolated Tokio runtime
+        std::thread::spawn(move || {
+            info!("[LAZY] Starting observation engine (post-wizard)");
+            let rt = tokio::runtime::Runtime::new()
+                .expect("Failed to create tokio runtime for lazy observation start");
+            rt.block_on(async {
+                let engine = crate::observation::init_observation_engine().await;
+                crate::observation::start_observation_engine(engine).await;
+            });
+        });
+        
+        // Spawn guidance loop on an isolated Tokio runtime
+        if let Some(ref ah) = app_handle_clone {
+            guidance_loop::spawn_ai_guidance_loop(
+                poll_settings,
+                skill_kb,
+                Some((*ah).clone()),
+            );
+            info!("[LAZY] Guidance loop spawned (post-wizard)");
+        }
+    }
+    
     (StatusCode::OK, api_response(true, Some(serde_json::json!({ "first_run_complete": true })), None))
 }
 
@@ -1664,9 +1704,6 @@ pub fn start_api_server(
     // Clone app_handle for use inside the AI loop closure (state will be consumed by the move)
     let app_handle_for_loop = app_handle.clone();
 
-    // Track whether we have already notified the user about missing AI key
-    let ai_has_notified = Arc::new(std::sync::Mutex::new(false));
-
     // Resolve absolute assets directory path for static file serving
     // The build.rs copies frontend dist assets into src-tauri/assets/
     // We need the absolute path to avoid relative-path CWD issues on Windows
@@ -1747,6 +1784,52 @@ pub fn start_api_server(
 
     let obs_settings = state.settings.clone();
 
+    // ── Auto-start observation/guidance on subsequent launches ──────────
+    // If the user already completed the wizard (first_run_complete=true),
+    // start observation engine + guidance loop immediately. This covers
+    // all launches after the first setup.
+    let should_auto_start = {
+        let settings = state.settings.lock().unwrap();
+        settings.settings.get("first_run_complete")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    };
+    if should_auto_start {
+        info!("first_run_complete is true — auto-starting observation engine and guidance loop");
+
+        let knowledge_dir = {
+            let guard = state.knowledge_dir.lock().unwrap();
+            guard.clone()
+        };
+        let skill_kb: crate::skill_knowledge::SkillKnowledgeBaseArc = if let Some(ref dir) = knowledge_dir {
+            crate::skill_knowledge::create_skill_knowledge_base(&dir.to_string_lossy())
+        } else {
+            crate::skill_knowledge::create_skill_knowledge_base("")
+        };
+        let app_handle_clone = state.app_handle.clone();
+
+        // Spawn observation engine
+        std::thread::spawn(move || {
+            info!("[AUTO] Starting observation engine (subsequent launch)");
+            let rt = tokio::runtime::Runtime::new()
+                .expect("Failed to create tokio runtime for auto observation start");
+            rt.block_on(async {
+                let engine = crate::observation::init_observation_engine().await;
+                crate::observation::start_observation_engine(engine).await;
+            });
+        });
+
+        // Spawn guidance loop
+        if let Some(ref ah) = app_handle_clone {
+            guidance_loop::spawn_ai_guidance_loop(
+                obs_settings.clone(),
+                skill_kb,
+                Some((*ah).clone()),
+            );
+            info!("[AUTO] Guidance loop spawned (subsequent launch)");
+        }
+    }
+
     let router = create_router(state, Some(assets_dir));
 
     // Initialize skill and knowledge panels
@@ -1819,19 +1902,10 @@ pub fn start_api_server(
                 info!("Guidance panel state cleared on startup");
             }
 
-            // ── Background observation polling + AI reasoning loop ────────────
-            // CRITICAL FIX: This loop runs on a SEPARATE Tokio runtime (in guidance_loop.rs)
-            // to prevent the AI reasoning loop from starving the API server's HTTP handlers.
-            // Previously, this rt.spawn() block ran on the same 4-worker runtime as axum::serve,
-            // causing the API server to become unresponsive when the AI reasoning loop blocked
-            // on a slow LLM backend (e.g., user's localhost:8000 or remote endpoint).
-            info!("Spawning AI guidance loop on isolated Tokio runtime (separate from API server)");
-            guidance_loop::spawn_ai_guidance_loop(
-                obs_settings.clone(),
-                skill_kb_clone.clone(),
-                ai_has_notified.clone(),
-                app_handle_for_guidance.clone(),
-            );
+            // Guidance loop and observation engine are now triggered lazily
+            // via handle_set_first_run_complete (after the user completes the wizard).
+            // This prevents background polling from running during the wizard.
+            info!("Guidance loop will start after wizard completion (triggered by set_first_run_complete)");
 
 
             let result = rt.block_on(async {
