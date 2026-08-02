@@ -1,4 +1,11 @@
-## v1.1.187 — FIX: lazy observation engine — only start after wizard completion, auto-start on subsequent launches
+## v1.1.190 — FIX: observation engine/routing improvements and deadlock prevention
+
+- **Fixed `MutexGuard` held across `.await` in `handle_set_first_run_complete`** — `state.settings.lock()` was held across the `init_observation_engine()` async call, causing a potential deadlock. Mutex guard is now dropped before the async block.
+- **Added `#[axum::debug_handler]` attribute** for better compile-time validation of route handler bounds.
+- **Changed `ApiServerState.app_handle` to `Option<Arc<Mutex<tauri::AppHandle>>>`** to satisfy `Send + Sync` bounds required by axum's `Handler` trait.
+- **Added `Clone` derive to `ApiRequest`** and changed `api_handler` return type to `Json<String>` for consistency with axum best practices.
+- **Added `macros` feature to axum dependency** to enable `#[axum::debug_handler]`.
+- **Simplified event counting in guidance loop** — `rx.try_recv()` now ignores the event payload (just counts events), avoiding unnecessary processing during quick interval checks.
 
 - **Fixed observation engine not starting on app launch after first setup** — when `first_run_complete` is already `true` on disk (subsequent launches), `start_api_server()` now auto-starts the observation engine and guidance loop immediately after loading settings. On the very first launch, observation engine remains off until the user completes the setup wizard (no background polling during configuration).
 - **Fixed `handle_set_first_run_complete` using wrong type for skill_kb** — was passing `Arc<Mutex<Option<PathBuf>>>` directly; now properly creates `SkillKnowledgeBaseArc` via `create_skill_knowledge_base()`.

@@ -217,7 +217,7 @@ use crate::skill_knowledge::create_skill_knowledge_base;
 use crate::skill_management::SkillManagementPanel;
 
 /// Request wrapper sent from the frontend.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ApiRequest {
     #[serde(default)]
     pub params: Value,
@@ -231,7 +231,8 @@ pub struct ApiServerState {
     /// The knowledge packs directory used at startup (for preflight checks).
     pub knowledge_dir: Arc<Mutex<Option<PathBuf>>>,
     /// Optional AppHandle for sending native notifications.
-    pub app_handle: Option<Arc<tauri::AppHandle>>,
+    /// Wrapped in Arc<Mutex<...>> to ensure Send + Sync for axum Handler bounds.
+    pub app_handle: Option<Arc<Mutex<tauri::AppHandle>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -307,11 +308,12 @@ impl ApiServerSettings {
 }
 
 /// Main request handler.
+#[axum::debug_handler]
 pub async fn api_handler(
     State(state): State<ApiServerState>,
     Path(method): Path<String>,
     Json(req): Json<ApiRequest>,
-) -> (StatusCode, String) {
+) -> (StatusCode, Json<String>) {
     info!(method, "API request received");
 
     let (status, body) = match method.as_str() {
@@ -386,7 +388,7 @@ pub async fn api_handler(
     };
 
     info!(method, "API request completed");
-    (status, body)
+    (status, Json(body))
 }
 
 async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (StatusCode, String) {
@@ -759,19 +761,22 @@ async fn handle_update_settings(state: &ApiServerState, params: Value) -> (Statu
 }
 
 async fn handle_set_first_run_complete(state: &ApiServerState) -> (StatusCode, String) {
-    let mut settings = state.settings.lock().unwrap();
-    // Set first_run_complete in the settings object
-    settings.settings["first_run_complete"] = serde_json::json!(true);
-    
-    // Persist to disk
-    if let Ok(config_path) = state.config_path.lock() {
-        if let Some(ref path) = *config_path {
-            match fs::write(path, serde_json::to_string_pretty(&settings.settings).unwrap_or_default()) {
-                Ok(_) => info!("first_run_complete persisted to disk"),
-                Err(e) => error!(error = %e, "Failed to persist first_run_complete"),
+    // Drop the settings guard before the async block to ensure MutexGuard is not held across .await
+    {
+        let mut settings = state.settings.lock().unwrap();
+        // Set first_run_complete in the settings object
+        settings.settings["first_run_complete"] = serde_json::json!(true);
+        
+        // Persist to disk
+        if let Ok(config_path) = state.config_path.lock() {
+            if let Some(ref path) = *config_path {
+                match fs::write(path, serde_json::to_string_pretty(&settings.settings).unwrap_or_default()) {
+                    Ok(_) => info!("first_run_complete persisted to disk"),
+                    Err(e) => error!(error = %e, "Failed to persist first_run_complete"),
+                }
             }
         }
-    }
+    }  // MutexGuard dropped here
     
     // Start observation engine and guidance loop NOW that the wizard is complete.
     // This ensures no background polling (screenshots, window enumeration) runs
@@ -802,10 +807,11 @@ async fn handle_set_first_run_complete(state: &ApiServerState) -> (StatusCode, S
         
         // Now spawn guidance loop — the globals are already set above
         if let Some(ref ah) = app_handle_clone {
+            let app_h = ah.lock().unwrap();
             guidance_loop::spawn_ai_guidance_loop(
                 poll_settings,
                 skill_kb,
-                Some((*ah).clone()),
+                Some(Arc::new((*app_h).clone())),
             );
             info!("[LAZY] Guidance loop spawned (post-wizard)");
         }
@@ -1496,7 +1502,7 @@ async fn handle_observation_stop(_state: &ApiServerState) -> (StatusCode, String
 async fn handle_hide_main_window(state: &ApiServerState) -> (StatusCode, String) {
     info!("Hide main window (minimize to tray) requested");
     if let Some(ref app_handle) = state.app_handle {
-        if let Some(window) = (**app_handle).get_webview_window("main") {
+        if let Some(window) = app_handle.lock().unwrap().get_webview_window("main") {
             let _ = window.hide();
         }
     }
@@ -1510,7 +1516,7 @@ async fn handle_hide_main_window(state: &ApiServerState) -> (StatusCode, String)
 async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String) {
     info!("Opening advice chat floating window");
     if let Some(ref app_handle) = state.app_handle {
-        let ah = (**app_handle).clone();
+        let ah = app_handle.lock().unwrap().clone();
         // If the window already exists, just show and focus it
         if let Some(window) = ah.get_webview_window("advice-chat") {
             info!("advice-chat window exists — showing and focusing");
@@ -1592,7 +1598,7 @@ async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String)
 async fn handle_hide_advice_window(state: &ApiServerState) -> (StatusCode, String) {
     info!("Hiding advice chat window");
     if let Some(ref app_handle) = state.app_handle {
-        if let Some(window) = (**app_handle).get_webview_window("advice-chat") {
+        if let Some(window) = app_handle.lock().unwrap().get_webview_window("advice-chat") {
             let _ = window.hide();
         }
     }
@@ -1605,7 +1611,7 @@ async fn handle_drag_advice_window(state: &ApiServerState, params: Value) -> (St
     if let Some(ref app_handle) = state.app_handle {
         let dx = params.get("dx").and_then(|v| v.as_i64()).unwrap_or(0) as f64;
         let dy = params.get("dy").and_then(|v| v.as_i64()).unwrap_or(0) as f64;
-        if let Some(window) = (**app_handle).get_webview_window("advice-chat") {
+        if let Some(window) = app_handle.lock().unwrap().get_webview_window("advice-chat") {
             if let Ok(current_pos) = window.outer_position() {
                 let new_x = current_pos.x as f64 + dx;
                 let new_y = current_pos.y as f64 + dy;
@@ -1659,9 +1665,15 @@ pub fn create_router(state: ApiServerState, assets_dir: Option<String>) -> Route
 
     let advice_html = include_str!("../assets/advice-chat.html");
     
+    // Clone state for the closure that captures it
+    let state_for_closure = state.clone();
+    
     // Build router — ServeDir assets path uses absolute path to avoid relative-path issues on Windows
     let mut router = Router::new()
-        .route("/api/commands/:method", post(api_handler))
+        .route("/api/commands/:method", post(move |method: Path<String>, req: Json<ApiRequest>| {
+            let state = state_for_closure.clone();
+            async move { api_handler(State(state), method, req).await }
+        }))
         .route("/health", get(|| async { "ok" }))
         .route("/ready", get(|| async { 
             let ready = crate::api_ready::is_server_ready();
@@ -1766,7 +1778,7 @@ pub fn start_api_server(
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
         knowledge_dir: Arc::new(Mutex::new(knowledge_dir_to_use.clone())),
-        app_handle,
+        app_handle: app_handle.map(|h| Arc::new(Mutex::new(AppHandle::clone(&*h)))),
     };
 
     // Load settings from disk at startup so the AI loop sees the configured API key
@@ -1821,7 +1833,7 @@ pub fn start_api_server(
             guidance_loop::spawn_ai_guidance_loop(
                 obs_settings.clone(),
                 skill_kb,
-                Some((*ah).clone()),
+                Some(Arc::new(ah.lock().unwrap().clone())),
             );
             info!("[AUTO] Guidance loop spawned (subsequent launch)");
         }
@@ -1860,7 +1872,7 @@ pub fn start_api_server(
     } else {
         create_skill_knowledge_base("")
     };
-    let skill_kb_clone = skill_kb.clone();
+    let _skill_kb_clone = skill_kb.clone();
 
     // Store knowledge path for later async initialization
     let kdir = knowledge_dir_to_use.clone();

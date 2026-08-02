@@ -223,7 +223,7 @@ async fn run_guidance_loop_inner(
                 // Check for NEW events from the last interval window
                 let new_events_count = if let Some(ref rx) = event_rx {
                     let mut count = 0u32;
-                    while let Ok(event) = rx.try_recv() {
+                    while let Ok(_event) = rx.try_recv() {
                         count += 1;
                     }
                     count
