@@ -167,6 +167,8 @@ function Settings() {
     setStatus('Testing...');
     setTestResult('testing');
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
       const result: any = await fetch('http://127.0.0.1:1420/api/commands/test_connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,7 +180,9 @@ function Settings() {
           max_tokens: settings.ai_provider.max_tokens,
           context_window: settings.ai_provider.context_window,
         }}),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       const data = await result.json();
       if (data.success || data.value === true) {
         setStatus('✓ Connection successful');
@@ -188,7 +192,11 @@ function Settings() {
         setTestResult('fail');
       }
     } catch (e: any) {
-      setStatus(`✗ ${e.message || 'Connection failed — check your provider URL'}`);
+      let errMsg = e.message || 'Connection failed — check your provider URL';
+      if (e.name === 'AbortError') {
+        errMsg = 'Test timed out after 60s — check that the LLM server is reachable';
+      }
+      setStatus(`✗ ${errMsg}`);
       setTestResult('fail');
     }
   }

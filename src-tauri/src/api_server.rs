@@ -420,11 +420,14 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
     };
 
     info!("[TEST] TCP check: host='{}' port={}", host, port);
-    match tokio::net::TcpStream::connect((host.as_str(), port)).await {
-        Ok(_) => info!("[TEST] TCP connection succeeded"),
-        Err(e) => {
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        tokio::net::TcpStream::connect((host.as_str(), port))
+    ).await {
+        Ok(Ok(_)) => info!("[TEST] TCP connection succeeded"),
+        Ok(Err(e)) => {
             error!("[TEST] TCP connection failed: {}", e);
-            let msg = if e.to_string().contains("timed out") {
+            let msg = if e.to_string().contains("timed out") || e.to_string().contains("deadline") {
                 format!("Cannot reach {}:{} — connection timed out. Check the IP address and ensure the LLM server is running.", host, port)
             } else if e.to_string().contains("refused") {
                 format!("Connection refused at {}:{}. The LLM server may not be running or the port is wrong.", host, port)
@@ -433,6 +436,11 @@ async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (Stat
             } else {
                 format!("Cannot connect to {}:{} — {}", host, port, e)
             };
+            return (StatusCode::OK, api_response(false, None, Some(msg)));
+        }
+        Err(_) => {
+            error!("[TEST] TCP connection timed out");
+            let msg = format!("Cannot reach {}:{} — connection timed out. Check the IP address and ensure the LLM server is running.", host, port);
             return (StatusCode::OK, api_response(false, None, Some(msg)));
         }
     }

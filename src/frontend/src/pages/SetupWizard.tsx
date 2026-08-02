@@ -32,13 +32,25 @@ function SetupWizard() {
     setError('');
   };
 
-  async function httpPost(action: string, params: any) {
-    const res = await fetch(`${API}/${action}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ params }),
-    });
-    return res.json();
+  async function httpPost(action: string, params: any, timeoutMs: number = 60000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${API}/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ params }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return res.json();
+    } catch (e: any) {
+      clearTimeout(timeoutId);
+      if (e.name === 'AbortError') {
+        throw new Error(`Request timed out after ${timeoutMs / 1000}s — the backend may still be processing`);
+      }
+      throw e;
+    }
   }
 
   const handleTestConnection = async () => {
