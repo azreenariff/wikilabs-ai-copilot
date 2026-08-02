@@ -1,3 +1,9 @@
+## v1.1.179 — FIX: test_connection fetch timeout prevents 'Testing...' stall
+
+- **Added 10s timeout to backend TCP connect** — `tokio::time::timeout()` wraps the TCP connection attempt so unreachable hosts fail fast instead of blocking until the OS TCP timeout (30-120s on Windows). A clear timeout error message is returned to the frontend.
+- **Added 60s AbortController timeout to frontend fetch()** — both SetupWizard and Settings pages now use `AbortController` with a 60s total timeout on all `fetch()` calls to `localhost:1420`. Without this, WebView2's native `fetch()` would hang indefinitely on slow/unreachable backends, causing the "Testing..." spinner to never resolve.
+- This restores the HTTP fetch approach from v1.1.165-v1.1.167 but adds proper timeouts to prevent the original hang problem.
+
 ## v1.1.178 — FIX: replaced `__TAURI_INTERNALS__` Tauri IPC with HTTP API calls in SetupWizard & Settings, model dropdown appears after test connection, "Open Copilot" button works
 
 - **Replaced `__TAURI_INTERNALS__.invoke()` with HTTP fetch to `localhost:1420`** — the SetupWizard and Settings pages were using `window.__TAURI_INTERNALS__?.invoke()` which is unreliable in production WebView2. All four operations (test_connection, list_models, update_settings, open_advice_chat_window) now use the same `fetch('http://127.0.0.1:1420/api/commands/...')` pattern as the rest of the app (App.tsx, ChatAssistant).
