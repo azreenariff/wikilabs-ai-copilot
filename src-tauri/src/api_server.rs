@@ -791,18 +791,23 @@ async fn handle_set_first_run_complete(state: &ApiServerState) -> (StatusCode, S
             crate::skill_knowledge::create_skill_knowledge_base("")
         };
         
-        // Spawn observation engine on its own thread with isolated Tokio runtime
-        std::thread::spawn(move || {
-            info!("[LAZY] Starting observation engine (post-wizard)");
-            let rt = tokio::runtime::Runtime::new()
-                .expect("Failed to create tokio runtime for lazy observation start");
-            rt.block_on(async {
-                let engine = crate::observation::init_observation_engine().await;
-                crate::observation::start_observation_engine(engine).await;
-            });
+        // Initialize observation engine SYNCHRONOUSLY on this thread BEFORE
+        // spawning the guidance loop. This ensures EVENT_RECEIVER and
+        // OBSERVATION_ENGINE globals are populated so the guidance loop
+        // doesn't start with None for both (a race condition with the
+        // background thread approach).
+        info!("[LAZY] Initializing observation engine (post-wizard) — synchronously");
+        let rt_lazy = tokio::runtime::Runtime::new()
+            .expect("Failed to create tokio runtime for lazy observation start");
+        rt_lazy.block_on(async {
+            let engine = crate::observation::init_observation_engine().await;
+            // Start providers — spawns the polling loop task on the runtime.
+            // The runtime stays alive as long as there are pending tasks.
+            crate::observation::start_observation_engine(engine).await;
         });
+        info!("[LAZY] Observation engine initialized and started (post-wizard)");
         
-        // Spawn guidance loop on an isolated Tokio runtime
+        // Now spawn guidance loop — the globals are already set above
         if let Some(ref ah) = app_handle_clone {
             guidance_loop::spawn_ai_guidance_loop(
                 poll_settings,
@@ -1808,18 +1813,17 @@ pub fn start_api_server(
         };
         let app_handle_clone = state.app_handle.clone();
 
-        // Spawn observation engine
-        std::thread::spawn(move || {
-            info!("[AUTO] Starting observation engine (subsequent launch)");
-            let rt = tokio::runtime::Runtime::new()
-                .expect("Failed to create tokio runtime for auto observation start");
-            rt.block_on(async {
-                let engine = crate::observation::init_observation_engine().await;
-                crate::observation::start_observation_engine(engine).await;
-            });
+        // Initialize observation engine SYNCHRONOUSLY (same thread, no race)
+        info!("[AUTO] Initializing observation engine (subsequent launch)");
+        let rt_auto = tokio::runtime::Runtime::new()
+            .expect("Failed to create tokio runtime for auto observation start");
+        rt_auto.block_on(async {
+            let engine = crate::observation::init_observation_engine().await;
+            crate::observation::start_observation_engine(engine).await;
         });
+        info!("[AUTO] Observation engine initialized and started (subsequent launch)");
 
-        // Spawn guidance loop
+        // Now spawn guidance loop — globals are already set above
         if let Some(ref ah) = app_handle_clone {
             guidance_loop::spawn_ai_guidance_loop(
                 obs_settings.clone(),

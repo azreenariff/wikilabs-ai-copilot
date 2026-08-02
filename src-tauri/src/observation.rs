@@ -95,26 +95,16 @@ pub async fn start_observation_engine(engine: Arc<ObservationEngine>) {
     }
     println!("[OBS] >>> All providers started — spawning polling loop");
 
-    // Start the polling loop in a background task and block the thread until engine stops
-    // This ensures the tokio runtime stays alive while the polling loop runs
-    // Clone engine Arc for the blocking loop (spawn moves one Arc)
+    // Start the polling loop in a background task.
+    // DO NOT block the calling thread — the tokio runtime (created in the
+    // caller's context) will stay alive as long as there are pending tasks.
+    // The caller is responsible for keeping the runtime alive (e.g., by
+    // dropping it only when the app exits).
     let engine_clone = engine.clone();
     tokio::spawn(async move {
         engine.run_loop().await;
         println!("[OBS] >>> Polling loop exited");
     });
-
-    // Block the observation thread so the tokio runtime stays alive
-    // and the polling loop continues running. The runtime will only
-    // be dropped (and the loop cancelled) when the app exits.
-    loop {
-        tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-        let running = engine_clone.is_running().await;
-        if !running {
-            break;
-        }
-    }
-    println!("[OBS] >>> Observation thread exiting");
 }
 
 /// Lazily initialize and start the observation engine.
@@ -171,28 +161,16 @@ pub async fn lazy_start_observation_engine() -> bool {
         }
     }
 
-    // Spawn the polling loop — runs independently on the tokio runtime
-    // The guidance_loop.rs runs on its own isolated runtime, so this doesn't starve the API server
+    // Spawn the polling loop — runs independently on the tokio runtime.
+    // The caller must keep the runtime alive for the loop to continue.
     let engine_clone = engine.clone();
     tokio::spawn(async move {
         engine.run_loop().await;
         println!("[OBS] >>> Polling loop exited (lazy)");
     });
-
-    // Also spawn a tokio runtime for the blocking observation loop
-    // (same pattern as main.rs: spawn on a thread, then block)
-    std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime for lazy obs");
-        rt.block_on(async {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-                if !engine_clone.is_running().await {
-                    break;
-                }
-            }
-        });
-        println!("[OBS] >>> Observation thread exiting (lazy)");
-    });
+    // Note: we removed the blocking thread that kept the runtime alive.
+    // The runtime created in the caller's context (rt_lazy or rt_auto) will
+    // stay alive as long as there are pending tasks (the polling loop).
 
     true
 }

@@ -16,7 +16,7 @@ use serde_json::Value;
 use tauri::AppHandle;
 use tauri::Manager;
 use tauri::Emitter;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::guidance_panel::GuidancePanel;
 use crate::knowledge_panel::KnowledgePanel;
@@ -228,6 +228,7 @@ async fn run_guidance_loop_inner(
                     }
                     count
                 } else {
+                    debug!("No event receiver available — events will not be collected");
                     0
                 };
 
@@ -243,6 +244,7 @@ async fn run_guidance_loop_inner(
                         e.provider == "terminal" || e.provider == "screen_capture"
                     });
                     if !has_terminal_or_screen {
+                        debug!("No new events and no terminal/screen activity, skipping AI reasoning for this tick");
                         continue;
                     }
                     // There ARE terminal/screen events but they were collected in a previous cycle
@@ -275,6 +277,7 @@ async fn run_guidance_loop_inner(
                     // in the guidance panel evidence/timeline stores. Once the user
                     // configures an API key, the guidance loop picks it up on the
                     // next 10-second tick.
+                    debug!("No API key configured, skipping AI reasoning for this tick");
                     continue;
                 }
 
@@ -536,6 +539,7 @@ async fn run_guidance_loop_inner(
                 } else {
                     // No screenshot available — skip AI reasoning entirely
                     // Sending a generic prompt without a screenshot causes hallucinations
+                    debug!("No screenshot available for AI reasoning, skipping tick");
                     continue;
                 };
 
