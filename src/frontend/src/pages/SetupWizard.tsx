@@ -107,13 +107,17 @@ function SetupWizard() {
         // Non-fatal
       }
       setStep(5);
-      // Use React Router to navigate to advice chat view after a short delay
-      setTimeout(() => {
-        // Navigate using window.location hash or React Router
-        // By changing the URL, the React Router will pick it up and render ChatAssistant
-        window.history.pushState({}, '', '/advice-chat');
-        window.dispatchEvent(new PopStateEvent('popstate'));
-      }, 500);
+      // Open copilot window via Tauri IPC (the proper way for WebView2)
+      try {
+        const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+        if (tauriInvoke) {
+          setTimeout(async () => {
+            try { await tauriInvoke('open_advice_chat_window', {}); } catch {}
+          }, 500);
+        }
+      } catch {
+        // Non-fatal — user can click "Open Copilot" manually
+      }
     } catch (e: any) {
       setError(e.message || 'Cannot reach backend');
     }
@@ -360,9 +364,20 @@ function SetupWizard() {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
               The copilot is now running in the background. You can access it from the system tray.
             </p>
-            <button onClick={() => {
-              // Navigate to advice chat instead of reloading (which causes a loop)
-              window.location.href = 'http://localhost:1420/advice-chat';
+            <button onClick={async () => {
+              try {
+                const tauriInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
+                if (tauriInvoke) {
+                  await tauriInvoke('open_advice_chat_window', {});
+                } else {
+                  // Fallback: try window.location as last resort
+                  window.location.href = 'http://localhost:1420/advice-chat';
+                }
+              } catch (e) {
+                console.error('[SetupWizard] Failed to open copilot:', e);
+                // Last resort fallback
+                window.location.href = 'http://localhost:1420/advice-chat';
+              }
             }} style={{
               padding: '10px 20px', borderRadius: '6px', border: '1px solid var(--color-accent)',
               background: 'transparent', color: 'var(--color-accent)', fontSize: '14px', cursor: 'pointer',

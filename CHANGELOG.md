@@ -1,3 +1,9 @@
+## v1.1.176 — FIX: model selection dropdown in SetupWizard, "Open Copilot" button now launches properly
+
+- **Added `list_models` Tauri IPC command** — the SetupWizard's AI provider step now correctly fetches available models from the configured endpoint and renders a dropdown instead of a text input. Previously `list_models` only existed in the API server, so the frontend call to `tauriInvoke('list_models')` failed silently and the dropdown never rendered.
+- **Fixed "Open Copilot" button** — the button on the Setup Complete screen now uses the proper Tauri IPC `open_advice_chat_window` command (which calls `main_window.navigate()`) instead of `window.location.href` which silently fails in WebView2.
+- **Fixed auto-navigate after "Save & Minimize"** — the post-setup auto-launch now also uses Tauri IPC instead of `window.history.pushState`, ensuring the advice chat loads reliably.
+
 ## v1.1.175 — FIX: advice chat uses React Router navigation instead of WebView2 navigate, main window restored to original size
 
 - **Advice chat now uses React Router `pushState`** — instead of `main_window.navigate()` which causes a full WebView2 page reload and triggers HTTP fetch hangs, the app now uses `window.history.pushState()` to change the route to `/advice-chat` within the already-loaded React app. The ChatAssistant component renders without the sidebar.

@@ -146,6 +146,58 @@ fn test_connection(config: AiProviderConfig) -> Result<bool, String> {
 }
 
 #[tauri::command]
+fn list_models(endpoint: String, api_key: String) -> Result<Vec<String>, String> {
+    if endpoint.is_empty() {
+        return Err("Endpoint is required".to_string());
+    }
+
+    let url = format!("{}/models", endpoint.trim_end_matches('/'));
+    info!(url = %url, "Listing AI models");
+
+    let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
+    let models = rt.block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+
+        let mut request = client.get(&url);
+        if !api_key.is_empty() {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request.send().await.map_err(|e| e.to_string())?;
+        let status = response.status();
+
+        if !status.is_success() {
+            return Err(format!("HTTP {}: model listing failed", status));
+        }
+
+        let body = response.text().await.map_err(|e| e.to_string())?;
+        let json: serde_json::Value = serde_json::from_str(&body)
+            .map_err(|e| format!("Failed to parse models response: {}", e))?;
+
+        // Handle OpenAI format ("data": [...]) — also supports Ollama bare array
+        let models: Vec<String> = if let Some(data) = json.get("data").and_then(|d| d.as_array()) {
+            data.iter()
+                .filter_map(|m| m.get("id").and_then(|id| id.as_str().map(String::from)))
+                .collect()
+        } else if let Some(arr) = json.as_array() {
+            arr.iter()
+                .filter_map(|m| m.get("id").and_then(|id| id.as_str().map(String::from)))
+                .collect()
+        } else {
+            return Err("Unexpected response format: expected 'data' array or bare array".to_string());
+        };
+
+        info!(count = models.len(), "Model list retrieved");
+        Ok(models)
+    });
+
+    models
+}
+
+#[tauri::command]
 fn get_workspace_list(app_state: tauri::State<AppState>) -> Result<Vec<String>, String> {
     let workspaces = app_state
         .repos
@@ -993,6 +1045,7 @@ fn main() {
             // Provider commands
             list_providers,
             test_connection,
+            list_models,
             // Workspace commands
             get_workspace_list,
             create_workspace,
