@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const API = 'http://127.0.0.1:1420/api/commands';
 
@@ -21,6 +21,13 @@ function SetupWizard() {
   const [testResult, setTestResult] = useState<'idle' | 'testing' | 'success' | 'fail'>('idle');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-open advice chat window when wizard completes (step 5)
+  useEffect(() => {
+    if (step === 5) {
+      httpPost('advice_chat_open', {}).catch(() => {});
+    }
+  }, [step]);
 
   const handleSelectProvider = (p: typeof PROVIDERS[0]) => {
     setSelectedProvider(p);

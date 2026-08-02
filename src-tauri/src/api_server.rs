@@ -376,6 +376,8 @@ pub async fn api_handler(
         "observation_stop" => handle_observation_stop(&state).await,
         "hide_main_window" => handle_hide_main_window(&state).await,
         "advice_chat_open" => handle_advice_chat_open(&state).await,
+        "hide_advice_window" => handle_hide_advice_window(&state).await,
+        "drag_advice_window" => handle_drag_advice_window(&state, req.params).await,
         "restart" => handle_restart_api_server(&state).await,
         other => {
             warn!(other, "Unknown API method");
