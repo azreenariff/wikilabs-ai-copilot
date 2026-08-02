@@ -1431,18 +1431,19 @@ async fn handle_observation_start(state: &ApiServerState) -> (StatusCode, String
         info!("Observation start skipped — no API key configured");
     }
 
-    // Spawn lazy init on a background thread to avoid tokio::Send issues
-    // with the ApiServerState's Arc<Mutex<HashMap<...>>> internals
-    std::thread::spawn(|| {
-        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio rt for lazy obs");
-        rt.block_on(async {
-            let started = crate::observation::lazy_start_observation_engine().await;
-            if started {
-                tracing::info!("Observation engine started successfully (post-setup)");
-            } else {
-                tracing::error!("Failed to start observation engine (post-setup)");
-            }
-        });
+    // Spawn lazy init — run on the API server's existing multi-threaded runtime.
+    // This is critical: creating a new single-threaded runtime + block_on() in a
+    // separate thread would drop the runtime immediately after the async block
+    // completes, killing any tokio::spawn'd tasks (including the observation
+    // polling loop). By running on the API server's runtime, the spawned tasks
+    // keep the observation engine alive as long as the API server lives.
+    tokio::spawn(async move {
+        let started = crate::observation::lazy_start_observation_engine().await;
+        if started {
+            tracing::info!("Observation engine started successfully (post-setup)");
+        } else {
+            tracing::error!("Failed to start observation engine (post-setup)");
+        }
     });
 
     (StatusCode::OK, api_response(true, Some(serde_json::json!({ "status": "starting" })), None))
