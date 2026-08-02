@@ -45,7 +45,7 @@ async function showWindow() {
 }
 
 // Drag-to-move handlers for the custom title bar
-let dragInterval: ReturnType<typeof setInterval> | null = null;
+const dragState = { interval: null as ReturnType<typeof setTimeout> | null };
 let dragDx = 0;
 let dragDy = 0;
 
@@ -87,7 +87,7 @@ function flushDragOffset() {
     }).catch(() => {});
   }
   if ((window as any).__TAURI_DRAG_START) {
-    dragInterval = setTimeout(flushDragOffset, 50);
+    dragState.interval = setTimeout(flushDragOffset, 50);
   }
 }
 
@@ -390,7 +390,7 @@ function ChatAssistant() {
                 window.addEventListener('mousemove', handleDragMove);
                 window.addEventListener('mouseup', handleDragEnd);
                 // Start periodic flush
-                dragInterval = setTimeout(flushDragOffset, 50);
+                dragState.interval = setTimeout(flushDragOffset, 50);
               }}
               style={{
                 display: 'flex',
