@@ -1444,43 +1444,76 @@ async fn handle_advice_chat_open(state: &ApiServerState) -> (StatusCode, String)
         let ah = (**app_handle).clone();
         // If the window already exists, just show and focus it
         if let Some(window) = ah.get_webview_window("advice-chat") {
-            let _ = window.show();
-            let _ = window.set_focus();
+            info!("advice-chat window exists — showing and focusing");
+            if let Err(e) = window.show() {
+                error!("Failed to show advice-chat window: {}", e);
+            } else {
+                let _ = window.set_focus();
+            }
             return (StatusCode::OK, api_response(true, Some(serde_json::json!({"opened": true})), None));
         }
         // Window doesn't exist — create it (lazy init)
         info!("advice-chat window not found, creating it now");
         let url = tauri::WebviewUrl::External("http://localhost:1420/advice-chat".parse::<url::Url>().unwrap());
-        let result = tauri::WebviewWindowBuilder::new(&ah, "advice-chat", url)
+
+        // Build window builder with GPU-disabling browser args (same as main window).
+        // On some Windows systems, WebView2 fails to render a second window without
+        // these args, resulting in a blank or invisible window.
+        #[cfg(target_os = "windows")]
+        let builder = tauri::webview::WebviewWindowBuilder::new(&ah, "advice-chat", url)
             .title("AI Copilot — Live Advice")
             .inner_size(400.0, 520.0)
             .resizable(true)
-            .decorations(false)  // No native title bar — no X button, no minimize
+            .decorations(false)
             .always_on_top(true)
-            .build();
+            .additional_browser_args("--disable-gpu --no-sandbox --disable-software-rasterizer");
+
+        #[cfg(not(target_os = "windows"))]
+        let builder = tauri::webview::WebviewWindowBuilder::new(&ah, "advice-chat", url)
+            .title("AI Copilot — Live Advice")
+            .inner_size(400.0, 520.0)
+            .resizable(true)
+            .decorations(false)
+            .always_on_top(true);
+
+        let result = builder.build();
         if let Ok(window) = result {
+            info!("advice-chat window built successfully");
             // Position on the right side of the screen (vertically centered)
             if let Ok(Some(monitor)) = window.current_monitor() {
                 let width = 400.0;
                 let height = 520.0;
                 let x = monitor.size().width as f64 - width - 10.0;
                 let y = (monitor.size().height as f64 - height) / 2.0;
-                let _ = window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                if let Err(e) = window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32)) {
+                    warn!("Failed to position advice-chat window: {}", e);
+                }
+                info!("advice-chat window positioned at ({}, {})", x as i32, y as i32);
             }
             // Prevent the window from being closed (X button is hidden via decorations=false)
             let w_clone = window.clone();
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    // Hide instead of close — the app stays running
                     let _ = w_clone.hide();
                     api.prevent_close();
                 }
             });
-            let _ = window.show();
-            let _ = window.set_focus();
+            // Show and focus the window — log any failures
+            if let Err(e) = window.show() {
+                error!("Failed to show advice-chat window after build: {}", e);
+            } else {
+                info!("advice-chat window.show() succeeded");
+                if let Err(e) = window.set_focus() {
+                    warn!("Failed to focus advice-chat window: {}", e);
+                } else {
+                    info!("advice-chat window.set_focus() succeeded");
+                }
+            }
         } else {
-            error!("Failed to create advice-chat window");
+            error!("Failed to create advice-chat window: {:?}", result.err());
         }
+    } else {
+        warn!("advice_chat_open: app_handle is None — cannot create window");
     }
     (StatusCode::OK, api_response(true, Some(serde_json::json!({"opened": true})), None))
 }

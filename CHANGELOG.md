@@ -1,3 +1,8 @@
+## v1.1.183 — FIX: advice chat window not appearing on Windows (missing GPU-disabling browser args)
+
+- **Fixed floating advice chat window not appearing after clicking "Open Copilot"** — the advice-chat WebView2 window was created without the `--disable-gpu --no-sandbox --disable-software-rasterizer` browser args that the main window requires. On some Windows systems, WebView2 fails to render a second window without these args, resulting in a window that is "created" but visually invisible/blank. Applied the same `additional_browser_args()` call used by the main window.
+- **Improved diagnostic logging** — added detailed logging for `handle_advice_chat_open` (window creation, positioning, show/focus) and removed silent `let _ =` error suppression so WebView2 failures are now visible in the log.
+
 ## v1.1.182 — FIX: setup flow "Save & Minimize" hides window, "Open Copilot" button works
 
 - **Fixed "Save & Minimize" not hiding the main window** — the `handleSave` function in `SetupWizard.tsx` was only calling `update_settings` and setting the step to 5 (Setup Complete screen). It did NOT call `set_first_run_complete` or `hide_main_window`. Now it calls all three in sequence: update_settings → set_first_run_complete → setStep(5) → hide_main_window (with a 2s delay so the user sees the "Setup Complete!" confirmation first).
