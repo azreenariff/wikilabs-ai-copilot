@@ -791,20 +791,13 @@ async fn handle_set_first_run_complete(state: &ApiServerState) -> (StatusCode, S
             crate::skill_knowledge::create_skill_knowledge_base("")
         };
         
-        // Initialize observation engine SYNCHRONOUSLY on this thread BEFORE
-        // spawning the guidance loop. This ensures EVENT_RECEIVER and
-        // OBSERVATION_ENGINE globals are populated so the guidance loop
-        // doesn't start with None for both (a race condition with the
-        // background thread approach).
+        // Initialize observation engine directly on the existing tokio runtime
+        // (axum's async handler chain). Do NOT create a nested runtime — that
+        // causes "Cannot start a runtime from within a runtime" panic.
         info!("[LAZY] Initializing observation engine (post-wizard) — synchronously");
-        let rt_lazy = tokio::runtime::Runtime::new()
-            .expect("Failed to create tokio runtime for lazy observation start");
-        rt_lazy.block_on(async {
-            let engine = crate::observation::init_observation_engine().await;
-            // Start providers — spawns the polling loop task on the runtime.
-            // The runtime stays alive as long as there are pending tasks.
-            crate::observation::start_observation_engine(engine).await;
-        });
+        let engine = crate::observation::init_observation_engine().await;
+        // Start providers — spawns the polling loop task on the existing runtime.
+        crate::observation::start_observation_engine(engine).await;
         info!("[LAZY] Observation engine initialized and started (post-wizard)");
         
         // Now spawn guidance loop — the globals are already set above
