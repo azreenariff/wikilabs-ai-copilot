@@ -522,7 +522,7 @@ async fn run_guidance_loop_inner(
                 // Get a fresh screenshot for the AI reasoning loop
                 // If no screenshot is available (provider hasn't captured yet), skip this tick
                 // to avoid hallucinations from text-only context
-                let user_message = if let Some(screenshot) = wikilabs_observation::get_last_screenshot() {
+                let user_message = if let Some(screenshot) = crate::observation::get_last_screenshot() {
                     wikilabs_ai::provider::AiMessage {
                         role: "user".to_string(),
                         content: serde_json::json!([

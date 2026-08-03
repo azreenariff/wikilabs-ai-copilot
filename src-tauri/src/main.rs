@@ -995,10 +995,13 @@ fn main() {
             // Build tray context menu
             let show_item = tauri::menu::MenuItemBuilder::with_id("show", "Show Wiki Labs AI Copilot")
                 .build(app)?;
+            let advice_item = tauri::menu::MenuItemBuilder::with_id("advice-chat", "Open Copilot Live Advice")
+                .build(app)?;
             let quit_item = tauri::menu::MenuItemBuilder::with_id("quit", "Quit")
                 .build(app)?;
             let tray_menu = tauri::menu::MenuBuilder::new(app)
                 .item(&show_item)
+                .item(&advice_item)
                 .separator()
                 .item(&quit_item)
                 .build()?;
@@ -1013,6 +1016,14 @@ fn main() {
                             if let Some(window) = app.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
+                            }
+                        }
+                        "advice-chat" => {
+                            info!("Opening advice chat from tray");
+                            if let Some(main_window) = app.get_webview_window("main") {
+                                let _ = main_window.show();
+                                let _ = main_window.set_focus();
+                                let _ = main_window.eval("window.history.pushState({}, '', '/advice-chat'); window.dispatchEvent(new PopStateEvent('popstate'));");
                             }
                         }
                         "quit" => {
@@ -1103,5 +1114,5 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-    info!("[LIFECYCLE] Tauri run() exited — application shutting down");
+    info!("[LIFECYCLE] Tauri run() exited - application shutting down");
 }

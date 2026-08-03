@@ -1,3 +1,9 @@
+## v1.1.194 — FIX: guidance loop screenshot availability, system tray menu improvements, setup complete UX
+
+- **Fixed guidance loop never receiving screenshots** — `guidance_loop.rs` called `wikilabs_observation::get_last_screenshot()` which read from the **library crate's** global `OBSERVATION_ENGINE` (never initialized → `None`). The actual engine with providers and screenshot capture was stored in the **binary crate's** own global in `src-tauri/src/observation.rs`. Added `crate::observation::get_last_screenshot()` and changed the guidance loop to use it.
+- **Added "Open Copilot Live Advice" to system tray menu** — right-clicking the tray icon now shows "Show Wiki Labs AI Copilot" and "Open Copilot Live Advice" before the separator and "Quit". Clicking "Open Copilot Live Advice" shows and navigates the main window to the advice chat route.
+- **Added auto-minimize notice on Setup Complete page** — step 5 now displays "This window will auto-minimize in 3 seconds." so users understand the auto-close behavior.
+
 ## v1.1.193 — FIX: observation engine AUTO-start polling loop killed on subsequent launches
 
 - **Fixed observation engine AUTO-start runtime lifetime** — on subsequent launches (when `first_run_complete` is already true), the observation engine was being initialized on a one-shot `tokio::runtime::Runtime` that was dropped immediately after `block_on()`. This killed the polling loop spawned via `tokio::spawn` inside `start_observation_engine()`. Events published to the bus were never received by the guidance loop, resulting in "no advice/suggestions from AI" after every launch. Fixed by using a static `OnceLock<Runtime>` that persists for the lifetime of the process.

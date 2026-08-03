@@ -385,8 +385,11 @@ function SetupWizard() {
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
             <h2 style={{ fontSize: '20px', fontWeight: 600, margin: '0 0 8px' }}>Setup Complete!</h2>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '12px' }}>
               The copilot is now running in the background. You can access it from the system tray.
+            </p>
+            <p style={{ color: 'var(--color-accent)', fontSize: '13px', marginBottom: '24px' }}>
+              This window will auto-minimize in 3 seconds.
             </p>
             <button onClick={async () => {
               // Hide the main window (minimize to tray)

@@ -70,6 +70,12 @@ pub fn get_last_intent() -> Option<wikilabs_observation::intent_analyzer::UserIn
     get_observation_engine().and_then(|engine| engine.get_last_intent())
 }
 
+/// Get the most recently captured screenshot from the observation engine.
+/// Delegates to the global observation engine's screen capture provider.
+pub fn get_last_screenshot() -> Option<wikilabs_observation::screen_capture::CapturedScreenshot> {
+    get_observation_engine().and_then(|engine| engine.get_last_screenshot())
+}
+
 /// Start the observation engine providers.
 pub async fn start_observation_engine(engine: Arc<ObservationEngine>) {
     tracing::info!("[Observation] Starting observation providers");
