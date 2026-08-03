@@ -1773,7 +1773,9 @@ pub fn start_api_server(
         .or_else(|| data_dir.clone().map(|dd| dd.join("knowledge")))
         .or_else(|| config_path.as_ref().and_then(|cp| cp.parent().map(|p| p.join("knowledge"))));
 
-    let app_handle_for_guidance = app_handle.clone();
+    // Clone app_handle for use inside the thread (auto-start guidance spawn)
+    let app_handle_for_thread = app_handle.clone();
+
     let state = ApiServerState {
         settings: Arc::new(Mutex::new(ApiServerSettings::new())),
         config_path: Arc::new(Mutex::new(config_path.clone())),
@@ -1798,6 +1800,14 @@ pub fn start_api_server(
     // If the user already completed the wizard (first_run_complete=true),
     // start observation engine + guidance loop immediately. This covers
     // all launches after the first setup.
+    //
+    // NOTE: The observation engine init + guidance loop spawn are deferred
+    // until INSIDE the multi-threaded runtime's block_on (see below). This
+    // avoids using get_or_create_auto_runtime() which creates a single-threaded
+    // runtime where tokio::spawn tasks can get stuck — the same runtime that
+    // serves HTTP and where the guidance loop (on its own rt) can also send
+    // requests. Sharing one multi-threaded runtime guarantees the spawned
+    // polling loop task always gets scheduled and executed.
     let should_auto_start = {
         let settings = state.settings.lock().unwrap();
         let first_run = settings.settings.get("first_run_complete")
@@ -1813,56 +1823,6 @@ pub fn start_api_server(
         info!("Auto-start decision: first_run_complete={}, ai_provider.api_key_status={}", first_run, ai_info);
         first_run
     };
-    if should_auto_start {
-        info!("first_run_complete is true — auto-starting observation engine and guidance loop");
-        // Log the settings that will be passed to the guidance loop
-        let startup_settings = state.settings.lock().unwrap();
-        info!("AUTO-START: Guidance loop will use settings with keys: {:?}", 
-            startup_settings.settings.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()));
-        let has_key = startup_settings.settings.get("ai_provider")
-            .and_then(|p| p.as_object())
-            .and_then(|p| p.get("api_key"))
-            .and_then(|v| v.as_str())
-            .map_or(false, |k| !k.is_empty());
-        info!("AUTO-START: AI API key is {}", if has_key { "configured" } else { "NOT configured — loop will skip AI reasoning" });
-
-        let knowledge_dir = {
-            let guard = state.knowledge_dir.lock().unwrap();
-            guard.clone()
-        };
-        let skill_kb: crate::skill_knowledge::SkillKnowledgeBaseArc = if let Some(ref dir) = knowledge_dir {
-            crate::skill_knowledge::create_skill_knowledge_base(&dir.to_string_lossy())
-        } else {
-            crate::skill_knowledge::create_skill_knowledge_base("")
-        };
-        let app_handle_clone = state.app_handle.clone();
-
-        // Initialize observation engine on a LONG-LIVED runtime handle.
-        // DO NOT create a one-shot `tokio::runtime::Runtime` and drop it after
-        // `block_on` — that kills the polling loop spawned via `tokio::spawn`.
-        // Instead, use a static `Handle` that persists for the lifetime of the
-        // process.
-        info!("[AUTO] Initializing observation engine (subsequent launch)");
-        let rt_handle = get_or_create_auto_runtime();
-        rt_handle.block_on(async {
-            let engine = crate::observation::init_observation_engine().await;
-            crate::observation::start_observation_engine(engine).await;
-        });
-        info!("[AUTO] Observation engine initialized and started (subsequent launch)");
-
-        // Now spawn guidance loop — globals are already set above
-        if let Some(ref ah) = app_handle_clone {
-            info!("[AUTO] Spawning guidance loop with obs_settings and skill_kb...");
-            guidance_loop::spawn_ai_guidance_loop(
-                obs_settings.clone(),
-                skill_kb,
-                Some(Arc::new(ah.lock().unwrap().clone())),
-            );
-            info!("[AUTO] Guidance loop spawned successfully (subsequent launch)");
-        } else {
-            warn!("[AUTO] No app_handle available — skipping guidance loop spawn");
-        }
-    }
 
     let router = create_router(state, Some(assets_dir));
 
@@ -1967,6 +1927,53 @@ pub fn start_api_server(
                 tracing::info!("[API] >>> Ready marker set — server is live!");
                 crate::api_ready::mark_server_ready();
 
+                // ── Auto-start observation/guidance on subsequent launches ──────
+                // Run inside this multi-threaded runtime so the spawned polling
+                // loop task is guaranteed to execute (avoids the single-threaded
+                // runtime bug where tokio::spawn tasks get stuck after block_on).
+                if should_auto_start {
+                    info!("first_run_complete is true — auto-starting observation engine and guidance loop on multi-threaded runtime");
+
+                    // Re-check settings inside the async block
+                    let first_run = {
+                        let settings = obs_settings.lock().unwrap();
+                        settings.settings.get("first_run_complete")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false)
+                    };
+                    let has_key = {
+                        let settings = obs_settings.lock().unwrap();
+                        settings.settings.get("ai_provider")
+                            .and_then(|p| p.as_object())
+                            .and_then(|p| p.get("api_key"))
+                            .and_then(|v| v.as_str())
+                            .map_or(false, |k| !k.is_empty())
+                    };
+
+                    if first_run {
+                        info!("AUTO-START: AI API key is {}", if has_key { "configured" } else { "NOT configured — loop will skip AI reasoning" });
+
+                        // Initialize observation engine on THIS multi-threaded runtime
+                        info!("[AUTO] Initializing observation engine (subsequent launch)");
+                        let engine = crate::observation::init_observation_engine().await;
+                        crate::observation::start_observation_engine(engine).await;
+                        info!("[AUTO] Observation engine initialized and started (subsequent launch)");
+
+                        // Spawn guidance loop — globals are already set above
+                        if let Some(ref ah) = app_handle_for_thread {
+                            info!("[AUTO] Spawning guidance loop with obs_settings and skill_kb...");
+                            guidance_loop::spawn_ai_guidance_loop(
+                                obs_settings.clone(),
+                                crate::skill_knowledge::create_skill_knowledge_base(""),
+                                Some(Arc::new(ah.as_ref().clone())),
+                            );
+                            info!("[AUTO] Guidance loop spawned successfully (subsequent launch)");
+                        } else {
+                            warn!("[AUTO] No app_handle available — skipping guidance loop spawn");
+                        }
+                    }
+                }
+
                 // Load knowledge packs inside the runtime but AFTER marking ready
                 // so the frontend can start communicating with the server immediately
                 if let Some(ref kdir_path) = kdir_str {
@@ -2001,39 +2008,3 @@ pub fn start_api_server(
     Ok(())
 }
 
-/// Return a long-lived `tokio::runtime::Handle` for async operations that
-/// need to run outside the main multi-threaded API runtime.
-///
-/// This is used by the AUTO-start path (subsequent launches) to initialize the
-/// observation engine. The handle is backed by a static runtime kept alive by
-/// a background thread calling `block_on(infinite_future)`, so that tasks
-/// spawned on the runtime (e.g. the observation engine's polling loop) can
-/// execute continuously for the lifetime of the process.
-fn get_or_create_auto_runtime() -> tokio::runtime::Handle {
-    use std::sync::OnceLock;
-    static AUTO_RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
-    static AUTO_HANDLE: OnceLock<tokio::runtime::Handle> = OnceLock::new();
-
-    let runtime = AUTO_RT.get_or_init(|| {
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("Failed to create auto-observation tokio runtime")
-    });
-
-    AUTO_HANDLE.get_or_init(|| {
-        let handle = runtime.handle().clone();
-        // Spawn a background thread that keeps the runtime driven.
-        // Without this, spawned tasks (e.g. the observation engine polling loop)
-        // will never execute because tokio needs someone to drive `block_on`.
-        let _guard = std::thread::spawn(move || {
-            // block_on a never-completing future — keeps the runtime alive
-            // indefinitely. The runtime will keep processing all spawned tasks.
-            handle.block_on(async {
-                std::future::pending::<()>().await
-            });
-        });
-        // Return the handle so callers can also spawn tasks on this runtime
-        runtime.handle().clone()
-    }).clone()
-}

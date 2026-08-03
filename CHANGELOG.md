@@ -1,3 +1,7 @@
+## v1.1.200 — FIX: move auto-start observation engine & guidance loop to multi-threaded runtime
+
+- **Fixed observation engine/guidance loop not starting on app restart** — the auto-start path that runs when `first_run_complete=true` was using a single-threaded Tokio runtime (`get_or_create_auto_runtime()`). This caused the spawned polling loop to get stuck (Tokio current-thread runtime bug: tasks spawned during `block_on` don't execute after it returns). Fixed by moving the auto-start logic inside the multi-threaded runtime's `block_on` block, ensuring the polling loop is always scheduled and executes. Also removed the now-unused `get_or_create_auto_runtime()` function.
+
 ## v1.1.199 — DIAG: add event flow diagnostic logging to guidance loop
 
 - **Added diagnostic logging to guidance loop AI tick** — now logs `new_events_count`, `last_events.len()`, `has_new_events`, and per-provider event breakdown at every 10-second AI reasoning tick. This helps distinguish between: events not flowing from observation engine vs events flowing but being filtered before AI reasoning kicks in.
