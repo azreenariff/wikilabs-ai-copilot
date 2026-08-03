@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 use wikilabs_ai::provider::{AiProvider, AiRequest, OpenAICompatibleProvider, ProviderInfo};
 use wikilabs_benchmark::{BenchmarkRegistry, categories};
@@ -1019,11 +1019,11 @@ fn main() {
                             }
                         }
                         "advice-chat" => {
-                            info!("Opening advice chat from tray");
-                            if let Some(main_window) = app.get_webview_window("main") {
-                                let _ = main_window.show();
-                                let _ = main_window.set_focus();
-                                let _ = main_window.eval("window.history.pushState({}, '', '/advice-chat'); window.dispatchEvent(new PopStateEvent('popstate'));");
+                            // Properly open the advice-chat floating window via HTTP API
+                            if let Err(e) = reqwest::blocking::get("http://127.0.0.1:1420/api/commands/advice_chat_open") {
+                                warn!(error = %e, "Failed to open advice chat via HTTP API");
+                            } else {
+                                info!("advice-chat opened via HTTP API");
                             }
                         }
                         "quit" => {

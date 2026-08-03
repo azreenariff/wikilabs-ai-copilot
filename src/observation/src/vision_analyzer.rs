@@ -172,7 +172,7 @@ impl VisionAnalyzerProvider {
         let config = self.state.lock().unwrap().vision_config.clone();
 
         if config.api_key.is_empty() {
-            tracing::warn!("[Vision] No API key configured");
+            tracing::debug!("[Vision] No API key configured, skipping analysis");
             return None;
         }
 

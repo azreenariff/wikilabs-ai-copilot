@@ -18,7 +18,7 @@ use tauri::Manager;
 use tauri::Emitter;
 use tracing::{debug, error, info, warn};
 
-use crate::guidance_panel::GuidancePanel;
+use crate::guidance_panel::{GuidancePanel, CardRiskLevel};
 use crate::knowledge_panel::KnowledgePanel;
 use crate::skill_knowledge::SkillKnowledgeBaseArc;
 use crate::api_server::ChatMessage;
@@ -585,6 +585,21 @@ async fn run_guidance_loop_inner(
                         }
 
                         panel.record_suggestion(suggestion_content).await;
+
+                        // Also create a structured RecommendationCard so it appears
+                        // in the active_recommendations() list (frontend card panel).
+                        let card_title = suggestion_content.chars().take(80).collect::<String>();
+                        let _ = panel.add_recommendation(
+                            &card_title,
+                            suggestion_content,
+                            "AI Copilot generated this suggestion based on real-time observation.",
+                            "general",
+                            "guidance",
+                            0.75,
+                            CardRiskLevel::Low,
+                            vec![],
+                            None,
+                        ).await;
 
                         // Also send the suggestion into the AI chat thread so the user sees it
                         let chat_msg = ChatMessage {

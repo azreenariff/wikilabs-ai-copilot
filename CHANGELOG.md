@@ -1,3 +1,12 @@
+## v1.1.195 — FIX: tray advice-chat opens floating window, AI generates recommendation cards, vision log spam
+
+- **Fixed tray "Open Copilot Live Advice" not opening floating window** — the tray menu handler was navigating the main window via JavaScript routing (`window.history.pushState`) instead of creating the dedicated advice-chat floating window. Now calls the HTTP API (`/api/commands/advice_chat_open`) which properly creates and positions the floating advice window.
+- **Fixed AI suggestions not appearing as recommendation cards** — the guidance loop called `panel.record_suggestion()` for dedup/cooldown tracking but never called `panel.add_recommendation()` to create `RecommendationCard` objects. The frontend card panel queries `active_recommendations()` which returns structured cards. Now each AI suggestion also creates a `RecommendationCard` with confidence 0.75, enabling cards to appear in the UI.
+- **Reduced vision "No API key" log spam** — changed `tracing::warn!` to `tracing::debug!` in `vision_analyzer.rs`. The message fired on every poll tick when no API key was configured; now only visible at debug level.
+- **Added `blocking` feature to reqwest dependency** — required for the tray menu handler's HTTP call to `advice_chat_open`.
+
+
+
 ## v1.1.194 — FIX: guidance loop screenshot availability, system tray menu improvements, setup complete UX
 
 - **Fixed guidance loop never receiving screenshots** — `guidance_loop.rs` called `wikilabs_observation::get_last_screenshot()` which read from the **library crate's** global `OBSERVATION_ENGINE` (never initialized → `None`). The actual engine with providers and screenshot capture was stored in the **binary crate's** own global in `src-tauri/src/observation.rs`. Added `crate::observation::get_last_screenshot()` and changed the guidance loop to use it.
