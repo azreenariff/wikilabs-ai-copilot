@@ -2005,18 +2005,35 @@ pub fn start_api_server(
 /// need to run outside the main multi-threaded API runtime.
 ///
 /// This is used by the AUTO-start path (subsequent launches) to initialize the
-/// observation engine. Unlike the old pattern of creating a one-shot
-/// `tokio::runtime::Runtime` and dropping it after `block_on` (which killed the
-/// spawned polling loop), this static handle persists for the lifetime of the
-/// process, keeping the polling loop alive.
+/// observation engine. The handle is backed by a static runtime kept alive by
+/// a background thread calling `block_on(infinite_future)`, so that tasks
+/// spawned on the runtime (e.g. the observation engine's polling loop) can
+/// execute continuously for the lifetime of the process.
 fn get_or_create_auto_runtime() -> tokio::runtime::Handle {
     use std::sync::OnceLock;
     static AUTO_RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+    static AUTO_HANDLE: OnceLock<tokio::runtime::Handle> = OnceLock::new();
+
     let runtime = AUTO_RT.get_or_init(|| {
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .expect("Failed to create auto-observation tokio runtime")
     });
-    runtime.handle().clone()
+
+    AUTO_HANDLE.get_or_init(|| {
+        let handle = runtime.handle().clone();
+        // Spawn a background thread that keeps the runtime driven.
+        // Without this, spawned tasks (e.g. the observation engine polling loop)
+        // will never execute because tokio needs someone to drive `block_on`.
+        let _guard = std::thread::spawn(move || {
+            // block_on a never-completing future — keeps the runtime alive
+            // indefinitely. The runtime will keep processing all spawned tasks.
+            handle.block_on(async {
+                std::future::pending::<()>().await
+            });
+        });
+        // Return the handle so callers can also spawn tasks on this runtime
+        runtime.handle().clone()
+    }).clone()
 }
