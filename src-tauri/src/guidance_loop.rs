@@ -279,9 +279,21 @@ async fn run_guidance_loop_inner(
                     // in the guidance panel evidence/timeline stores. Once the user
                     // configures an API key, the guidance loop picks it up on the
                     // next 10-second tick.
-                    debug!("No API key configured, skipping AI reasoning for this tick");
+                    let event_count = last_events.len();
+                    debug!("No API key configured, skipping AI reasoning for this tick (events_collected={}, total={})", new_events_count, event_count);
                     continue;
                 }
+
+                // API key is set — log the provider info (mask the key)
+                let masked_key = if api_key.len() > 4 {
+                    format!("{}****{}", &api_key[..3], &api_key[api_key.len()-4..])
+                } else {
+                    "****".to_string()
+                };
+                info!("Guidance loop tick: AI reasoning enabled — provider={}, model={}, endpoint={}, masked_key={}", 
+                    provider_name, model, endpoint, masked_key);
+
+                info!("Guidance loop tick started — events in queue: {}", last_events.len());
 
                 // ── AI-powered cross-context reasoning ──
 

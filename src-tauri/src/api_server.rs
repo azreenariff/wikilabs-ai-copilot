@@ -1800,12 +1800,31 @@ pub fn start_api_server(
     // all launches after the first setup.
     let should_auto_start = {
         let settings = state.settings.lock().unwrap();
-        settings.settings.get("first_run_complete")
+        let first_run = settings.settings.get("first_run_complete")
             .and_then(|v| v.as_bool())
-            .unwrap_or(false)
+            .unwrap_or(false);
+        // Log the auto-start decision with full settings context
+        let ai_info = settings.settings.get("ai_provider")
+            .and_then(|p| p.as_object())
+            .and_then(|p| p.get("api_key"))
+            .and_then(|v| v.as_str())
+            .map(|k| if k.is_empty() { "EMPTY" } else { "SET" })
+            .unwrap_or("NOT_FOUND");
+        info!("Auto-start decision: first_run_complete={}, ai_provider.api_key_status={}", first_run, ai_info);
+        first_run
     };
     if should_auto_start {
         info!("first_run_complete is true — auto-starting observation engine and guidance loop");
+        // Log the settings that will be passed to the guidance loop
+        let startup_settings = state.settings.lock().unwrap();
+        info!("AUTO-START: Guidance loop will use settings with keys: {:?}", 
+            startup_settings.settings.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()));
+        let has_key = startup_settings.settings.get("ai_provider")
+            .and_then(|p| p.as_object())
+            .and_then(|p| p.get("api_key"))
+            .and_then(|v| v.as_str())
+            .map_or(false, |k| !k.is_empty());
+        info!("AUTO-START: AI API key is {}", if has_key { "configured" } else { "NOT configured — loop will skip AI reasoning" });
 
         let knowledge_dir = {
             let guard = state.knowledge_dir.lock().unwrap();
@@ -1833,12 +1852,15 @@ pub fn start_api_server(
 
         // Now spawn guidance loop — globals are already set above
         if let Some(ref ah) = app_handle_clone {
+            info!("[AUTO] Spawning guidance loop with obs_settings and skill_kb...");
             guidance_loop::spawn_ai_guidance_loop(
                 obs_settings.clone(),
                 skill_kb,
                 Some(Arc::new(ah.lock().unwrap().clone())),
             );
-            info!("[AUTO] Guidance loop spawned (subsequent launch)");
+            info!("[AUTO] Guidance loop spawned successfully (subsequent launch)");
+        } else {
+            warn!("[AUTO] No app_handle available — skipping guidance loop spawn");
         }
     }
 

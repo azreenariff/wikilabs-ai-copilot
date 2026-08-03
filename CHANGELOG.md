@@ -1,4 +1,9 @@
-## v1.1.196 — FIX: tray advice-chat opens floating window, observation engine deadlock-free
+## v1.1.197 — FIX: verbose logging for API server startup, auto-start, and guidance loop
+
+- **Added verbose logging to API server startup path** — settings loaded from disk now logged with full key list; auto-start decision logs `first_run_complete` status + `ai_provider.api_key_status` (SET/EMPTY/NOT_FOUND); guidance loop spawn now logs when it's starting, what settings keys are present, and whether the AI API key is configured; spawns also warn if `app_handle` is unavailable.
+- **Added verbose logging to guidance loop API key check** — when no API key is configured, the loop now logs `events_collected` and `total` event counts; when AI reasoning is enabled, logs provider, model, endpoint, and a masked API key for debugging.
+
+## v1.1.196
 
 - **Fixed tray "Open Copilot Live Advice" button silently doing nothing** — the tray handler used `reqwest::blocking::get()` (GET request) but the API route `/api/commands/advice_chat_open` only accepts POST requests. Changed to `reqwest::blocking::Client::post()` with proper JSON body and Content-Type header, matching how the frontend calls the same endpoint. Added distinct error logging for connection failures vs HTTP error responses.
 - **Fixed observation engine panic from blocking_lock in async context** — replaced `.blocking_lock()` with `.lock().await` in engine.rs, and restructured `poll_events()` to release the registry lock before calling `feed_event()` to prevent reentrant mutex deadlock.
