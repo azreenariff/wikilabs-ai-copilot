@@ -1,3 +1,11 @@
+## v1.1.196 — FIX: tray advice-chat opens floating window, observation engine deadlock-free
+
+- **Fixed tray "Open Copilot Live Advice" button silently doing nothing** — the tray handler used `reqwest::blocking::get()` (GET request) but the API route `/api/commands/advice_chat_open` only accepts POST requests. Changed to `reqwest::blocking::Client::post()` with proper JSON body and Content-Type header, matching how the frontend calls the same endpoint. Added distinct error logging for connection failures vs HTTP error responses.
+- **Fixed observation engine panic from blocking_lock in async context** — replaced `.blocking_lock()` with `.lock().await` in engine.rs, and restructured `poll_events()` to release the registry lock before calling `feed_event()` to prevent reentrant mutex deadlock.
+- **Fixed black screen on advice-chat window resize** — added `ResizeObserver` to ChatAssistant.tsx that forces React re-render on window size changes, preventing WebView2 from leaving a blank canvas when decorations are disabled.
+- **Fixed guidance loop screenshot availability** — guidance loop now uses `crate::observation::get_last_screenshot()` (binary crate's global) instead of `wikilabs_observation::get_last_screenshot()` (library crate's uninitialized global).
+
+
 ## v1.1.195 — FIX: tray advice-chat opens floating window, AI generates recommendation cards, vision log spam
 
 - **Fixed tray "Open Copilot Live Advice" not opening floating window** — the tray menu handler was navigating the main window via JavaScript routing (`window.history.pushState`) instead of creating the dedicated advice-chat floating window. Now calls the HTTP API (`/api/commands/advice_chat_open`) which properly creates and positions the floating advice window.

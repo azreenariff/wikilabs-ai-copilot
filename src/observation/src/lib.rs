@@ -98,6 +98,10 @@ pub fn get_vision_result() -> Option<crate::vision_analyzer::VisionAnalysisResul
 
 /// Get the most recently captured screenshot from the global observation engine.
 /// Returns `None` if the engine hasn't been initialized or no screenshot is available.
-pub fn get_last_screenshot() -> Option<crate::screen_capture::CapturedScreenshot> {
-    get_observation_engine().and_then(|engine| engine.get_last_screenshot())
+pub async fn get_last_screenshot() -> Option<crate::screen_capture::CapturedScreenshot> {
+    let engine = get_observation_engine();
+    match engine {
+        Some(e) => e.get_last_screenshot().await,
+        None => None,
+    }
 }

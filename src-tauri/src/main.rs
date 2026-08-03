@@ -1019,11 +1019,22 @@ fn main() {
                             }
                         }
                         "advice-chat" => {
-                            // Properly open the advice-chat floating window via HTTP API
-                            if let Err(e) = reqwest::blocking::get("http://127.0.0.1:1420/api/commands/advice_chat_open") {
-                                warn!(error = %e, "Failed to open advice chat via HTTP API");
-                            } else {
-                                info!("advice-chat opened via HTTP API");
+                            // Open the advice-chat floating window via HTTP API (POST, matching the route)
+                            let client = reqwest::blocking::Client::new();
+                            match client.post("http://127.0.0.1:1420/api/commands/advice_chat_open")
+                                .header("Content-Type", "application/json")
+                                .body(r#"{"params":{}}"#)
+                                .send()
+                            {
+                                Ok(resp) if resp.status().is_success() => {
+                                    info!("advice-chat opened via HTTP API");
+                                }
+                                Ok(resp) => {
+                                    warn!(status = %resp.status(), "Failed to open advice chat via HTTP API");
+                                }
+                                Err(e) => {
+                                    warn!(error = %e, "Failed to connect to API server to open advice chat");
+                                }
                             }
                         }
                         "quit" => {

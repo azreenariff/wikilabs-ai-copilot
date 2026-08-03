@@ -89,16 +89,35 @@ function ChatAssistant() {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<string[]>([]);
+  // Force re-render on resize to prevent WebView2 black screen in decorations=false window
+  const [, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   useEffect(() => {
     loadHistory();
 
     // Poll for new messages every 3 seconds for near real-time advice
     const interval = setInterval(loadHistory, 3000);
-    return () => clearInterval(interval);
+
+    // ResizeObserver: force React re-render on window size change to prevent
+    // WebView2 from going black on resize (known issue with decorations=false windows).
+    // Also update the window size state for any component that needs it.
+    resizeObserverRef.current = new ResizeObserver(() => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setWindowSize({ width: w, height: h });
+    });
+    resizeObserverRef.current.observe(document.body);
+
+    return () => {
+      clearInterval(interval);
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+      }
+    };
   }, []);
 
   // Track whether user has manually scrolled up so we don't auto-scroll

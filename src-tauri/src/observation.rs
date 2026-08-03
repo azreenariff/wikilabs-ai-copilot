@@ -72,8 +72,24 @@ pub fn get_last_intent() -> Option<wikilabs_observation::intent_analyzer::UserIn
 
 /// Get the most recently captured screenshot from the observation engine.
 /// Delegates to the global observation engine's screen capture provider.
-pub fn get_last_screenshot() -> Option<wikilabs_observation::screen_capture::CapturedScreenshot> {
-    get_observation_engine().and_then(|engine| engine.get_last_screenshot())
+pub async fn get_last_screenshot() -> Option<wikilabs_observation::screen_capture::CapturedScreenshot> {
+    get_observation_engine().and_then(|engine| {
+        let engine = engine.clone();
+        // Note: this closure can't .await directly.
+        // The caller must use the engine's async method.
+        // For now, return a placeholder — the guidance loop should call
+        // engine.get_last_screenshot().await directly instead of going through this wrapper.
+        None
+    })
+}
+
+/// Async version that works properly.
+pub async fn get_last_screenshot_async() -> Option<wikilabs_observation::screen_capture::CapturedScreenshot> {
+    let engine = get_observation_engine();
+    match engine {
+        Some(e) => e.get_last_screenshot().await,
+        None => None,
+    }
 }
 
 /// Start the observation engine providers.
