@@ -200,7 +200,6 @@ async fn run_guidance_loop_inner(
                         };
                         if !is_noise_event(&structured) {
                             last_events.push(structured);
-                            if last_events.len() > 30 { last_events.remove(0); }
                         }
                     }
                 }
@@ -294,6 +293,12 @@ async fn run_guidance_loop_inner(
                     provider_name, model, endpoint, masked_key);
 
                 info!("Guidance loop tick started — events in queue: {}", last_events.len());
+
+                // Clear the event queue BEFORE building AI context so the next
+                // tick starts fresh. This prevents events from accumulating across
+                // ticks, which grows the AI request body until nginx rejects it
+                // with 413 / Payload Too Large.
+                last_events.clear();
 
                 // ── AI-powered cross-context reasoning ──
 
