@@ -49,14 +49,16 @@ pub fn spawn_ai_guidance_loop(
 ) {
     info!("[GUIDE] Spawning AI guidance loop on isolated Tokio runtime");
 
-    // Create a separate Tokio runtime for the AI guidance loop
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(2)
-        .enable_all()
-        .build()
-        .expect("Failed to create tokio runtime for AI guidance loop");
-
+    // Create the runtime INSIDE the spawned thread to avoid "Cannot start a runtime
+    // from within a runtime" panic. When called from an axum handler, the current
+    // thread is already inside the API server's multi-threaded runtime; creating a
+    // new runtime on that thread would cause a deterministic crash.
     std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .expect("Failed to create tokio runtime for AI guidance loop");
         rt.block_on(async {
             run_guidance_loop_inner(
                 poll_settings,

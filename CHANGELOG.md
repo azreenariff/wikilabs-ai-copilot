@@ -1,3 +1,7 @@
+## v1.1.191 — FIX: tokio nested runtime panic causing crash after wizard completion
+
+- **Fixed deterministic crash in `spawn_ai_guidance_loop`** — the tokio runtime was created on the current thread (which is already inside the API server's multi-threaded runtime), causing "Cannot start a runtime from within a runtime" panic. Runtime creation is now moved INSIDE the `std::thread::spawn` closure so it runs on an isolated thread with no parent runtime. This fixes the crash that occurred during setup wizard completion (`set_first_run_complete`) and on subsequent launches when auto-starting the guidance loop.
+
 ## v1.1.190 — FIX: observation engine/routing improvements and deadlock prevention
 
 - **Fixed `MutexGuard` held across `.await` in `handle_set_first_run_complete`** — `state.settings.lock()` was held across the `init_observation_engine()` async call, causing a potential deadlock. Mutex guard is now dropped before the async block.
