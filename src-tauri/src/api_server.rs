@@ -313,7 +313,7 @@ pub async fn api_handler(
     State(state): State<ApiServerState>,
     Path(method): Path<String>,
     Json(req): Json<ApiRequest>,
-) -> (StatusCode, Json<String>) {
+) -> (StatusCode, String) {
     info!(method, "API request received");
 
     let (status, body) = match method.as_str() {
@@ -388,7 +388,7 @@ pub async fn api_handler(
     };
 
     info!(method, "API request completed");
-    (status, Json(body))
+    (status, body)
 }
 
 async fn handle_test_connection(_state: &ApiServerState, params: Value) -> (StatusCode, String) {

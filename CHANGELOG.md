@@ -1,3 +1,7 @@
+## v1.1.192 — FIX: "Test Connection" failing in AI Provider wizard (double JSON encoding)
+
+- **Fixed `api_handler` returning double-encoded JSON** — in v1.1.190 the return type was changed to `(StatusCode, Json<String>)`, wrapping the already-JSON string from `api_response()` in another serialization layer. This caused the frontend's `res.json()` to parse the response as a plain string instead of an object, so `result.success` was `undefined` and the test always failed. Changed return type back to `(StatusCode, String)` so the raw JSON body is sent correctly.
+
 ## v1.1.191 — FIX: tokio nested runtime panic causing crash after wizard completion
 
 - **Fixed deterministic crash in `spawn_ai_guidance_loop`** — the tokio runtime was created on the current thread (which is already inside the API server's multi-threaded runtime), causing "Cannot start a runtime from within a runtime" panic. Runtime creation is now moved INSIDE the `std::thread::spawn` closure so it runs on an isolated thread with no parent runtime. This fixes the crash that occurred during setup wizard completion (`set_first_run_complete`) and on subsequent launches when auto-starting the guidance loop.
