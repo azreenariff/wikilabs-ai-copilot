@@ -1,3 +1,7 @@
+## v1.1.193 — FIX: observation engine AUTO-start polling loop killed on subsequent launches
+
+- **Fixed observation engine AUTO-start runtime lifetime** — on subsequent launches (when `first_run_complete` is already true), the observation engine was being initialized on a one-shot `tokio::runtime::Runtime` that was dropped immediately after `block_on()`. This killed the polling loop spawned via `tokio::spawn` inside `start_observation_engine()`. Events published to the bus were never received by the guidance loop, resulting in "no advice/suggestions from AI" after every launch. Fixed by using a static `OnceLock<Runtime>` that persists for the lifetime of the process.
+
 ## v1.1.192 — FIX: "Test Connection" failing in AI Provider wizard (double JSON encoding)
 
 - **Fixed `api_handler` returning double-encoded JSON** — in v1.1.190 the return type was changed to `(StatusCode, Json<String>)`, wrapping the already-JSON string from `api_response()` in another serialization layer. This caused the frontend's `res.json()` to parse the response as a plain string instead of an object, so `result.success` was `undefined` and the test always failed. Changed return type back to `(StatusCode, String)` so the raw JSON body is sent correctly.
