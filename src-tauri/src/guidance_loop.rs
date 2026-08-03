@@ -233,8 +233,27 @@ async fn run_guidance_loop_inner(
                     0
                 };
 
-                // If there are new events from polling OR terminal/screencap activity, reason
+                // DIAGNOSTIC: Log event counts to help debug event flow
+                let event_providers: Vec<String> = last_events.iter()
+                    .map(|e| e.provider.clone())
+                    .collect();
+                let provider_counts: std::collections::HashMap<&str, usize> = last_events.iter()
+                    .fold(std::collections::HashMap::new(), |mut map, e| {
+                        *map.entry(&e.provider).or_insert(0) += 1;
+                        map
+                    });
                 let has_new_events = new_events_count > 0 || !last_events.is_empty();
+                info!(
+                    "Guidance loop AI tick — new_events_count={}, last_events.len()={}, has_new_events={}, providers={:?}",
+                    new_events_count, last_events.len(), has_new_events, event_providers
+                );
+                for (provider, count) in &provider_counts {
+                    info!(
+                        "  Events from provider '{}': {}",
+                        provider, count
+                    );
+                }
+
                 // Also fire reasoning if there's been no activity for a while but terminal/screen events exist
                 // This handles the case where user is working in a single window (e.g., MobaXterm)
                 // and no ApplicationChanged event fires, but TerminalProvider or ScreenCapture

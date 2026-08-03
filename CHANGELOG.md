@@ -1,3 +1,7 @@
+## v1.1.199 — DIAG: add event flow diagnostic logging to guidance loop
+
+- **Added diagnostic logging to guidance loop AI tick** — now logs `new_events_count`, `last_events.len()`, `has_new_events`, and per-provider event breakdown at every 10-second AI reasoning tick. This helps distinguish between: events not flowing from observation engine vs events flowing but being filtered before AI reasoning kicks in.
+
 ## v1.1.198 — FIX: clear event queue after each AI reasoning tick to prevent nginx 413
 
 - **Fixed AI suggestions stopping after ~2 minutes** — the guidance loop was accumulating events in `last_events` without clearing them after each AI reasoning tick. This caused the AI request body to grow until the nginx reverse proxy rejected it with "413 Payload Too Large". The fix clears the event queue at the start of each tick so events are consumed per-tick instead of accumulating indefinitely.
