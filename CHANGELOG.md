@@ -1,3 +1,7 @@
+## v1.1.198 — FIX: clear event queue after each AI reasoning tick to prevent nginx 413
+
+- **Fixed AI suggestions stopping after ~2 minutes** — the guidance loop was accumulating events in `last_events` without clearing them after each AI reasoning tick. This caused the AI request body to grow until the nginx reverse proxy rejected it with "413 Payload Too Large". The fix clears the event queue at the start of each tick so events are consumed per-tick instead of accumulating indefinitely.
+
 ## v1.1.197 — FIX: verbose logging for API server startup, auto-start, and guidance loop
 
 - **Added verbose logging to API server startup path** — settings loaded from disk now logged with full key list; auto-start decision logs `first_run_complete` status + `ai_provider.api_key_status` (SET/EMPTY/NOT_FOUND); guidance loop spawn now logs when it's starting, what settings keys are present, and whether the AI API key is configured; spawns also warn if `app_handle` is unavailable.
