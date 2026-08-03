@@ -1818,11 +1818,14 @@ pub fn start_api_server(
         };
         let app_handle_clone = state.app_handle.clone();
 
-        // Initialize observation engine SYNCHRONOUSLY (same thread, no race)
+        // Initialize observation engine on a LONG-LIVED runtime handle.
+        // DO NOT create a one-shot `tokio::runtime::Runtime` and drop it after
+        // `block_on` — that kills the polling loop spawned via `tokio::spawn`.
+        // Instead, use a static `Handle` that persists for the lifetime of the
+        // process.
         info!("[AUTO] Initializing observation engine (subsequent launch)");
-        let rt_auto = tokio::runtime::Runtime::new()
-            .expect("Failed to create tokio runtime for auto observation start");
-        rt_auto.block_on(async {
+        let rt_handle = get_or_create_auto_runtime();
+        rt_handle.block_on(async {
             let engine = crate::observation::init_observation_engine().await;
             crate::observation::start_observation_engine(engine).await;
         });
@@ -1974,4 +1977,24 @@ pub fn start_api_server(
     });
 
     Ok(())
+}
+
+/// Return a long-lived `tokio::runtime::Handle` for async operations that
+/// need to run outside the main multi-threaded API runtime.
+///
+/// This is used by the AUTO-start path (subsequent launches) to initialize the
+/// observation engine. Unlike the old pattern of creating a one-shot
+/// `tokio::runtime::Runtime` and dropping it after `block_on` (which killed the
+/// spawned polling loop), this static handle persists for the lifetime of the
+/// process, keeping the polling loop alive.
+fn get_or_create_auto_runtime() -> tokio::runtime::Handle {
+    use std::sync::OnceLock;
+    static AUTO_RT: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+    let runtime = AUTO_RT.get_or_init(|| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create auto-observation tokio runtime")
+    });
+    runtime.handle().clone()
 }
