@@ -491,7 +491,7 @@ mod screen_capture_windows {
         let mut png_data = Vec::new();
         let png_encoder = image::codecs::png::PngEncoder::new_with_quality(
             &mut png_data,
-            image::codecs::png::Compression::Fast,
+            image::codecs::png::CompressionType::Fast,
             image::codecs::png::FilterType::NoFilter,
         );
         if png_encoder.write_image(
@@ -509,7 +509,7 @@ mod screen_capture_windows {
 
         // Absolute fallback: try JPEG again at U8Rgb888 (convert RGBA → RGB, drop alpha)
         let mut rgb_data = Vec::new();
-        let rgb_image: image::RgbImage = rgba_image.clone().into();
+        let rgb_image: image::RgbImage = image::DynamicImage::ImageRgba8(rgba_image.clone()).into_rgb8();
         let rgb_encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
             &mut rgb_data,
             80,
