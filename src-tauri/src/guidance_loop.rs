@@ -396,10 +396,10 @@ async fn run_guidance_loop_inner(
                     })
                     .collect();
 
-                // Terminal FULL OUTPUT — the complete visible terminal buffer (all output, errors, status)
-                // Now simplified: only gets top-level window text (not recursive child windows),
-                // so it doesn't include MobaXterm menu bars, file managers, etc.
-                let terminal_outputs: Vec<&str> = last_events.iter()
+                // Note: terminal output (raw buffer) is NOT sent to the AI.
+                // The screenshot is the only data source for AI reasoning.
+                // Kept here only for potential future ErrorDetector/EvidencePanel use.
+                let _terminal_outputs: Vec<&str> = last_events.iter()
                     .filter(|e| e.provider == "terminal")
                     .filter_map(|e| e.payload_json.get("output").and_then(|o| o.as_str()))
                     .filter(|&o| !o.trim().is_empty())
@@ -428,11 +428,13 @@ async fn run_guidance_loop_inner(
                     .flatten()
                     .collect();
 
-                // ── Text extraction is still computed for ErrorDetector/EvidencePanel ──
-                // but NOT sent to AI reasoning loop (screenshot is the only data source).
+                // NOTE: terminal_outputs deliberately excluded from AI context. The system prompt
+                // tells the AI to use the screenshot as its ONLY data source. Raw terminal
+                // output is kept for ErrorDetector/EvidencePanel but not sent to the AI,
+                // as it bloats the request body past nginx's client_max_body_size limit.
                 let _session_narrative = || -> String {
                     let mut narrative = String::new();
-                    let has_any_context = !browser_urls.is_empty() || !terminal_cmds.is_empty() || !terminal_outputs.is_empty() || !browser_errors.is_empty() || !browser_visible_texts.is_empty();
+                    let has_any_context = !browser_urls.is_empty() || !browser_visible_texts.is_empty() || !browser_errors.is_empty() || !terminal_cmds.is_empty();
                     if has_any_context {
                         if !browser_urls.is_empty() {
                             narrative.push_str("🔴 BROWSER CONTEXT (HIGH PRIORITY):\n");
@@ -453,15 +455,8 @@ async fn run_guidance_loop_inner(
                                 narrative.push_str(&format!("    🔴 {}\n", err));
                             }
                         }
-                        if !terminal_outputs.is_empty() {
-                            narrative.push_str("  💻 RAW TERMINAL OUTPUT:\n");
-                            for &output in &terminal_outputs {
-                                let display = if output.len() > 5000 { &output[..5000] } else { output };
-                                narrative.push_str(&format!("    {}\n\n", display));
-                            }
-                        }
                         if !terminal_cmds.is_empty() {
-                            narrative.push_str("  💻 Last terminal command:\n");
+                            narrative.push_str("  💻 Last terminal commands:\n");
                             for &cmd in &terminal_cmds {
                                 narrative.push_str(&format!("    > {}\n", cmd));
                             }
