@@ -1,3 +1,7 @@
+## v1.1.203 — FIX: correct image 0.25 API for PNG encoder and Rgba→Rgb conversion
+
+- **Fixed compilation on image 0.25.10**: `Compression::Fast` → `CompressionType::Fast`; `RgbaImage.into()` → `DynamicImage::ImageRgba8(img).into_rgb8()` to match the current `image` crate API.
+
 ## v1.1.202 — FIX: screenshot JPEG encoding failure on Windows caused AI suggestions to never appear
 
 - **Fixed screenshot encoding on Windows**: The `image` crate's JPEG encoder does not support `Rgba8` color type on some Windows builds, causing all screenshots to fail encoding and the AI guidance loop to skip every tick with "No screenshot available for AI reasoning". Added a three-tier encoding fallback: JPEG (RGBA8) → PNG (lossless, universal RGBA8 support) → JPEG (RGB8, drops alpha). PNG fallback ensures screenshots are always available for AI vision reasoning.
