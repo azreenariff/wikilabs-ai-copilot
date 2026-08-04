@@ -1,3 +1,7 @@
+## v1.1.207 — FIX: reduce main window size for smaller screens
+
+- **Reduced main window default size** from 1400×900 to 1100×750 (min: 900×600) — window now fits comfortably on standard laptop and smaller displays without scrolling
+
 ## v1.1.206 — FIX: pause guidance during active chat; strengthen anti-hallucination rules
 
 - **Pause guidance during active chat**: The guidance loop now checks if the user sent a message in the last 10 seconds. If the user is actively chatting, background screen analysis is skipped to avoid interrupting the conversation. Guidance resumes when the chat is quiet.
