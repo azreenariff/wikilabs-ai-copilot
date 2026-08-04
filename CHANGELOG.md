@@ -1,4 +1,4 @@
-## v1.1.192 — FIX: reduce AI request payload to prevent nginx 413 (JPEG compression, screenshot dedup, shorter system prompt)
+## v1.1.201 — FIX: reduce AI request payload to prevent nginx 413 (JPEG compression, screenshot dedup, shorter system prompt)
 
 - **Screenshot compression**: Replaced PNG with JPEG (80% quality, 1280x720 max) in screen capture — reduces screenshot payload from ~500KB+ (PNG) to ~100-300KB (JPEG)
 - **Screenshot dedup**: Added change detection in `VisionAnalyzer::queue_screenshot()` — skips AI API call if the screenshot data is identical to the last one and was analyzed within the poll interval
