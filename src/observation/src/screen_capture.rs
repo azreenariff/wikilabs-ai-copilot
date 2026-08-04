@@ -450,7 +450,9 @@ mod screen_capture_windows {
 
     /// Convert BGRA pixel buffer to JPEG-encoded bytes using the image crate.
     /// Scales to max 1280×720 and encodes at 80% quality for optimal size/quality ratio.
-    fn bgra_to_jpeg(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
+    /// If JPEG encoding fails (e.g. unsupported color type on some platforms), falls back to PNG
+    /// which is lossless and handles RGBA8 universally.
+    fn bgra_to_image(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
         use image::{ExtendedColorType, Rgba, RgbaImage};
 
         // BGRA to RGBA — create RgbaImage
@@ -469,30 +471,72 @@ mod screen_capture_windows {
             }
         }
 
-        // Encode to JPEG in memory at 80% quality
-        let mut data = Vec::new();
-        let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
-            &mut data,
-            80, // 80% quality — good balance of size and readability for LLM vision
+        // Try JPEG first (smaller payload, good for LLM vision)
+        let mut jpeg_data = Vec::new();
+        let jpeg_encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
+            &mut jpeg_data,
+            80,
         );
-        match encoder.write_image(
+        if jpeg_encoder.write_image(
             &rgba_image,
             width,
             height,
             ExtendedColorType::Rgba8,
-        ) {
-            Ok(_) => data,
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to encode screenshot as JPEG: {} — falling back to raw buffer",
-                    e
-                );
-                // Fallback: still produce *something* — encode as very crude JPEG
-                // by using a minimal RgbaImage with 80% quality. This should never happen
-                // but provides a safety net.
-                Vec::new()
-            }
+        ).is_ok() && !jpeg_data.is_empty() {
+            return jpeg_data;
         }
+
+        // JPEG encoding failed (some platforms don't support RGBA8 JPEG).
+        // Fall back to PNG — lossless, universally supported, handles RGBA8 fine.
+        let mut png_data = Vec::new();
+        let png_encoder = image::codecs::png::PngEncoder::new_with_quality(
+            &mut png_data,
+            image::codecs::png::Compression::Fast,
+            image::codecs::png::FilterType::NoFilter,
+        );
+        if png_encoder.write_image(
+            &rgba_image,
+            width,
+            height,
+            ExtendedColorType::Rgba8,
+        ).is_ok() && !png_data.is_empty() {
+            tracing::debug!(
+                "Screenshot JPEG encoding failed, fell back to PNG ({} bytes)",
+                png_data.len()
+            );
+            return png_data;
+        }
+
+        // Absolute fallback: try JPEG again at U8Rgb888 (convert RGBA → RGB, drop alpha)
+        let mut rgb_data = Vec::new();
+        let rgb_image: image::RgbImage = rgba_image.clone().into();
+        let rgb_encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
+            &mut rgb_data,
+            80,
+        );
+        if rgb_encoder.write_image(
+            &rgb_image,
+            width,
+            height,
+            ExtendedColorType::Rgb8,
+        ).is_ok() && !rgb_data.is_empty() {
+            tracing::debug!(
+                "Screenshot fell back to RGB JPEG ({} bytes)",
+                rgb_data.len()
+            );
+            return rgb_data;
+        }
+
+        tracing::warn!(
+            "All screenshot encoding methods failed (JPEG RGBA, PNG, JPEG RGB) — screenshot will be unavailable"
+        );
+        Vec::new()
+    }
+
+    /// Convert BGRA pixel buffer to JPEG-encoded bytes using the image crate.
+    /// Scales to max 1280×720 and encodes at 80% quality for optimal size/quality ratio.
+    fn bgra_to_jpeg(buffer: &[u8], width: u32, height: u32) -> Vec<u8> {
+        bgra_to_image(buffer, width, height)
     }
 }
 

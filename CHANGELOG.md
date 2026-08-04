@@ -1,3 +1,7 @@
+## v1.1.202 — FIX: screenshot JPEG encoding failure on Windows caused AI suggestions to never appear
+
+- **Fixed screenshot encoding on Windows**: The `image` crate's JPEG encoder does not support `Rgba8` color type on some Windows builds, causing all screenshots to fail encoding and the AI guidance loop to skip every tick with "No screenshot available for AI reasoning". Added a three-tier encoding fallback: JPEG (RGBA8) → PNG (lossless, universal RGBA8 support) → JPEG (RGB8, drops alpha). PNG fallback ensures screenshots are always available for AI vision reasoning.
+
 ## v1.1.201 — FIX: reduce AI request payload to prevent nginx 413 (JPEG compression, screenshot dedup, shorter system prompt)
 
 - **Screenshot compression**: Replaced PNG with JPEG (80% quality, 1280x720 max) in screen capture — reduces screenshot payload from ~500KB+ (PNG) to ~100-300KB (JPEG)
