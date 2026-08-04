@@ -490,9 +490,11 @@ async fn run_guidance_loop_inner(
                                     - DO NOT rely on extracted text or correlated context — it's unreliable. The screenshot is the only real signal.\n\
                                     - If you see an error on screen, address it first.\n\
                                     - If you see multiple things (browser + terminal + IDE), connect the dots between them.\n\n\
-                                    ## What to ignore:\n\
-                                    - Taskbar, system tray, desktop icons, notification banners.\n\
-                                    - Minimized or covered windows. Focus on the main active windows.\n\n\
+                                    ## What to ignore:
+                                    - Taskbar, system tray, desktop icons, notification banners.
+                                    - Minimized or covered windows. Focus on the main active windows.
+                                    - The AI Copilot window itself — if visible on screen, do not analyze or reference it.
+
                                     ## Confidence:\n\
                                     - Call out active errors (red alert, dialog, broken page) immediately.\n\
                                     - If uncertain, stay quiet rather than give generic advice.\n\n\

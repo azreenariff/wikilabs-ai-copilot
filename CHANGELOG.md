@@ -1,3 +1,8 @@
+## v1.1.205 — FIX: AI ignores Copilot window in screenshots; screenshot encoding uses RGB JPEG first
+
+- **AI Copilot window exclusion**: Added instruction to the guidance loop system prompt telling the AI to ignore the AI Copilot window if visible on screen — prevents self-referencing and wasted analysis cycles.
+- **Screenshot encoding reordering**: Moved RGB JPEG conversion to Step 1 (before PNG and RGBA JPEG). On Windows the RGBA JPEG encoder fails, and PNG was the default fallback at ~5MB. RGB JPEG (dropping alpha — invisible on screenshots) produces ~100-500KB payloads, dramatically reducing AI request size.
+
 ## v1.1.203 — FIX: correct image 0.25 API for PNG encoder and Rgba→Rgb conversion
 
 - **Fixed compilation on image 0.25.10**: `Compression::Fast` → `CompressionType::Fast`; `RgbaImage.into()` → `DynamicImage::ImageRgba8(img).into_rgb8()` to match the current `image` crate API.

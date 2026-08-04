@@ -471,7 +471,26 @@ mod screen_capture_windows {
             }
         }
 
-        // Try JPEG first (smaller payload, good for LLM vision)
+        // Step 1: Try JPEG with RGB conversion (drops alpha channel — not visible on
+        // screenshots but dramatically smaller than PNG). This is the preferred path
+        // because JPEG at 80% quality is typically 10-50x smaller than PNG for
+        // screenshot content.
+        let mut rgb_data = Vec::new();
+        let rgb_image: image::RgbImage = image::DynamicImage::ImageRgba8(rgba_image.clone()).into_rgb8();
+        let rgb_encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
+            &mut rgb_data,
+            80,
+        );
+        if rgb_encoder.write_image(
+            &rgb_image,
+            width,
+            height,
+            ExtendedColorType::Rgb8,
+        ).is_ok() && !rgb_data.is_empty() {
+            return rgb_data;
+        }
+
+        // Step 2: Try JPEG with RGBA (some image-crate versions support it).
         let mut jpeg_data = Vec::new();
         let jpeg_encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
             &mut jpeg_data,
@@ -486,8 +505,7 @@ mod screen_capture_windows {
             return jpeg_data;
         }
 
-        // JPEG encoding failed (some platforms don't support RGBA8 JPEG).
-        // Fall back to PNG — lossless, universally supported, handles RGBA8 fine.
+        // Step 3: Absolute fallback to PNG — lossless, universally supported.
         let mut png_data = Vec::new();
         let png_encoder = image::codecs::png::PngEncoder::new_with_quality(
             &mut png_data,
@@ -500,31 +518,11 @@ mod screen_capture_windows {
             height,
             ExtendedColorType::Rgba8,
         ).is_ok() && !png_data.is_empty() {
-            tracing::debug!(
-                "Screenshot JPEG encoding failed, fell back to PNG ({} bytes)",
+            tracing::warn!(
+                "All JPEG encoding methods failed, fell back to PNG ({} bytes — large payload)",
                 png_data.len()
             );
             return png_data;
-        }
-
-        // Absolute fallback: try JPEG again at U8Rgb888 (convert RGBA → RGB, drop alpha)
-        let mut rgb_data = Vec::new();
-        let rgb_image: image::RgbImage = image::DynamicImage::ImageRgba8(rgba_image.clone()).into_rgb8();
-        let rgb_encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
-            &mut rgb_data,
-            80,
-        );
-        if rgb_encoder.write_image(
-            &rgb_image,
-            width,
-            height,
-            ExtendedColorType::Rgb8,
-        ).is_ok() && !rgb_data.is_empty() {
-            tracing::debug!(
-                "Screenshot fell back to RGB JPEG ({} bytes)",
-                rgb_data.len()
-            );
-            return rgb_data;
         }
 
         tracing::warn!(
