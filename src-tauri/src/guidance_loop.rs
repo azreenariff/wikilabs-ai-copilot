@@ -289,6 +289,29 @@ async fn run_guidance_loop_inner(
                     )
                 };
 
+                // ── Check for active conversation ──
+                // Skip guidance if the user sent a message in the last 10 seconds.
+                // When the user is chatting, they are focused on the conversation —
+                // background screen analysis would only interrupt their flow.
+                let conversation_quiet = {
+                    let settings = poll_settings.lock().unwrap();
+                    let msgs = settings.messages.lock().unwrap();
+                    let now = chrono::Utc::now();
+                    let cutoff = now - chrono::Duration::seconds(10);
+                    // Check if any user message was sent after the cutoff
+                    msgs.iter().any(|m| {
+                        m.role == "user"
+                            && chrono::DateTime::parse_from_rfc3339(&m.created_at)
+                                .map(|dt| dt > cutoff)
+                                .unwrap_or(false)
+                    })
+                };
+
+                if conversation_quiet {
+                    debug!("User is actively chatting — skipping guidance tick");
+                    continue;
+                }
+
                 let panel = GuidancePanel::instance();
 
                 if api_key.is_empty() {
@@ -491,9 +514,11 @@ async fn run_guidance_loop_inner(
                                     - If you see an error on screen, address it first.\n\
                                     - If you see multiple things (browser + terminal + IDE), connect the dots between them.\n\n\
                                     ## What to ignore:
-                                    - Taskbar, system tray, desktop icons, notification banners.
-                                    - Minimized or covered windows. Focus on the main active windows.
+                                    - Taskbar, system tray, desktop icons, notification banners, clock — NEVER reference or analyze these. They are chrome, not the user's work.
+                                    - Minimized or covered windows. Focus only on what is visibly on screen right now.
                                     - The AI Copilot window itself — if visible on screen, do not analyze or reference it.
+                                    - Browser tabs that are NOT the active/visible tab. Only analyze the tab currently showing content.
+                                    - Any content you cannot actually see in the screenshot — if it's not in the image, it does not exist.
 
                                     ## Confidence:\n\
                                     - Call out active errors (red alert, dialog, broken page) immediately.\n\

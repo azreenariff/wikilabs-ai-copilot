@@ -1,3 +1,10 @@
+## v1.1.206 — FIX: pause guidance during active chat; strengthen anti-hallucination rules
+
+- **Pause guidance during active chat**: The guidance loop now checks if the user sent a message in the last 10 seconds. If the user is actively chatting, background screen analysis is skipped to avoid interrupting the conversation. Guidance resumes when the chat is quiet.
+- **Anti-hallucination — taskbar/clock**: Added explicit rules in both the vision prompt and guidance system prompt telling the AI to NEVER reference taskbar items, system tray icons, desktop icons, the Windows clock, or notification banners. These are window chrome, not user work.
+- **Anti-hallucination — off-screen browser tabs**: Added rules telling the AI to only analyze the active/visible browser tab, not hidden tabs. Only content visible in the screenshot is valid — if it's not in the image, it does not exist for analysis.
+- **Anti-hallucination — invisible content**: Added explicit rule in both prompts: "Any content you cannot actually see in the screenshot — if it's not in the image, it does not exist."
+
 ## v1.1.205 — FIX: AI ignores Copilot window in screenshots; screenshot encoding uses RGB JPEG first
 
 - **AI Copilot window exclusion**: Added instruction to the guidance loop system prompt telling the AI to ignore the AI Copilot window if visible on screen — prevents self-referencing and wasted analysis cycles.
