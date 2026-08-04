@@ -1,3 +1,9 @@
+## v1.1.192 — FIX: reduce AI request payload to prevent nginx 413 (JPEG compression, screenshot dedup, shorter system prompt)
+
+- **Screenshot compression**: Replaced PNG with JPEG (80% quality, 1280x720 max) in screen capture — reduces screenshot payload from ~500KB+ (PNG) to ~100-300KB (JPEG)
+- **Screenshot dedup**: Added change detection in `VisionAnalyzer::queue_screenshot()` — skips AI API call if the screenshot data is identical to the last one and was analyzed within the poll interval
+- **System prompt reduction**: Reduced guidance loop system prompt from ~2000 to ~600 chars (70% reduction) by removing verbose elaborations while preserving all critical rules
+
 ## v1.1.200 — FIX: move auto-start observation engine & guidance loop to multi-threaded runtime
 
 - **Fixed observation engine/guidance loop not starting on app restart** — the auto-start path that runs when `first_run_complete=true` was using a single-threaded Tokio runtime (`get_or_create_auto_runtime()`). This caused the spawned polling loop to get stuck (Tokio current-thread runtime bug: tasks spawned during `block_on` don't execute after it returns). Fixed by moving the auto-start logic inside the multi-threaded runtime's `block_on` block, ensuring the polling loop is always scheduled and executes. Also removed the now-unused `get_or_create_auto_runtime()` function.
