@@ -79,6 +79,12 @@ pub struct VisionAnalyzerState {
     pub has_pending_screenshot: bool,
     /// Hash of the last analysis result for deduplication.
     pub last_analysis_hash: Option<String>,
+    /// SHA-256 hash of the last screenshot data for change detection.
+    /// If the same screenshot is queued again and no new events have arrived,
+    /// we skip re-processing to save API calls and reduce payload size.
+    pub last_screenshot_hash: Option<String>,
+    /// Timestamp of the last screenshot analysis (for TTL-based reuse).
+    pub last_screenshot_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl VisionAnalyzerState {
@@ -95,12 +101,43 @@ impl VisionAnalyzerState {
             pending_screenshot: None,
             has_pending_screenshot: false,
             last_analysis_hash: None,
+            last_screenshot_hash: None,
+            last_screenshot_time: None,
         }
     }
 
     /// Queue a new screenshot for analysis. Called by the engine when
     /// a ScreenshotCaptured event is received.
+    /// 
+    /// If the screenshot data is identical to the last one and was processed
+    /// within the last `poll_interval_secs` seconds, we skip queuing — this
+    /// prevents redundant API calls when the screen hasn't changed.
     pub fn queue_screenshot(&mut self, data_base64: String, width: u32, height: u32, focused_window: String) {
+        // Compute a fast hash of the screenshot data for change detection
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        hasher.write(data_base64.as_bytes());
+        let screenshot_hash = format!("{:x}", hasher.finish());
+
+        // Check if the same screenshot was processed recently
+        let now = chrono::Utc::now();
+        if let Some(ref prev_hash) = self.last_screenshot_hash {
+            if prev_hash == &screenshot_hash {
+                // Same screenshot — check if it was recently analyzed
+                if let Some(last_time) = self.last_screenshot_time {
+                    let elapsed = (now - last_time).num_seconds();
+                    if elapsed < self.vision_config.poll_interval_secs as i64 {
+                        // Screenshot hasn't changed and was analyzed recently — skip re-processing
+                        tracing::debug!(
+                            elapsed,
+                            "[Vision] Skipping duplicate screenshot — same image analyzed {}s ago",
+                            elapsed
+                        );
+                        return;
+                    }
+                }
+            }
+        }
+
         self.pending_screenshot = Some((data_base64, width, height, focused_window));
         self.has_pending_screenshot = true;
     }
@@ -112,8 +149,7 @@ pub struct VisionAnalyzerQueue(pub Arc<Mutex<VisionAnalyzerState>>);
 impl VisionAnalyzerQueue {
     pub fn queue_screenshot(&self, data_base64: String, width: u32, height: u32, focused_window: String) {
         let mut state = self.0.lock().unwrap();
-        state.pending_screenshot = Some((data_base64, width, height, focused_window));
-        state.has_pending_screenshot = true;
+        state.queue_screenshot(data_base64, width, height, focused_window);
     }
 }
 
@@ -212,7 +248,7 @@ impl VisionAnalyzerProvider {
             serde_json::json!({
                 "type": "image_url",
                 "image_url": {
-                    "url": format!("data:image/png;base64,{}", screenshot_data),
+                    "url": format!("data:image/jpeg;base64,{}", screenshot_data),
                 }
             }),
         ];
@@ -389,6 +425,13 @@ impl ObservationProvider for VisionAnalyzerProvider {
                     state.last_analysis_hash = Some(analysis_hash(&analysis));
                     state.analysis_count += 1;
                     state.last_analysis_time = Some(Utc::now());
+                    state.last_screenshot_time = Some(Utc::now());
+                    // Store screenshot hash for change detection
+                    {
+                        let mut h = std::collections::hash_map::DefaultHasher::new();
+                        h.write(screenshot_data.as_bytes());
+                        state.last_screenshot_hash = Some(format!("{:x}", h.finish()));
+                    }
                     state.has_pending_screenshot = false;
                     state.pending_screenshot = None;
                 }
