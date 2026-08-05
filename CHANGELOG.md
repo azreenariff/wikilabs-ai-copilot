@@ -1,3 +1,13 @@
+## v1.1.209 — FIX: cap unbounded in-memory data structures to prevent growth
+
+- **Recommendations capped at 50** — oldest entries auto-evicted when new ones arrive
+- **Evidence collected capped at 100** — oldest entries auto-evicted
+- **Feedback records capped at 200** — oldest records auto-evicted
+- **Suppressed ID list capped at 50** — oldest IDs auto-evicted
+- **Chat history capped at 50 messages** — oldest messages auto-evicted
+
+All caps prevent unbounded in-memory growth of vectors that had no size limit, eliminating gradual RAM accumulation over long sessions.
+
 ## v1.1.207 — FIX: reduce main window size for smaller screens
 
 - **Reduced main window default size** from 1400×900 to 1100×750 (min: 900×600) — window now fits comfortably on standard laptop and smaller displays without scrolling

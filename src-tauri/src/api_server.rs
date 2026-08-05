@@ -830,6 +830,11 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         let settings_ref = state.settings.lock().unwrap();
         let mut msgs = settings_ref.messages.lock().unwrap();
         msgs.push(ChatMessage { id: id.clone(), role: "user".to_string(), content: message.clone(), created_at: created_at.clone(), workspace_id: Some(workspace_id.to_string()) });
+        // Cap chat history to prevent unbounded growth — keep last 50 messages
+        if msgs.len() > 50 {
+            let dropped = msgs.len() - 50;
+            msgs.drain(..dropped);
+        }
     }
 
     // Try to get AI response, fall back to echo if provider not configured

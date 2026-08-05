@@ -397,22 +397,28 @@ impl GuidancePanel {
             return Ok(());
         }
         recs.push(RecommendationCard {
-            id: Uuid::new_v4().to_string(),
-            title: title.to_string(),
-            technology: technology.to_string(),
-            category: category.to_string(),
-            description: description.to_string(),
-            reason: reason.to_string(),
-            confidence,
-            evidence: Vec::new(),
-            recommended_next_step,
-            reference_docs,
-            risk_level: Some(risk_level),
-            status: RecommendationStatus::Active,
-            created_at: chrono::Utc::now().to_rfc3339(),
-        });
-        tracing::info!(title, "Generated recommendation");
-        Ok(())
+                    id: Uuid::new_v4().to_string(),
+                    title: title.to_string(),
+                    technology: technology.to_string(),
+                    category: category.to_string(),
+                    description: description.to_string(),
+                    reason: reason.to_string(),
+                    confidence,
+                    evidence: Vec::new(),
+                    recommended_next_step,
+                    reference_docs,
+                    risk_level: Some(risk_level),
+                    status: RecommendationStatus::Active,
+                    created_at: chrono::Utc::now().to_string(),
+                });
+                // Cap recommendations to prevent unbounded growth — keep last 50
+                if recs.len() > 50 {
+                    let dropped = recs.len() - 50;
+                    recs.drain(..dropped);
+                    tracing::info!(dropped, "Recommendations capped at 50");
+                }
+                tracing::info!(title, "Generated recommendation");
+                Ok(())
     }
 
     // ── Evidence Commands ──────────────────────────────────────
@@ -435,6 +441,11 @@ impl GuidancePanel {
             collected_at: chrono::Utc::now().to_rfc3339(),
         };
         ev.collected.push(evidence);
+        // Cap evidence to prevent unbounded growth — keep last 100
+        if ev.collected.len() > 100 {
+            let dropped = ev.collected.len() - 100;
+            ev.collected.drain(..dropped);
+        }
         ev.collected_count = ev.collected.len();
 
         // Recalculate overall confidence
@@ -611,6 +622,11 @@ impl GuidancePanel {
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
         fb.push(record);
+        // Cap feedback to prevent unbounded growth — keep last 200
+        if fb.len() > 200 {
+            let dropped = fb.len() - 200;
+            fb.drain(..dropped);
+        }
 
         // Suppress recommendation on negative feedback
         if matches!(
@@ -629,6 +645,12 @@ impl GuidancePanel {
                     };
                 }
             }
+
+        // Cap suppressed list — keep last 50
+        if suppressed.len() > 50 {
+            let dropped = suppressed.len() - 50;
+            suppressed.drain(..dropped);
+        }
 
         Ok(())
     }
