@@ -339,11 +339,14 @@ function SetupWizard() {
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'var(--color-bg-primary)', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      overflow: 'auto', padding: '16px',
     }}>
       <div style={{
         width: '100%', maxWidth: '520px', padding: '32px',
         background: 'var(--color-bg-secondary)', borderRadius: '12px',
         boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+        maxHeight: '90vh', overflowY: 'auto',
+        boxSizing: 'border-box',
       }}>
         {step < 5 && (
           <div style={{ display: 'flex', gap: '6px', marginBottom: '32px', justifyContent: 'center' }}>
