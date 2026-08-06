@@ -1,3 +1,10 @@
+## v1.1.211 — FIX: observation engine and guidance loop now respect enabled/disabled toggles by default
+
+- **Defaults actually work** — Both `observation_engine_enabled` and `guidance_loop_enabled` now default to `false` and are genuinely respected. Previously the two auto-start paths (wizard completion and subsequent launches) unconditionally started both features regardless of these settings.
+- **`stop_observation_engine()` added** — New graceful shutdown function that stops the engine, signals all providers to cease polling, and clears global references. Used when the settings toggle is turned OFF.
+- **Wizard completion checks settings** — `handle_set_first_run_complete` now reads `observation_engine_enabled` and `guidance_loop_enabled` before starting anything. If both are `false` (the default), nothing starts.
+- **Subsequent launches check settings** — `start_api_server` auto-start logic now checks the same toggles instead of blindly starting based on `first_run_complete`. Logs `"AUTO-START skipped"` when both are disabled.
+
 ## v1.1.210 — FIX: compilation errors from observation/guidance engine refactor
 
 - **Missing config fields** — Added `guidance_loop_enabled` and `observation_engine_enabled` to `PrivacySettings::default()`

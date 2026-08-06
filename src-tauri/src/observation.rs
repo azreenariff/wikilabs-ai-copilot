@@ -197,6 +197,28 @@ pub async fn lazy_start_observation_engine() -> bool {
     true
 }
 
+/// Stop the observation engine gracefully.
+/// Sets the global engine to None, signaling all providers to shut down.
+pub async fn stop_observation_engine() {
+    // Stop the engine — this sets the running flag to false and signals all providers
+    // to stop polling. The polling loop will exit on its own after the current iteration.
+    if let Some(engine) = get_observation_engine() {
+        tracing::info!("[OBS] Stopping observation engine...");
+        engine.stop().await;
+        // Clear the global engine reference
+        unsafe {
+            OBSERVATION_ENGINE = None;
+        }
+        // Clear the event receiver
+        unsafe {
+            EVENT_RECEIVER = None;
+        }
+        tracing::info!("[OBS] Observation engine stopped");
+    } else {
+        tracing::info!("[OBS] Observation engine already stopped (no engine instance)");
+    }
+}
+
 /// Register all available providers with the engine.
 async fn register_providers(engine: &ObservationEngine) {
     println!("[OBS] >>> Starting provider registration");

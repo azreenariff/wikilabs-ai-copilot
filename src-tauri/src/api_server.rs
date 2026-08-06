@@ -773,6 +773,9 @@ async fn handle_update_settings(state: &ApiServerState, params: Value) -> (Statu
     let new_obs_enabled = settings.settings.get("observation_engine_enabled")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    let new_guidance_enabled = settings.settings.get("guidance_loop_enabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     if new_obs_enabled {
         info!("Observation engine enabled via settings toggle — starting");
         // Spawn lazy init — the observation engine polls settings, so once
@@ -791,6 +794,39 @@ async fn handle_update_settings(state: &ApiServerState, params: Value) -> (Statu
                 s.settings["observation_engine_enabled"] = serde_json::json!(true);
             }
         });
+    } else if !new_obs_enabled {
+        // Observation engine disabled via settings toggle — stop it
+        info!("Observation engine disabled via settings toggle — stopping");
+        let settings_clone = state.settings.clone();
+        tokio::spawn(async move {
+            // Persist the disabled flag
+            {
+                let mut s = settings_clone.lock().unwrap();
+                s.settings["observation_engine_enabled"] = serde_json::json!(false);
+            }
+            // Stop any existing observation engine
+            crate::observation::stop_observation_engine().await;
+            tracing::info!("Observation engine stopped (settings toggle)");
+        });
+    }
+    if new_guidance_enabled {
+        info!("AI Guidance enabled via settings toggle — spawning loop");
+        let poll_settings = state.settings.clone();
+        let knowledge_dir = {
+            let guard = state.knowledge_dir.lock().unwrap();
+            guard.clone()
+        };
+        let skill_kb: crate::skill_knowledge::SkillKnowledgeBaseArc = if let Some(ref dir) = knowledge_dir {
+            crate::skill_knowledge::create_skill_knowledge_base(&dir.to_string_lossy())
+        } else {
+            crate::skill_knowledge::create_skill_knowledge_base("")
+        };
+        guidance_loop::spawn_ai_guidance_loop(
+            poll_settings,
+            skill_kb,
+            None,
+        );
+        tracing::info!("AI Guidance loop spawned (settings toggle)");
     }
 
     // Persist to disk
@@ -824,42 +860,56 @@ async fn handle_set_first_run_complete(state: &ApiServerState) -> (StatusCode, S
         }
     }  // MutexGuard dropped here
     
-    // Start observation engine and guidance loop NOW that the wizard is complete.
-    // This ensures no background polling (screenshots, window enumeration) runs
-    // while the user is still configuring their AI provider.
-    {
+    // Start observation engine and guidance loop NOW that the wizard is complete,
+    // but ONLY if the user has them enabled in settings.
+    let obs_enabled = {
+        let settings = state.settings.lock().unwrap();
+        settings.settings.get("observation_engine_enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    };
+    let guidance_enabled = {
+        let settings = state.settings.lock().unwrap();
+        settings.settings.get("guidance_loop_enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    };
+
+    if obs_enabled || guidance_enabled {
         let app_handle_clone = state.app_handle.clone();
         let poll_settings = state.settings.clone();
         let knowledge_dir = {
             let guard = state.knowledge_dir.lock().unwrap();
             guard.clone()
         };
-        
-        // Create skill knowledge base from the knowledge directory
-        let skill_kb: crate::skill_knowledge::SkillKnowledgeBaseArc = if let Some(ref dir) = knowledge_dir {
-            crate::skill_knowledge::create_skill_knowledge_base(&dir.to_string_lossy())
-        } else {
-            crate::skill_knowledge::create_skill_knowledge_base("")
-        };
-        
-        // Initialize observation engine directly on the existing tokio runtime
-        // (axum's async handler chain). Do NOT create a nested runtime — that
-        // causes "Cannot start a runtime from within a runtime" panic.
-        info!("[LAZY] Initializing observation engine (post-wizard) — synchronously");
-        let engine = crate::observation::init_observation_engine().await;
-        // Start providers — spawns the polling loop task on the existing runtime.
-        crate::observation::start_observation_engine(engine).await;
-        info!("[LAZY] Observation engine initialized and started (post-wizard)");
-        
-        // Now spawn guidance loop — the globals are already set above
-        if let Some(ref ah) = app_handle_clone {
-            let app_h = ah.lock().unwrap();
-            guidance_loop::spawn_ai_guidance_loop(
-                poll_settings,
-                skill_kb,
-                Some(Arc::new((*app_h).clone())),
-            );
-            info!("[LAZY] Guidance loop spawned (post-wizard)");
+
+        if obs_enabled {
+            // Create skill knowledge base from the knowledge directory
+            let skill_kb: crate::skill_knowledge::SkillKnowledgeBaseArc = if let Some(ref dir) = knowledge_dir {
+                crate::skill_knowledge::create_skill_knowledge_base(&dir.to_string_lossy())
+            } else {
+                crate::skill_knowledge::create_skill_knowledge_base("")
+            };
+
+            // Initialize observation engine directly on the existing tokio runtime
+            // (axum's async handler chain). Do NOT create a nested runtime — that
+            // causes "Cannot start a runtime from within a runtime" panic.
+            info!("[LAZY] Initializing observation engine (post-wizard, enabled by settings) — synchronously");
+            let engine = crate::observation::init_observation_engine().await;
+            // Start providers — spawns the polling loop task on the existing runtime.
+            crate::observation::start_observation_engine(engine).await;
+            info!("[LAZY] Observation engine initialized and started (post-wizard)");
+
+            // Now spawn guidance loop — the globals are already set above
+            if let Some(ref ah) = app_handle_clone {
+                let app_h = ah.lock().unwrap();
+                guidance_loop::spawn_ai_guidance_loop(
+                    poll_settings,
+                    skill_kb,
+                    Some(Arc::new((*app_h).clone())),
+                );
+                info!("[LAZY] Guidance loop spawned (post-wizard)");
+            }
         }
     }
     
@@ -2185,46 +2235,58 @@ pub fn start_api_server(
                 // Run inside this multi-threaded runtime so the spawned polling
                 // loop task is guaranteed to execute (avoids the single-threaded
                 // runtime bug where tokio::spawn tasks get stuck after block_on).
+                // ONLY auto-start if the user has explicitly enabled these features.
                 if should_auto_start {
-                    info!("first_run_complete is true — auto-starting observation engine and guidance loop on multi-threaded runtime");
-
                     // Re-check settings inside the async block
-                    let first_run = {
+                    let obs_enabled = {
                         let settings = obs_settings.lock().unwrap();
-                        settings.settings.get("first_run_complete")
+                        settings.settings.get("observation_engine_enabled")
                             .and_then(|v| v.as_bool())
                             .unwrap_or(false)
                     };
-                    let has_key = {
+                    let guidance_enabled = {
                         let settings = obs_settings.lock().unwrap();
-                        settings.settings.get("ai_provider")
-                            .and_then(|p| p.as_object())
-                            .and_then(|p| p.get("api_key"))
-                            .and_then(|v| v.as_str())
-                            .map_or(false, |k| !k.is_empty())
+                        settings.settings.get("guidance_loop_enabled")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false)
                     };
 
-                    if first_run {
+                    if obs_enabled || guidance_enabled {
+                        info!("AUTO-START: first_run_complete=true, observation_engine_enabled={}, guidance_loop_enabled=true — starting on multi-threaded runtime", obs_enabled);
+
+                        let has_key = {
+                            let settings = obs_settings.lock().unwrap();
+                            settings.settings.get("ai_provider")
+                                .and_then(|p| p.as_object())
+                                .and_then(|p| p.get("api_key"))
+                                .and_then(|v| v.as_str())
+                                .map_or(false, |k| !k.is_empty())
+                        };
+
                         info!("AUTO-START: AI API key is {}", if has_key { "configured" } else { "NOT configured — loop will skip AI reasoning" });
 
-                        // Initialize observation engine on THIS multi-threaded runtime
-                        info!("[AUTO] Initializing observation engine (subsequent launch)");
-                        let engine = crate::observation::init_observation_engine().await;
-                        crate::observation::start_observation_engine(engine).await;
-                        info!("[AUTO] Observation engine initialized and started (subsequent launch)");
+                        if obs_enabled {
+                            // Initialize observation engine on THIS multi-threaded runtime
+                            info!("[AUTO] Initializing observation engine (subsequent launch, enabled by settings)");
+                            let engine = crate::observation::init_observation_engine().await;
+                            crate::observation::start_observation_engine(engine).await;
+                            info!("[AUTO] Observation engine initialized and started (subsequent launch)");
 
-                        // Spawn guidance loop — globals are already set above
-                        if let Some(ref ah) = app_handle_for_thread {
-                            info!("[AUTO] Spawning guidance loop with obs_settings and skill_kb...");
-                            guidance_loop::spawn_ai_guidance_loop(
-                                obs_settings.clone(),
-                                crate::skill_knowledge::create_skill_knowledge_base(""),
-                                Some(Arc::new(ah.as_ref().clone())),
-                            );
-                            info!("[AUTO] Guidance loop spawned successfully (subsequent launch)");
-                        } else {
-                            warn!("[AUTO] No app_handle available — skipping guidance loop spawn");
+                            // Spawn guidance loop — globals are already set above
+                            if let Some(ref ah) = app_handle_for_thread {
+                                info!("[AUTO] Spawning guidance loop with obs_settings and skill_kb...");
+                                guidance_loop::spawn_ai_guidance_loop(
+                                    obs_settings.clone(),
+                                    crate::skill_knowledge::create_skill_knowledge_base(""),
+                                    Some(Arc::new(ah.as_ref().clone())),
+                                );
+                                info!("[AUTO] Guidance loop spawned successfully (subsequent launch)");
+                            } else {
+                                warn!("[AUTO] No app_handle available — skipping guidance loop spawn");
+                            }
                         }
+                    } else {
+                        info!("AUTO-START skipped: observation_engine_enabled=false, guidance_loop_enabled=false");
                     }
                 }
 
