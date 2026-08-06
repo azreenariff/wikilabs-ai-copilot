@@ -1,3 +1,11 @@
+## v1.1.212 — FIX: screenshot capture improvements
+
+- Replace "Capture" button with compact camera icon only (no text)
+- Add green toast notification when screenshot is captured
+- Minimize AI Copilot window before screenshot capture, restore after
+- Fix Windows screenshot folder path (USERPROFILE instead of HOME)
+
+
 ## v1.1.211 — FIX: observation engine and guidance loop now respect enabled/disabled toggles by default
 
 - **Defaults actually work** — Both `observation_engine_enabled` and `guidance_loop_enabled` now default to `false` and are genuinely respected. Previously the two auto-start paths (wizard completion and subsequent launches) unconditionally started both features regardless of these settings.

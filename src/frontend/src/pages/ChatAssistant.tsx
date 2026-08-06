@@ -609,35 +609,76 @@ function ChatAssistant() {
                     const data = await res.json();
                     if (data.success) {
                       console.log('[ChatAssistant] Screenshot captured:', data.value?.filename);
+                      // Show in-app notification
+                      const toast = document.createElement('div');
+                      toast.textContent = '✓ Screenshot captured';
+                      Object.assign(toast.style, {
+                        position: 'fixed',
+                        bottom: '70px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'rgba(34, 197, 94, 0.9)',
+                        color: '#fff',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        zIndex: '10000',
+                        pointerEvents: 'none',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        animation: 'fadeInOut 2.5s ease forwards',
+                      });
+                      document.body.appendChild(toast);
+                      setTimeout(() => toast.remove(), 2600);
+                      // Inject animation if not already present
+                      if (!document.getElementById('capture-toast-style')) {
+                        const style = document.createElement('style');
+                        style.id = 'capture-toast-style';
+                        style.textContent = `
+                          @keyframes fadeInOut {
+                            0% { opacity: 0; transform: translateX(-50%) translateY(8px); }
+                            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                            75% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                            100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+                          }
+                        `;
+                        document.head.appendChild(style);
+                      }
+                    } else {
+                      console.error('[ChatAssistant] Screenshot capture failed:', data.error);
                     }
                   } catch (err) {
                     console.error('[ChatAssistant] Screenshot capture failed:', err);
                   }
                 }}
                 style={{
-                  padding: '8px 12px',
+                  padding: '8px',
                   borderRadius: '8px',
                   border: '1px solid var(--color-border)',
                   background: 'transparent',
                   color: 'var(--color-text-secondary)',
                   cursor: 'pointer',
-                  fontSize: '13px',
+                  fontSize: '16px',
                   transition: 'all 0.15s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
                 }}
                 title="Capture screen for AI context (auto-deleted after AI responds)"
                 onMouseEnter={e => {
                   e.currentTarget.style.borderColor = 'var(--color-accent)';
                   e.currentTarget.style.color = 'var(--color-text-primary)';
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.borderColor = 'var(--color-border)';
                   e.currentTarget.style.color = 'var(--color-text-secondary)';
+                  e.currentTarget.style.background = 'transparent';
                 }}
               >
-                📷 Capture
+                📷
               </button>
 
               {/* Textarea for message input */}

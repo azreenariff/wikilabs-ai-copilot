@@ -377,7 +377,7 @@ pub async fn api_handler(
         "observation_get_context" => handle_observation_get_context().await,
         "observation_start" => handle_observation_start(&state).await,
         "observation_stop" => handle_observation_stop(&state).await,
-        "capture_screenshot" => handle_capture_screenshot().await,
+        "capture_screenshot" => handle_capture_screenshot(&state).await,
         "clear_screenshots" => handle_clear_screenshots().await,
         "hide_main_window" => handle_hide_main_window(&state).await,
         "advice_chat_open" => handle_advice_chat_open(&state).await,
@@ -710,7 +710,15 @@ fn handle_preflight_check(state: &ApiServerState, req_params: Value) -> (StatusC
 /// Get the screenshots directory path (cross-platform).
 /// Saves to: ~/Documents/AI Copilot Screenshots/
 pub fn get_screenshots_dir() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "~".to_string());
+    // Windows: use USERPROFILE, Unix: use HOME. Avoid "~" because
+    // it is NOT expanded automatically by PathBuf on Windows.
+    let home = if cfg!(windows) {
+        std::env::var("USERPROFILE").unwrap_or_else(|_| {
+            std::env::var("HOME").unwrap_or_else(|_| "C:\\Users\\User".to_string())
+        })
+    } else {
+        std::env::var("HOME").unwrap_or_else(|_| "~".to_string())
+    };
     PathBuf::from(home).join("Documents").join("AI Copilot Screenshots")
 }
 
@@ -1673,12 +1681,28 @@ async fn handle_observation_stop(state: &ApiServerState) -> (StatusCode, String)
 }
 
 // Save screenshot to user's Documents folder
-async fn handle_capture_screenshot() -> (StatusCode, String) {
+/// Capture a screenshot and save it to the screenshots directory.
+/// Minimizes the AI Copilot window before capturing so the window itself isn't in the screenshot.
+async fn handle_capture_screenshot(state: &ApiServerState) -> (StatusCode, String) {
     let screenshot_dir = get_screenshots_dir();
     if let Err(e) = fs::create_dir_all(&screenshot_dir) {
         error!(error = %e, "Failed to create screenshots directory");
         return (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to create directory: {}", e))));
     }
+
+    // Minimize the AI Copilot "main" window so it won't appear in the screenshot
+    {
+        if let Some(ref app_handle) = state.app_handle {
+            let guard = app_handle.lock().unwrap();
+            if let Some(window) = guard.get_webview_window("main") {
+                let _ = window.hide();
+                info!("Minimized main window before screenshot capture");
+            }
+        }
+    }
+
+    // Brief pause to let the window actually hide and the screen update
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
 
     // Get the latest screenshot from the observation engine
     let screenshot = tokio::task::block_in_place(|| {
@@ -1698,6 +1722,13 @@ async fn handle_capture_screenshot() -> (StatusCode, String) {
                 Ok(bytes) => bytes,
                 Err(e) => {
                     error!(error = %e, "Failed to decode screenshot base64");
+                    // Restore window even on error
+                    if let Some(ref app_handle) = state.app_handle {
+                        let guard = app_handle.lock().unwrap();
+                        if let Some(window) = guard.get_webview_window("main") {
+                            let _ = window.show();
+                        }
+                    }
                     return (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to decode screenshot: {}", e))));
                 }
             };
@@ -1705,24 +1736,38 @@ async fn handle_capture_screenshot() -> (StatusCode, String) {
             match fs::File::create(&filepath).and_then(|mut f| f.write_all(&decoded)) {
                 Ok(_) => {
                     info!(path = ?filepath, width = ss.width, height = ss.height, "Screenshot captured and saved");
+                    // Restore the window
+                    if let Some(ref app_handle) = state.app_handle {
+                        let guard = app_handle.lock().unwrap();
+                        if let Some(window) = guard.get_webview_window("main") {
+                            let _ = window.show();
+                        }
+                    }
                     // Notify the frontend to show a toast
-                    let filepath_str = filepath.to_str().unwrap_or("").to_string();
-                    let _ = show_screenshot_toast("Screenshot captured", &format!("Saved to {}", &filepath_str[..filepath_str.len().min(80)]));
+                    let filepath_str = filepath.to_string_lossy().to_string();
+                    let _ = show_screenshot_toast("Screenshot captured", &filepath_str);
                     (StatusCode::OK, api_response(true, Some(serde_json::json!({
-        "path": filepath_str,
-        "timestamp": timestamp.to_string(),
-        "width": ss.width,
-        "height": ss.height,
-    })), None))
+                        "path": filepath_str,
+                        "timestamp": timestamp.to_string(),
+                        "width": ss.width,
+                        "height": ss.height,
+                    })), None))
                 }
                 Err(e) => {
                     error!(error = %e, "Failed to save screenshot");
+                    // Restore window even on error
+                    if let Some(ref app_handle) = state.app_handle {
+                        let guard = app_handle.lock().unwrap();
+                        if let Some(window) = guard.get_webview_window("main") {
+                            let _ = window.show();
+                        }
+                    }
                     (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to save screenshot: {}", e))))
                 }
             }
         }
         None => {
-            // No screenshot available — try to capture one fresh by starting the screen capture provider
+            // No screenshot available — try to capture one fresh
             info!("No previous screenshot available — attempting to trigger one");
             // Give it a moment and retry — the screen capture provider may need to run its cycle
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -1731,6 +1776,15 @@ async fn handle_capture_screenshot() -> (StatusCode, String) {
                     crate::observation::get_last_screenshot_async().await
                 })
             });
+
+            // Restore window before waiting
+            if let Some(ref app_handle) = state.app_handle {
+                let guard = app_handle.lock().unwrap();
+                if let Some(window) = guard.get_webview_window("main") {
+                    let _ = window.show();
+                }
+            }
+
             match screenshot2 {
                 Some(ss) => {
                     let timestamp = ss.timestamp.format("%Y%m%d_%H%M%S");
@@ -1748,8 +1802,8 @@ async fn handle_capture_screenshot() -> (StatusCode, String) {
                     match fs::File::create(&filepath).and_then(|mut f| f.write_all(&decoded)) {
                         Ok(_) => {
                             info!(path = ?filepath, width = ss.width, height = ss.height, "Screenshot captured and saved");
-                            let filepath_str = filepath.to_str().unwrap_or("").to_string();
-                            let _ = show_screenshot_toast("Screenshot captured", &format!("Saved to {}", &filepath_str[..filepath_str.len().min(80)]));
+                            let filepath_str = filepath.to_string_lossy().to_string();
+                            let _ = show_screenshot_toast("Screenshot captured", &filepath_str);
                             (StatusCode::OK, api_response(true, Some(serde_json::json!({
                                 "path": filepath_str,
                                 "timestamp": timestamp.to_string(),
