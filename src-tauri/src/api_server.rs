@@ -25,6 +25,39 @@ use tower_http::services::ServeDir;
 use tracing::{debug, error, info, warn};
 use wikilabs_ai::AiProvider;
 use tauri::AppHandle;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+
+/// Read screenshot files from the screenshots directory and encode them as
+/// base64 data URLs suitable for multi-modal AI providers (OpenAI-compatible).
+/// Returns a Vec of data URL strings.
+fn load_screenshot_images(screenshot_dir: &std::path::Path, filenames: &[String]) -> Vec<String> {
+    let mut images = Vec::new();
+    for filename in filenames {
+        let filepath = screenshot_dir.join(filename);
+        if let Ok(bytes) = fs::read(&filepath) {
+            let data = BASE64.encode(&bytes);
+            let ext = if filename.ends_with(".png") { "png" } else { "jpeg" };
+            let data_url = format!("data:image/{};base64,{}", ext, data);
+            images.push(data_url);
+        }
+    }
+    images
+}
+
+/// Check if the user's message indicates they want to analyze screenshots.
+/// This triggers multi-modal image loading to avoid unnecessary overhead
+/// on normal chat messages.
+fn user_requests_screenshot_analysis(message: &str) -> bool {
+    let lower = message.to_lowercase();
+    let keywords = [
+        "screenshot", "screen shot", "screen capture", "analyze the screen",
+        "advise me on", "look at the screenshot", "look at the screen",
+        "check the screenshot", "analyze screenshot", "review the screenshot",
+        "what do you see", "what's on the screen", "help me with",
+        "advise me", "advise on", "look at this",
+    ];
+    keywords.iter().any(|&kw| lower.contains(kw))
+}
 
 /// Build a system prompt that includes the AI's own observation context,
 /// recent recommendations with reasoning, and session state.
@@ -973,6 +1006,24 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         files
     };
 
+    // Load screenshot images as base64 data URLs for multi-modal AI — only when
+    // the user explicitly asks for screenshot analysis (to avoid unnecessary overhead
+    // on normal chat messages).
+    let load_screenshots = user_requests_screenshot_analysis(&message);
+    let screenshot_images = if load_screenshots && !screenshot_files.is_empty() {
+        let images = load_screenshot_images(&screenshot_dir, &screenshot_files);
+        if !images.is_empty() {
+            info!(count = images.len(), "Loaded screenshot images for multi-modal AI analysis");
+        }
+        images
+    } else {
+        Vec::new()
+    };
+
+    if !load_screenshots && !screenshot_files.is_empty() {
+        debug!("Skipping screenshot loading — user did not request analysis");
+    }
+
     let (assistant_id, assistant_created, response) = if !api_key.is_empty() {
         let model = config.get("ai_provider")
             .and_then(|p| p.get("model"))
@@ -1087,11 +1138,29 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
             });
         }
 
-        // Add the current user message
-        messages.push(wikilabs_ai::provider::AiMessage {
-            role: "user".to_string(),
-            content: serde_json::Value::String(message.clone()),
-        });
+        // 4. Add the current user message as a multi-modal message if screenshots exist
+        //    This gives the AI actual image content to analyze, not just filenames.
+        if !screenshot_images.is_empty() {
+            let mut content_parts: Vec<serde_json::Value> = Vec::new();
+            // Add the text prompt
+            content_parts.push(serde_json::Value::String(message.clone()));
+            // Add each screenshot as an image_url part
+            for img_url in &screenshot_images {
+                content_parts.push(serde_json::json!({
+                    "type": "image_url",
+                    "image_url": { "url": img_url }
+                }));
+            }
+            messages.push(wikilabs_ai::provider::AiMessage {
+                role: "user".to_string(),
+                content: serde_json::Value::Array(content_parts),
+            });
+        } else {
+            messages.push(wikilabs_ai::provider::AiMessage {
+                role: "user".to_string(),
+                content: serde_json::Value::String(message.clone()),
+            });
+        }
 
         let ai_request = wikilabs_ai::provider::AiRequest {
             model: model.clone(),
@@ -1690,13 +1759,16 @@ async fn handle_capture_screenshot(state: &ApiServerState) -> (StatusCode, Strin
         return (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to create directory: {}", e))));
     }
 
-    // Minimize the AI Copilot "main" window so it won't appear in the screenshot
+    // Hide the AI Copilot "main" window so it won't appear in the screenshot.
+    // We do NOT restore the main window after capture — only the advice-chat
+    // window should be shown. The user clicked the screenshot button from the
+    // advice-chat window and expects it to remain visible.
     {
         if let Some(ref app_handle) = state.app_handle {
             let guard = app_handle.lock().unwrap();
             if let Some(window) = guard.get_webview_window("main") {
                 let _ = window.hide();
-                info!("Minimized main window before screenshot capture");
+                info!("Hidden main window before screenshot capture");
             }
         }
     }
@@ -1722,10 +1794,10 @@ async fn handle_capture_screenshot(state: &ApiServerState) -> (StatusCode, Strin
                 Ok(bytes) => bytes,
                 Err(e) => {
                     error!(error = %e, "Failed to decode screenshot base64");
-                    // Restore window even on error
+                    // Show advice-chat window on error
                     if let Some(ref app_handle) = state.app_handle {
                         let guard = app_handle.lock().unwrap();
-                        if let Some(window) = guard.get_webview_window("main") {
+                        if let Some(window) = guard.get_webview_window("advice-chat") {
                             let _ = window.show();
                         }
                     }
@@ -1735,14 +1807,14 @@ async fn handle_capture_screenshot(state: &ApiServerState) -> (StatusCode, Strin
 
             match fs::File::create(&filepath).and_then(|mut f| f.write_all(&decoded)) {
                 Ok(_) => {
-                    info!(path = ?filepath, width = ss.width, height = ss.height, "Screenshot captured and saved");
-                    // Restore the window
-                    if let Some(ref app_handle) = state.app_handle {
-                        let guard = app_handle.lock().unwrap();
-                        if let Some(window) = guard.get_webview_window("main") {
-                            let _ = window.show();
-                        }
-                    }
+                                            info!(path = ?filepath, width = ss.width, height = ss.height, "Screenshot captured and saved");
+                                            // Show advice-chat window (where the user clicked the screenshot button)
+                                            if let Some(ref app_handle) = state.app_handle {
+                                                let guard = app_handle.lock().unwrap();
+                                                if let Some(window) = guard.get_webview_window("advice-chat") {
+                                                    let _ = window.show();
+                                                }
+                                            }
                     // Notify the frontend to show a toast
                     let filepath_str = filepath.to_string_lossy().to_string();
                     let _ = show_screenshot_toast("Screenshot captured", &filepath_str);
