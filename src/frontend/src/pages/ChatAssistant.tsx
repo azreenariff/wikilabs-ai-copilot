@@ -597,6 +597,49 @@ function ChatAssistant() {
                 style={{ display: 'none' }}
               />
 
+              {/* Capture Screenshot Button */}
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch('http://127.0.0.1:1420/api/commands/capture_screenshot', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ params: {} }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      console.log('[ChatAssistant] Screenshot captured:', data.value?.filename);
+                    }
+                  } catch (err) {
+                    console.error('[ChatAssistant] Screenshot capture failed:', err);
+                  }
+                }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'transparent',
+                  color: 'var(--color-text-secondary)',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  transition: 'all 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title="Capture screen for AI context (auto-deleted after AI responds)"
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'var(--color-accent)';
+                  e.currentTarget.style.color = 'var(--color-text-primary)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                  e.currentTarget.style.color = 'var(--color-text-secondary)';
+                }}
+              >
+                📷 Capture
+              </button>
+
               {/* Textarea for message input */}
               <textarea
                 ref={textareaRef}

@@ -45,6 +45,12 @@ pub struct PrivacySettings {
     /// Privacy mode — disables all observation and transmission.
     #[serde(default = "default_true")]
     pub privacy_mode: bool,
+    /// Enable the observation engine (continuous screen capture and event detection).
+    #[serde(default)]
+    pub observation_engine_enabled: bool,
+    /// Enable the AI guidance loop (proactive recommendations based on observations).
+    #[serde(default)]
+    pub guidance_loop_enabled: bool,
 }
 
 impl Default for PrivacySettings {
@@ -57,6 +63,8 @@ impl Default for PrivacySettings {
             sensitive_logging_enabled: false,
             consent_given: false,
             privacy_mode: false,
+            observation_engine_enabled: false,
+            guidance_loop_enabled: false,
         }
     }
 }

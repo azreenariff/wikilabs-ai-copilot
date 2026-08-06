@@ -1,3 +1,13 @@
+## v1.1.210 — FIX: compilation errors from observation/guidance engine refactor
+
+- **Missing config fields** — Added `guidance_loop_enabled` and `observation_engine_enabled` to `PrivacySettings::default()`
+- **Missing `handle_observation_stop`** — Added route handler for observation stop API
+- **Screenshot scope fix** — Hoisted manual screenshot scanning outside the provider-config if/else block so auto-clear works for all AI requests
+- **Lifetime fix** — `screenshot_files.last().unwrap_or()` no longer borrows a temporary `String::new()`
+- **Fixed `.lock()` on `AppHandle`** — `show_screenshot_toast` was incorrectly calling `.lock()` on a non-Mutex `Option<AppHandle>`
+- **Removed `state.observation_state`** — Replaced with settings-based toggle logic using the new start/stop handlers
+- **Added `base64` crate** — Dependency for observation/screenshot encoding
+
 ## v1.1.209 — FIX: cap unbounded in-memory data structures to prevent growth
 
 - **Recommendations capped at 50** — oldest entries auto-evicted when new ones arrive

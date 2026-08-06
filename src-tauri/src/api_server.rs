@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
+use std::io::Write;
 use std::sync::{Arc, Mutex};
 use wikilabs_observation;
 use tower_http::cors::{Any, CorsLayer};
@@ -376,6 +377,8 @@ pub async fn api_handler(
         "observation_get_context" => handle_observation_get_context().await,
         "observation_start" => handle_observation_start(&state).await,
         "observation_stop" => handle_observation_stop(&state).await,
+        "capture_screenshot" => handle_capture_screenshot().await,
+        "clear_screenshots" => handle_clear_screenshots().await,
         "hide_main_window" => handle_hide_main_window(&state).await,
         "advice_chat_open" => handle_advice_chat_open(&state).await,
         "hide_advice_window" => handle_hide_advice_window(&state).await,
@@ -702,6 +705,25 @@ fn handle_preflight_check(state: &ApiServerState, req_params: Value) -> (StatusC
     (StatusCode::OK, api_response(all_ok, Some(Value::Object(checks)), None))
 }
 
+// ── Screenshot Utilities ─────────────────────────────────────
+
+/// Get the screenshots directory path (cross-platform).
+/// Saves to: ~/Documents/AI Copilot Screenshots/
+pub fn get_screenshots_dir() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "~".to_string());
+    PathBuf::from(home).join("Documents").join("AI Copilot Screenshots")
+}
+
+/// Show a toast notification for screenshot capture.
+fn show_screenshot_toast(title: &str, body: &str) {
+    if let Some(ref app_handle) = get_shared_app_handle() {
+        let _ = app_handle.emit("screenshot-captured", serde_json::json!({
+            "title": title,
+            "body": body,
+        }));
+    }
+}
+
 async fn handle_get_settings(state: &ApiServerState) -> (StatusCode, String) {
     let mut settings = state.settings.lock().unwrap();
     
@@ -745,6 +767,30 @@ async fn handle_update_settings(state: &ApiServerState, params: Value) -> (Statu
             new_obj.insert("ai_connection_status".to_string(), serde_json::json!(status));
             settings.settings["ai_provider"] = serde_json::json!(new_obj);
         }
+    }
+
+    // If observation engine toggle changed, start/stop the polling loop
+    let new_obs_enabled = settings.settings.get("observation_engine_enabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if new_obs_enabled {
+        info!("Observation engine enabled via settings toggle — starting");
+        // Spawn lazy init — the observation engine polls settings, so once
+        // observation_engine_enabled is true in settings, the engine knows to run.
+        let settings_clone = state.settings.clone();
+        tokio::spawn(async move {
+            let started = crate::observation::lazy_start_observation_engine().await;
+            if started {
+                tracing::info!("Observation engine started (settings toggle)");
+            } else {
+                tracing::error!("Failed to start observation engine (settings toggle)");
+            }
+            // Persist the enabled flag again in case the engine read it before we wrote
+            {
+                let mut s = settings_clone.lock().unwrap();
+                s.settings["observation_engine_enabled"] = serde_json::json!(true);
+            }
+        });
     }
 
     // Persist to disk
@@ -848,6 +894,27 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         .unwrap_or("")
         .to_string();
 
+    // Scan for pending manual screenshots BEFORE the if-else scope
+    let screenshot_dir = get_screenshots_dir();
+    let screenshot_files: Vec<String> = {
+        let mut files: Vec<String> = Vec::new();
+        if let Ok(entries) = fs::read_dir(&screenshot_dir) {
+            for entry in entries.flatten() {
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.is_file() {
+                        if let Ok(filename) = entry.file_name().into_string() {
+                            if filename.starts_with("screenshot_") && (filename.ends_with(".jpg") || filename.ends_with(".png")) {
+                                files.push(filename);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        files.sort();
+        files
+    };
+
     let (assistant_id, assistant_created, response) = if !api_key.is_empty() {
         let model = config.get("ai_provider")
             .and_then(|p| p.get("model"))
@@ -890,7 +957,7 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
             msgs.clone()
         };
 
-        // 2. Build system prompt with observation context + recommendations
+        // 3. Build system prompt with observation context + recommendations + screenshots (screenshot_files already scanned above)
         // Spawn a dedicated thread with its own tokio runtime to avoid
         // "Cannot start a runtime from within a runtime" panic.
         let system_prompt = {
@@ -918,11 +985,39 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         // 3. Build the messages array for the AI
         let mut messages: Vec<wikilabs_ai::provider::AiMessage> = Vec::new();
 
-        // Add system prompt if we have observation context
+        // Add system prompt if we have observation context, with screenshots appended
+        let mut final_system_prompt = if let Some(sys) = system_prompt.clone() {
+            if !screenshot_files.is_empty() {
+                let screen_count = screenshot_files.len();
+                let default_latest = String::new();
+                let latest = screenshot_files.last().unwrap_or(&default_latest);
+                format!(
+                    "{}\n\n## Manual Screenshots\nYou have {} manual screenshot(s) available in ~/Documents/AI Copilot Screenshots/.\n\nScreenshots captured by the user (oldest → newest):\n{}\n\nAnalyze these screenshots to understand the user's context. After providing your advice, the screenshots will be automatically deleted.\nLatest: {}\n",
+                    sys,
+                    screen_count,
+                    screenshot_files.iter().enumerate().map(|(i, f)| format!("{}. {}", i + 1, f)).collect::<Vec<_>>().join("\n"),
+                    latest
+                )
+            } else {
+                sys
+            }
+        } else {
+            if !screenshot_files.is_empty() {
+                let screen_count = screenshot_files.len();
+                format!(
+                    "You are a helpful technical assistant. The user has {} manual screenshot(s) available in ~/Documents/AI Copilot Screenshots/ for context.\n\nScreenshots captured by the user (oldest → newest):\n{}\n\nAfter providing your advice, the screenshots will be automatically deleted.\n",
+                    screen_count,
+                    screenshot_files.iter().enumerate().map(|(i, f)| format!("{}. {}", i + 1, f)).collect::<Vec<_>>().join("\n")
+                )
+            } else {
+                "You are a helpful technical assistant.".to_string()
+            }
+        };
+
         if let Some(sys) = system_prompt {
             messages.push(wikilabs_ai::provider::AiMessage {
                 role: "system".to_string(),
-                content: serde_json::Value::String(sys),
+                content: serde_json::Value::String(final_system_prompt),
             });
         }
 
@@ -1000,6 +1095,24 @@ fn handle_send_message(state: &ApiServerState, params: Value) -> (StatusCode, St
         let settings_ref = state.settings.lock().unwrap();
         let mut msgs = settings_ref.messages.lock().unwrap();
         msgs.push(ChatMessage { id: assistant_id.clone(), role: "assistant".to_string(), content: response.clone(), created_at: assistant_created.clone(), workspace_id: Some(workspace_id.to_string()) });
+    }
+
+    // Auto-clear screenshots after AI responds (they've been consumed into the prompt)
+    if !screenshot_files.is_empty() {
+        if let Ok(entries) = fs::read_dir(&screenshot_dir) {
+            for entry in entries.flatten() {
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.is_file() {
+                        if let Ok(filename) = entry.file_name().into_string() {
+                            if filename.starts_with("screenshot_") && (filename.ends_with(".jpg") || filename.ends_with(".png")) {
+                                let _ = fs::remove_file(&entry.path());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        info!(count = screenshot_files.len(), "Manual screenshots auto-deleted after AI response");
     }
 
     (StatusCode::OK, api_response(true, Some(serde_json::json!({
@@ -1498,9 +1611,145 @@ async fn handle_observation_start(state: &ApiServerState) -> (StatusCode, String
     (StatusCode::OK, api_response(true, Some(serde_json::json!({ "status": "starting" })), None))
 }
 
-async fn handle_observation_stop(_state: &ApiServerState) -> (StatusCode, String) {
+async fn handle_observation_stop(state: &ApiServerState) -> (StatusCode, String) {
     info!("Observation stop requested");
-    (StatusCode::OK, api_response(true, Some(serde_json::json!({"status": "stopped"})), None))
+    // Stop observation by signaling via settings — the observation engine
+    // polls the settings to know whether to continue.
+    {
+        let mut settings = state.settings.lock().unwrap();
+        settings.settings["observation_engine_enabled"] = serde_json::json!(false);
+    }
+    (StatusCode::OK, api_response(true, Some(serde_json::json!({ "status": "stopped" })), None))
+}
+
+// Save screenshot to user's Documents folder
+async fn handle_capture_screenshot() -> (StatusCode, String) {
+    let screenshot_dir = get_screenshots_dir();
+    if let Err(e) = fs::create_dir_all(&screenshot_dir) {
+        error!(error = %e, "Failed to create screenshots directory");
+        return (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to create directory: {}", e))));
+    }
+
+    // Get the latest screenshot from the observation engine
+    let screenshot = tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(async {
+            crate::observation::get_last_screenshot_async().await
+        })
+    });
+
+    match screenshot {
+        Some(ss) => {
+            let timestamp = ss.timestamp.format("%Y%m%d_%H%M%S");
+            let filename = format!("screenshot_{}.jpg", timestamp);
+            let filepath = screenshot_dir.join(&filename);
+
+            // Decode base64 and write to file
+            let decoded = match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &ss.data_base64) {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    error!(error = %e, "Failed to decode screenshot base64");
+                    return (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to decode screenshot: {}", e))));
+                }
+            };
+
+            match fs::File::create(&filepath).and_then(|mut f| f.write_all(&decoded)) {
+                Ok(_) => {
+                    info!(path = ?filepath, width = ss.width, height = ss.height, "Screenshot captured and saved");
+                    // Notify the frontend to show a toast
+                    let filepath_str = filepath.to_str().unwrap_or("").to_string();
+                    let _ = show_screenshot_toast("Screenshot captured", &format!("Saved to {}", &filepath_str[..filepath_str.len().min(80)]));
+                    (StatusCode::OK, api_response(true, Some(serde_json::json!({
+        "path": filepath_str,
+        "timestamp": timestamp.to_string(),
+        "width": ss.width,
+        "height": ss.height,
+    })), None))
+                }
+                Err(e) => {
+                    error!(error = %e, "Failed to save screenshot");
+                    (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to save screenshot: {}", e))))
+                }
+            }
+        }
+        None => {
+            // No screenshot available — try to capture one fresh by starting the screen capture provider
+            info!("No previous screenshot available — attempting to trigger one");
+            // Give it a moment and retry — the screen capture provider may need to run its cycle
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            let screenshot2 = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(async {
+                    crate::observation::get_last_screenshot_async().await
+                })
+            });
+            match screenshot2 {
+                Some(ss) => {
+                    let timestamp = ss.timestamp.format("%Y%m%d_%H%M%S");
+                    let filename = format!("screenshot_{}.jpg", timestamp);
+                    let filepath = screenshot_dir.join(&filename);
+
+                    let decoded = match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &ss.data_base64) {
+                        Ok(bytes) => bytes,
+                        Err(e) => {
+                            error!(error = %e, "Failed to decode screenshot base64");
+                            return (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to decode screenshot: {}", e))));
+                        }
+                    };
+
+                    match fs::File::create(&filepath).and_then(|mut f| f.write_all(&decoded)) {
+                        Ok(_) => {
+                            info!(path = ?filepath, width = ss.width, height = ss.height, "Screenshot captured and saved");
+                            let filepath_str = filepath.to_str().unwrap_or("").to_string();
+                            let _ = show_screenshot_toast("Screenshot captured", &format!("Saved to {}", &filepath_str[..filepath_str.len().min(80)]));
+                            (StatusCode::OK, api_response(true, Some(serde_json::json!({
+                                "path": filepath_str,
+                                "timestamp": timestamp.to_string(),
+                                "width": ss.width,
+                                "height": ss.height,
+                            })), None))
+                        }
+                        Err(e) => {
+                            error!(error = %e, "Failed to save screenshot");
+                            (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to save screenshot: {}", e))))
+                        }
+                    }
+                }
+                None => {
+                    warn!("No screenshot available from observation engine");
+                    (StatusCode::SERVICE_UNAVAILABLE, api_response(false, None, Some("No screenshot available. Screen capture provider may not be initialized. Enable the Observation Engine in Settings.".to_string())))
+                }
+            }
+        }
+    }
+}
+
+/// Clear all screenshots from the screenshots directory.
+async fn handle_clear_screenshots() -> (StatusCode, String) {
+    let screenshot_dir = get_screenshots_dir();
+
+    match fs::read_dir(&screenshot_dir) {
+        Ok(entries) => {
+            let mut deleted = 0u32;
+            for entry in entries.flatten() {
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.is_file() {
+                        if fs::remove_file(&entry.path()).is_ok() {
+                            deleted += 1;
+                        }
+                    }
+                }
+            }
+            info!(deleted, "Screenshots cleared");
+            (StatusCode::OK, api_response(true, Some(serde_json::json!({ "deleted": deleted })), None))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            info!("Screenshots directory does not exist, nothing to clear");
+            (StatusCode::OK, api_response(true, Some(serde_json::json!({ "deleted": 0 })), None))
+        }
+        Err(e) => {
+            error!(error = %e, "Failed to clear screenshots");
+            (StatusCode::INTERNAL_SERVER_ERROR, api_response(false, None, Some(format!("Failed to clear screenshots: {}", e))))
+        }
+    }
 }
 
 /// Hide the main window (minimize to tray).

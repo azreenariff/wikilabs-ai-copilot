@@ -36,6 +36,8 @@ function Settings() {
     theme: 'dark',
     log_level: 'info',
     privacy_mode: false,
+    observation_engine_enabled: false,
+    guidance_loop_enabled: false,
   });
 
   const [providers, setProviders] = useState<AiProvider[]>([]);
@@ -518,6 +520,54 @@ function Settings() {
             <label htmlFor="privacy_mode" style={{ fontSize: '13px' }}>
               Privacy Mode (minimize logged data)
             </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Engines Section */}
+      <div style={{
+        background: 'var(--color-bg-secondary)',
+        border: '1px solid var(--color-border)',
+        borderRadius: '12px',
+        padding: '24px',
+        marginBottom: '16px',
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>🧠 Engines</h3>
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {/* Observation Engine */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <input
+                type="checkbox"
+                checked={settings.observation_engine_enabled || false}
+                onChange={e => setSettings(prev => ({ ...prev, observation_engine_enabled: e.target.checked }))}
+                id="observation_engine_enabled"
+              />
+              <label htmlFor="observation_engine_enabled" style={{ fontSize: '13px', fontWeight: 500 }}>
+                Enable Observation Engine
+              </label>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginLeft: '24px' }}>
+              Periodically captures your screen to provide context-aware AI guidance
+            </div>
+          </div>
+
+          {/* AI Guidance */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <input
+                type="checkbox"
+                checked={settings.guidance_loop_enabled || false}
+                onChange={e => setSettings(prev => ({ ...prev, guidance_loop_enabled: e.target.checked }))}
+                id="guidance_loop_enabled"
+              />
+              <label htmlFor="guidance_loop_enabled" style={{ fontSize: '13px', fontWeight: 500 }}>
+                Enable AI Guidance
+              </label>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginLeft: '24px' }}>
+              Shows proactive recommendations and suggestions based on screen context
+            </div>
           </div>
         </div>
       </div>
